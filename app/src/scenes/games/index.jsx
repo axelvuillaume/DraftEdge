@@ -58,6 +58,7 @@ const PlayerStatsCard = ({ game }) => {
           <div key={playerStat._id}>
             <h1>{playerStat.summoner_name}</h1>
             <h1>{playerStat.champion}</h1>
+            <h1>{playerStat.role}</h1>
           </div>
         ))}
       </div>

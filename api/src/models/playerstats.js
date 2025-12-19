@@ -12,6 +12,7 @@ const Schema = new mongoose.Schema(
     game_name: { type: String },
     kills: { type: Number },
     deaths: { type: Number },
+    role: { type: String, enum: ['top', 'jungle', 'mid', 'bottom', 'support'] },
     assists: { type: Number },
     creep: { type: Number },
     gold: { type: Number },

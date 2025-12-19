@@ -42,11 +42,6 @@ export default function Home() {
     setLoading(false)
   }
 
-  const handleRemove = () => {
-    setFile(null)
-    setPreview(null)
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
       <div className="w-full max-w-lg">
@@ -58,12 +53,7 @@ export default function Home() {
         <div
           className={`
             relative border-2 border-dashed rounded-2xl p-8 transition-all duration-300 cursor-pointer
-            ${isDragging 
-              ? "border-blue-400 bg-blue-500/10" 
-              : preview 
-                ? "border-slate-600 bg-slate-800/50" 
-                : "border-slate-600 bg-slate-800/30 hover:border-slate-500 hover:bg-slate-800/50"
-            }
+            ${isDragging   ? "border-blue-400 bg-blue-500/10"  : preview   ? "border-slate-600 bg-slate-800/50"  : "border-slate-600 bg-slate-800/30 hover:border-slate-500 hover:bg-slate-800/50"}
           `}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
           onDragLeave={() => setIsDragging(false)}
@@ -83,7 +73,7 @@ export default function Home() {
               <div className="relative rounded-xl overflow-hidden bg-slate-900">
                 <img src={preview} alt="Preview" className="w-full h-64 object-contain" />
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleRemove() }}
+                  onClick={(e) => { e.stopPropagation(); setPreview(null); setFile(null) }}
                   className="absolute top-3 right-3 w-8 h-8 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors"
                 >
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

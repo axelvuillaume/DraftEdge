@@ -6,10 +6,6 @@ const PlayerStats = require('../models/playerstats');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const { client } = require('../services/gemini');
-const fs = require('fs');
-const path = require('path');
-const referenceImagePath = path.join(__dirname, '../../assets/champions-reference.png');
-const referenceBase64 = fs.readFileSync(referenceImagePath).toString('base64');
 
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
@@ -87,49 +83,45 @@ router.post('/upload-screenshot', passport.authenticate(['admin', 'user'], { ses
         role: 'user',
         parts: [
           {
-            text: `You are an expert League of Legends analyst. 
+            text: `You are an expert League of Legends analyst.
         
-        TASK: Extract game data from the "Screenshot" by cross-referencing it with the "Reference Dictionary".
-        
-        INSTRUCTIONS:
-        1. Identify the 10 champions in the scoreboard (Screenshot).
-        2. For EACH champion icon found, visually match it against the "Reference Dictionary" image to get the EXACT name.
-        3. Do NOT guess. Verify colors, face direction, and accessories.
-        
-        OUTPUT STRUCTURE (JSON ONLY):
-        {
-          "gameInfo": {
-            "result": "victory" or "defeat",
-            "duration": "mm:ss",
-            "mode": "string",
-            "date": "dd/mm/yyyy"
-          },
-          "team1": {
-            "totalKills": number,
-            "totalDeaths": number,
-            "totalAssists": number,
-            "totalGold": number,
-            "players": [
-              {
-                "level": number,
-                "champion": "Exact Name from Reference",
-                "summonerName": "string",
-                "kills": number,
-                "deaths": number,
-                "assists": number,
-                "cs": number,
-                "gold": number
-              }
-            ]
-          },
-          "team2": { ...same structure... }
-        }`,
-          },
-          {
-            inlineData: {
-              mimeType: 'image/png',
-              data: referenceBase64,
-            },
+TASK: Extract game data from this League of Legends end-game screenshot.
+
+INSTRUCTIONS:
+1. Identify the 10 champions in the scoreboard using their official League of Legends champion names.
+2. Extract all player statistics visible in the screenshot.
+3. Use the exact champion names as they appear in League of Legends (e.g., "Ahri", "Lee Sin", "Miss Fortune", "Twisted Fate").
+4. Determine each player's role based on their champion. Roles are: "top", "jungle", "mid", "bottom", "support".
+
+OUTPUT STRUCTURE (JSON ONLY):
+{
+  "gameInfo": {
+    "result": "victory" or "defeat",
+    "duration": "mm:ss",
+    "mode": "string",
+    "date": "dd/mm/yyyy"
+  },
+  "team1": {
+    "totalKills": number,
+    "totalDeaths": number,
+    "totalAssists": number,
+    "totalGold": number,
+    "players": [
+      {
+        "level": number,
+        "champion": "Champion Name",
+        "summonerName": "string",
+        "role": "top" | "jungle" | "mid" | "bottom" | "support",
+        "kills": number,
+        "deaths": number,
+        "assists": number,
+        "cs": number,
+        "gold": number
+      }
+    ]
+  },
+  "team2": { ...same structure... }
+}`,
           },
           {
             inlineData: {
@@ -198,6 +190,7 @@ router.post('/upload-screenshot', passport.authenticate(['admin', 'user'], { ses
       gold: player.gold,
       champion: player.champion,
       level: player.level,
+      role: player.role,
     }));
 
     const team2Stats = analysis.team2.players.map((player) => ({
@@ -214,6 +207,7 @@ router.post('/upload-screenshot', passport.authenticate(['admin', 'user'], { ses
       gold: player.gold,
       champion: player.champion,
       level: player.level,
+      role: player.role,
     }));
 
     await PlayerStats.insertMany([...team1Stats, ...team2Stats]);
