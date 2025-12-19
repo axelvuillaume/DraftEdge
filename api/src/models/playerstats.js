@@ -7,6 +7,7 @@ const Schema = new mongoose.Schema(
     summoner_name: { type: String },
     team_id: { type: String },
     team_name: { type: String },
+    opponent: { type: Boolean },
     game_id: { type: String },
     game_name: { type: String },
     kills: { type: Number },

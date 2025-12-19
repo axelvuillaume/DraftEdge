@@ -1,40 +1,40 @@
-const express = require("express");
-const passport = require("passport");
-const jwt = require("jsonwebtoken");
+const express = require('express');
+const passport = require('passport');
+const jwt = require('jsonwebtoken');
 const router = express.Router();
-const crypto = require("crypto");
+const crypto = require('crypto');
 
-const UserObject = require("../models/user");
+const UserObject = require('../models/user');
 
-const config = require("../config");
-const { validatePassword } = require("../utils");
-const { BREVO_TEMPLATES } = require("../utils/constants");
-const ERROR_CODES = require("../utils/errorCodes");
+const config = require('../config');
+const { validatePassword } = require('../utils');
+const { BREVO_TEMPLATES } = require('../utils/constants');
+const ERROR_CODES = require('../utils/errorCodes');
 
-const brevo = require("../services/brevo");
-const { capture } = require("../services/sentry");
+const brevo = require('../services/brevo');
+const { capture } = require('../services/sentry');
 
 // 1 years
 const COOKIE_MAX_AGE = 31557600000;
-const JWT_MAX_AGE = "1y";
+const JWT_MAX_AGE = '1y';
 
 const cookieOptions = () => {
-  if (config.ENVIRONMENT === "development") {
-    return { maxAge: COOKIE_MAX_AGE, httpOnly: true, secure: false, sameSite: "Lax" };
+  if (config.ENVIRONMENT === 'development') {
+    return { maxAge: COOKIE_MAX_AGE, httpOnly: true, secure: false, sameSite: 'Lax' };
   } else {
     return {
       maxAge: COOKIE_MAX_AGE,
       httpOnly: true,
       secure: true,
-      origin: "YOUR PROD URL",
-      sameSite: "none",
+      origin: 'YOUR PROD URL',
+      sameSite: 'none',
     };
   }
 };
 
-router.post("/signin", async (req, res) => {
+router.post('/signin', async (req, res) => {
   let { password, email } = req.body;
-  email = (email || "").trim().toLowerCase();
+  email = (email || '').trim().toLowerCase();
 
   if (!email || !password) return res.status(400).send({ ok: false, code: ERROR_CODES.EMAIL_AND_PASSWORD_REQUIRED });
 
@@ -42,14 +42,14 @@ router.post("/signin", async (req, res) => {
     const user = await UserObject.findOne({ email });
     if (!user) return res.status(401).send({ ok: false, code: ERROR_CODES.USER_NOT_EXISTS });
 
-    const match = config.ENVIRONMENT === "development" || (await user.comparePassword(password));
+    const match = config.ENVIRONMENT === 'development' || (await user.comparePassword(password));
     if (!match) return res.status(401).send({ ok: false, code: ERROR_CODES.EMAIL_OR_PASSWORD_INVALID });
 
     user.set({ last_login_at: Date.now() });
     await user.save();
 
     const token = jwt.sign({ _id: user.id }, config.SECRET, { expiresIn: JWT_MAX_AGE });
-    res.cookie("jwt", token, cookieOptions());
+    res.cookie('jwt', token, cookieOptions());
 
     return res.status(200).send({ ok: true, token, user });
   } catch (error) {
@@ -58,20 +58,19 @@ router.post("/signin", async (req, res) => {
   }
 });
 
-router.post("/signup", async (req, res) => {
+router.post('/signup', async (req, res) => {
   try {
     const { password, email, name } = req.body;
 
-    if (password && !validatePassword(password))
-      return res.status(400).send({ ok: false, user: null, code: ERROR_CODES.PASSWORD_NOT_VALIDATE });
+    if (password && !validatePassword(password)) return res.status(400).send({ ok: false, user: null, code: ERROR_CODES.PASSWORD_NOT_VALIDATE });
 
     const user = await UserObject.create({ name, password, email });
     const token = jwt.sign({ _id: user._id }, config.SECRET, { expiresIn: JWT_MAX_AGE });
-    res.cookie("jwt", token, cookieOptions());
+    res.cookie('jwt', token, cookieOptions());
 
     return res.status(200).send({ user, token, ok: true });
   } catch (error) {
-    console.log("e", error);
+    console.log('e', error);
     if (error.code === 11000) return res.status(409).send({ ok: false, code: ERROR_CODES.USER_ALREADY_REGISTERED });
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, error });
@@ -79,10 +78,10 @@ router.post("/signup", async (req, res) => {
 });
 
 // Check if email exists
-router.post("/check-email", async (req, res) => {
+router.post('/check-email', async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ ok: false, code: "EMAIL_REQUIRED" });
+    if (!email) return res.status(400).json({ ok: false, code: 'EMAIL_REQUIRED' });
 
     const user = await UserObject.findOne({ email: email.toLowerCase() });
     if (!user) return res.status(200).json({ ok: true, exists: false });
@@ -94,9 +93,9 @@ router.post("/check-email", async (req, res) => {
   }
 });
 
-router.post("/logout", async (_, res) => {
+router.post('/logout', async (_, res) => {
   try {
-    res.clearCookie("jwt", cookieOptions());
+    res.clearCookie('jwt', cookieOptions());
     return res.status(200).send({ ok: true });
   } catch (error) {
     capture(error);
@@ -104,14 +103,14 @@ router.post("/logout", async (_, res) => {
   }
 });
 
-router.get("/signin_token", passport.authenticate(["user", "admin"], { session: false }), async (req, res) => {
+router.get('/signin_token', passport.authenticate(['user', 'admin'], { session: false }), async (req, res) => {
   try {
     const { user } = req;
     user.set({ last_login_at: Date.now() });
     await user.save();
 
     const token = jwt.sign({ _id: user._id }, config.SECRET, { expiresIn: JWT_MAX_AGE });
-    res.cookie("jwt", token, cookieOptions());
+    res.cookie('jwt', token, cookieOptions());
 
     return res.status(200).send({ user, token, ok: true });
   } catch (error) {
@@ -120,13 +119,13 @@ router.get("/signin_token", passport.authenticate(["user", "admin"], { session: 
   }
 });
 
-router.post("/forgot_password", async (req, res) => {
+router.post('/forgot_password', async (req, res) => {
   try {
     const obj = await UserObject.findOne({ email: req.body.email.toLowerCase() });
 
     if (!obj) return res.status(401).send({ ok: false, code: ERROR_CODES.EMAIL_OR_PASSWORD_INVALID });
 
-    const token = await crypto.randomBytes(20).toString("hex");
+    const token = await crypto.randomBytes(20).toString('hex');
     obj.set({ forgot_password_reset_token: token, forgot_password_reset_expires: Date.now() + 7200000 }); //2h
     await obj.save();
 
@@ -142,7 +141,7 @@ router.post("/forgot_password", async (req, res) => {
   }
 });
 
-router.post("/forgot_password_reset", async (req, res) => {
+router.post('/forgot_password_reset', async (req, res) => {
   try {
     const obj = await UserObject.findOne({
       forgot_password_reset_token: req.body.token,
@@ -151,12 +150,11 @@ router.post("/forgot_password_reset", async (req, res) => {
 
     if (!obj) return res.status(400).send({ ok: false, code: ERROR_CODES.PASSWORD_TOKEN_EXPIRED_OR_INVALID });
 
-    if (!validatePassword(req.body.password))
-      return res.status(400).send({ ok: false, code: ERROR_CODES.PASSWORD_NOT_VALIDATED });
+    if (!validatePassword(req.body.password)) return res.status(400).send({ ok: false, code: ERROR_CODES.PASSWORD_NOT_VALIDATED });
 
     obj.password = req.body.password;
-    obj.forgot_password_reset_token = "";
-    obj.forgot_password_reset_expires = "";
+    obj.forgot_password_reset_token = '';
+    obj.forgot_password_reset_expires = '';
     await obj.save();
     return res.status(200).send({ ok: true });
   } catch (error) {
@@ -165,7 +163,7 @@ router.post("/forgot_password_reset", async (req, res) => {
   }
 });
 
-router.post("/reset_password", passport.authenticate("user", { session: false }), async (req, res) => {
+router.post('/reset_password', passport.authenticate('user', { session: false }), async (req, res) => {
   try {
     const match = await req.user.comparePassword(req.body.password);
     if (!match) {
@@ -188,7 +186,7 @@ router.post("/reset_password", passport.authenticate("user", { session: false })
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const data = await UserObject.findOne({ _id: req.params.id });
     return res.status(200).send({ ok: true, data });
@@ -198,9 +196,9 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.get("/", passport.authenticate(["admin", "user"], { session: false }), async (req, res) => {
+router.get('/', passport.authenticate(['admin', 'user'], { session: false }), async (req, res) => {
   try {
-    const data = await UserObject.find({ role: "normal" });
+    const data = await UserObject.find({ role: 'normal' });
     return res.status(200).send({ ok: true, data });
   } catch (error) {
     capture(error);
@@ -208,16 +206,16 @@ router.get("/", passport.authenticate(["admin", "user"], { session: false }), as
   }
 });
 
-router.post("/search", passport.authenticate(["admin", "user"], { session: false }), async (req, res) => {
+router.post('/search', passport.authenticate(['admin', 'user'], { session: false }), async (req, res) => {
   try {
     const { search, sort, per_page, page } = req.body;
     let query = {};
 
-    const searchValue = search?.replace(/[#-.]|[[-^]|[?|{}]/g, "\\$&");
+    const searchValue = search?.replace(/[#-.]|[[-^]|[?|{}]/g, '\\$&');
     if (search) {
       query = {
         ...query,
-        $or: [{ name: { $regex: searchValue, $options: "i" } }, { email: { $regex: searchValue, $options: "i" } }],
+        $or: [{ name: { $regex: searchValue, $options: 'i' } }, { email: { $regex: searchValue, $options: 'i' } }],
       };
     }
 
@@ -238,12 +236,11 @@ router.post("/search", passport.authenticate(["admin", "user"], { session: false
   }
 });
 
-router.post("/", passport.authenticate(["admin"], { session: false }), async (req, res) => {
+router.post('/', passport.authenticate(['admin'], { session: false }), async (req, res) => {
   try {
     const { password } = req.body;
 
-    if (!validatePassword(password))
-      return res.status(400).send({ ok: false, user: null, code: ERROR_CODES.PASSWORD_NOT_VALIDATED });
+    if (!validatePassword(password)) return res.status(400).send({ ok: false, user: null, code: ERROR_CODES.PASSWORD_NOT_VALIDATED });
 
     const user = await UserObject.create(req.body);
 
@@ -256,7 +253,7 @@ router.post("/", passport.authenticate(["admin"], { session: false }), async (re
 });
 
 //@check
-router.put("/:id", passport.authenticate(["admin", "user"], { session: false }), async (req, res) => {
+router.put('/:id', passport.authenticate(['admin', 'user'], { session: false }), async (req, res) => {
   try {
     const user = await UserObject.findById(req.params.id);
     const obj = req.body;
@@ -271,7 +268,7 @@ router.put("/:id", passport.authenticate(["admin", "user"], { session: false }),
   }
 });
 
-router.put("/", passport.authenticate(["admin", "user", "applicant"], { session: false }), async (req, res) => {
+router.put('/', passport.authenticate(['admin', 'user', 'applicant'], { session: false }), async (req, res) => {
   try {
     const obj = req.body;
     const data = await UserObject.findByIdAndUpdate(req.user._id, obj, { new: true });
@@ -282,7 +279,7 @@ router.put("/", passport.authenticate(["admin", "user", "applicant"], { session:
   }
 });
 
-router.delete("/:id", passport.authenticate("admin", { session: false }), async (req, res) => {
+router.delete('/:id', passport.authenticate('admin', { session: false }), async (req, res) => {
   try {
     await UserObject.findOneAndRemove({ _id: req.params.id });
     res.status(200).send({ ok: true });

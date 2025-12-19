@@ -4,7 +4,7 @@ import { AiOutlineHome } from "react-icons/ai"
 
 import Logo from "@/assets/logo.svg"
 
-const MENU = [{ title: "Home", to: "/home", logo: <AiOutlineHome className="h-6 w-6" /> }]
+const MENU = [{ title: "Home", to: "/home", logo: <AiOutlineHome className="h-6 w-6" /> }, { title: "Games", to: "/games", logo: <AiOutlineHome className="h-6 w-6" /> }]
 
 const Navbar = () => {
   const [selected, setSelected] = useState(0)

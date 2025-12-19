@@ -1,12 +1,14 @@
 import React, { useState, useRef } from "react"
 import api from "@/services/api"
-
+import useStore from "@/services/store"
+import toast from "react-hot-toast"
 export default function Home() {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const inputRef = useRef(null)
+  const { user } = useStore()
 
   const handleFile = (selectedFile) => {
     if (!selectedFile) return
@@ -29,12 +31,13 @@ export default function Home() {
     if (!preview) return
     setLoading(true)
     try {
-      const res = await api.post("/game/upload-screenshot", { screenshot: preview })
-      console.log("Upload success:", res)
+      const { ok, code } = await api.post("/game/upload-screenshot", { screenshot: preview, user: user })
+      if (!ok) return toast.error(code)
       setFile(null)
       setPreview(null)
+      toast.success("Upload success")
     } catch (err) {
-      console.error("Upload failed:", err)
+      toast.error(err.message)
     }
     setLoading(false)
   }

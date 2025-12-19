@@ -34,6 +34,7 @@ app.get('/', async (req, res) => {
 app.use('/user', require('./controllers/user'));
 app.use('/file', require('./controllers/file'));
 app.use('/game', require('./controllers/game'));
+app.use('/playerstats', require('./controllers/playerstats'));
 
 setupErrorHandler(app);
 require('./services/passport')(app);
