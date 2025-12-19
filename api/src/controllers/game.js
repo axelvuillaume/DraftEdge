@@ -2,11 +2,14 @@ const express = require('express');
 const router = express.Router();
 const passport = require('passport');
 const Game = require('../models/game');
+const PlayerStats = require('../models/playerstats');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const { client } = require('../services/gemini');
 const fs = require('fs');
 const path = require('path');
+const referenceImagePath = path.join(__dirname, '../../assets/champions-reference.png');
+const referenceBase64 = fs.readFileSync(referenceImagePath).toString('base64');
 
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
@@ -72,15 +75,12 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
   }
 });
 
-const referenceImagePath = path.join(__dirname, '../../assets/champions-reference.png');
-const referenceBase64 = fs.readFileSync(referenceImagePath).toString('base64');
-
 router.post('/upload-screenshot', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const { screenshot } = req.body;
+    const { screenshot, team } = req.body;
     if (!screenshot) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
 
-    const cleanScreenshot = screenshot.replace(/x^data:image\/\w+;base64,/, '');
+    const cleanScreenshot = screenshot.replace(/^data:image\/\w+;base64,/, '');
 
     const contents = [
       {
@@ -140,7 +140,7 @@ router.post('/upload-screenshot', passport.authenticate(['admin', 'user'], { ses
     ];
 
     const result = await client.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview',
       contents,
       config: {
         responseMimeType: 'application/json',
@@ -152,13 +152,68 @@ router.post('/upload-screenshot', passport.authenticate(['admin', 'user'], { ses
     let analysis;
     try {
       analysis = JSON.parse(text);
-
       console.log(JSON.stringify(analysis, null, 2));
     } catch (e) {
-      console.error('Gemini analysis error:', e);
+      console.error('Gemini JSON parse error:', e);
+      return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, message: 'Failed to parse Gemini response' });
     }
-
     return res.status(200).send({ ok: true, data: analysis });
+
+    const isVictory = analysis.gameInfo.result.toLowerCase() === 'victory';
+    // const side = team?.side || 'blue';
+
+    const game = await Game.create({
+      // name: team?.name ? `${team.name} vs Opponent` : 'Game',
+      duration: analysis.gameInfo.duration,
+      // side,
+      win: isVictory,
+      // opponent_name: team?.opponent_name || 'Unknown',
+      date: analysis.gameInfo.date,
+      // team_id: team?.team_id || null,
+      // team_name: team?.name || null,
+      blue_team: {
+        total_kills: analysis.team1.totalKills,
+        total_deaths: analysis.team1.totalDeaths,
+        total_assists: analysis.team1.totalAssists,
+      },
+      red_team: {
+        total_kills: analysis.team2.totalKills,
+        total_deaths: analysis.team2.totalDeaths,
+        total_assists: analysis.team2.totalAssists,
+      },
+    });
+
+    const team1Stats = analysis.team1.players.map((player) => ({
+      summoner_name: player.summonerName,
+      // team_id: team?.team_id || null,
+      // team_name: team?.name || null,
+      game_id: game._id,
+      game_name: game.name,
+      kills: player.kills,
+      deaths: player.deaths,
+      assists: player.assists,
+      creep: player.cs,
+      gold: player.gold,
+      champion: player.champion,
+    }));
+
+    const team2Stats = analysis.team2.players.map((player) => ({
+      summoner_name: player.summonerName,
+      // team_id: team?.team_id || null,
+      // team_name: team?.name || null,
+      game_id: game._id,
+      game_name: game.name,
+      kills: player.kills,
+      deaths: player.deaths,
+      assists: player.assists,
+      creep: player.cs,
+      gold: player.gold,
+      champion: player.champion,
+    }));
+
+    const playerStats = await PlayerStats.insertMany([...team1Stats, ...team2Stats]);
+
+    return res.status(200).send({ ok: true, data: { game, playerStats, analysis } });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, message: error.message });
