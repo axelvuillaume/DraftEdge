@@ -1,7 +1,7 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
-const MODELNAME = "user";
+const MODELNAME = 'user';
 
 const Schema = new mongoose.Schema(
   {
@@ -9,21 +9,24 @@ const Schema = new mongoose.Schema(
 
     email: { type: String, required: true, unique: true, trim: true },
 
-    avatar: { type: String, default: "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y" },
+    avatar: { type: String, default: 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' },
+
+    team_id: { type: String },
+    team_name: { type: String },
 
     password: String,
-    role: { type: String, enum: ["user", "admin"], default: "user" },
+    role: { type: String, enum: ['user', 'admin'], default: 'user' },
 
-    forgot_password_reset_token: { type: String, default: "" },
+    forgot_password_reset_token: { type: String, default: '' },
     forgot_password_reset_expires: { type: Date },
 
     last_login_at: { type: Date, default: Date.now },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
-Schema.pre("save", function (next) {
-  if (this.isModified("password") || this.isNew) {
+Schema.pre('save', function (next) {
+  if (this.isModified('password') || this.isNew) {
     bcrypt.hash(this.password, 10, (e, hash) => {
       this.password = hash;
       return next();
@@ -34,7 +37,7 @@ Schema.pre("save", function (next) {
 });
 
 Schema.methods.comparePassword = function (p) {
-  return bcrypt.compare(p, this.password || "");
+  return bcrypt.compare(p, this.password || '');
 };
 const OBJ = mongoose.model(MODELNAME, Schema);
 module.exports = OBJ;
