@@ -34,8 +34,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
   try {
     let query = {};
 
-    if (req.body.user_id) query.user_id = req.body.user_id;
-    if (req.body.read_at) query.read_at = req.body.read_at;
+    if (req.body.team_id) query.team_id = req.body.team_id;
     const limit = req.body.limit || 50;
     const skip = req.body.offset || 0;
     const total = await Game.countDocuments(query);
@@ -216,6 +215,24 @@ OUTPUT STRUCTURE (JSON ONLY):
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, message: error.message });
+  }
+});
+
+router.post('/stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const games = await Game.find({ team_id: req.user.team_id });
+
+    const stats = {
+      win_rate: games.filter((game) => game.win).length / games.length,
+      total_wins: games.filter((game) => game.win).length,
+      total_losses: games.filter((game) => !game.win).length,
+      total_games: games.length,
+    };
+
+    return res.status(200).send({ ok: true, data: stats });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
   }
 });
 

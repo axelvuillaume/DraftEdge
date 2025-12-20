@@ -6,7 +6,7 @@ import * as Sentry from "@sentry/browser"
 import Auth from "@/scenes/auth"
 import Home from "@/scenes/home"
 import Games from "@/scenes/games"
-
+import Stats from "@/scenes/stats"
 import Navbar from "@/components/NavBar"
 import TopBar from "@/components/TopBar"
 import Loader from "@/components/loader"
@@ -30,6 +30,7 @@ export default function App() {
         <Route element={<UserLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/games" element={<Games />} />
+          <Route path="/stats" element={<Stats />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
@@ -79,15 +80,18 @@ const UserLayout = () => {
   if (!user) return <Navigate to="/auth" replace={true} />
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden lg:flex-row">
-      <nav className="w-56 absolute left-0 top-0">
+    <div className="flex h-screen overflow-hidden bg-slate-900">
+      {/* Sidebar */}
+      <nav className="hidden lg:block flex-shrink-0">
         <Navbar />
       </nav>
-      <main className="ml-56 h-full w-full overflow-auto bg-gray-50">
-        <div className="h-14 border-b border-secondary bg-white">
-          <TopBar />
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden">
+        <TopBar />
+        <div className="flex-1 overflow-auto">
+          <Outlet />
         </div>
-        <Outlet />
       </main>
     </div>
   )

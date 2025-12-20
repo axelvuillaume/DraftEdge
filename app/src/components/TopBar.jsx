@@ -1,22 +1,30 @@
-import React, { Fragment } from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Menu, Transition } from "@headlessui/react"
-import { TbLogout } from "react-icons/tb"
+import { LogOut, ChevronDown, User, Settings, Shield } from "lucide-react"
 
 import useStore from "@/services/store"
 import api from "@/services/api"
 
 const TopBar = () => {
+  const { user } = useStore()
+
   return (
-    <div className="w-full h-full flex items-center justify-end px-4">
+    <div className="w-full h-16 bg-slate-900/80 border-b border-slate-700/50 flex items-center justify-between px-6">
+      {/* Logo / Brand */}
+      <div className="flex items-center gap-3">
+        <span className="text-white font-bold text-lg tracking-tight">{user?.team_name}</span>
+      </div>
+
+      {/* Profile Menu */}
       <ProfileMenu />
     </div>
   )
 }
 
 const ProfileMenu = () => {
-  const { user, setUser } = useStore()
   const navigate = useNavigate()
+  const { user, setUser } = useStore()
 
   const handleLogout = async () => {
     setUser(null)
@@ -24,21 +32,33 @@ const ProfileMenu = () => {
     navigate("/auth")
   }
 
+  const getInitials = name => {
+    if (!name) return "?"
+    return name
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
   return (
-    <Menu as="div" className="relative flex items-center">
-      <Menu.Button>
-        {user.avatar ? (
-          <img className="h-10 w-10 rounded-full border border-secondary object-contain" src={user.avatar} alt="" />
-        ) : (
-          <span className="h-10 w-10 rounded-full border border-secondary bg-white flex items-center justify-center uppercase font-bold text-gray-800 text-sm">
-            {user.first_name[0]}
-            {user.last_name[0]}
-          </span>
-        )}
+    <Menu as="div" className="relative">
+      <Menu.Button className="flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700/50 hover:border-slate-600/50 transition-all duration-200">
+        {/* Avatar */}
+        <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
+          <span className="text-slate-900 font-bold text-sm">{getInitials(user?.name)}</span>
+        </div>
+
+        {/* User Info */}
+        <div className="hidden sm:flex flex-col items-start">
+          <span className="text-white text-sm font-semibold leading-tight">{user?.name || "User"}</span>
+        </div>
+
+        <ChevronDown className="w-4 h-4 text-slate-400 ml-1" />
       </Menu.Button>
 
       <Transition
-        as={Fragment}
         enter="transition ease-out duration-100"
         enterFrom="transform opacity-0 scale-95"
         enterTo="transform opacity-100 scale-100"
@@ -46,15 +66,28 @@ const ProfileMenu = () => {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <Menu.Items className="absolute top-10 right-0 mt-2 rounded-b-md bg-white border p-2 z-10">
-          <Menu.Item>
-            {({ active }) => (
-              <button className={`text-white w-44 flex items-center justify-between rounded-md px-4 py-2 text-sm ${active ? "bg-gray-600" : "bg-primary"}`} onClick={handleLogout}>
-                Se déconnecter
-                <TbLogout className="ml-2 h-5 w-5 text-white" aria-hidden="true" />
-              </button>
-            )}
-          </Menu.Item>
+        <Menu.Items className="absolute right-0 mt-2 w-56 origin-top-right bg-slate-800 border border-slate-700/50 rounded-xl shadow-xl shadow-black/20 overflow-hidden focus:outline-none z-50">
+          <div className="py-1">
+            <Menu.Item>
+              {({ active }) => (
+                <button className={`${active ? "bg-slate-700/50" : ""} w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 transition-colors`}>
+                  <User className="w-4 h-4 text-slate-400" />
+                  <span>Mon profil</span>
+                </button>
+              )}
+            </Menu.Item>
+          </div>
+
+          <div className="border-t border-slate-700/50 py-1">
+            <Menu.Item>
+              {({ active }) => (
+                <button onClick={handleLogout} className={`${active ? "bg-red-500/10" : ""} w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 transition-colors`}>
+                  <LogOut className="w-4 h-4" />
+                  <span>Déconnexion</span>
+                </button>
+              )}
+            </Menu.Item>
+          </div>
         </Menu.Items>
       </Transition>
     </Menu>
