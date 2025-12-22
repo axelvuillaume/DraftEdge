@@ -3,7 +3,7 @@ const environment = getEnvironment()
 let apiURL = ""
 if (environment === "development") apiURL = "http://localhost:8080"
 if (environment === "production") {
-  apiURL = "your production url"
+  apiURL = "https://api-draftedge-production.up.railway.app"
 }
 
 const SENTRY_URL = "YOUR_SENTRY_URL"
