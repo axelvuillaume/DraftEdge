@@ -42,12 +42,7 @@ export default function App() {
 const AuthLayout = () => {
   const { user } = useStore()
   if (user) return <Navigate to="/" replace={true} />
-  return (
-    <div className="flex flex-col justify-center items-center gap-8 w-screen h-screen">
-      <h1 className="text-3xl font-bold">Boilerplate</h1>
-      <Outlet />
-    </div>
-  )
+  return <Outlet />
 }
 
 const UserLayout = () => {
