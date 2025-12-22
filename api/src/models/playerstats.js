@@ -10,6 +10,9 @@ const Schema = new mongoose.Schema(
     opponent: { type: Boolean },
     game_id: { type: String },
     game_name: { type: String },
+    game_win: { type: Boolean },
+    game_duration: { type: Number },
+
     kills: { type: Number },
     deaths: { type: Number },
     role: { type: String, enum: ['top', 'jungle', 'mid', 'bottom', 'support'] },

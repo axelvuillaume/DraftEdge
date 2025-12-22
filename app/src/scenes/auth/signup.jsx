@@ -9,7 +9,7 @@ import api from "@/services/api"
 import { EP_Group_ensTrainNet3 } from "@/utils/constants"
 
 export default () => {
-  const [values, setValues] = useState({ name: "", email: "", password: "", puuid: "" })
+  const [values, setValues] = useState({ team_name: "", email: "", password: "" })
 
   const { user, setUser } = store()
 
@@ -35,9 +35,9 @@ export default () => {
       <div>
         <div className="mb-[25px]">
           <div className="flex flex-col-reverse">
-            <input className="peer signInInputs" type="text" id="name" value={values.name} onChange={e => setValues({ ...values, name: e.target.value })} />
-            <label className="peer-focus:text-[#116eee]" htmlFor="name">
-              Name
+            <input className="peer signInInputs" type="text" id="team_name" value={values.team_name} onChange={e => setValues({ ...values, team_name: e.target.value })} />
+            <label className="peer-focus:text-[#116eee]" htmlFor="team_name">
+              Team Name
             </label>
           </div>
         </div>
@@ -45,7 +45,7 @@ export default () => {
           <div className="flex flex-col-reverse">
             <input className="peer signInInputs " name="email" type="email" id="email" value={values.email} onChange={e => setValues({ ...values, email: e.target.value })} />
             <label className="peer-focus:text-[#116eee]" htmlFor="email">
-              E-mail address
+              E-mail
             </label>
           </div>
         </div>
@@ -63,7 +63,6 @@ export default () => {
               Password
             </label>
           </div>
-
         </div>
         {/* Forget Password */}
         <div className="text-right mb-[20px] mt-[-20px] text-[12px]">

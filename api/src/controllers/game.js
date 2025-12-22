@@ -7,6 +7,15 @@ const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const { client } = require('../services/gemini');
 
+const durationToSeconds = (durationString) => {
+  if (!durationString || typeof durationString !== 'string') return 0;
+  const parts = durationString.split(':');
+  if (parts.length !== 2) return 0;
+  const minutes = parseInt(parts[0], 10) || 0;
+  const seconds = parseInt(parts[1], 10) || 0;
+  return minutes * 60 + seconds;
+};
+
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const game = await Game.findById(req.params.id);
@@ -151,10 +160,11 @@ OUTPUT STRUCTURE (JSON ONLY):
     }
 
     // const side = team?.side || 'blue';
+    const durationInSeconds = durationToSeconds(analysis.gameInfo.duration);
 
     const game = await Game.create({
       name: analysis.gameInfo.date + ' ' + analysis.gameInfo.duration,
-      duration: analysis.gameInfo.duration,
+      duration: durationInSeconds,
       // side,
       win: analysis.gameInfo.result.toLowerCase() === 'victory',
       // opponent_name: team?.opponent_name || 'Unknown',
@@ -182,6 +192,8 @@ OUTPUT STRUCTURE (JSON ONLY):
       team_name: user?.team_name || null,
       game_id: game._id,
       game_name: game.name,
+      game_win: game.win,
+      game_duration: durationInSeconds,
       kills: player.kills,
       deaths: player.deaths,
       assists: player.assists,
@@ -197,8 +209,10 @@ OUTPUT STRUCTURE (JSON ONLY):
       team_id: user?.team_id || null,
       team_name: user?.team_name || null,
       game_id: game._id,
-      opponent: true,
       game_name: game.name,
+      game_win: !game.win,
+      game_duration: durationInSeconds,
+      opponent: true,
       kills: player.kills,
       deaths: player.deaths,
       assists: player.assists,

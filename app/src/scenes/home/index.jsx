@@ -24,7 +24,7 @@ export default function FutureHome() {
 
   const fetchPlayerStats = async () => {
     try {
-      const { ok, data, code } = await api.post("/playerstats/stats", {})
+      const { ok, data, code } = await api.post("/playerstats/home_stats", {})
       if (!ok) return toast.error(code)
       setStats(data)
     } catch (error) {

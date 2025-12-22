@@ -68,7 +68,7 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
   }
 });
 
-router.post('/stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+router.post('/home_stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const thisWeekStart = new Date();
     thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
@@ -109,4 +109,106 @@ router.post('/stats', passport.authenticate(['admin', 'user'], { session: false,
   }
 });
 
+router.post('/player_stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
+
+    const statsByPlayer = playerStats.reduce((acc, curr) => {
+      const playerName = curr.summoner_name;
+      if (!acc[playerName]) {
+        acc[playerName] = {
+          summoner_name: playerName,
+          champions: {},
+          total_kills: 0,
+          total_deaths: 0,
+          total_assists: 0,
+          total_creep: 0,
+          total_gold: 0,
+          total_duration: 0,
+          wins: 0,
+          games: 0,
+        };
+      }
+
+      const player = acc[playerName];
+      player.total_kills += curr.kills || 0;
+      player.total_deaths += curr.deaths || 0;
+      player.total_assists += curr.assists || 0;
+      player.total_creep += curr.creep || 0;
+      player.total_gold += curr.gold || 0;
+      player.total_duration += curr.game_duration || 0;
+      if (curr.game_win) player.wins += 1;
+      player.games += 1;
+
+      if (!player.champions[curr.champion]) {
+        player.champions[curr.champion] = {
+          champion: curr.champion,
+          total_kills: 0,
+          total_deaths: 0,
+          total_assists: 0,
+          total_creep: 0,
+          total_gold: 0,
+          total_duration: 0,
+          wins: 0,
+          games: 0,
+        };
+      }
+
+      const champStats = player.champions[curr.champion];
+      champStats.total_kills += curr.kills || 0;
+      champStats.total_deaths += curr.deaths || 0;
+      champStats.total_assists += curr.assists || 0;
+      champStats.total_creep += curr.creep || 0;
+      champStats.total_gold += curr.gold || 0;
+      champStats.total_duration += curr.game_duration || 0;
+      if (curr.game_win) champStats.wins += 1;
+      champStats.games += 1;
+
+      return acc;
+    }, {});
+
+    const result = Object.values(statsByPlayer).map((player) => {
+      const avgKda = player.total_deaths > 0 ? (player.total_kills + player.total_assists) / player.total_deaths : player.total_kills + player.total_assists;
+      const csPerMin = player.total_duration / 60 > 0 ? player.total_creep / player.total_duration / 60 : 0;
+      const champions = Object.values(player.champions).map((champ) => {
+        const champKda = champ.total_deaths > 0 ? (champ.total_kills + champ.total_assists) / champ.total_deaths : champ.total_kills + champ.total_assists;
+        const champCsPerMin = champ.total_duration / 60 > 0 ? champ.total_creep / champ.total_duration / 60 : 0;
+
+        return {
+          champion: champ.champion,
+          kda: Math.round(champKda * 100) / 100,
+          win_rate: Math.round(champ.games > 0 ? champ.wins / champ.games : 0 * 1000) / 1000,
+          cs_per_min: Math.round(champCsPerMin * 10) / 10,
+          games: champ.games,
+          wins: champ.wins,
+          kills: champ.total_kills,
+          deaths: champ.total_deaths,
+          assists: champ.total_assists,
+          creep: champ.total_creep,
+          gold: champ.total_gold,
+        };
+      });
+
+      return {
+        summoner_name: player.summoner_name,
+        kda: Math.round(avgKda * 100) / 100,
+        win_rate: Math.round(player.games > 0 ? player.wins / player.games : 0 * 1000) / 1000,
+        cs_per_min: Math.round(csPerMin * 10) / 10,
+        games: player.games,
+        wins: player.wins,
+        total_kills: player.total_kills,
+        total_deaths: player.total_deaths,
+        total_assists: player.total_assists,
+        total_creep: player.total_creep,
+        total_gold: player.total_gold,
+        champions: champions.sort((a, b) => b.games - a.games),
+      };
+    });
+
+    return res.status(200).send({ ok: true, data: result });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
 module.exports = router;
