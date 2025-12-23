@@ -127,7 +127,7 @@ function GameCard({ game }) {
               <span className="text-slate-500 text-sm">•</span>
               <span className="text-slate-400 text-sm flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                {game.duration}
+                {Math.floor(game.duration / 60)}m{game.duration % 60}
               </span>
             </div>
             <p className="text-slate-500 text-sm mt-0.5">{game.date}</p>
