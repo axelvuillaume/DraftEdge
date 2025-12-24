@@ -116,7 +116,7 @@ function PlayerCard({ player }) {
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center text-xs font-bold text-slate-400 flex-shrink-0">
-                        {champion.champion?.slice(0, 2).toUpperCase() || "??"}
+                        <img src={`/champions/${champion.champion}.png`} alt={champion.champion} className="w-full h-full object-cover" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-white font-semibold text-sm truncate">{champion.champion}</p>
