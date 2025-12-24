@@ -70,7 +70,9 @@ router.post('/', passport.authenticate(['admin', 'user'], { session: false, fail
 router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const game = await Game.findByIdAndDelete(req.params.id);
-    if (!notification) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+    if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+
+    await PlayerStats.deleteMany({ game_id: game._id });
 
     return res.status(200).send({ ok: true });
   } catch (error) {

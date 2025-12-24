@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
-import { Clock, ChevronDown, ChevronUp, Swords } from "lucide-react"
+import { Clock, ChevronDown, ChevronUp, Swords, Trash2 } from "lucide-react"
 import useStore from "@/services/store"
 
 const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
@@ -73,15 +73,9 @@ export default function Games() {
           </div>
 
           <div className="space-y-3">
-            {games.length === 0 ? (
-              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-12 text-center">
-                <Swords className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-400">No games recorded yet</p>
-                <p className="text-slate-500 text-sm mt-1">Upload a screenshot to get started</p>
-              </div>
-            ) : (
-              games.map(game => <GameCard key={game._id} game={game} />)
-            )}
+            {games.map(game => (
+              <GameCard key={game._id} game={game} onDelete={fetchGames} />
+            ))}
           </div>
         </section>
       </div>
@@ -89,7 +83,7 @@ export default function Games() {
   )
 }
 
-function GameCard({ game }) {
+function GameCard({ game, onDelete }) {
   const [expanded, setExpanded] = useState(false)
   const [playerStats, setPlayerStats] = useState([])
   const [loading, setLoading] = useState(false)
@@ -113,8 +107,30 @@ function GameCard({ game }) {
     setExpanded(!expanded)
   }
 
+  const handleDelete = async e => {
+    e.stopPropagation()
+    if (!confirm("Are you sure you want to delete this game?")) return
+
+    try {
+      const { ok, code } = await api.delete(`/game/${game._id}`)
+      if (!ok) return toast.error(code)
+      toast.success("Game deleted successfully")
+      onDelete()
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
   return (
-    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden transition-all duration-200 hover:border-slate-600/50">
+    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-visible transition-all duration-200 hover:border-slate-600/50 relative">
+      {/* Delete Button */}
+      <button
+        onClick={handleDelete}
+        className="absolute -top-3 -right-3 w-7 h-7 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg transition-colors z-50"
+        title="Delete game"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
       {/* Game Header */}
       <button onClick={handleToggle} className="w-full p-4 flex items-center justify-between hover:bg-slate-700/20 transition-colors">
         <div className="flex items-center gap-4">
