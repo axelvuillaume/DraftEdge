@@ -417,18 +417,19 @@ function GameCard({ game }) {
 }
 
 function PlayerRow({ player, isOpponent = false }) {
-  const role = player.role?.toLowerCase()
-  const roleColor = roleIconColors[role] || "text-slate-400"
-  const roleLabel = roleLabels[role] || player.role || "?"
-
   return (
     <div className={`flex items-center justify-between p-2.5 rounded-lg ${isOpponent ? "bg-red-500/5" : "bg-blue-500/5"}`}>
       <div className="flex items-center gap-3 min-w-0">
+        {player.champion && (
+          <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-slate-700/50 border border-slate-600/50">
+            <img src={`/champions/${player.champion}.png`} alt={player.champion} className="w-full h-full object-cover" />
+          </div>
+        )}
         {/* Champion & Player Info */}
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <p className="text-white text-sm font-medium truncate">{player.champion}</p>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${roleColor} bg-slate-700/50`}>{roleLabel}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded ${roleIconColors[player.role]} bg-slate-700/50`}>{roleLabels[player.role]}</span>
           </div>
           <p className="text-slate-500 text-xs truncate">{player.summoner_name}</p>
         </div>

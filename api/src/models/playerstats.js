@@ -4,12 +4,12 @@ const MODELNAME = 'playerstats';
 
 const Schema = new mongoose.Schema(
   {
-    summoner_name: { type: String },
-    team_id: { type: String },
-    team_name: { type: String },
+    summoner_name: { type: String, trim: true },
+    team_id: { type: String, trim: true },
+    team_name: { type: String, trim: true },
     opponent: { type: Boolean },
-    game_id: { type: String },
-    game_name: { type: String },
+    game_id: { type: String, trim: true },
+    game_name: { type: String, trim: true },
     game_win: { type: Boolean },
     game_duration: { type: Number },
 
