@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
-import { Clock, ChevronDown, ChevronUp, Swords, Trash2 } from "lucide-react"
+import { Clock, Swords, Trash2, Eye, X, MoreVertical } from "lucide-react"
 import useStore from "@/services/store"
 
 const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
@@ -87,6 +87,8 @@ function GameCard({ game, onDelete }) {
   const [expanded, setExpanded] = useState(false)
   const [playerStats, setPlayerStats] = useState([])
   const [loading, setLoading] = useState(false)
+  const [showScreenshot, setShowScreenshot] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
 
   const fetchPlayerStats = async () => {
     if (playerStats.length > 0) return
@@ -123,14 +125,6 @@ function GameCard({ game, onDelete }) {
 
   return (
     <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-visible transition-all duration-200 hover:border-slate-600/50 relative">
-      {/* Delete Button */}
-      <button
-        onClick={handleDelete}
-        className="absolute -top-3 -right-3 w-7 h-7 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg transition-colors z-50"
-        title="Delete game"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
       {/* Game Header */}
       <button onClick={handleToggle} className="w-full p-4 flex items-center justify-between hover:bg-slate-700/20 transition-colors">
         <div className="flex items-center gap-4">
@@ -169,7 +163,48 @@ function GameCard({ game, onDelete }) {
             </div>
           </div>
 
-          {expanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+          {/* Dropdown Menu */}
+          <div className="relative">
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                setShowDropdown(!showDropdown)
+              }}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-white transition-colors"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+            {showDropdown && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={e => {
+                    e.stopPropagation()
+                    setShowDropdown(false)
+                  }}
+                />
+                <div className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 py-1">
+                  {game.screenshot && (
+                    <button
+                      onClick={e => {
+                        e.stopPropagation()
+                        setShowScreenshot(true)
+                        setShowDropdown(false)
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white flex items-center gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Screenshot
+                    </button>
+                  )}
+                  <button onClick={handleDelete} className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    Supprimer
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </button>
 
@@ -209,6 +244,21 @@ function GameCard({ game, onDelete }) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Screenshot Modal */}
+      {showScreenshot && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowScreenshot(false)}>
+          <div className="relative max-w-5xl w-full max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setShowScreenshot(false)}
+              className="absolute -top-3 -right-3 w-10 h-10 flex items-center justify-center rounded-full bg-slate-700 hover:bg-slate-600 text-white shadow-lg transition-colors z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img src={`data:image/png;base64,${game.screenshot}`} alt="Game Screenshot" className="w-full h-auto rounded-xl shadow-2xl border border-slate-600/50" />
+          </div>
         </div>
       )}
     </div>
