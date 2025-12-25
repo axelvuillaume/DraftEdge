@@ -165,6 +165,7 @@ OUTPUT STRUCTURE (JSON ONLY):
       duration: durationToSeconds(analysis.gameInfo.duration),
       'blue_team.total_gold': analysis.team1.totalGold,
       'red_team.total_gold': analysis.team2.totalGold,
+      team_id: user.team_id,
     });
 
     if (gameExist) return res.status(500).send({ ok: false, code: ERROR_CODES.GAME_ALREADY_EXISTS });
@@ -172,6 +173,7 @@ OUTPUT STRUCTURE (JSON ONLY):
     const game = await Game.create({
       name: analysis.gameInfo.date + ' ' + analysis.gameInfo.duration,
       duration: durationToSeconds(analysis.gameInfo.duration),
+      screenshot: cleanScreenshot,
       // side,j
       win: analysis.gameInfo.result.toLowerCase() === 'victory',
       // opponent_name: team?.opponent_name || 'Unknown',

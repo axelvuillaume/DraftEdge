@@ -12,6 +12,7 @@ const Schema = new mongoose.Schema(
     date: { type: String },
     team_id: { type: String },
     team_name: { type: String },
+    screenshot: { type: String },
     blue_team: { total_kills: { type: Number }, total_deaths: { type: Number }, total_assists: { type: Number }, total_gold: { type: Number } },
     red_team: { total_kills: { type: Number }, total_deaths: { type: Number }, total_assists: { type: Number }, total_gold: { type: Number } },
   },
