@@ -502,31 +502,25 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
 
   const handleUpload = async () => {
     if (!file) return
-
     setUploading(true)
-    try {
-      const reader = new FileReader()
-      reader.onload = async e => {
-        const base64 = e.target.result
-        const { ok, code, message } = await api.post("/game/upload-screenshot", { screenshot: base64, user })
 
-        if (!ok) {
-          toast.error(message || code || "Upload failed")
-          setUploading(false)
-          return
-        }
-
+    const reader = new FileReader()
+    reader.onload = async e => {
+      const base64 = e.target.result
+      try {
+        const { ok, code } = await api.post("/game/upload-screenshot", { screenshot: base64, user })
+        if (!ok) return toast.error(code)
         toast.success("Screenshot analyzed successfully!")
-        setFile(null)
-        setPreview(null)
-        setUploading(false)
         onSuccess()
+      } catch (error) {
+        toast.error(error.code || "Upload failed")
+        onClose()
       }
-      reader.readAsDataURL(file)
-    } catch (error) {
-      toast.error(error.message)
+      setFile(null)
+      setPreview(null)
       setUploading(false)
     }
+    reader.readAsDataURL(file)
   }
 
   const handleClose = () => {

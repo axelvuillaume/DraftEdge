@@ -146,10 +146,7 @@ OUTPUT STRUCTURE (JSON ONLY):
     const result = await client.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0,
-      },
+      config: { responseMimeType: 'application/json', temperature: 0 },
     });
     const text = result.text;
 
@@ -162,12 +159,20 @@ OUTPUT STRUCTURE (JSON ONLY):
     }
 
     // const side = team?.side || 'blue';
-    const durationInSeconds = durationToSeconds(analysis.gameInfo.duration);
+
+    const gameExist = await Game.findOne({
+      date: analysis.gameInfo.date,
+      duration: durationToSeconds(analysis.gameInfo.duration),
+      'blue_team.total_gold': analysis.team1.totalGold,
+      'red_team.total_gold': analysis.team2.totalGold,
+    });
+
+    if (gameExist) return res.status(500).send({ ok: false, code: ERROR_CODES.GAME_ALREADY_EXISTS });
 
     const game = await Game.create({
       name: analysis.gameInfo.date + ' ' + analysis.gameInfo.duration,
-      duration: durationInSeconds,
-      // side,
+      duration: durationToSeconds(analysis.gameInfo.duration),
+      // side,j
       win: analysis.gameInfo.result.toLowerCase() === 'victory',
       // opponent_name: team?.opponent_name || 'Unknown',
       date: analysis.gameInfo.date,
@@ -195,7 +200,7 @@ OUTPUT STRUCTURE (JSON ONLY):
       game_id: game._id,
       game_name: game.name,
       game_win: game.win,
-      game_duration: durationInSeconds,
+      game_duration: durationToSeconds(analysis.gameInfo.duration),
       kills: player.kills,
       deaths: player.deaths,
       assists: player.assists,
@@ -213,7 +218,7 @@ OUTPUT STRUCTURE (JSON ONLY):
       game_id: game._id,
       game_name: game.name,
       game_win: !game.win,
-      game_duration: durationInSeconds,
+      game_duration: durationToSeconds(analysis.gameInfo.duration),
       opponent: true,
       kills: player.kills,
       deaths: player.deaths,
