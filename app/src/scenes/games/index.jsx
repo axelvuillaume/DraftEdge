@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
-import { Clock, Swords, Trash2, Eye, X, MoreVertical } from "lucide-react"
+import { Clock, Swords, Trash2, Eye, X, MoreVertical, Pencil, Save } from "lucide-react"
 import useStore from "@/services/store"
 
 const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
@@ -89,6 +89,7 @@ function GameCard({ game, onDelete }) {
   const [loading, setLoading] = useState(false)
   const [showScreenshot, setShowScreenshot] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
 
   const fetchPlayerStats = async () => {
     if (playerStats.length > 0) return
@@ -163,6 +164,19 @@ function GameCard({ game, onDelete }) {
             </div>
           </div>
 
+          {isEditing && (
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                setIsEditing(false)
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-black text-sm font-medium transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              Save
+            </button>
+          )}
+
           {/* Dropdown Menu */}
           <div className="relative">
             <button
@@ -197,6 +211,17 @@ function GameCard({ game, onDelete }) {
                       Screenshot
                     </button>
                   )}
+                  <button
+                    onClick={e => {
+                      e.stopPropagation()
+                      setIsEditing(!isEditing)
+                      setShowDropdown(false)
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white flex items-center gap-2"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Éditer
+                  </button>
                   <button onClick={handleDelete} className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2">
                     <Trash2 className="w-4 h-4" />
                     Supprimer
@@ -225,7 +250,7 @@ function GameCard({ game, onDelete }) {
                 </h4>
                 <div className="space-y-2">
                   {sortPlayersByRole(playerStats.filter(p => !p.opponent)).map((player, idx) => (
-                    <PlayerRow key={idx} player={player} />
+                    <PlayerRow player={player} isEditing={isEditing} />
                   ))}
                 </div>
               </div>
@@ -238,7 +263,7 @@ function GameCard({ game, onDelete }) {
                 </h4>
                 <div className="space-y-2">
                   {sortPlayersByRole(playerStats.filter(p => p.opponent)).map((player, idx) => (
-                    <PlayerRow key={idx} player={player} isOpponent />
+                    <PlayerRow player={player} isOpponent isEditing={isEditing} />
                   ))}
                 </div>
               </div>
@@ -265,19 +290,41 @@ function GameCard({ game, onDelete }) {
   )
 }
 
-function PlayerRow({ player, isOpponent = false }) {
+function PlayerRow({ player, isOpponent = false, isEditing }) {
+  const [champion, setChampion] = useState(player.champion)
+
+  const handleSave = async () => {
+    try {
+      const { ok, code } = await api.put(`/playerstats/${player._id}`, { champion })
+      if (!ok) return toast.error(code)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
   return (
     <div className={`flex items-center justify-between p-2.5 rounded-lg ${isOpponent ? "bg-red-500/5" : "bg-blue-500/5"}`}>
       <div className="flex items-center gap-3 min-w-0">
-        {player.champion && (
+        {champion && (
           <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-slate-700/50 border border-slate-600/50">
-            <img src={`/champions/${player.champion}.png`} alt={player.champion} className="w-full h-full object-cover" />
+            <img src={`/champions/${champion}.png`} alt={champion} className="w-full h-full object-cover" />
           </div>
         )}
         {/* Champion & Player Info */}
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-white text-sm font-medium truncate">{player.champion}</p>
+            {isEditing ? (
+              <input
+                type="text"
+                value={champion}
+                onChange={e => setChampion(e.target.value)}
+                onBlur={handleSave}
+                onKeyDown={e => e.key === "Enter" && e.target.blur()}
+                className={`bg-transparent text-white text-sm font-medium w-24 px-1 py-0.5 rounded border border-transparent hover:border-slate-600 focus:border-amber-500 focus:outline-none`}
+              />
+            ) : (
+              <p className="text-white text-sm font-medium truncate">{champion}</p>
+            )}
             <span className={`text-xs px-1.5 py-0.5 rounded ${roleIconColors[player.role]} bg-slate-700/50`}>{roleLabels[player.role]}</span>
           </div>
           <p className="text-slate-500 text-xs truncate">{player.summoner_name}</p>
