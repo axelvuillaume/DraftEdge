@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
-import { Clock, Swords, Trash2, Eye, X, MoreVertical, Pencil, Save } from "lucide-react"
+import { Clock, Swords, Trash2, Eye, X, MoreVertical, Pencil, Save, Shield, DollarSign, Target } from "lucide-react"
 import useStore from "@/services/store"
 
 const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
@@ -90,6 +90,7 @@ function GameCard({ game, onDelete }) {
   const [showScreenshot, setShowScreenshot] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [activeTab, setActiveTab] = useState("overview")
 
   const fetchPlayerStats = async () => {
     if (playerStats.length > 0) return
@@ -241,32 +242,73 @@ function GameCard({ game, onDelete }) {
               <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Your Team */}
-              <div>
-                <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  Your Team
-                </h4>
-                <div className="space-y-2">
-                  {sortPlayersByRole(playerStats.filter(p => !p.opponent)).map((player, idx) => (
-                    <PlayerRow player={player} isEditing={isEditing} />
-                  ))}
-                </div>
+            <div>
+              {/* Tabs */}
+              <div className="flex items-center gap-4 mb-6 border-b border-slate-700/50">
+                <button
+                  onClick={() => setActiveTab("overview")}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "overview" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
+                  }`}
+                >
+                  <Eye className="w-4 h-4" />
+                  Overview
+                </button>
+                <button
+                  onClick={() => setActiveTab("damage")}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "damage" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
+                  }`}
+                >
+                  <Swords className="w-4 h-4" />
+                  Damage
+                </button>
+                <button
+                  onClick={() => setActiveTab("income")}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "income" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
+                  }`}
+                >
+                  <DollarSign className="w-4 h-4" />
+                  Income
+                </button>
+                <button
+                  onClick={() => setActiveTab("vision")}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "vision" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
+                  }`}
+                >
+                  <Target className="w-4 h-4" />
+                  Vision
+                </button>
               </div>
 
-              {/* Opponents */}
-              <div>
-                <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500" />
-                  Opponents
-                </h4>
-                <div className="space-y-2">
-                  {sortPlayersByRole(playerStats.filter(p => p.opponent)).map((player, idx) => (
-                    <PlayerRow player={player} isOpponent isEditing={isEditing} />
-                  ))}
+              {/* Tab Content */}
+              {activeTab === "overview" && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Your Team */}
+                  <div>
+                    <div className="space-y-2">
+                      {sortPlayersByRole(playerStats.filter(p => !p.opponent)).map((player, idx) => (
+                        <PlayerRow key={player._id || idx} player={player} isEditing={isEditing} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Opponents */}
+                  <div>
+                    <div className="space-y-2">
+                      {sortPlayersByRole(playerStats.filter(p => p.opponent)).map((player, idx) => (
+                        <PlayerRow key={player._id || idx} player={player} isOpponent isEditing={isEditing} />
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {activeTab === "damage" && <DamageTab playerStats={playerStats} />}
+              {activeTab === "income" && <IncomeTab playerStats={playerStats} />}
+              {activeTab === "vision" && <VisionTab playerStats={playerStats} />}
             </div>
           )}
         </div>
@@ -350,6 +392,208 @@ function PlayerRow({ player, isOpponent = false, isEditing }) {
           <p className="text-slate-500 text-xs">{player.creep} CS</p>
         </div>
       </div>
+    </div>
+  )
+}
+
+function DamageTab({ playerStats }) {
+  const yourTeam = sortPlayersByRole(playerStats.filter(p => !p.opponent))
+  const opponents = sortPlayersByRole(playerStats.filter(p => p.opponent))
+
+  const allPlayers = [...playerStats]
+  const maxDamage = Math.max(...allPlayers.map(p => p.damageDealt?.totalDamageToChampions || 0))
+
+  const DamageCard = ({ player, maxDamage }) => {
+    const totalDamage = player?.damageDealt?.totalDamageToChampions || 0
+    const physDamage = player?.damageDealt?.physicalDamageToChampions || 0
+    const magicDamage = player?.damageDealt?.magicDamageToChampions || 0
+    const trueDamage = player?.damageDealt?.trueDamageToChampions || 0
+
+    const physPercent = totalDamage > 0 ? (physDamage / totalDamage) * 100 : 0
+    const magicPercent = totalDamage > 0 ? (magicDamage / totalDamage) * 100 : 0
+    const truePercent = totalDamage > 0 ? (trueDamage / totalDamage) * 100 : 0
+
+    return (
+      <div className="flex-1 group relative p-2 rounded-lg bg-slate-800/30">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="text-white text-sm font-medium mb-1">{player?.champion || "Unknown"}</div>
+            <div className="relative">
+              <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full flex rounded-full" style={{ width: `${maxDamage > 0 ? (totalDamage / maxDamage) * 100 : 0}%` }}>
+                  <div className="bg-orange-500" style={{ width: `${physPercent}%` }} />
+                  <div className="bg-blue-500" style={{ width: `${magicPercent}%` }} />
+                  <div className="bg-slate-300" style={{ width: `${truePercent}%` }} />
+                </div>
+              </div>
+
+              {/* Tooltip */}
+              <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                <div className="text-xs space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <span className="text-orange-400">{(physDamage / 1000).toFixed(1)}k Physical</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-blue-400">{(magicDamage / 1000).toFixed(1)}k Magic</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+                    <span className="text-slate-300">{(trueDamage / 1000).toFixed(1)}k True</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="text-white font-semibold text-sm ml-3">{(totalDamage / 1000).toFixed(1)}k</div>
+        </div>
+      </div>
+    )
+  }
+
+  const DamageRow = ({ leftPlayer, rightPlayer, maxDamage }) => {
+    return (
+      <div className="flex items-center gap-2">
+        <DamageCard player={leftPlayer} maxDamage={maxDamage} />
+
+        {/* VS Icon */}
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-700 border border-slate-600">
+          <Swords className="w-3 h-3 text-slate-400" />
+        </div>
+
+        <DamageCard player={rightPlayer} maxDamage={maxDamage} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {yourTeam.map((yourPlayer, idx) => {
+        const opponentPlayer = opponents[idx]
+
+        return <DamageRow key={idx} leftPlayer={yourPlayer} rightPlayer={opponentPlayer} maxDamage={maxDamage} />
+      })}
+    </div>
+  )
+}
+
+function IncomeTab({ playerStats }) {
+  const yourTeam = sortPlayersByRole(playerStats.filter(p => !p.opponent))
+  const opponents = sortPlayersByRole(playerStats.filter(p => p.opponent))
+
+  const allPlayers = [...playerStats]
+  const maxGold = Math.max(...allPlayers.map(p => p.income?.goldEarned || 0))
+
+  const IncomeCard = ({ player, maxGold }) => {
+    const goldEarned = player?.income?.goldEarned || 0
+    const totalMinions = player?.income?.totalMinionsKilled || 0
+    const neutralMinions = player?.income?.neutralMinionsKilled || 0
+
+    return (
+      <div className="flex-1 group relative p-2 rounded-lg bg-slate-800/30">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="text-white text-sm font-medium mb-1">{player?.champion || "Unknown"}</div>
+            <div className="relative">
+              <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-amber-500 rounded-full" style={{ width: `${maxGold > 0 ? (goldEarned / maxGold) * 100 : 0}%` }} />
+              </div>
+              <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
+                <span>{totalMinions} minions</span>
+                <span>{neutralMinions} jungle</span>
+              </div>
+            </div>
+          </div>
+          <div className="text-amber-400 font-semibold text-sm ml-3">{(goldEarned / 1000).toFixed(1)}k</div>
+        </div>
+      </div>
+    )
+  }
+
+  const IncomeRow = ({ leftPlayer, rightPlayer, maxGold }) => {
+    return (
+      <div className="flex items-center gap-2">
+        <IncomeCard player={leftPlayer} maxGold={maxGold} />
+
+        {/* VS Icon */}
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-700 border border-slate-600">
+          <Swords className="w-3 h-3 text-slate-400" />
+        </div>
+
+        <IncomeCard player={rightPlayer} maxGold={maxGold} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {yourTeam.map((yourPlayer, idx) => {
+        const opponentPlayer = opponents[idx]
+
+        return <IncomeRow key={idx} leftPlayer={yourPlayer} rightPlayer={opponentPlayer} maxGold={maxGold} />
+      })}
+    </div>
+  )
+}
+
+function VisionTab({ playerStats }) {
+  const yourTeam = sortPlayersByRole(playerStats.filter(p => !p.opponent))
+  const opponents = sortPlayersByRole(playerStats.filter(p => p.opponent))
+
+  const allPlayers = [...playerStats]
+  const maxVisionScore = Math.max(...allPlayers.map(p => p.vision?.visionScore || 0))
+
+  const VisionCard = ({ player, maxVisionScore }) => {
+    const visionScore = player?.vision?.visionScore || 0
+    const controlWards = player?.vision?.controlWardsPurchased || 0
+    const wardsDestroyed = player?.vision?.wardsDestroyed || 0
+    const wardsPlaced = player?.vision?.wardsPlaced || 0
+
+    return (
+      <div className="flex-1 group relative p-2 rounded-lg bg-slate-800/30">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="text-white text-sm font-medium mb-1">{player?.champion || "Unknown"}</div>
+            <div className="relative">
+              <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-purple-500 rounded-full" style={{ width: `${maxVisionScore > 0 ? (visionScore / maxVisionScore) * 100 : 0}%` }} />
+              </div>
+              <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
+                <span className="text-purple-400">{controlWards} pink</span>
+                <span>{wardsDestroyed} destroyed</span>
+                <span>{wardsPlaced} placed</span>
+              </div>
+            </div>
+          </div>
+          <div className="text-purple-400 font-semibold text-sm ml-3">{visionScore}</div>
+        </div>
+      </div>
+    )
+  }
+
+  const VisionRow = ({ leftPlayer, rightPlayer, maxVisionScore }) => {
+    return (
+      <div className="flex items-center gap-2">
+        <VisionCard player={leftPlayer} maxVisionScore={maxVisionScore} />
+
+        {/* VS Icon */}
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-700 border border-slate-600">
+          <Swords className="w-3 h-3 text-slate-400" />
+        </div>
+
+        <VisionCard player={rightPlayer} maxVisionScore={maxVisionScore} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {yourTeam.map((yourPlayer, idx) => {
+        const opponentPlayer = opponents[idx]
+
+        return <VisionRow key={idx} leftPlayer={yourPlayer} rightPlayer={opponentPlayer} maxVisionScore={maxVisionScore} />
+      })}
     </div>
   )
 }

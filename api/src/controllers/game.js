@@ -94,44 +94,109 @@ router.post('/upload-screenshot', passport.authenticate(['admin', 'user'], { ses
         parts: [
           {
             text: `You are an expert League of Legends analyst.
-        
-TASK: Extract game data from this League of Legends end-game screenshot.
 
-INSTRUCTIONS:
-1. Identify the 10 champions in the scoreboard using their official League of Legends champion names.
-2. Extract all player statistics visible in the screenshot.
-3. Use the exact champion names as they appear in League of Legends (e.g., "Ahri", "Lee Sin", "Miss Fortune", "Twisted Fate").
-4. Determine each player's role based on their champion. Roles are: "top", "jungle", "mid", "bottom", "support".
+TASK: Analyze this League of Legends post-game screenshot and extract all visible data.
+
+STEP 1: Identify the screenshot type based on the active tab:
+- "scoreboard": Main scoreboard with KDA, CS, gold per player, items
+- "stats_combat": Stats tab showing Combat section (KDA, Killing Spree, Multi Kill, CC Score, First Blood)
+- "stats_damage": Stats tab showing Damage Dealt section
+- "stats_damage_taken": Stats tab showing Damage Taken section  
+- "stats_income": Stats tab showing Income section
+- "stats_vision": Stats tab showing Vision section
+
+STEP 2: Extract game header info (ALWAYS visible at top of any screenshot):
+- Result: "victory" or "defeat"
+- Duration: "mm:ss"
+- Date: "dd/mm/yyyy"
+
+STEP 3: Identify ALL 10 champions by their icons
+- For scoreboard: icons are next to player names
+- For stats tabs: icons are displayed at the top (5 left = team1, 5 right = team2)
+- Use exact champion names as they appear in League of Legends
+- Determine each player's role based on their champion: "top", "jungle", "mid", "bottom", "support"
+
+STEP 4: Extract all statistics visible for the detected screenshot type
 
 OUTPUT STRUCTURE (JSON ONLY):
 {
+  "screenshotType": "scoreboard" | "stats_combat" | "stats_damage" | "stats_damage_taken" | "stats_income" | "stats_vision",
   "gameInfo": {
-    "result": "victory" or "defeat",
+    "result": "victory" | "defeat",
     "duration": "mm:ss",
-    "mode": "string",
-    "date": "dd/mm/yyyy"
+    "date": "dd/mm/yyyy",
+    "mode": "string"
   },
   "team1": {
-    "totalKills": number,
-    "totalDeaths": number,
-    "totalAssists": number,
-    "totalGold": number,
+    "totalKills": number | null,
+    "totalDeaths": number | null,
+    "totalAssists": number | null,
+    "totalGold": number | null,
     "players": [
       {
-        "level": number,
         "champion": "Champion Name",
-        "summonerName": "string",
+        "summonerName": "string" | null,
         "role": "top" | "jungle" | "mid" | "bottom" | "support",
-        "kills": number,
-        "deaths": number,
-        "assists": number,
-        "cs": number,
-        "gold": number
+        "level": number | null,
+        "kills": number | null,
+        "deaths": number | null,
+        "assists": number | null,
+        "cs": number | null,
+        "gold": number | null,
+        "combat": {
+          "largestKillingSpree": number | null,
+          "largestMultiKill": number | null,
+          "crowdControlScore": number | null,
+          "firstBlood": boolean | null
+        } | null,
+        "damageDealt": {
+          "totalDamageToChampions": number | null,
+          "physicalDamageToChampions": number | null,
+          "magicDamageToChampions": number | null,
+          "trueDamageToChampions": number | null,
+          "totalDamageDealt": number | null,
+          "physicalDamageDealt": number | null,
+          "magicDamageDealt": number | null,
+          "trueDamageDealt": number | null,
+          "largestCriticalStrike": number | null
+          "totalDamageToTowers": number | null,
+          "totalDamageToObjectives": number | null,
+        } | null,
+        "damageTaken": {
+          "damageHealed": number | null,
+          "totalDamageTaken": number | null,
+          "physicalDamageTaken": number | null,
+          "magicDamageTaken": number | null,
+          "trueDamageTaken": number | null,
+          "totalDamageSelfMitigated": number | null
+        } | null,
+        "vision": {
+          "visionScore": number | null,
+          "wardsPlaced": number | null,
+          "wardsDestroyed": number | null,
+          "controlWardsPurchased": number | null
+        } | null,
+        "income": {
+          "goldEarned": number | null,
+          "goldSpent": number | null,
+          "totalMinionsKilled": number | null,
+          "neutralMinionsKilled": number | null,
+          "neutralMinionsKilledInTeamJungle": number | null,
+          "neutralMinionsKilledInEnemyJungle": number | null
+        } | null,
+         "MISC": {
+         "towersDestroyed": number | null,
+         "inhibitorsDestroyed": number | null,
       }
     ]
   },
   "team2": { ...same structure... }
-}`,
+}
+
+IMPORTANT: 
+- Champions and roles are ALWAYS required (detectable from icons)
+- Only fill other fields if actually visible in the screenshot
+- Use null for non-visible data`,
           },
           {
             inlineData: {
@@ -148,90 +213,116 @@ OUTPUT STRUCTURE (JSON ONLY):
       contents,
       config: { responseMimeType: 'application/json', temperature: 0 },
     });
-    const text = result.text;
 
     let analysis;
     try {
-      analysis = JSON.parse(text);
+      analysis = JSON.parse(result.text);
     } catch (e) {
       console.error('Gemini JSON parse error:', e);
       return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, message: 'Failed to parse Gemini response' });
     }
 
-    // const side = team?.side || 'blue';
+    const gameDuration = durationToSeconds(analysis.gameInfo.duration);
+    const isVictory = analysis.gameInfo.result.toLowerCase() === 'victory';
 
-    const gameExist = await Game.findOne({
-      date: analysis.gameInfo.date,
-      duration: durationToSeconds(analysis.gameInfo.duration),
-      team_id: user.team_id,
-      win: analysis.gameInfo.result.toLowerCase() === 'victory',
-    });
+    let game = await Game.findOne({ date: analysis.gameInfo.date, duration: gameDuration, team_id: user.team_id, win: isVictory });
 
-    if (gameExist) return res.status(500).send({ ok: false, code: ERROR_CODES.GAME_ALREADY_EXISTS });
+    if (!game) {
+      game = await Game.create({
+        name: analysis.gameInfo.date + ' ' + analysis.gameInfo.duration,
+        duration: gameDuration,
+        screenshot: cleanScreenshot,
+        win: isVictory,
+        date: analysis.gameInfo.date,
+        mode: analysis.gameInfo.mode,
+        team_id: user?.team_id || null,
+        team_name: user?.team_name || null,
+        blue_team: {
+          total_kills: analysis.team1.totalKills,
+          total_deaths: analysis.team1.totalDeaths,
+          total_assists: analysis.team1.totalAssists,
+          total_gold: analysis.team1.totalGold,
+        },
+        red_team: {
+          total_kills: analysis.team2.totalKills,
+          total_deaths: analysis.team2.totalDeaths,
+          total_assists: analysis.team2.totalAssists,
+          total_gold: analysis.team2.totalGold,
+        },
+      });
 
-    const game = await Game.create({
-      name: analysis.gameInfo.date + ' ' + analysis.gameInfo.duration,
-      duration: durationToSeconds(analysis.gameInfo.duration),
-      screenshot: cleanScreenshot,
-      // side,j
-      win: analysis.gameInfo.result.toLowerCase() === 'victory',
-      // opponent_name: team?.opponent_name || 'Unknown',
-      date: analysis.gameInfo.date,
-      team_id: user?.team_id || null,
-      team_name: user?.team_name || null,
-      blue_team: {
-        total_kills: analysis.team1.totalKills,
-        total_deaths: analysis.team1.totalDeaths,
-        total_assists: analysis.team1.totalAssists,
-        total_gold: analysis.team1.totalGold,
-      },
-      red_team: {
-        total_kills: analysis.team2.totalKills,
-        total_deaths: analysis.team2.totalDeaths,
-        total_assists: analysis.team2.totalAssists,
-        total_gold: analysis.team2.totalGold,
-      },
-    });
+      const team1Stats = analysis.team1.players.map((player) => ({
+        summoner_name: player.summonerName,
+        opponent: false,
+        team_id: user?.team_id || null,
+        team_name: user?.team_name || null,
+        game_id: game._id,
+        game_name: game.name,
+        game_win: game.win,
+        game_duration: gameDuration,
+        champion: player.champion,
+        role: player.role,
+        level: player.level,
+        kills: player.kills,
+        deaths: player.deaths,
+        assists: player.assists,
+        creep: player.cs,
+        gold: player.gold,
+        ...buildStatsUpdate(player),
+      }));
 
-    const team1Stats = analysis.team1.players.map((player) => ({
-      summoner_name: player.summonerName,
-      opponent: false,
-      team_id: user?.team_id || null,
-      team_name: user?.team_name || null,
-      game_id: game._id,
-      game_name: game.name,
-      game_win: game.win,
-      game_duration: durationToSeconds(analysis.gameInfo.duration),
-      kills: player.kills,
-      deaths: player.deaths,
-      assists: player.assists,
-      creep: player.cs,
-      gold: player.gold,
-      champion: player.champion,
-      level: player.level,
-      role: player.role,
-    }));
+      const team2Stats = analysis.team2.players.map((player) => ({
+        summoner_name: player.summonerName,
+        opponent: true,
+        team_id: user?.team_id || null,
+        team_name: user?.team_name || null,
+        game_id: game._id,
+        game_name: game.name,
+        game_win: !game.win,
+        game_duration: gameDuration,
+        champion: player.champion,
+        role: player.role,
+        level: player.level,
+        kills: player.kills,
+        deaths: player.deaths,
+        assists: player.assists,
+        creep: player.cs,
+        gold: player.gold,
+        ...buildStatsUpdate(player),
+      }));
 
-    const team2Stats = analysis.team2.players.map((player) => ({
-      summoner_name: player.summonerName,
-      team_id: user?.team_id || null,
-      team_name: user?.team_name || null,
-      game_id: game._id,
-      game_name: game.name,
-      game_win: !game.win,
-      game_duration: durationToSeconds(analysis.gameInfo.duration),
-      opponent: true,
-      kills: player.kills,
-      deaths: player.deaths,
-      assists: player.assists,
-      creep: player.cs,
-      gold: player.gold,
-      champion: player.champion,
-      level: player.level,
-      role: player.role,
-    }));
+      await PlayerStats.insertMany([...team1Stats, ...team2Stats]);
+    }
+    if (game) {
+      const gameUpdate = {};
+      if (analysis.team1.totalKills != null && !game.blue_team?.total_kills) {
+        gameUpdate['blue_team.total_kills'] = analysis.team1.totalKills;
+        gameUpdate['blue_team.total_deaths'] = analysis.team1.totalDeaths;
+        gameUpdate['blue_team.total_assists'] = analysis.team1.totalAssists;
+        gameUpdate['blue_team.total_gold'] = analysis.team1.totalGold;
+        gameUpdate['red_team.total_kills'] = analysis.team2.totalKills;
+        gameUpdate['red_team.total_deaths'] = analysis.team2.totalDeaths;
+        gameUpdate['red_team.total_assists'] = analysis.team2.totalAssists;
+        gameUpdate['red_team.total_gold'] = analysis.team2.totalGold;
+      }
+      if (Object.keys(gameUpdate).length > 0) await Game.findByIdAndUpdate(game._id, { $set: gameUpdate });
 
-    await PlayerStats.insertMany([...team1Stats, ...team2Stats]);
+      const updatePromises = [];
+
+      for (const player of analysis.team1.players) {
+        const updateData = buildPlayerUpdate(player);
+        if (Object.keys(updateData).length > 0)
+          updatePromises.push(PlayerStats.findOneAndUpdate({ game_id: game._id, champion: player.champion }, { $set: updateData }, { new: true }));
+      }
+
+      for (const player of analysis.team2.players) {
+        const updateData = buildPlayerUpdate(player);
+        if (Object.keys(updateData).length > 0)
+          updatePromises.push(PlayerStats.findOneAndUpdate({ game_id: game._id, champion: player.champion }, { $set: updateData }, { new: true }));
+      }
+
+      await Promise.all(updatePromises);
+    }
 
     return res.status(200).send({ ok: true });
   } catch (error) {
@@ -239,6 +330,89 @@ OUTPUT STRUCTURE (JSON ONLY):
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, message: error.message });
   }
 });
+
+function buildStatsUpdate(player) {
+  const update = {};
+
+  // Combat stats
+  if (player.combat) {
+    update.combat = {};
+    if (player.combat.largestKillingSpree != null) update.combat.largestKillingSpree = player.combat.largestKillingSpree;
+    if (player.combat.largestMultiKill != null) update.combat.largestMultiKill = player.combat.largestMultiKill;
+    if (player.combat.crowdControlScore != null) update.combat.crowdControlScore = player.combat.crowdControlScore;
+    if (player.combat.firstBlood != null) update.combat.firstBlood = player.combat.firstBlood;
+  }
+
+  // Damage dealt stats
+  if (player.damageDealt) {
+    update.damageDealt = {};
+    if (player.damageDealt.totalDamageToChampions != null) update.damageDealt.totalDamageToChampions = player.damageDealt.totalDamageToChampions;
+    if (player.damageDealt.physicalDamageToChampions != null) update.damageDealt.physicalDamageToChampions = player.damageDealt.physicalDamageToChampions;
+    if (player.damageDealt.magicDamageToChampions != null) update.damageDealt.magicDamageToChampions = player.damageDealt.magicDamageToChampions;
+    if (player.damageDealt.trueDamageToChampions != null) update.damageDealt.trueDamageToChampions = player.damageDealt.trueDamageToChampions;
+    if (player.damageDealt.totalDamageDealt != null) update.damageDealt.totalDamageDealt = player.damageDealt.totalDamageDealt;
+    if (player.damageDealt.physicalDamageDealt != null) update.damageDealt.physicalDamageDealt = player.damageDealt.physicalDamageDealt;
+    if (player.damageDealt.magicDamageDealt != null) update.damageDealt.magicDamageDealt = player.damageDealt.magicDamageDealt;
+    if (player.damageDealt.trueDamageDealt != null) update.damageDealt.trueDamageDealt = player.damageDealt.trueDamageDealt;
+    if (player.damageDealt.largestCriticalStrike != null) update.damageDealt.largestCriticalStrike = player.damageDealt.largestCriticalStrike;
+    if (player.damageDealt.totalDamageToTowers != null) update.damageDealt.totalDamageToTowers = player.damageDealt.totalDamageToTowers;
+    if (player.damageDealt.totalDamageToObjectives != null) update.damageDealt.totalDamageToObjectives = player.damageDealt.totalDamageToObjectives;
+  }
+
+  // Damage taken stats
+  if (player.damageTaken) {
+    update.damageTaken = {};
+    if (player.damageTaken.damageHealed != null) update.damageTaken.damageHealed = player.damageTaken.damageHealed;
+    if (player.damageTaken.totalDamageTaken != null) update.damageTaken.totalDamageTaken = player.damageTaken.totalDamageTaken;
+    if (player.damageTaken.physicalDamageTaken != null) update.damageTaken.physicalDamageTaken = player.damageTaken.physicalDamageTaken;
+    if (player.damageTaken.magicDamageTaken != null) update.damageTaken.magicDamageTaken = player.damageTaken.magicDamageTaken;
+    if (player.damageTaken.trueDamageTaken != null) update.damageTaken.trueDamageTaken = player.damageTaken.trueDamageTaken;
+    if (player.damageTaken.totalDamageSelfMitigated != null) update.damageTaken.totalDamageSelfMitigated = player.damageTaken.totalDamageSelfMitigated;
+  }
+
+  // Vision stats
+  if (player.vision) {
+    update.vision = {};
+    if (player.vision.visionScore != null) update.vision.visionScore = player.vision.visionScore;
+    if (player.vision.wardsPlaced != null) update.vision.wardsPlaced = player.vision.wardsPlaced;
+    if (player.vision.wardsDestroyed != null) update.vision.wardsDestroyed = player.vision.wardsDestroyed;
+    if (player.vision.controlWardsPurchased != null) update.vision.controlWardsPurchased = player.vision.controlWardsPurchased;
+  }
+
+  // Income stats
+  if (player.income) {
+    update.income = {};
+    if (player.income.goldEarned != null) update.income.goldEarned = player.income.goldEarned;
+    if (player.income.goldSpent != null) update.income.goldSpent = player.income.goldSpent;
+    if (player.income.totalMinionsKilled != null) update.income.totalMinionsKilled = player.income.totalMinionsKilled;
+    if (player.income.neutralMinionsKilled != null) update.income.neutralMinionsKilled = player.income.neutralMinionsKilled;
+    if (player.income.neutralMinionsKilledInTeamJungle != null) update.income.neutralMinionsKilledInTeamJungle = player.income.neutralMinionsKilledInTeamJungle;
+    if (player.income.neutralMinionsKilledInEnemyJungle != null) update.income.neutralMinionsKilledInEnemyJungle = player.income.neutralMinionsKilledInEnemyJungle;
+  }
+
+  // Miscellaneous stats
+  if (player.MISC) {
+    update.misc = {};
+    if (player.MISC.towersDestroyed != null) update.misc.towersDestroyed = player.MISC.towersDestroyed;
+    if (player.MISC.inhibitorsDestroyed != null) update.misc.inhibitorsDestroyed = player.MISC.inhibitorsDestroyed;
+  }
+
+  return update;
+}
+
+function buildPlayerUpdate(player) {
+  const update = {};
+
+  if (player.summonerName != null) update.summoner_name = player.summonerName;
+  if (player.level != null) update.level = player.level;
+  if (player.kills != null) update.kills = player.kills;
+  if (player.deaths != null) update.deaths = player.deaths;
+  if (player.assists != null) update.assists = player.assists;
+  if (player.cs != null) update.creep = player.cs;
+  if (player.gold != null) update.gold = player.gold;
+
+  return { ...update, ...buildStatsUpdate(player) };
+}
 
 router.post('/stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
