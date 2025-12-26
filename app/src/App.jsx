@@ -10,7 +10,7 @@ import Stats from "@/scenes/stats"
 import Navbar from "@/components/NavBar"
 import TopBar from "@/components/TopBar"
 import Loader from "@/components/loader"
-
+import Team from "@/scenes/team"
 import useStore from "@/services/store"
 import api from "@/services/api"
 
@@ -31,6 +31,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/games" element={<Games />} />
           <Route path="/stats" element={<Stats />} />
+          <Route path="/team" element={<Team />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

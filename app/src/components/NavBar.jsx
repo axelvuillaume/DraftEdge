@@ -9,7 +9,8 @@ import Modal from "@/components/modal"
 const MENU = [
   { title: "Dashboard", to: "/", icon: LayoutDashboard },
   { title: "Games", to: "/games", icon: Gamepad2 },
-  { title: "Stats", to: "/stats", icon: BarChart }
+  { title: "Stats", to: "/stats", icon: BarChart },
+  { title: "My Team", to: "/team", icon: Shield }
 ]
 
 const Navbar = () => {

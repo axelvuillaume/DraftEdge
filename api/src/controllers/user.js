@@ -209,28 +209,29 @@ router.get('/', passport.authenticate(['admin', 'user'], { session: false }), as
 
 router.post('/search', passport.authenticate(['admin', 'user'], { session: false }), async (req, res) => {
   try {
-    const { search, sort, per_page, page } = req.body;
     let query = {};
 
-    const searchValue = search?.replace(/[#-.]|[[-^]|[?|{}]/g, '\\$&');
-    if (search) {
+    if (req.body.team_id) query.team_id = req.body.team_id;
+
+    const searchValue = req.body.search?.replace(/[#-.]|[[-^]|[?|{}]/g, '\\$&');
+    if (req.body.search) {
       query = {
         ...query,
         $or: [{ name: { $regex: searchValue, $options: 'i' } }, { email: { $regex: searchValue, $options: 'i' } }],
       };
     }
 
-    const no_of_docs_each_page = per_page || 200;
-    const current_page_number = page - 1 || 0;
+    const no_of_docs_each_page = req.body.per_page || 200;
+    const current_page_number = req.body.page - 1 || 0;
 
     const users = await UserObject.find(query)
       .skip(no_of_docs_each_page * current_page_number)
       .limit(no_of_docs_each_page)
-      .sort(sort);
+      .sort(req.body.sort);
 
     const total = await UserObject.countDocuments(query);
 
-    return res.status(200).send({ ok: true, data: { users, total } });
+    return res.status(200).send({ ok: true, data: users, total });
   } catch (error) {
     capture(error);
     res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, error });
