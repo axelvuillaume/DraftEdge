@@ -467,15 +467,8 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
 
   const handleFile = selectedFile => {
     if (!selectedFile) return
-
-    if (!selectedFile.type.startsWith("image/")) {
-      toast.error("Please select an image file")
-      return
-    }
-
+    if (!selectedFile.type.startsWith("image/")) return toast.error("Please select an image file")
     setFile(selectedFile)
-
-    // Create preview
     const reader = new FileReader()
     reader.onload = e => setPreview(e.target.result)
     reader.readAsDataURL(selectedFile)
@@ -484,43 +477,39 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
   const handleDrag = e => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true)
-    } else if (e.type === "dragleave") {
-      setDragActive(false)
-    }
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true)
+    if (e.type === "dragleave") setDragActive(false)
   }
 
   const handleDrop = e => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0])
-    }
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0])
   }
 
   const handleUpload = async () => {
     if (!file) return
-    setUploading(true)
 
-    const reader = new FileReader()
-    reader.onload = async e => {
-      const base64 = e.target.result
-      try {
+    setUploading(true)
+    try {
+      const reader = new FileReader()
+      reader.onload = async e => {
+        const base64 = e.target.result
         const { ok, code } = await api.post("/game/upload-screenshot", { screenshot: base64, user })
+
         if (!ok) return toast.error(code)
         toast.success("Screenshot analyzed successfully!")
+        setFile(null)
+        setPreview(null)
+        setUploading(false)
         onSuccess()
-      } catch (error) {
-        toast.error(error.code || "Upload failed")
-        onClose()
       }
-      setFile(null)
-      setPreview(null)
+      reader.readAsDataURL(file)
+    } catch (error) {
+      toast.error(error.message)
       setUploading(false)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleClose = () => {
@@ -528,11 +517,6 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
     setFile(null)
     setPreview(null)
     onClose()
-  }
-
-  const removeFile = () => {
-    setFile(null)
-    setPreview(null)
   }
 
   return (
@@ -562,7 +546,13 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
             <div className="relative rounded-xl overflow-hidden border border-slate-200">
               <img src={preview} alt="Preview" className="w-full h-auto max-h-64 object-contain bg-slate-100" />
               {!uploading && (
-                <button onClick={removeFile} className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors">
+                <button
+                  onClick={() => {
+                    setFile(null)
+                    setPreview(null)
+                  }}
+                  className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                >
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -576,9 +566,6 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
         )}
 
         <div className="flex justify-end gap-3 mt-6">
-          <button onClick={handleClose} disabled={uploading} className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium transition-colors disabled:opacity-50">
-            Cancel
-          </button>
           <button
             onClick={handleUpload}
             disabled={!file || uploading}

@@ -74,7 +74,9 @@ router.post('/home_stats', passport.authenticate(['admin', 'user'], { session: f
     thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
     thisWeekStart.setHours(0, 0, 0, 0);
 
-    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, createdAt: { $gte: thisWeekStart }, opponent: false });
+    // const playerStats = await PlayerStats.find({ team_id: req.user.team_id, createdAt: { $gte: thisWeekStart }, opponent: false });
+
+    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
 
     const statsByRole = playerStats.reduce((acc, curr) => {
       if (!acc[curr.role]) acc[curr.role] = { kills: 0, deaths: 0, assists: 0, gold: 0, level: 0 };
