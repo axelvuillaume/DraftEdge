@@ -39,17 +39,8 @@ export default function Stats() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <header className="flex flex-col gap-2">
-          <h1 className="text-3xl lg:text-4xl font-bold text-white tracking-tight">Player Statistics</h1>
-        </header>
-
         {/* Players Grid */}
         <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-6 bg-amber-500 rounded-full" />
-            <h2 className="text-xl font-semibold text-white">Team Members</h2>
-          </div>
           <div className="space-y-4">
             {stats.map((player, idx) => (
               <PlayerCard key={idx} player={player} />

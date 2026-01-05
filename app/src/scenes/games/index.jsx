@@ -65,13 +65,7 @@ export default function Games() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Games List */}
         <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-6 bg-amber-500 rounded-full" />
-            <h2 className="text-xl font-semibold text-white">Games History</h2>
-          </div>
-
           <div className="space-y-3">
             {games.map(game => (
               <GameCard key={game._id} game={game} onDelete={fetchGames} />
