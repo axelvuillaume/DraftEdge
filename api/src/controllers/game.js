@@ -225,9 +225,8 @@ IMPORTANT:
     const gameDuration = durationToSeconds(analysis.gameInfo.duration);
     const isVictory = analysis.gameInfo.result.toLowerCase() === 'victory';
 
-    let game = await Game.findOne({ date: analysis.gameInfo.date, duration: gameDuration, team_id: user.team_id, win: isVictory });
-
-    if (!game) {
+    let game;
+    try {
       game = await Game.create({
         name: analysis.gameInfo.date + ' ' + analysis.gameInfo.duration,
         duration: gameDuration,
@@ -292,7 +291,14 @@ IMPORTANT:
       }));
 
       await PlayerStats.insertMany([...team1Stats, ...team2Stats]);
+    } catch (error) {
+      if (error.code === 11000) {
+        game = await Game.findOne({ date: analysis.gameInfo.date, duration: gameDuration, team_id: user.team_id, win: isVictory });
+      } else {
+        throw error;
+      }
     }
+
     if (game) {
       const gameUpdate = {};
       if (analysis.team1.totalKills != null && !game.blue_team?.total_kills) {
@@ -312,13 +318,13 @@ IMPORTANT:
       for (const player of analysis.team1.players) {
         const updateData = buildPlayerUpdate(player);
         if (Object.keys(updateData).length > 0)
-          updatePromises.push(PlayerStats.findOneAndUpdate({ game_id: game._id, champion: player.champion }, { $set: updateData }, { new: true }));
+          updatePromises.push(PlayerStats.findOneAndUpdate({ game_id: game._id, champion: player.champion }, { $set: updateData }, { new: true, upsert: true }));
       }
 
       for (const player of analysis.team2.players) {
         const updateData = buildPlayerUpdate(player);
         if (Object.keys(updateData).length > 0)
-          updatePromises.push(PlayerStats.findOneAndUpdate({ game_id: game._id, champion: player.champion }, { $set: updateData }, { new: true }));
+          updatePromises.push(PlayerStats.findOneAndUpdate({ game_id: game._id, champion: player.champion }, { $set: updateData }, { new: true, upsert: true }));
       }
 
       await Promise.all(updatePromises);

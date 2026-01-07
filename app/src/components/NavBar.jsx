@@ -91,19 +91,41 @@ const Navbar = () => {
 }
 
 function UploadModal({ isOpen, onClose, user, onSuccess }) {
-  const [file, setFile] = useState(null)
-  const [preview, setPreview] = useState(null)
+  const [files, setFiles] = useState([])
+  const [previews, setPreviews] = useState([])
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState({})
   const [dragActive, setDragActive] = useState(false)
   const inputRef = useRef(null)
 
-  const handleFile = selectedFile => {
-    if (!selectedFile) return
-    if (!selectedFile.type.startsWith("image/")) return toast.error("Please select an image file")
-    setFile(selectedFile)
-    const reader = new FileReader()
-    reader.onload = e => setPreview(e.target.result)
-    reader.readAsDataURL(selectedFile)
+  const handleFiles = selectedFiles => {
+    if (!selectedFiles || selectedFiles.length === 0) return
+
+    const imageFiles = Array.from(selectedFiles).filter(file => {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`${file.name} is not an image file`)
+        return false
+      }
+      return true
+    })
+
+    if (imageFiles.length === 0) return
+
+    const newFiles = [...files, ...imageFiles]
+    setFiles(newFiles)
+
+    imageFiles.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = e => {
+        setPreviews(prev => [...prev, { file, preview: e.target.result }])
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const removeFile = index => {
+    setFiles(prev => prev.filter((_, i) => i !== index))
+    setPreviews(prev => prev.filter((_, i) => i !== index))
   }
 
   const handleDrag = e => {
@@ -117,27 +139,41 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0])
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files)
   }
 
   const handleUpload = async () => {
-    if (!file) return
+    if (files.length === 0) return
 
     setUploading(true)
-    try {
-      const reader = new FileReader()
-      reader.onload = async e => {
-        const base64 = e.target.result
-        const { ok, code } = await api.post("/game/upload-screenshot", { screenshot: base64, user })
+    setUploadProgress({})
 
-        if (!ok) return toast.error(code)
-        toast.success("Screenshot analyzed successfully!")
-        setFile(null)
-        setPreview(null)
-        setUploading(false)
-        onSuccess()
-      }
-      reader.readAsDataURL(file)
+    const initialProgress = {}
+    files.forEach((_, i) => (initialProgress[i] = "uploading"))
+    setUploadProgress(initialProgress)
+
+    try {
+      const uploadPromises = files.map(async (file, index) => {
+        try {
+          const reader = new FileReader()
+          const base64 = await new Promise((resolve, reject) => {
+            reader.onload = e => resolve(e.target.result)
+            reader.onerror = reject
+            reader.readAsDataURL(file)
+          })
+
+          const { ok, code } = await api.post("/game/upload-screenshot", { screenshot: base64, user })
+
+          if (!ok) return toast.error(`Failed to upload ${file.name}: ${code}`)
+          setUploadProgress(prev => ({ ...prev, [index]: "success" }))
+        } catch (error) {
+          return toast.error(`Error uploading ${file.name}: ${error.message}`)
+        }
+      })
+
+      await Promise.all(uploadPromises)
+
+      setUploading(false)
     } catch (error) {
       toast.error(error.message)
       setUploading(false)
@@ -146,18 +182,19 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
 
   const handleClose = () => {
     if (uploading) return
-    setFile(null)
-    setPreview(null)
+    setFiles([])
+    setPreviews([])
+    setUploadProgress({})
     onClose()
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg w-full">
+    <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
       <div className="p-6">
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Upload Screenshot</h2>
-        <p className="text-slate-500 text-sm mb-6">Upload your end-game scoreboard screenshot to automatically extract game data.</p>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Upload Screenshots</h2>
+        <p className="text-slate-500 text-sm mb-6">Upload your end-game scoreboard screenshots to automatically extract game data. You can upload multiple screenshots at once.</p>
 
-        {!preview ? (
+        {previews.length === 0 ? (
           <div
             className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
               dragActive ? "border-amber-500 bg-amber-50" : "border-slate-300 hover:border-amber-400 hover:bg-amber-50/50"
@@ -168,53 +205,87 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
           >
-            <input ref={inputRef} type="file" accept="image/*" onChange={e => handleFile(e.target.files?.[0])} className="hidden" />
+            <input ref={inputRef} type="file" accept="image/*" multiple onChange={e => handleFiles(e.target.files)} className="hidden" />
             <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <p className="text-slate-600 font-medium mb-1">Drop your screenshot here</p>
-            <p className="text-slate-400 text-sm">or click to browse</p>
+            <p className="text-slate-600 font-medium mb-1">Drop your screenshots here</p>
+            <p className="text-slate-400 text-sm">or click to browse (multiple files supported)</p>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="relative rounded-xl overflow-hidden border border-slate-200">
-              <img src={preview} alt="Preview" className="w-full h-auto max-h-64 object-contain bg-slate-100" />
-              {!uploading && (
-                <button
-                  onClick={() => {
-                    setFile(null)
-                    setPreview(null)
-                  }}
-                  className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {previews.map((item, index) => {
+                const progress = uploadProgress[index]
+                const isUploading = progress === "uploading"
+
+                return (
+                  <div key={index} className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                    <img src={item.preview} alt={`Preview ${index + 1}`} className="w-full h-auto max-h-48 object-contain bg-slate-100" />
+                    {!uploading && (
+                      <button onClick={() => removeFile(index)} className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors z-10">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                    {isUploading && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Loader2 className="w-6 h-6 text-white animate-spin" />
+                      </div>
+                    )}
+                    <div className="p-3 bg-white border-t border-slate-200">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-600 truncate max-w-[150px]" title={item.file.name}>
+                          {item.file.name}
+                        </span>
+                        <span className="text-slate-400">{(item.file.size / 1024 / 1024).toFixed(2)} MB</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-600 truncate max-w-[200px]">{file?.name}</span>
-              <span className="text-slate-400">{(file?.size / 1024 / 1024).toFixed(2)} MB</span>
-            </div>
+            {!uploading && (
+              <div
+                className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer ${
+                  dragActive ? "border-amber-500 bg-amber-50" : "border-slate-300 hover:border-amber-400 hover:bg-amber-50/50"
+                }`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+                onClick={() => inputRef.current?.click()}
+              >
+                <input ref={inputRef} type="file" accept="image/*" multiple onChange={e => handleFiles(e.target.files)} className="hidden" />
+                <p className="text-slate-500 text-sm">Click or drag to add more screenshots</p>
+              </div>
+            )}
           </div>
         )}
 
-        <div className="flex justify-end gap-3 mt-6">
-          <button
-            onClick={handleUpload}
-            disabled={!file || uploading}
-            className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-300 disabled:to-slate-400 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Analyzing...</span>
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4" />
-                <span>Upload & Analyze</span>
-              </>
-            )}
-          </button>
+        <div className="flex justify-between items-center mt-6">
+          {previews.length > 0 && (
+            <span className="text-slate-500 text-sm">
+              {previews.length} screenshot{previews.length > 1 ? "s" : ""} selected
+            </span>
+          )}
+          <div className="flex justify-end gap-3 ml-auto">
+            <button
+              onClick={handleUpload}
+              disabled={files.length === 0 || uploading}
+              className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-300 disabled:to-slate-400 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Analyzing...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  <span>Upload & Analyze {files.length > 0 && `(${files.length})`}</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </Modal>

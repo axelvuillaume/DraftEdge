@@ -19,5 +19,7 @@ const Schema = new mongoose.Schema(
   { timestamps: true }
 );
 
+Schema.index({ date: 1, duration: 1, team_id: 1, win: 1 }, { unique: true });
+
 const OBJ = mongoose.model(MODELNAME, Schema);
 module.exports = OBJ;
