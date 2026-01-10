@@ -94,7 +94,6 @@ function PlayerCard({ player }) {
         <div className="border-t border-slate-700/50 p-5">
           {/* Champions Section */}
           <div>
-            <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Champion Pool</h4>
             <div className="space-y-3">
               {player.champions.map(champion => {
                 const champWinRateColor = champion.win_rate >= 0.6 ? "text-emerald-400" : champion.win_rate >= 0.5 ? "text-amber-400" : "text-red-400"
