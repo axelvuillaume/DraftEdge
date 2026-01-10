@@ -14,6 +14,8 @@ const S3_SECRETACCESSKEY = process.env.S3_SECRETACCESSKEY || '';
 
 const BREVO_KEY = process.env.BREVO_KEY || '';
 
+const RIOT_API_KEY = 'RGAPI-f0870ba9-2502-48b6-9b13-ddf71fbfb6df' || '';
+
 const CONFIG = {
   ENVIRONMENT,
   PORT,
@@ -27,6 +29,7 @@ const CONFIG = {
   BREVO_KEY,
   CLAUDE_API_KEY,
   GEMINI_API_KEY,
+  RIOT_API_KEY,
 };
 
 if (ENVIRONMENT === 'development') console.log(CONFIG);

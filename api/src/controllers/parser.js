@@ -3,28 +3,98 @@ const router = express.Router();
 const multer = require('multer');
 const Game = require('../models/game');
 const PlayerStats = require('../models/playerstats');
+const CONFIG = require('../config');
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 100 * 1024 * 1024 },
-});
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
-/**
- * Parse un fichier ROFL et extrait les métadonnées
- */
+const RIOT_API_KEY = CONFIG.RIOT_API_KEY;
+const RIOT_ACCOUNT_API = 'https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id';
+const RIOT_LEAGUE_API = 'https://euw1.api.riotgames.com/lol/league/v4/entries/by-puuid';
+
+async function fetchRiotPuuid(gameName, tagLine) {
+  if (!RIOT_API_KEY) return null;
+  if (!gameName || !tagLine) return null;
+
+  try {
+    const url = `${RIOT_ACCOUNT_API}/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${RIOT_API_KEY}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.warn(`Riot API error for ${gameName}#${tagLine}: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.puuid || null;
+  } catch (error) {
+    console.error(`Error fetching PUUID for ${gameName}#${tagLine}:`, error.message);
+    return null;
+  }
+}
+
+async function fetchRiotRank(puuid) {
+  if (!RIOT_API_KEY) return null;
+  if (!puuid) return null;
+
+  try {
+    const url = `${RIOT_LEAGUE_API}/${puuid}?api_key=${RIOT_API_KEY}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.warn(`Riot League API error for ${puuid}: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+
+    // Chercher le rank Solo/Duo (RANKED_SOLO_5x5)
+    const soloQueue = data.find((entry) => entry.queueType === 'RANKED_SOLO_5x5');
+
+    if (!soloQueue) return null;
+
+    return {
+      tier: soloQueue.tier,
+      rank: soloQueue.rank,
+      league_points: soloQueue.leaguePoints,
+      wins: soloQueue.wins,
+      losses: soloQueue.losses,
+      total_games: soloQueue.wins + soloQueue.losses,
+      win_rate: Math.round((soloQueue.wins / (soloQueue.wins + soloQueue.losses)) * 100),
+    };
+  } catch (error) {
+    console.error(`Error fetching rank for ${puuid}:`, error.message);
+    return null;
+  }
+}
+
+async function enrichPlayerWithRiotData(player, index) {
+  // Délai pour éviter rate limit (100ms entre chaque joueur)
+  await new Promise((resolve) => setTimeout(resolve, index * 100));
+
+  const puuid = await fetchRiotPuuid(player.summoner_name, player.riot_tag);
+
+  if (!puuid) {
+    return { ...player, PUUID: null };
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  const rankData = await fetchRiotRank(puuid);
+
+  return { ...player, PUUID: puuid, ...(rankData || {}) };
+}
+
 function parseRoflBuffer(buffer) {
   const magic = buffer.slice(0, 4).toString('ascii');
   if (magic !== 'RIOT') {
     throw new Error('Fichier ROFL invalide');
   }
 
-  // Version depuis le header
   let gameVersion = 'Unknown';
   const headerStr = buffer.slice(0, 100).toString('utf-8');
   const versionMatch = headerStr.match(/\d+\.\d+\.\d+\.\d+/);
   if (versionMatch) gameVersion = versionMatch[0];
 
-  // Chercher le JSON à la fin du fichier
   const searchPattern = Buffer.from('{"gameLength');
   let jsonStart = -1;
 
@@ -36,9 +106,7 @@ function parseRoflBuffer(buffer) {
     }
   }
 
-  if (jsonStart === -1) {
-    throw new Error("Métadonnées JSON non trouvées dans le fichier ROFL. Le fichier est peut-être corrompu ou d'une version non supportée.");
-  }
+  if (jsonStart === -1) throw new Error('Métadonnées JSON non trouvées dans le fichier ROFL.');
 
   let depth = 0,
     jsonEnd = jsonStart;
@@ -61,9 +129,6 @@ function parseRoflBuffer(buffer) {
   }
 }
 
-/**
- * Normalise le rôle vers le format du model
- */
 function normalizeRole(role) {
   if (!role) return null;
   const roleMap = {
@@ -79,9 +144,6 @@ function normalizeRole(role) {
   return roleMap[role.toUpperCase()] || null;
 }
 
-/**
- * Parse les stats d'un joueur depuis le JSON ROFL
- */
 function parsePlayerStats(p, gameData) {
   const durationMinutes = gameData.duration / 60;
   const kills = parseInt(p.CHAMPIONS_KILLED) || 0;
@@ -98,12 +160,18 @@ function parsePlayerStats(p, gameData) {
     game_win: p.WIN === 'Win',
     game_duration: gameData.duration,
 
-    // Player identity
     summoner_name: p.RIOT_ID_GAME_NAME || p.NAME,
     riot_tag: p.RIOT_ID_TAG_LINE || '',
-    PUUID: p.PUUID || '',
+    PUUID: null,
+    tier: null,
+    rank: null,
+    league_points: null,
+    wins: null,
+    losses: null,
+    total_games: null,
+    win_rate: null,
 
-    // Team context (sera set par le caller si nécessaire)
+    // Team context
     team_id: null,
     team_name: null,
     opponent: null,
@@ -117,7 +185,7 @@ function parsePlayerStats(p, gameData) {
     assists,
     level: parseInt(p.LEVEL) || 0,
 
-    // CS & Gold avec calculs
+    // CS & Gold
     cs,
     cs_per_min: durationMinutes > 0 ? Math.round((cs / durationMinutes) * 10) / 10 : 0,
     gold,
@@ -135,7 +203,7 @@ function parsePlayerStats(p, gameData) {
     combat: {
       killing_spree: parseInt(p.LARGEST_KILLING_SPREE) || 0,
       largest_multi_kill: parseInt(p.LARGEST_MULTI_KILL) || 0,
-      first_blood: false, // Non disponible directement dans ROFL
+      first_blood: false,
       solo_kills: parseInt(p.HoL_SoloKills) || 0,
       time_ccing: parseInt(p.TIME_CCING_OTHERS) || 0,
     },
@@ -187,7 +255,7 @@ function parsePlayerStats(p, gameData) {
       heralds: parseInt(p.RIFT_HERALD_KILLS) || 0,
     },
 
-    // Items (7 slots)
+    // Items
     items: [
       parseInt(p.ITEM0) || 0,
       parseInt(p.ITEM1) || 0,
@@ -221,10 +289,10 @@ function parsePlayerStats(p, gameData) {
 }
 
 /**
- * Calcule les stats d'équipe depuis les joueurs
+ * Calcule les stats d'équipe
  */
-function calculateTeamStats(players, statsJson) {
-  const teamPlayers = statsJson.filter((p) => players.some((pl) => pl.PUUID === p.PUUID));
+function calculateTeamStats(teamId, statsJson) {
+  const teamPlayers = statsJson.filter((p) => p.TEAM === teamId);
 
   return {
     win: teamPlayers[0]?.WIN === 'Win',
@@ -241,7 +309,7 @@ function calculateTeamStats(players, statsJson) {
 }
 
 /**
- * Traite le fichier ROFL et retourne les données formatées
+ * Traite le fichier ROFL
  */
 function processRoflData(metadata, filename) {
   let statsJson;
@@ -257,12 +325,9 @@ function processRoflData(metadata, filename) {
 
   const durationSeconds = Math.round(metadata.gameLength / 1000);
 
-  // Extraire le game ID du nom de fichier (ex: "EUW1-7679139396.rofl")
+  // Extraire le game ID du nom de fichier
   const gameIdMatch = filename?.match(/([A-Z]+\d*-\d+)/);
   const riotGameId = gameIdMatch ? gameIdMatch[1] : null;
-
-  const blueTeam = statsJson.filter((p) => p.TEAM === '100');
-  const redTeam = statsJson.filter((p) => p.TEAM === '200');
 
   const gameData = {
     game_id: riotGameId,
@@ -280,23 +345,19 @@ function processRoflData(metadata, filename) {
     patch: metadata.gameVersion,
     date: new Date(),
     screenshot: null,
-
-    // Team context (à remplir par le caller)
     team_id: null,
     team_name: null,
     team_side: null,
     win: null,
     opponent_name: null,
-
-    // Team stats
-    blue_team: calculateTeamStats(blueTeam, statsJson),
-    red_team: calculateTeamStats(redTeam, statsJson),
+    blue_team: calculateTeamStats('100', statsJson),
+    red_team: calculateTeamStats('200', statsJson),
   };
 
   // PlayerStats documents
   const players = statsJson.map((p) => parsePlayerStats(p, gameData));
 
-  return { game, players, raw: { blueTeam, redTeam, statsJson } };
+  return { game, players, raw: { statsJson } };
 }
 
 // ============================================
@@ -309,11 +370,11 @@ function processRoflData(metadata, filename) {
 router.post('/parse', upload.single('replay'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'Aucun fichier fourni' });
+      return res.status(400).json({ ok: false, error: 'Aucun fichier fourni' });
     }
 
     if (!req.file.originalname.endsWith('.rofl')) {
-      return res.status(400).json({ error: 'Le fichier doit être un .rofl' });
+      return res.status(400).json({ ok: false, error: 'Le fichier doit être un .rofl' });
     }
 
     const metadata = parseRoflBuffer(req.file.buffer);
@@ -327,8 +388,7 @@ router.post('/parse', upload.single('replay'), async (req, res) => {
 });
 
 /**
- * POST /import - Parse et sauvegarde en DB
- * Body: { team_id, team_name, team_side, opponent_name, name }
+ * POST /import - Parse, enrichit avec API Riot, et sauvegarde en DB
  */
 router.post('/import', upload.single('replay'), async (req, res) => {
   try {
@@ -349,7 +409,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     const metadata = parseRoflBuffer(req.file.buffer);
     const data = processRoflData(metadata, req.file.originalname);
 
-    // Enrichir les données avec les infos de l'équipe
+    // Enrichir les données Game
     data.game.team_id = team_id || null;
     data.game.team_name = team_name || null;
     data.game.team_side = team_side;
@@ -360,14 +420,19 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     // Sauvegarder la Game
     const savedGame = await Game.create(data.game);
 
-    // Enrichir et sauvegarder les PlayerStats
-    const playersToSave = data.players.map((p) => {
+    // Enrichir les joueurs avec l'API Riot (PUUID + Rank)
+    console.log('Fetching Riot data for', data.players.length, 'players...');
+
+    const enrichedPlayers = await Promise.all(data.players.map((player, index) => enrichPlayerWithRiotData(player, index)));
+
+    // Ajouter les infos team/game
+    const playersToSave = enrichedPlayers.map((p) => {
       const isAllyTeam = p.side === team_side;
       return {
         ...p,
         game_id: savedGame._id.toString(),
         game_name: name || null,
-        team_id: isAllyTeam ? team_id : null,
+        team_id: team_id || null,
         team_name: isAllyTeam ? team_name : null,
         opponent: !isAllyTeam,
       };
@@ -375,11 +440,25 @@ router.post('/import', upload.single('replay'), async (req, res) => {
 
     const savedPlayers = await PlayerStats.insertMany(playersToSave);
 
-    res.json({ ok: true, data: { game: savedGame, players: savedPlayers } });
+    // Stats de l'enrichissement
+    const enrichedCount = savedPlayers.filter((p) => p.PUUID).length;
+    console.log(`Enriched ${enrichedCount}/${savedPlayers.length} players with Riot data`);
+
+    res.json({
+      ok: true,
+      data: {
+        game: savedGame,
+        players: savedPlayers,
+        enrichment: {
+          total: savedPlayers.length,
+          enriched: enrichedCount,
+          apiKeyConfigured: !!RIOT_API_KEY,
+        },
+      },
+    });
   } catch (error) {
     console.error('Erreur import ROFL:', error);
 
-    // Gérer l'erreur de duplicat
     if (error.code === 11000) {
       return res.status(409).json({ ok: false, error: 'Cette game existe déjà' });
     }
@@ -394,9 +473,10 @@ router.post('/import', upload.single('replay'), async (req, res) => {
 router.get('/', (req, res) => {
   res.json({
     status: 'ok',
+    riotApiConfigured: !!RIOT_API_KEY,
     routes: {
       'POST /parse': 'Parse un ROFL et retourne les données (preview)',
-      'POST /import': 'Parse et sauvegarde en DB (body: team_id, team_name, team_side, opponent_name, name)',
+      'POST /import': 'Parse, enrichit avec API Riot, et sauvegarde en DB',
     },
   });
 });

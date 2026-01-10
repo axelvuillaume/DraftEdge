@@ -593,12 +593,67 @@ function buildPlayerUpdate(player) {
 router.post('/stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const games = await Game.find({ team_id: req.user.team_id });
+    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true });
+
+    const TIER_VALUE = {
+      IRON: 0,
+      BRONZE: 400,
+      SILVER: 800,
+      GOLD: 1200,
+      PLATINUM: 1600,
+      EMERALD: 2000,
+      DIAMOND: 2400,
+      MASTER: 2800,
+      GRANDMASTER: 3300,
+      CHALLENGER: 4000,
+    };
+
+    const RANK_VALUE = {
+      IV: 0,
+      III: 100,
+      II: 200,
+      I: 300,
+    };
+
+    const elos = playerStats
+      .map((p) => {
+        if (!p.tier) return null;
+        const t = TIER_VALUE[p.tier.toUpperCase()] ?? 0;
+        const r = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.tier.toUpperCase()) ? 0 : RANK_VALUE[p.rank] ?? 0;
+        return t + r + (p.league_points ?? 0);
+      })
+      .filter((e) => e !== null);
+
+    const avgElo = elos.length > 0 ? elos.reduce((a, b) => a + b, 0) / elos.length : 0;
+
+    const getRankFromElo = (elo) => {
+      const tiers = Object.keys(TIER_VALUE).reverse();
+      for (const tier of tiers) {
+        if (elo >= TIER_VALUE[tier]) {
+          const remaining = elo - TIER_VALUE[tier];
+          if (['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tier)) {
+            return { tier, rank: '', lp: Math.round(remaining) };
+          }
+          const ranks = Object.keys(RANK_VALUE).reverse();
+          for (const rank of ranks) {
+            if (remaining >= RANK_VALUE[rank]) {
+              return { tier, rank, lp: Math.round(remaining - RANK_VALUE[rank]) };
+            }
+          }
+        }
+      }
+      return { tier: 'IRON', rank: 'IV', lp: Math.round(elo) };
+    };
+
+    const avgRank = getRankFromElo(avgElo);
 
     const stats = {
-      win_rate: games.filter((game) => game.win).length / games.length,
+      win_rate: games.filter((game) => game.win).length / (games.length || 1),
       total_wins: games.filter((game) => game.win).length,
       total_losses: games.filter((game) => !game.win).length,
       total_games: games.length,
+      avg_enemy_elo: avgElo,
+      avg_enemy_rank: avgRank,
     };
 
     return res.status(200).send({ ok: true, data: stats });

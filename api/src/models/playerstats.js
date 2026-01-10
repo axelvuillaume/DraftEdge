@@ -14,6 +14,13 @@ const Schema = new mongoose.Schema(
     summoner_name: { type: String, trim: true },
     riot_tag: { type: String, trim: true },
     PUUID: { type: String, trim: true },
+    tier: { type: String, trim: true },
+    rank: { type: String, trim: true },
+    league_points: { type: Number },
+    wins: { type: Number },
+    losses: { type: Number },
+    total_games: { type: Number },
+    win_rate: { type: Number },
 
     team_id: { type: String, trim: true },
     team_name: { type: String, trim: true },
