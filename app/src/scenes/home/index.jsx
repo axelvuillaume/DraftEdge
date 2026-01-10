@@ -114,8 +114,8 @@ export default function FutureHome() {
               <p className="text-xs text-slate-400">Durée Moyenne:</p>
             </div>
             <p className="text-2xl font-bold text-white whitespace-nowrap">
-              {Math.floor(Math.round(games.reduce((sum, game) => sum + (game.duration || 0), 0) / games.length) / 60)}m{" "}
-              {Math.round(games.reduce((sum, game) => sum + game.duration, 0) % 60)}s
+              {Math.floor(Math.round(games.reduce((sum, game) => sum + (game.duration || 0), 0) / games.length) / 60)}:
+              {Math.round(games.reduce((sum, game) => sum + game.duration, 0) % 60)}
             </p>
           </div>
 
