@@ -131,9 +131,11 @@ export default function FutureHome() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <PerformanceMindMap />
-          <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-7">
+            <PerformanceMindMap />
+          </div>
+          <div className="lg:col-span-5 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Elo Enemi Moyen Card */}
               <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 flex flex-col items-center">
@@ -158,13 +160,6 @@ export default function FutureHome() {
                 <h3 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider opacity-70">Win Rate / Side</h3>
 
                 <div className="flex items-end justify-center gap-4 h-32">
-                  {/* Y-axis labels */}
-                  <div className="flex flex-col justify-between h-full pb-6 pr-2">
-                    <span className="text-[10px] text-slate-500">100</span>
-                    <span className="text-[10px] text-slate-500">50</span>
-                    <span className="text-[10px] text-slate-500">0</span>
-                  </div>
-
                   {/* Blue Side Bar */}
                   <div className="flex flex-col items-center gap-2 flex-1 max-w-[50px] h-full">
                     <div className="relative w-full h-full flex items-end justify-center">
@@ -224,7 +219,7 @@ function PerformanceMindMap() {
   const centerY = 50
 
   return (
-    <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-4 relative min-h-[400px] flex items-center justify-center overflow-hidden">
+    <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-4 relative min-h-[400px] h-full flex items-center justify-center overflow-hidden">
       {/* Title */}
       <div className="absolute top-4 left-4 z-30">
         <h3 className="text-sm font-semibold text-white uppercase tracking-wider opacity-70">Team performance</h3>
