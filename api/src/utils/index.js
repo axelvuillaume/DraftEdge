@@ -1,6 +1,6 @@
-const { S3_ACCESSKEYID, S3_ENDPOINT, S3_SECRETACCESSKEY } = require("../config");
+const { S3_ACCESSKEYID, S3_ENDPOINT, S3_SECRETACCESSKEY } = require('../config');
 
-const AWS = require("aws-sdk");
+const AWS = require('aws-sdk');
 
 function uploadToS3FromBuffer(path, buffer, ContentType) {
   return new Promise((resolve, reject) => {
@@ -11,13 +11,13 @@ function uploadToS3FromBuffer(path, buffer, ContentType) {
     });
 
     var params = {
-      ACL: "public-read",
-      Bucket: "bank",
+      ACL: 'public-read',
+      Bucket: 'bank',
       Key: path,
       Body: buffer,
-      ContentEncoding: "base64",
+      ContentEncoding: 'base64',
       ContentType,
-      Metadata: { "Cache-Control": "max-age=31536000" },
+      Metadata: { 'Cache-Control': 'max-age=31536000' },
     };
     s3bucket.upload(params, function (err, data) {
       if (err) return reject(`error in callback:${err}`);
@@ -27,7 +27,7 @@ function uploadToS3FromBuffer(path, buffer, ContentType) {
 }
 
 function validatePassword(password) {
-  if (!password || typeof password !== "string") {
+  if (!password || typeof password !== 'string') {
     return false;
   }
 
@@ -36,20 +36,20 @@ function validatePassword(password) {
     return false;
   }
 
-  // Au moins une majuscule
-  if (!/[A-Z]/.test(password)) {
-    return false;
-  }
+  // // Au moins une majuscule
+  // if (!/[A-Z]/.test(password)) {
+  //   return false;
+  // }
 
-  // Au moins une minuscule
-  if (!/[a-z]/.test(password)) {
-    return false;
-  }
+  // // Au moins une minuscule
+  // if (!/[a-z]/.test(password)) {
+  //   return false;
+  // }
 
-  // Au moins un chiffre
-  if (!/[0-9]/.test(password)) {
-    return false;
-  }
+  // // Au moins un chiffre
+  // if (!/[0-9]/.test(password)) {
+  //   return false;
+  // }
 
   return true;
 }

@@ -62,7 +62,7 @@ router.post('/signup', async (req, res) => {
   try {
     const { password, email, team_name } = req.body;
 
-    if (password && !validatePassword(password)) return res.status(400).send({ ok: false, user: null, code: ERROR_CODES.PASSWORD_NOT_VALIDATE });
+    if (password && !validatePassword(password)) return res.status(400).send({ ok: false, user: null, code: ERROR_CODES.PASSWORD_NOT_VALIDATED });
 
     const team = await TeamObject.create({ name: team_name });
     const user = await UserObject.create({ team_name, password, email, team_id: team._id });

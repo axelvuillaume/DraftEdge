@@ -14,7 +14,8 @@ export default () => {
 
   const send = async () => {
     try {
-      const { user, token } = await api.post(`/user/signup`, values)
+      const { ok, user, token, code } = await api.post(`/user/signup`, values)
+      if (!ok) return toast.error(code)
       if (token) api.setToken(token)
       if (user) setUser(user)
     } catch (e) {
