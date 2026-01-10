@@ -9,6 +9,7 @@ export default function FutureHome() {
   const [stats, setStats] = useState()
   const [gameStats, setGameStats] = useState()
   const [games, setGames] = useState([])
+  const [bestChampions, setBestChampions] = useState([])
   const [showUploadModal, setShowUploadModal] = useState(false)
   const { user } = useStore()
 
@@ -22,11 +23,21 @@ export default function FutureHome() {
     }
   }
 
-  const fetchPlayerStats = async () => {
+  const fetchCardAverage = async () => {
     try {
-      const { ok, data, code } = await api.post("/playerstats/home_stats", {})
+      const { ok, data, code } = await api.post("/playerstats/card_average", {})
       if (!ok) return toast.error(code)
       setStats(data)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const fetchBestChampions = async () => {
+    try {
+      const { ok, data, code } = await api.post("/playerstats/best_wr", {})
+      if (!ok) return toast.error(code)
+      setBestChampions(data)
     } catch (error) {
       toast.error(error.message)
     }
@@ -42,7 +53,7 @@ export default function FutureHome() {
     }
   }
   const fetchAll = async () => {
-    await Promise.all([fetchPlayerStats(), fetchGameStats(), fetchGames()])
+    await Promise.all([fetchCardAverage(), fetchGameStats(), fetchGames(), fetchBestChampions()])
   }
 
   useEffect(() => {
@@ -58,7 +69,6 @@ export default function FutureHome() {
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl lg:text-4xl font-bold text-white tracking-tight">Team Dashboard</h1>
-            <p className="text-slate-400">Weekly performance overview • {user?.team_name || "Your Team"}</p>
           </div>
           <button
             onClick={() => setShowUploadModal(true)}
@@ -139,7 +149,10 @@ export default function FutureHome() {
           </div>
         </div>
 
-        <WinRateByDuration games={games} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <WinRateByDuration games={games} />
+          <BestChampions data={bestChampions} />
+        </div>
       </div>
     </div>
   )
@@ -360,6 +373,52 @@ function WinRateByDuration({ games }) {
     </div>
   )
 }
+
+function BestChampions({ data }) {
+  const renderList = (list, title, colorClass, iconColor) => (
+    <div className="flex-1 space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Trophy className={`w-4 h-4 ${iconColor}`} />
+        <h4 className="text-sm font-semibold text-white uppercase tracking-wider">{title}</h4>
+      </div>
+      <div className="space-y-2">
+        {list?.length > 0 &&
+          list.map((item, index) => (
+            <div key={index} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl border border-slate-700/50 hover:bg-slate-700/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-800">
+                  <img src={`/champions/${item.champion}.png`} alt={item.champion} className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">{item.champion}</p>
+                  <p className="text-xs text-slate-500">{item.games} games</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className={`text-sm font-bold ${colorClass}`}>{Math.round(item.win_rate * 100)}%</p>
+                <p className="text-[10px] text-slate-500 uppercase">Win Rate</p>
+              </div>
+            </div>
+          ))}
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+      <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+        <Swords className="w-5 h-5 text-slate-400" />
+        Top Win Rate Champions
+      </h3>
+
+      <div className="flex flex-col md:flex-row gap-8">
+        {renderList(data?.allies, "Allies", "text-emerald-400", "text-emerald-400")}
+        {renderList(data?.enemies, "Enemies", "text-red-400", "text-red-400")}
+      </div>
+    </div>
+  )
+}
+
 function UploadModal({ isOpen, onClose, user, onSuccess }) {
   const [files, setFiles] = useState([])
   const [previews, setPreviews] = useState([])

@@ -68,7 +68,51 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
   }
 });
 
-router.post('/home_stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+router.post('/best_wr', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const playerStats = await PlayerStats.find({ team_id: req.user.team_id });
+
+    const calculateBestWR = (stats) => {
+      const championsStats = stats.reduce((acc, curr) => {
+        if (!curr.champion) return acc;
+        if (!acc[curr.champion]) acc[curr.champion] = { wins: 0, games: 0 };
+        acc[curr.champion].games += 1;
+        if (curr.game_win) acc[curr.champion].wins += 1;
+        return acc;
+      }, {});
+
+      return Object.entries(championsStats)
+        .map(([champion, stats]) => ({
+          champion,
+          win_rate: stats.games > 0 ? stats.wins / stats.games : 0,
+          wins: stats.wins,
+          games: stats.games,
+        }))
+        .filter((item) => item.games > 0)
+        .sort((a, b) => {
+          if (b.win_rate !== a.win_rate) return b.win_rate - a.win_rate;
+          return b.games - a.games;
+        })
+        .slice(0, 5)
+        .map((item) => ({
+          champion: item.champion,
+          win_rate: Math.round(item.win_rate * 1000) / 1000,
+          wins: item.wins,
+          games: item.games,
+        }));
+    };
+
+    const allies = calculateBestWR(playerStats.filter((s) => s.opponent === false));
+    const enemies = calculateBestWR(playerStats.filter((s) => s.opponent === true));
+
+    return res.status(200).send({ ok: true, data: { allies, enemies } });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.post('/card_average', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const thisWeekStart = new Date();
     thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
