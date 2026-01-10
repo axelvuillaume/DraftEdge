@@ -34,7 +34,7 @@ export default function FutureHome() {
 
   const fetchGames = async () => {
     try {
-      const { ok, data, code } = await api.post("/game/search", { limit: 3, team_id: user?.team_id })
+      const { ok, data, code } = await api.post("/game/search", { limit: 50, team_id: user?.team_id })
       if (!ok) return toast.error(code)
       setGames(data)
     } catch (error) {
@@ -133,45 +133,16 @@ export default function FutureHome() {
           {/* Role Performance Cards */}
           <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {["top", "jungle", "mid", "bottom", "support"].map(role => (
-              <RoleCard key={role} role={role} stats={stats?.[role]} />
+              <RoleCard key={role} role={role} stats={stats} />
             ))}
-            {/* Team Average Card */}
-            <TeamAverageCard stats={stats} />
+            <AverageCard stats={stats} />
           </div>
         </div>
 
-        {/* Recent Games */}
-        <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-6 bg-amber-500 rounded-full" />
-            <h2 className="text-xl font-semibold text-white">Recent Scrims</h2>
-          </div>
-
-          <div className="space-y-3">
-            {games.length === 0 ? (
-              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-12 text-center">
-                <Swords className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-400">No games recorded yet</p>
-                <p className="text-slate-500 text-sm mt-1">Upload a screenshot to get started</p>
-              </div>
-            ) : (
-              games.map(game => <GameCard key={game._id} game={game} />)
-            )}
-          </div>
-        </section>
+        <WinRateByDuration games={games} />
       </div>
     </div>
   )
-}
-
-const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
-
-const sortPlayersByRole = players => {
-  return [...players].sort((a, b) => {
-    const aIndex = ROLE_ORDER.indexOf(a.role?.toLowerCase())
-    const bIndex = ROLE_ORDER.indexOf(b.role?.toLowerCase())
-    return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex)
-  })
 }
 
 const roleIcons = {
@@ -180,14 +151,6 @@ const roleIcons = {
   mid: Crosshair,
   bottom: Target,
   support: Trophy
-}
-
-const roleLabels = {
-  top: "Top",
-  jungle: "Jungle",
-  mid: "Mid",
-  bottom: "ADC",
-  support: "Support"
 }
 
 const roleColors = {
@@ -230,55 +193,52 @@ function RoleCard({ role, stats }) {
           <Icon className={`w-4 h-4 ${iconColor}`} />
           <span className="text-sm font-semibold text-white capitalize">{role}</span>
         </div>
-        <span className={`text-lg font-bold ${stats.kda >= 3 ? "text-emerald-400" : stats.kda >= 2 ? "text-amber-400" : "text-red-400"}`}>{stats.kda} KDA</span>
       </div>
 
-      <span className="text-slate-500">Total:</span>
+      <span className="text-slate-500">Average Enemy:</span>
 
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-3">
-          <span className="text-emerald-400">{stats.kills}</span>
+          <span className="text-emerald-400">{(stats.enemies?.total?.kills ?? 0).toFixed(1)}</span>
           <span className="text-slate-500">/</span>
-          <span className="text-red-400">{stats.deaths}</span>
+          <span className="text-red-400">{(stats.enemies?.total?.deaths ?? 0).toFixed(1)}</span>
           <span className="text-slate-500">/</span>
-          <span className="text-cyan-400">{stats.assists}</span>
+          <span className="text-cyan-400">{(stats.enemies?.total?.assists ?? 0).toFixed(1)}</span>
         </div>
-
-        <span className="text-amber-400 text-xs">{(stats.gold / 1000).toFixed(1)}k gold</span>
+        <span className="text-amber-400 text-xs">{(stats.enemies?.total?.gold / stats.enemies?.total?.nb_games / 1000).toFixed(1)}k gold</span>
       </div>
 
       <span className="text-slate-500">Average:</span>
 
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-3">
-          <span className="text-emerald-400">{(stats.kills / stats.nb_games).toFixed(1)}</span>
+          <span className="text-emerald-400">{(stats.allies?.total?.kills / stats.allies?.total?.nb_games).toFixed(1)}</span>
           <span className="text-slate-500">/</span>
-          <span className="text-red-400">{(stats.deaths / stats.nb_games).toFixed(1)}</span>
+          <span className="text-red-400">{(stats.allies?.total?.deaths / stats.allies?.total?.nb_games).toFixed(1)}</span>
           <span className="text-slate-500">/</span>
-          <span className="text-cyan-400">{(stats.assists / stats.nb_games).toFixed(1)}</span>
+          <span className="text-cyan-400">{(stats.allies?.total?.assists / stats.allies?.total?.nb_games).toFixed(1)}</span>
         </div>
 
-        <span className="text-amber-400 text-xs">{(stats.gold / stats.nb_games / 1000).toFixed(1)}k gold</span>
+        <span className="text-amber-400 text-xs">{(stats.allies?.total?.gold / stats.allies?.total?.nb_games / 1000).toFixed(1)}k gold</span>
       </div>
     </div>
   )
 }
 
-function TeamAverageCard({ stats }) {
-  if (!stats) return null
-  const roles = Object.keys(stats)
-  if (roles.length === 0) return null
-
-  const totals = roles.reduce(
-    (acc, role) => {
-      acc.kills += stats[role].kills || 0
-      acc.deaths += stats[role].deaths || 0
-      acc.assists += stats[role].assists || 0
-      acc.nb_games += stats[role].nb_games || 0
-      return acc
-    },
-    { kills: 0, deaths: 0, assists: 0, nb_games: 0 }
-  )
+function AverageCard({ stats }) {
+  if (!stats) {
+    return (
+      <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 backdrop-blur-sm border border-amber-500/30 rounded-xl p-4 opacity-50">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-amber-400" />
+            <span className="text-sm font-semibold text-white">Team Total</span>
+          </div>
+        </div>
+        <p className="text-xs text-slate-500">No data</p>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 backdrop-blur-sm border border-amber-500/30 rounded-xl p-4">
@@ -287,19 +247,17 @@ function TeamAverageCard({ stats }) {
           <TrendingUp className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-white">Team Total</span>
         </div>
-        <span className="text-lg font-bold text-amber-400">
-          {totals.deaths > 0 ? ((totals.kills + totals.assists) / totals.deaths).toFixed(2) : (totals.kills + totals.assists).toFixed(2)} KDA
-        </span>
       </div>
-      <span className="text-slate-500">Total:</span>
+
+      <span className="text-slate-500">Average Enemy:</span>
 
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-3">
-          <span className="text-emerald-400">{totals.kills}</span>
+          <span className="text-emerald-400">{(stats.enemies?.total?.kills ?? 0).toFixed(1)}</span>
           <span className="text-slate-500">/</span>
-          <span className="text-red-400">{totals.deaths}</span>
+          <span className="text-red-400">{(stats.enemies?.total?.deaths ?? 0).toFixed(1)}</span>
           <span className="text-slate-500">/</span>
-          <span className="text-cyan-400">{totals.assists}</span>
+          <span className="text-cyan-400">{(stats.enemies?.total?.assists ?? 0).toFixed(1)}</span>
         </div>
       </div>
 
@@ -307,163 +265,108 @@ function TeamAverageCard({ stats }) {
 
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-3">
-          <span className="text-emerald-400">{(totals.kills / totals.nb_games).toFixed(1)}</span>
+          <span className="text-emerald-400">{((stats.allies?.total?.kills ?? 0) / stats.allies?.total?.nb_games || 1).toFixed(1)}</span>
           <span className="text-slate-500">/</span>
-          <span className="text-red-400">{(totals.deaths / totals.nb_games).toFixed(1)}</span>
+          <span className="text-red-400">{((stats.allies?.total?.deaths ?? 0) / stats.allies?.total?.nb_games || 1).toFixed(1)}</span>
           <span className="text-slate-500">/</span>
-          <span className="text-cyan-400">{(totals.assists / totals.nb_games).toFixed(1)}</span>
+          <span className="text-cyan-400">{((stats.allies?.total?.assists ?? 0) / stats.allies?.total?.nb_games || 1).toFixed(1)}</span>
         </div>
       </div>
     </div>
   )
 }
 
-function GameCard({ game }) {
-  const [expanded, setExpanded] = useState(false)
-  const [playerStats, setPlayerStats] = useState([])
+function WinRateByDuration({ games }) {
+  const calculateStats = () => {
+    const stats = { "0-15": { wins: 0, losses: 0 }, "15-30": { wins: 0, losses: 0 }, "30+": { wins: 0, losses: 0 } }
+    games.forEach(game => {
+      let key = "30+"
+      if (game.duration / 60 < 15) key = "0-15"
+      if (game.duration / 60 < 30) key = "15-30"
+      game.win ? stats[key].wins++ : stats[key].losses++
+    })
 
-  const fetchPlayerStats = async () => {
-    try {
-      const { ok, data, code } = await api.post("/playerstats/search", { game_id: game._id })
-      if (!ok) return toast.error(code)
-      setPlayerStats(data)
-    } catch (error) {
-      toast.error(error.message)
-    }
+    return [
+      {
+        label: "0-15 min",
+        wins: stats["0-15"].wins,
+        losses: stats["0-15"].losses,
+        total: stats["0-15"].wins + stats["0-15"].losses,
+        winRate: stats["0-15"].wins + stats["0-15"].losses > 0 ? Math.round((stats["0-15"].wins / (stats["0-15"].wins + stats["0-15"].losses)) * 100) : 0
+      },
+      {
+        label: "15-30 min",
+        wins: stats["15-30"].wins,
+        losses: stats["15-30"].losses,
+        total: stats["15-30"].wins + stats["15-30"].losses,
+        winRate: stats["15-30"].wins + stats["15-30"].losses > 0 ? Math.round((stats["15-30"].wins / (stats["15-30"].wins + stats["15-30"].losses)) * 100) : 0
+      },
+      {
+        label: "30+ min",
+        wins: stats["30+"].wins,
+        losses: stats["30+"].losses,
+        total: stats["30+"].wins + stats["30+"].losses,
+        winRate: stats["30+"].wins + stats["30+"].losses > 0 ? Math.round((stats["30+"].wins / (stats["30+"].wins + stats["30+"].losses)) * 100) : 0
+      }
+    ]
   }
 
-  const handleToggle = () => {
-    if (!expanded) fetchPlayerStats()
-    setExpanded(!expanded)
+  const stats = calculateStats()
+
+  const getBarColor = winRate => {
+    if (winRate >= 60) return "bg-emerald-500"
+    if (winRate >= 50) return "bg-sky-500"
+    if (winRate >= 40) return "bg-amber-500"
+    return "bg-red-500"
   }
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden transition-all duration-200 hover:border-slate-600/50">
-      {/* Game Header */}
-      <button onClick={handleToggle} className="w-full p-4 flex items-center justify-between hover:bg-slate-700/20 transition-colors">
-        <div className="flex items-center gap-4">
-          {/* Win/Loss Indicator */}
-          <div className={`w-1.5 h-12 rounded-full ${game.win ? "bg-emerald-500" : "bg-red-500"}`} />
+    <div className="bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+      <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+        <Clock className="w-5 h-5 text-slate-400" />
+        Win Rate par Durée
+      </h3>
 
-          <div className="text-left">
-            <div className="flex items-center gap-3">
-              <span className={`text-sm font-bold uppercase tracking-wider ${game.win ? "text-emerald-400" : "text-red-400"}`}>{game.win ? "Victory" : "Defeat"}</span>
-              <span className="text-slate-500 text-sm">•</span>
-              <span className="text-slate-400 text-sm flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" />
-                {Math.floor(game.duration / 60)}m{game.duration % 60}
-              </span>
-            </div>
-            <p className="text-slate-500 text-sm mt-0.5">{game.date}</p>
-          </div>
+      <div className="relative">
+        {/* Ligne pointillée verticale à 50% */}
+        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center" style={{ pointerEvents: "none" }}>
+          <div className="h-full border-l-2 border-dashed border-slate-400/70" />
         </div>
 
-        <div className="flex items-center gap-6">
-          {/* Team Score Preview */}
-          <div className="hidden sm:flex items-center gap-4 text-sm">
-            <div className="text-center">
-              <p className="text-white font-semibold">
-                {game.blue_team?.total_kills || 0}/{game.blue_team?.total_deaths || 0}/{game.blue_team?.total_assists || 0}
-              </p>
-              <p className="text-xs text-slate-500">Blue</p>
-            </div>
-            <span className="text-slate-600">vs</span>
-            <div className="text-center">
-              <p className="text-white font-semibold">
-                {game.red_team?.total_kills || 0}/{game.red_team?.total_deaths || 0}/{game.red_team?.total_assists || 0}
-              </p>
-              <p className="text-xs text-slate-500">Red</p>
-            </div>
-          </div>
-
-          {expanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
-        </div>
-      </button>
-
-      {/* Expanded Content */}
-      {expanded && (
-        <div className="border-t border-slate-700/50 p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Your Team */}
-            <div>
-              <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                Your Team
-              </h4>
-              <div className="space-y-2">
-                {sortPlayersByRole(playerStats.filter(p => !p.opponent)).map((player, idx) => (
-                  <PlayerRow key={idx} player={player} />
-                ))}
+        <div className="space-y-4">
+          {stats.map((stat, index) => (
+            <div key={index} className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-300 font-medium">{stat.label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 text-xs">
+                    ({stat.wins}W - {stat.losses}L)
+                  </span>
+                  <span className={`font-bold ${stat.winRate >= 50 ? "text-emerald-400" : "text-red-400"}`}>{stat.winRate}%</span>
+                </div>
+              </div>
+              <div className="relative h-3 bg-slate-700/50 rounded-full overflow-hidden">
+                <div className={`h-full ${getBarColor(stat.winRate)} transition-all duration-500 rounded-full`} style={{ width: `${stat.winRate}%` }} />
               </div>
             </div>
-
-            {/* Opponents */}
-            <div>
-              <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-500" />
-                Opponents
-              </h4>
-              <div className="space-y-2">
-                {sortPlayersByRole(playerStats.filter(p => p.opponent)).map((player, idx) => (
-                  <PlayerRow key={idx} player={player} isOpponent />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function PlayerRow({ player, isOpponent = false }) {
-  return (
-    <div className={`flex items-center justify-between p-2.5 rounded-lg ${isOpponent ? "bg-red-500/5" : "bg-blue-500/5"}`}>
-      <div className="flex items-center gap-3 min-w-0">
-        {player.champion && (
-          <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-slate-700/50 border border-slate-600/50">
-            <img src={`/champions/${player.champion}.png`} alt={player.champion} className="w-full h-full object-cover" />
-          </div>
-        )}
-        {/* Champion & Player Info */}
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-white text-sm font-medium truncate">{player.champion}</p>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${roleIconColors[player.role]} bg-slate-700/50`}>{roleLabels[player.role]}</span>
-          </div>
-          <p className="text-slate-500 text-xs truncate">{player.summoner_name}</p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-4 text-sm">
-        <div className="text-right">
-          <div className="flex items-center gap-1.5">
-            <span className="text-emerald-400">{player.kills}</span>
-            <span className="text-slate-600">/</span>
-            <span className="text-red-400">{player.deaths}</span>
-            <span className="text-slate-600">/</span>
-            <span className="text-cyan-400">{player.assists}</span>
-          </div>
-          <p className="text-slate-500 text-xs">
-            {player.deaths > 0 ? ((player.kills + player.assists) / player.deaths).toFixed(1) : (player.kills + player.assists).toFixed(1)} KDA
-          </p>
+          ))}
         </div>
 
-        <div className="text-right w-16">
-          <p className="text-amber-400 text-sm">{(player.gold / 1000).toFixed(1)}k</p>
-          <p className="text-slate-500 text-xs">{player.creep} CS</p>
+        {/* Label 50% en bas */}
+        <div className="flex justify-center mt-2">
+          <span className="text-xs text-slate-500 bg-slate-800/80 px-1.5 rounded">50%</span>
         </div>
       </div>
     </div>
   )
 }
-
 function UploadModal({ isOpen, onClose, user, onSuccess }) {
   const [files, setFiles] = useState([])
   const [previews, setPreviews] = useState([])
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState({})
   const [dragActive, setDragActive] = useState(false)
+  const [uploadType, setUploadType] = useState("scoreboard")
   const inputRef = useRef(null)
 
   const handleFiles = selectedFiles => {
@@ -530,7 +433,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
             reader.readAsDataURL(file)
           })
 
-          const { ok, code } = await api.post("/game/upload-screenshot", { screenshot: base64, user })
+          const { ok, code } = await api.post(uploadType === "scoreboard" ? "/game/upload-scoreboard" : "/game/upload-advanced-stats", { screenshot: base64, user })
 
           if (!ok) return toast.error(`Failed to upload ${file.name}: ${code}`)
           setUploadProgress(prev => ({ ...prev, [index]: "success" }))
@@ -561,6 +464,25 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
       <div className="p-6">
         <h2 className="text-xl font-bold text-slate-800 mb-2">Upload Screenshots</h2>
         <p className="text-slate-500 text-sm mb-6">Upload your end-game scoreboard screenshots to automatically extract game data. You can upload multiple screenshots at once.</p>
+
+        <div className="flex gap-2 mb-6 bg-slate-100 p-1 rounded-xl">
+          <button
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              uploadType === "scoreboard" ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-700"
+            }`}
+            onClick={() => setUploadType("scoreboard")}
+          >
+            Scoreboard
+          </button>
+          <button
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              uploadType === "advanced" ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-700"
+            }`}
+            onClick={() => setUploadType("advanced")}
+          >
+            Advanced Stats
+          </button>
+        </div>
 
         {previews.length === 0 ? (
           <div

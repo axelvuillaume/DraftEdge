@@ -96,6 +96,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState({})
   const [dragActive, setDragActive] = useState(false)
+  const [uploadType, setUploadType] = useState("scoreboard")
   const inputRef = useRef(null)
 
   const handleFiles = selectedFiles => {
@@ -162,7 +163,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
             reader.readAsDataURL(file)
           })
 
-          const { ok, code } = await api.post("/game/upload-screenshot", { screenshot: base64, user })
+          const { ok, code } = await api.post(uploadType === "scoreboard" ? "/game/upload-scoreboard" : "/game/upload-advanced-stats", { screenshot: base64, user })
 
           if (!ok) return toast.error(`Failed to upload ${file.name}: ${code}`)
           setUploadProgress(prev => ({ ...prev, [index]: "success" }))
@@ -193,6 +194,25 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
       <div className="p-6">
         <h2 className="text-xl font-bold text-slate-800 mb-2">Upload Screenshots</h2>
         <p className="text-slate-500 text-sm mb-6">Upload your end-game scoreboard screenshots to automatically extract game data. You can upload multiple screenshots at once.</p>
+
+        <div className="flex gap-2 mb-6 bg-slate-100 p-1 rounded-xl">
+          <button
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              uploadType === "scoreboard" ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-700"
+            }`}
+            onClick={() => setUploadType("scoreboard")}
+          >
+            Scoreboard
+          </button>
+          <button
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              uploadType === "advanced" ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-700"
+            }`}
+            onClick={() => setUploadType("advanced")}
+          >
+            Advanced Stats
+          </button>
+        </div>
 
         {previews.length === 0 ? (
           <div

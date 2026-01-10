@@ -16,84 +16,16 @@ const durationToSeconds = (durationString) => {
   return minutes * 60 + seconds;
 };
 
-router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
-  try {
-    const game = await Game.findById(req.params.id);
-    if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+// Original analysis function for Scoreboard (initial upload)
+const analyzeScoreboard = async (screenshot) => {
+  const cleanScreenshot = screenshot.replace(/^data:image\/\w+;base64,/, '');
 
-    return res.status(200).send({ ok: true, data: game });
-  } catch (error) {
-    capture(error);
-    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
-  }
-});
-
-router.put('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
-  try {
-    const game = await Game.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
-    return res.status(200).send({ ok: true, data: game });
-  } catch (error) {
-    capture(error);
-    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
-  }
-});
-
-router.post('/search', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
-  try {
-    let query = {};
-
-    if (req.body.team_id) query.team_id = req.body.team_id;
-    const limit = req.body.limit || 50;
-    const skip = req.body.offset || 0;
-    const total = await Game.countDocuments(query);
-    const data = await Game.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
-    return res.status(200).send({ ok: true, data, total });
-  } catch (error) {
-    capture(error);
-    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
-  }
-});
-
-router.post('/', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
-  try {
-    if (!req.body.title || !req.body.message || !req.body.user_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
-    const game = await Game.create(req.body);
-
-    return res.status(200).send({ ok: true, data: game });
-  } catch (error) {
-    capture(error);
-    return res.status(500).send({ ok: false, data: { code: ERROR_CODES.SERVER_ERROR } });
-  }
-});
-
-router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
-  try {
-    const game = await Game.findByIdAndDelete(req.params.id);
-    if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
-
-    await PlayerStats.deleteMany({ game_id: game._id });
-
-    return res.status(200).send({ ok: true });
-  } catch (error) {
-    capture(error);
-    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
-  }
-});
-
-router.post('/upload-screenshot', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
-  try {
-    const { screenshot, user } = req.body;
-    if (!screenshot) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
-
-    const cleanScreenshot = screenshot.replace(/^data:image\/\w+;base64,/, '');
-
-    const contents = [
-      {
-        role: 'user',
-        parts: [
-          {
-            text: `You are an expert League of Legends analyst.
+  const contents = [
+    {
+      role: 'user',
+      parts: [
+        {
+          text: `You are an expert League of Legends analyst.
 
 TASK: Analyze this League of Legends post-game screenshot and extract all visible data.
 
@@ -184,7 +116,7 @@ OUTPUT STRUCTURE (JSON ONLY):
           "neutralMinionsKilledInTeamJungle": number | null,
           "neutralMinionsKilledInEnemyJungle": number | null
         } | null,
-         "MISC": {
+        "MISC": {
          "towersDestroyed": number | null,
          "inhibitorsDestroyed": number | null,
       }
@@ -197,33 +129,201 @@ IMPORTANT:
 - Champions and roles are ALWAYS required (detectable from icons)
 - Only fill other fields if actually visible in the screenshot
 - Use null for non-visible data`,
+        },
+        {
+          inlineData: {
+            mimeType: 'image/png',
+            data: cleanScreenshot,
           },
-          {
-            inlineData: {
-              mimeType: 'image/png',
-              data: cleanScreenshot,
-            },
-          },
-        ],
-      },
-    ];
+        },
+      ],
+    },
+  ];
 
-    const result = await client.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents,
-      config: { responseMimeType: 'application/json', temperature: 0 },
-    });
+  const result = await client.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents,
+    config: { responseMimeType: 'application/json', temperature: 0 },
+  });
+
+  return JSON.parse(result.text);
+};
+
+// Step 1 for Advanced Stats: Extract only game info to find the match
+const extractGameInfo = async (screenshot) => {
+  const cleanScreenshot = screenshot.replace(/^data:image\/\w+;base64,/, '');
+  const contents = [
+    {
+      role: 'user',
+      parts: [
+        {
+          text: `You are an expert League of Legends analyst.
+TASK: Extract ONLY the game header information from this screenshot.
+
+OUTPUT STRUCTURE (JSON ONLY):
+{
+  "date": "dd/mm/yyyy",
+  "duration": "mm:ss",
+  "result": "victory" | "defeat"
+}`,
+        },
+        {
+          inlineData: { mimeType: 'image/png', data: cleanScreenshot },
+        },
+      ],
+    },
+  ];
+
+  const result = await client.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents,
+    config: { responseMimeType: 'application/json', temperature: 0 },
+  });
+
+  return JSON.parse(result.text);
+};
+
+// Step 2 for Advanced Stats: Extract stats using known champions context
+const analyzeAdvancedStats = async (screenshot, knownChampions) => {
+  const cleanScreenshot = screenshot.replace(/^data:image\/\w+;base64,/, '');
+  const championsList = knownChampions.join(', ');
+
+  const contents = [
+    {
+      role: 'user',
+      parts: [
+        {
+          text: `You are an expert League of Legends analyst.
+
+CONTEXT: This is an advanced stats tab for a game where we ALREADY KNOW the champions.
+KNOWN CHAMPIONS LIST: ${championsList}
+
+TASK: Extract stats from this screenshot and assign them to the correct champion from the list above.
+DO NOT invent new champions. Map the visual data strictly to the known champions.
+
+STEP 1: Identify the screenshot type: "stats_combat", "stats_damage", "stats_damage_taken", "stats_income", "stats_vision".
+STEP 2: For each row/column in the screenshot, identify which champion from the KNOWN LIST it corresponds to.
+STEP 3: Extract the visible stats.
+
+OUTPUT STRUCTURE (JSON ONLY):
+{
+  "screenshotType": "string",
+  "team1": {
+    "players": [
+      {
+        "champion": "One of the known champions",
+        "combat": { ... },
+        "damageDealt": { ... },
+        "damageTaken": { ... },
+        "vision": { ... },
+        "income": { ... },
+        "MISC": { ... }
+      }
+    ]
+  },
+  "team2": {
+    "players": [ ... ]
+  }
+}
+Use the same detailed field structure as a full analysis, but ONLY for the visible stats.`,
+        },
+        {
+          inlineData: { mimeType: 'image/png', data: cleanScreenshot },
+        },
+      ],
+    },
+  ];
+
+  const result = await client.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents,
+    config: { responseMimeType: 'application/json', temperature: 0 },
+  });
+
+  return JSON.parse(result.text);
+};
+
+router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const game = await Game.findById(req.params.id);
+    if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+
+    return res.status(200).send({ ok: true, data: game });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.put('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const game = await Game.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+    return res.status(200).send({ ok: true, data: game });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.post('/search', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    let query = {};
+
+    if (req.body.team_id) query.team_id = req.body.team_id;
+    const limit = req.body.limit || 50;
+    const skip = req.body.offset || 0;
+    const total = await Game.countDocuments(query);
+    const data = await Game.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+    return res.status(200).send({ ok: true, data, total });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.post('/', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    if (!req.body.title || !req.body.message || !req.body.user_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+    const game = await Game.create(req.body);
+
+    return res.status(200).send({ ok: true, data: game });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, data: { code: ERROR_CODES.SERVER_ERROR } });
+  }
+});
+
+router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const game = await Game.findByIdAndDelete(req.params.id);
+    if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+
+    await PlayerStats.deleteMany({ game_id: game._id });
+
+    return res.status(200).send({ ok: true });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.post('/upload-scoreboard', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const { screenshot, user } = req.body;
+    if (!screenshot) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
 
     let analysis;
     try {
-      analysis = JSON.parse(result.text);
+      analysis = await analyzeScoreboard(screenshot);
     } catch (e) {
-      console.error('Gemini JSON parse error:', e);
-      return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, message: 'Failed to parse Gemini response' });
+      console.error('Gemini error:', e);
+      return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, message: 'Failed to analyze screenshot' });
     }
 
     const gameDuration = durationToSeconds(analysis.gameInfo.duration);
     const isVictory = analysis.gameInfo.result.toLowerCase() === 'victory';
+    const cleanScreenshot = screenshot.replace(/^data:image\/\w+;base64,/, '');
 
     let game;
     try {
@@ -329,6 +429,83 @@ IMPORTANT:
 
       await Promise.all(updatePromises);
     }
+
+    return res.status(200).send({ ok: true });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, message: error.message });
+  }
+});
+
+router.post('/upload-advanced-stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const { screenshot, user } = req.body;
+    if (!screenshot) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    // Step 1: Extract basic info to find the game
+    let gameInfo;
+    try {
+      gameInfo = await extractGameInfo(screenshot);
+    } catch (e) {
+      console.error('Gemini error (extractGameInfo):', e);
+      return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, message: 'Failed to extract game info' });
+    }
+
+    const gameDuration = durationToSeconds(gameInfo.duration);
+
+    // Fuzzy search for game (+/- 2 minutes = 120 seconds)
+    const game = await Game.findOne({
+      date: gameInfo.date,
+      duration: { $gte: gameDuration - 120, $lte: gameDuration + 120 },
+      team_id: user?.team_id,
+    });
+
+    if (!game) {
+      return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND, message: 'Game not found. Please upload scoreboard first.' });
+    }
+
+    // Step 2: Get existing champions for this game
+    const existingStats = await PlayerStats.find({ game_id: game._id }).select('champion');
+    const knownChampions = existingStats.map((s) => s.champion);
+
+    if (knownChampions.length === 0) {
+      return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY, message: 'No players found for this game.' });
+    }
+
+    // Step 3: Analyze stats using known champions
+    let analysis;
+    try {
+      analysis = await analyzeAdvancedStats(screenshot, knownChampions);
+    } catch (e) {
+      console.error('Gemini error (analyzeAdvancedStats):', e);
+      return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR, message: 'Failed to analyze stats' });
+    }
+
+    const updatePromises = [];
+
+    // Process Team 1
+    for (const player of analysis.team1?.players || []) {
+      const updateData = buildStatsUpdate(player);
+      if (Object.keys(updateData).length > 0) {
+        updatePromises.push(
+          PlayerStats.findOneAndUpdate(
+            { game_id: game._id, champion: player.champion },
+            { $set: updateData },
+            { new: true, upsert: false } // upsert: false is key here
+          )
+        );
+      }
+    }
+
+    // Process Team 2
+    for (const player of analysis.team2?.players || []) {
+      const updateData = buildStatsUpdate(player);
+      if (Object.keys(updateData).length > 0) {
+        updatePromises.push(PlayerStats.findOneAndUpdate({ game_id: game._id, champion: player.champion }, { $set: updateData }, { new: true, upsert: false }));
+      }
+    }
+
+    await Promise.all(updatePromises);
 
     return res.status(200).send({ ok: true });
   } catch (error) {

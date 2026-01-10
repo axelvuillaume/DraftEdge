@@ -77,19 +77,40 @@ router.post('/home_stats', passport.authenticate(['admin', 'user'], { session: f
     // const playerStats = await PlayerStats.find({ team_id: req.user.team_id, createdAt: { $gte: thisWeekStart }, opponent: false });
 
     const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
+    const enemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true });
 
-    const statsByRole = playerStats.reduce((acc, curr) => {
+    // Calculate allies stats by role
+    const alliesStatsByRole = playerStats.reduce((acc, curr) => {
+      if (!curr.role) return acc;
       if (!acc[curr.role]) acc[curr.role] = { kills: 0, deaths: 0, assists: 0, gold: 0, level: 0 };
-      acc[curr.role].kills += curr.kills;
-      acc[curr.role].deaths += curr.deaths;
-      acc[curr.role].assists += curr.assists;
-      acc[curr.role].gold += curr.gold;
-      acc[curr.role].level += curr.level;
+      acc[curr.role].kills += curr.kills || 0;
+      acc[curr.role].deaths += curr.deaths || 0;
+      acc[curr.role].assists += curr.assists || 0;
+      acc[curr.role].gold += curr.gold || 0;
+      acc[curr.role].level += curr.level || 0;
       return acc;
     }, {});
 
-    const stats = Object.keys(statsByRole).reduce((acc, role) => {
-      const roleStats = statsByRole[role];
+    // Calculate allies totals
+    const alliesTotals = playerStats.reduce(
+      (acc, curr) => {
+        acc.kills += curr.kills || 0;
+        acc.deaths += curr.deaths || 0;
+        acc.assists += curr.assists || 0;
+        acc.gold += curr.gold || 0;
+        acc.level += curr.level || 0;
+        acc.nb_games += 1;
+        return acc;
+      },
+      { kills: 0, deaths: 0, assists: 0, gold: 0, level: 0, nb_games: 0 }
+    );
+
+    const alliesKda = alliesTotals.deaths > 0 ? (alliesTotals.kills + alliesTotals.assists) / alliesTotals.deaths : alliesTotals.kills + alliesTotals.assists;
+
+    // Format allies roles
+    const alliesRoles = Object.keys(alliesStatsByRole).reduce((acc, role) => {
+      const roleStats = alliesStatsByRole[role];
+      const nb_games = playerStats.filter((p) => p.role === role).length;
       const kda = roleStats.deaths > 0 ? (roleStats.kills + roleStats.assists) / roleStats.deaths : roleStats.kills + roleStats.assists;
 
       acc[role] = {
@@ -99,12 +120,81 @@ router.post('/home_stats', passport.authenticate(['admin', 'user'], { session: f
         kda: Math.round(kda * 100) / 100,
         gold: roleStats.gold,
         level: roleStats.level,
-        nb_games: playerStats.filter((p) => p.role === role).length,
+        nb_games: nb_games,
       };
       return acc;
     }, {});
 
-    return res.status(200).send({ ok: true, data: stats });
+    // Calculate enemies stats by role
+    const enemiesStatsByRole = enemyStats.reduce((acc, curr) => {
+      if (!curr.role) return acc;
+      if (!acc[curr.role]) acc[curr.role] = { kills: 0, deaths: 0, assists: 0, gold: 0 };
+      acc[curr.role].kills += curr.kills || 0;
+      acc[curr.role].deaths += curr.deaths || 0;
+      acc[curr.role].assists += curr.assists || 0;
+      acc[curr.role].gold += curr.gold || 0;
+      return acc;
+    }, {});
+
+    // Calculate enemies totals
+    const enemiesTotals = enemyStats.reduce(
+      (acc, curr) => {
+        acc.kills += curr.kills || 0;
+        acc.deaths += curr.deaths || 0;
+        acc.assists += curr.assists || 0;
+        acc.gold += curr.gold || 0;
+        acc.nb_games += 1;
+        return acc;
+      },
+      { kills: 0, deaths: 0, assists: 0, gold: 0, nb_games: 0 }
+    );
+
+    const enemiesKda = enemiesTotals.deaths > 0 ? (enemiesTotals.kills + enemiesTotals.assists) / enemiesTotals.deaths : enemiesTotals.kills + enemiesTotals.assists;
+
+    // Format enemies roles (averages)
+    const enemiesRoles = Object.keys(enemiesStatsByRole).reduce((acc, role) => {
+      const roleStats = enemiesStatsByRole[role];
+      const nb_games = enemyStats.filter((p) => p.role === role).length;
+      const kda = roleStats.deaths > 0 ? (roleStats.kills + roleStats.assists) / roleStats.deaths : roleStats.kills + roleStats.assists;
+
+      acc[role] = {
+        kills: nb_games > 0 ? Math.round((roleStats.kills / nb_games) * 10) / 10 : 0,
+        deaths: nb_games > 0 ? Math.round((roleStats.deaths / nb_games) * 10) / 10 : 0,
+        assists: nb_games > 0 ? Math.round((roleStats.assists / nb_games) * 10) / 10 : 0,
+        kda: Math.round(kda * 100) / 100,
+        nb_games: nb_games,
+      };
+      return acc;
+    }, {});
+
+    return res.status(200).send({
+      ok: true,
+      data: {
+        allies: {
+          total: {
+            kills: alliesTotals.kills,
+            deaths: alliesTotals.deaths,
+            assists: alliesTotals.assists,
+            kda: Math.round(alliesKda * 100) / 100,
+            gold: alliesTotals.gold,
+            level: alliesTotals.level,
+            nb_games: alliesTotals.nb_games,
+          },
+          roles: alliesRoles,
+        },
+        enemies: {
+          total: {
+            kills: enemiesTotals.nb_games > 0 ? Math.round((enemiesTotals.kills / enemiesTotals.nb_games) * 10) / 10 : 0,
+            deaths: enemiesTotals.nb_games > 0 ? Math.round((enemiesTotals.deaths / enemiesTotals.nb_games) * 10) / 10 : 0,
+            assists: enemiesTotals.nb_games > 0 ? Math.round((enemiesTotals.assists / enemiesTotals.nb_games) * 10) / 10 : 0,
+            kda: Math.round(enemiesKda * 100) / 100,
+            gold: enemiesTotals.gold,
+            nb_games: enemiesTotals.nb_games,
+          },
+          roles: enemiesRoles,
+        },
+      },
+    });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
