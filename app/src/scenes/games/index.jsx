@@ -146,14 +146,14 @@ function GameCard({ game, onDelete }) {
           <div className="hidden sm:flex items-center gap-4 text-sm">
             <div className="text-center">
               <p className="text-white font-semibold">
-                {game.blue_team?.total_kills || 0}/{game.blue_team?.total_deaths || 0}/{game.blue_team?.total_assists || 0}
+                {game.blue_team?.kills || 0}/{game.blue_team?.deaths || 0}/{game.blue_team?.assists || 0}
               </p>
               <p className="text-xs text-slate-500">Blue</p>
             </div>
             <span className="text-slate-600">vs</span>
             <div className="text-center">
               <p className="text-white font-semibold">
-                {game.red_team?.total_kills || 0}/{game.red_team?.total_deaths || 0}/{game.red_team?.total_assists || 0}
+                {game.red_team?.kills || 0}/{game.red_team?.deaths || 0}/{game.red_team?.assists || 0}
               </p>
               <p className="text-xs text-slate-500">Red</p>
             </div>
@@ -383,7 +383,7 @@ function PlayerRow({ player, isOpponent = false, isEditing }) {
 
         <div className="text-right w-16">
           <p className="text-amber-400 text-sm">{(player.gold / 1000).toFixed(1)}k</p>
-          <p className="text-slate-500 text-xs">{player.creep} CS</p>
+          <p className="text-slate-500 text-xs">{player.cs} CS</p>
         </div>
       </div>
     </div>
@@ -395,13 +395,13 @@ function DamageTab({ playerStats }) {
   const opponents = sortPlayersByRole(playerStats.filter(p => p.opponent))
 
   const allPlayers = [...playerStats]
-  const maxDamage = Math.max(...allPlayers.map(p => p.damageDealt?.totalDamageToChampions || 0))
+  const maxDamage = Math.max(...allPlayers.map(p => p.damage?.total_to_champions || 0))
 
   const DamageCard = ({ player, maxDamage }) => {
-    const totalDamage = player?.damageDealt?.totalDamageToChampions || 0
-    const physDamage = player?.damageDealt?.physicalDamageToChampions || 0
-    const magicDamage = player?.damageDealt?.magicDamageToChampions || 0
-    const trueDamage = player?.damageDealt?.trueDamageToChampions || 0
+    const totalDamage = player?.damage?.total_to_champions || 0
+    const physDamage = player?.damage?.physical_to_champions || 0
+    const magicDamage = player?.damage?.magic_to_champions || 0
+    const trueDamage = player?.damage?.true_to_champions || 0
 
     const physPercent = totalDamage > 0 ? (physDamage / totalDamage) * 100 : 0
     const magicPercent = totalDamage > 0 ? (magicDamage / totalDamage) * 100 : 0
@@ -477,12 +477,12 @@ function IncomeTab({ playerStats }) {
   const opponents = sortPlayersByRole(playerStats.filter(p => p.opponent))
 
   const allPlayers = [...playerStats]
-  const maxGold = Math.max(...allPlayers.map(p => p.income?.goldEarned || 0))
+  const maxGold = Math.max(...allPlayers.map(p => p.gold || 0))
 
   const IncomeCard = ({ player, maxGold }) => {
-    const goldEarned = player?.income?.goldEarned || 0
-    const totalMinions = player?.income?.totalMinionsKilled || 0
-    const neutralMinions = player?.income?.neutralMinionsKilled || 0
+    const goldEarned = player?.gold || 0
+    const totalMinions = player?.farm?.minions || 0
+    const neutralMinions = player?.farm?.jungle_monsters || 0
 
     return (
       <div className="flex-1 group relative p-2 rounded-lg bg-slate-800/30">
@@ -536,13 +536,13 @@ function VisionTab({ playerStats }) {
   const opponents = sortPlayersByRole(playerStats.filter(p => p.opponent))
 
   const allPlayers = [...playerStats]
-  const maxVisionScore = Math.max(...allPlayers.map(p => p.vision?.visionScore || 0))
+  const maxVisionScore = Math.max(...allPlayers.map(p => p.vision?.score || 0))
 
   const VisionCard = ({ player, maxVisionScore }) => {
-    const visionScore = player?.vision?.visionScore || 0
-    const controlWards = player?.vision?.controlWardsPurchased || 0
-    const wardsDestroyed = player?.vision?.wardsDestroyed || 0
-    const wardsPlaced = player?.vision?.wardsPlaced || 0
+    const visionScore = player?.vision?.score || 0
+    const controlWards = player?.vision?.control_wards_bought || 0
+    const wardsDestroyed = player?.vision?.wards_killed || 0
+    const wardsPlaced = player?.vision?.wards_placed || 0
 
     return (
       <div className="flex-1 group relative p-2 rounded-lg bg-slate-800/30">

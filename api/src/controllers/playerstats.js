@@ -270,7 +270,7 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
       player.total_kills += curr.kills || 0;
       player.total_deaths += curr.deaths || 0;
       player.total_assists += curr.assists || 0;
-      player.total_creep += curr.creep || 0;
+      player.total_creep += curr.cs || 0;
       player.total_gold += curr.gold || 0;
       player.total_duration += curr.game_duration || 0;
       if (curr.game_win) player.wins += 1;
@@ -294,7 +294,7 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
       champStats.total_kills += curr.kills || 0;
       champStats.total_deaths += curr.deaths || 0;
       champStats.total_assists += curr.assists || 0;
-      champStats.total_creep += curr.creep || 0;
+      champStats.total_creep += curr.cs || 0;
       champStats.total_gold += curr.gold || 0;
       champStats.total_duration += curr.game_duration || 0;
       if (curr.game_win) champStats.wins += 1;

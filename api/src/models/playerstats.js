@@ -4,80 +4,121 @@ const MODELNAME = 'playerstats';
 
 const Schema = new mongoose.Schema(
   {
-    summoner_name: { type: String, trim: true },
-    team_id: { type: String, trim: true },
-    team_name: { type: String, trim: true },
-    opponent: { type: Boolean },
+    //game
     game_id: { type: String, trim: true },
     game_name: { type: String, trim: true },
     game_win: { type: Boolean },
     game_duration: { type: Number },
 
+    //info player
+    summoner_name: { type: String, trim: true },
+    riot_tag: { type: String, trim: true },
+    PUUID: { type: String, trim: true },
+
+    team_id: { type: String, trim: true },
+    team_name: { type: String, trim: true },
+    opponent: { type: Boolean },
+    side: { type: String, enum: ['blue', 'red'] },
+    role: { type: String, enum: ['top', 'jungle', 'mid', 'bottom', 'support'] },
+    champion: { type: String },
+
     // Basic stats
     kills: { type: Number },
     deaths: { type: Number },
-    role: { type: String, enum: ['top', 'jungle', 'mid', 'bottom', 'support'] },
     assists: { type: Number },
-    creep: { type: Number },
-    gold: { type: Number },
     level: { type: Number },
-    champion: { type: String },
 
-    // Combat stats
+    // CS & Gold
+    cs: { type: Number, default: 0 }, // Total minions + jungle
+    cs_per_min: { type: Number }, // Calculé
+    gold: { type: Number, default: 0 },
+    gold_per_min: { type: Number }, // Calculé
+
+    // Multi-kills
+    multi_kills: {
+      double: { type: Number, default: 0 },
+      triple: { type: Number, default: 0 },
+      quadra: { type: Number, default: 0 },
+      penta: { type: Number, default: 0 },
+    },
+
+    // Combat
     combat: {
-      largestKillingSpree: { type: Number },
-      largestMultiKill: { type: Number },
-      crowdControlScore: { type: Number },
-      firstBlood: { type: Boolean },
+      killing_spree: { type: Number, default: 0 },
+      largest_multi_kill: { type: Number, default: 0 },
+      first_blood: { type: Boolean, default: false },
+      solo_kills: { type: Number, default: 0 },
+      time_ccing: { type: Number, default: 0 }, // Temps de CC en secondes
     },
 
-    // Damage dealt stats
-    damageDealt: {
-      totalDamageToChampions: { type: Number },
-      physicalDamageToChampions: { type: Number },
-      magicDamageToChampions: { type: Number },
-      trueDamageToChampions: { type: Number },
-      totalDamageDealt: { type: Number },
-      physicalDamageDealt: { type: Number },
-      magicDamageDealt: { type: Number },
-      trueDamageDealt: { type: Number },
-      largestCriticalStrike: { type: Number },
-      totalDamageToTowers: { type: Number },
-      totalDamageToObjectives: { type: Number },
+    // Dégâts infligés
+    damage: {
+      total_to_champions: { type: Number, default: 0 },
+      physical_to_champions: { type: Number, default: 0 },
+      magic_to_champions: { type: Number, default: 0 },
+      true_to_champions: { type: Number, default: 0 },
+      to_turrets: { type: Number, default: 0 },
+      to_objectives: { type: Number, default: 0 },
+      damage_per_min: { type: Number }, // Calculé
     },
 
-    // Damage taken stats
-    damageTaken: {
-      damageHealed: { type: Number },
-      totalDamageTaken: { type: Number },
-      physicalDamageTaken: { type: Number },
-      magicDamageTaken: { type: Number },
-      trueDamageTaken: { type: Number },
-      totalDamageSelfMitigated: { type: Number },
+    // Dégâts subis / Tank
+    tank: {
+      total_taken: { type: Number, default: 0 },
+      physical_taken: { type: Number, default: 0 },
+      magic_taken: { type: Number, default: 0 },
+      true_taken: { type: Number, default: 0 },
+      self_mitigated: { type: Number, default: 0 },
+      healed: { type: Number, default: 0 },
+      shielded_to_allies: { type: Number, default: 0 },
     },
 
-    // Vision stats
+    // Vision
     vision: {
-      visionScore: { type: Number },
-      wardsPlaced: { type: Number },
-      wardsDestroyed: { type: Number },
-      controlWardsPurchased: { type: Number },
+      score: { type: Number, default: 0 },
+      wards_placed: { type: Number, default: 0 },
+      wards_killed: { type: Number, default: 0 },
+      control_wards_bought: { type: Number, default: 0 },
     },
 
-    // Income stats
-    income: {
-      goldEarned: { type: Number },
-      goldSpent: { type: Number },
-      totalMinionsKilled: { type: Number },
-      neutralMinionsKilled: { type: Number },
-      neutralMinionsKilledInTeamJungle: { type: Number },
-      neutralMinionsKilledInEnemyJungle: { type: Number },
+    // Farm détaillé
+    farm: {
+      minions: { type: Number, default: 0 },
+      jungle_monsters: { type: Number, default: 0 },
+      enemy_jungle: { type: Number, default: 0 },
+      ally_jungle: { type: Number, default: 0 },
     },
 
-    // Miscellaneous stats
-    misc: {
-      towersDestroyed: { type: Number },
-      inhibitorsDestroyed: { type: Number },
+    // Objectifs
+    objectives: {
+      turrets: { type: Number, default: 0 },
+      inhibitors: { type: Number, default: 0 },
+      dragons: { type: Number, default: 0 },
+      barons: { type: Number, default: 0 },
+      heralds: { type: Number, default: 0 },
+    },
+
+    // Build (IDs Data Dragon)
+    items: [{ type: Number }], // Array de 7 items max (6 + ward)
+
+    // Runes
+    runes: {
+      keystone: { type: Number }, // ID de la rune principale
+      primary_tree: { type: Number },
+      secondary_tree: { type: Number },
+    },
+
+    // Summoner spells (IDs)
+    summoner_spells: {
+      spell1: { type: Number },
+      spell2: { type: Number },
+    },
+
+    // Temps
+    time: {
+      played: { type: Number }, // secondes
+      dead: { type: Number }, // secondes passées mort
+      longest_life: { type: Number }, // plus longue vie
     },
   },
   { timestamps: true }

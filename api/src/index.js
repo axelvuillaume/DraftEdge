@@ -19,6 +19,9 @@ require('./services/mongo');
 
 app.use(cors({ credentials: true, origin: [APP_URL, 'your production url because sometimes theres a cors issue'] }));
 app.use(cookieParser());
+
+app.use('/parser', require('./controllers/parser'));
+
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -34,6 +37,7 @@ app.get('/', async (req, res) => {
 app.use('/user', require('./controllers/user'));
 app.use('/file', require('./controllers/file'));
 app.use('/game', require('./controllers/game'));
+
 app.use('/playerstats', require('./controllers/playerstats'));
 
 setupErrorHandler(app);

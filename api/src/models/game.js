@@ -5,16 +5,44 @@ const MODELNAME = 'game';
 const Schema = new mongoose.Schema(
   {
     name: { type: String },
+    game_id: { type: String },
     duration: { type: Number },
-    side: { type: String, enum: ['blue', 'red'] },
-    win: { type: Boolean },
-    opponent_name: { type: String },
-    date: { type: String },
+    patch: { type: String },
+    date: { type: Date },
+    screenshot: { type: String },
+
+    // Contexte équipe (ton équipe)
     team_id: { type: String },
     team_name: { type: String },
-    screenshot: { type: String },
-    blue_team: { total_kills: { type: Number }, total_deaths: { type: Number }, total_assists: { type: Number }, total_gold: { type: Number } },
-    red_team: { total_kills: { type: Number }, total_deaths: { type: Number }, total_assists: { type: Number }, total_gold: { type: Number } },
+    team_side: { type: String, enum: ['blue', 'red'] },
+    win: { type: Boolean },
+    opponent_name: { type: String },
+
+    // Stats équipes
+    blue_team: {
+      win: { type: Boolean },
+      kills: { type: Number, default: 0 },
+      deaths: { type: Number, default: 0 },
+      assists: { type: Number, default: 0 },
+      gold: { type: Number, default: 0 },
+      dragons: { type: Number, default: 0 },
+      barons: { type: Number, default: 0 },
+      heralds: { type: Number, default: 0 },
+      towers: { type: Number, default: 0 },
+      inhibitors: { type: Number, default: 0 },
+    },
+    red_team: {
+      win: { type: Boolean },
+      kills: { type: Number, default: 0 },
+      deaths: { type: Number, default: 0 },
+      assists: { type: Number, default: 0 },
+      gold: { type: Number, default: 0 },
+      dragons: { type: Number, default: 0 },
+      barons: { type: Number, default: 0 },
+      heralds: { type: Number, default: 0 },
+      towers: { type: Number, default: 0 },
+      inhibitors: { type: Number, default: 0 },
+    },
   },
   { timestamps: true }
 );

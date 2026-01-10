@@ -337,16 +337,16 @@ router.post('/upload-scoreboard', passport.authenticate(['admin', 'user'], { ses
         team_id: user?.team_id || null,
         team_name: user?.team_name || null,
         blue_team: {
-          total_kills: analysis.team1.totalKills,
-          total_deaths: analysis.team1.totalDeaths,
-          total_assists: analysis.team1.totalAssists,
-          total_gold: analysis.team1.totalGold,
+          kills: analysis.team1.totalKills,
+          deaths: analysis.team1.totalDeaths,
+          assists: analysis.team1.totalAssists,
+          gold: analysis.team1.totalGold,
         },
         red_team: {
-          total_kills: analysis.team2.totalKills,
-          total_deaths: analysis.team2.totalDeaths,
-          total_assists: analysis.team2.totalAssists,
-          total_gold: analysis.team2.totalGold,
+          kills: analysis.team2.totalKills,
+          deaths: analysis.team2.totalDeaths,
+          assists: analysis.team2.totalAssists,
+          gold: analysis.team2.totalGold,
         },
       });
 
@@ -365,7 +365,7 @@ router.post('/upload-scoreboard', passport.authenticate(['admin', 'user'], { ses
         kills: player.kills,
         deaths: player.deaths,
         assists: player.assists,
-        creep: player.cs,
+        cs: player.cs,
         gold: player.gold,
         ...buildStatsUpdate(player),
       }));
@@ -385,7 +385,7 @@ router.post('/upload-scoreboard', passport.authenticate(['admin', 'user'], { ses
         kills: player.kills,
         deaths: player.deaths,
         assists: player.assists,
-        creep: player.cs,
+        cs: player.cs,
         gold: player.gold,
         ...buildStatsUpdate(player),
       }));
@@ -401,15 +401,15 @@ router.post('/upload-scoreboard', passport.authenticate(['admin', 'user'], { ses
 
     if (game) {
       const gameUpdate = {};
-      if (analysis.team1.totalKills != null && !game.blue_team?.total_kills) {
-        gameUpdate['blue_team.total_kills'] = analysis.team1.totalKills;
-        gameUpdate['blue_team.total_deaths'] = analysis.team1.totalDeaths;
-        gameUpdate['blue_team.total_assists'] = analysis.team1.totalAssists;
-        gameUpdate['blue_team.total_gold'] = analysis.team1.totalGold;
-        gameUpdate['red_team.total_kills'] = analysis.team2.totalKills;
-        gameUpdate['red_team.total_deaths'] = analysis.team2.totalDeaths;
-        gameUpdate['red_team.total_assists'] = analysis.team2.totalAssists;
-        gameUpdate['red_team.total_gold'] = analysis.team2.totalGold;
+      if (analysis.team1.totalKills != null && !game.blue_team?.kills) {
+        gameUpdate['blue_team.kills'] = analysis.team1.totalKills;
+        gameUpdate['blue_team.deaths'] = analysis.team1.totalDeaths;
+        gameUpdate['blue_team.assists'] = analysis.team1.totalAssists;
+        gameUpdate['blue_team.gold'] = analysis.team1.totalGold;
+        gameUpdate['red_team.kills'] = analysis.team2.totalKills;
+        gameUpdate['red_team.deaths'] = analysis.team2.totalDeaths;
+        gameUpdate['red_team.assists'] = analysis.team2.totalAssists;
+        gameUpdate['red_team.gold'] = analysis.team2.totalGold;
       }
       if (Object.keys(gameUpdate).length > 0) await Game.findByIdAndUpdate(game._id, { $set: gameUpdate });
 
@@ -520,64 +520,57 @@ function buildStatsUpdate(player) {
   // Combat stats
   if (player.combat) {
     update.combat = {};
-    if (player.combat.largestKillingSpree != null) update.combat.largestKillingSpree = player.combat.largestKillingSpree;
-    if (player.combat.largestMultiKill != null) update.combat.largestMultiKill = player.combat.largestMultiKill;
-    if (player.combat.crowdControlScore != null) update.combat.crowdControlScore = player.combat.crowdControlScore;
-    if (player.combat.firstBlood != null) update.combat.firstBlood = player.combat.firstBlood;
+    if (player.combat.largestKillingSpree != null) update.combat.killing_spree = player.combat.largestKillingSpree;
+    if (player.combat.largestMultiKill != null) update.combat.largest_multi_kill = player.combat.largestMultiKill;
+    if (player.combat.crowdControlScore != null) update.combat.time_ccing = player.combat.crowdControlScore;
+    if (player.combat.firstBlood != null) update.combat.first_blood = player.combat.firstBlood;
   }
 
-  // Damage dealt stats
+  // Damage stats
   if (player.damageDealt) {
-    update.damageDealt = {};
-    if (player.damageDealt.totalDamageToChampions != null) update.damageDealt.totalDamageToChampions = player.damageDealt.totalDamageToChampions;
-    if (player.damageDealt.physicalDamageToChampions != null) update.damageDealt.physicalDamageToChampions = player.damageDealt.physicalDamageToChampions;
-    if (player.damageDealt.magicDamageToChampions != null) update.damageDealt.magicDamageToChampions = player.damageDealt.magicDamageToChampions;
-    if (player.damageDealt.trueDamageToChampions != null) update.damageDealt.trueDamageToChampions = player.damageDealt.trueDamageToChampions;
-    if (player.damageDealt.totalDamageDealt != null) update.damageDealt.totalDamageDealt = player.damageDealt.totalDamageDealt;
-    if (player.damageDealt.physicalDamageDealt != null) update.damageDealt.physicalDamageDealt = player.damageDealt.physicalDamageDealt;
-    if (player.damageDealt.magicDamageDealt != null) update.damageDealt.magicDamageDealt = player.damageDealt.magicDamageDealt;
-    if (player.damageDealt.trueDamageDealt != null) update.damageDealt.trueDamageDealt = player.damageDealt.trueDamageDealt;
-    if (player.damageDealt.largestCriticalStrike != null) update.damageDealt.largestCriticalStrike = player.damageDealt.largestCriticalStrike;
-    if (player.damageDealt.totalDamageToTowers != null) update.damageDealt.totalDamageToTowers = player.damageDealt.totalDamageToTowers;
-    if (player.damageDealt.totalDamageToObjectives != null) update.damageDealt.totalDamageToObjectives = player.damageDealt.totalDamageToObjectives;
+    update.damage = {};
+    if (player.damageDealt.totalDamageToChampions != null) update.damage.total_to_champions = player.damageDealt.totalDamageToChampions;
+    if (player.damageDealt.physicalDamageToChampions != null) update.damage.physical_to_champions = player.damageDealt.physicalDamageToChampions;
+    if (player.damageDealt.magicDamageToChampions != null) update.damage.magic_to_champions = player.damageDealt.magicDamageToChampions;
+    if (player.damageDealt.trueDamageToChampions != null) update.damage.true_to_champions = player.damageDealt.trueDamageToChampions;
+    if (player.damageDealt.totalDamageToTowers != null) update.damage.to_turrets = player.damageDealt.totalDamageToTowers;
+    if (player.damageDealt.totalDamageToObjectives != null) update.damage.to_objectives = player.damageDealt.totalDamageToObjectives;
   }
 
-  // Damage taken stats
+  // Tank stats
   if (player.damageTaken) {
-    update.damageTaken = {};
-    if (player.damageTaken.damageHealed != null) update.damageTaken.damageHealed = player.damageTaken.damageHealed;
-    if (player.damageTaken.totalDamageTaken != null) update.damageTaken.totalDamageTaken = player.damageTaken.totalDamageTaken;
-    if (player.damageTaken.physicalDamageTaken != null) update.damageTaken.physicalDamageTaken = player.damageTaken.physicalDamageTaken;
-    if (player.damageTaken.magicDamageTaken != null) update.damageTaken.magicDamageTaken = player.damageTaken.magicDamageTaken;
-    if (player.damageTaken.trueDamageTaken != null) update.damageTaken.trueDamageTaken = player.damageTaken.trueDamageTaken;
-    if (player.damageTaken.totalDamageSelfMitigated != null) update.damageTaken.totalDamageSelfMitigated = player.damageTaken.totalDamageSelfMitigated;
+    update.tank = {};
+    if (player.damageTaken.damageHealed != null) update.tank.healed = player.damageTaken.damageHealed;
+    if (player.damageTaken.totalDamageTaken != null) update.tank.total_taken = player.damageTaken.totalDamageTaken;
+    if (player.damageTaken.physicalDamageTaken != null) update.tank.physical_taken = player.damageTaken.physicalDamageTaken;
+    if (player.damageTaken.magicDamageTaken != null) update.tank.magic_taken = player.damageTaken.magicDamageTaken;
+    if (player.damageTaken.trueDamageTaken != null) update.tank.true_taken = player.damageTaken.trueDamageTaken;
+    if (player.damageTaken.totalDamageSelfMitigated != null) update.tank.self_mitigated = player.damageTaken.totalDamageSelfMitigated;
   }
 
   // Vision stats
   if (player.vision) {
     update.vision = {};
-    if (player.vision.visionScore != null) update.vision.visionScore = player.vision.visionScore;
-    if (player.vision.wardsPlaced != null) update.vision.wardsPlaced = player.vision.wardsPlaced;
-    if (player.vision.wardsDestroyed != null) update.vision.wardsDestroyed = player.vision.wardsDestroyed;
-    if (player.vision.controlWardsPurchased != null) update.vision.controlWardsPurchased = player.vision.controlWardsPurchased;
+    if (player.vision.visionScore != null) update.vision.score = player.vision.visionScore;
+    if (player.vision.wardsPlaced != null) update.vision.wards_placed = player.vision.wardsPlaced;
+    if (player.vision.wardsDestroyed != null) update.vision.wards_killed = player.vision.wardsDestroyed;
+    if (player.vision.controlWardsPurchased != null) update.vision.control_wards_bought = player.vision.controlWardsPurchased;
   }
 
-  // Income stats
+  // Farm stats
   if (player.income) {
-    update.income = {};
-    if (player.income.goldEarned != null) update.income.goldEarned = player.income.goldEarned;
-    if (player.income.goldSpent != null) update.income.goldSpent = player.income.goldSpent;
-    if (player.income.totalMinionsKilled != null) update.income.totalMinionsKilled = player.income.totalMinionsKilled;
-    if (player.income.neutralMinionsKilled != null) update.income.neutralMinionsKilled = player.income.neutralMinionsKilled;
-    if (player.income.neutralMinionsKilledInTeamJungle != null) update.income.neutralMinionsKilledInTeamJungle = player.income.neutralMinionsKilledInTeamJungle;
-    if (player.income.neutralMinionsKilledInEnemyJungle != null) update.income.neutralMinionsKilledInEnemyJungle = player.income.neutralMinionsKilledInEnemyJungle;
+    update.farm = {};
+    if (player.income.totalMinionsKilled != null) update.farm.minions = player.income.totalMinionsKilled;
+    if (player.income.neutralMinionsKilled != null) update.farm.jungle_monsters = player.income.neutralMinionsKilled;
+    if (player.income.neutralMinionsKilledInTeamJungle != null) update.farm.ally_jungle = player.income.neutralMinionsKilledInTeamJungle;
+    if (player.income.neutralMinionsKilledInEnemyJungle != null) update.farm.enemy_jungle = player.income.neutralMinionsKilledInEnemyJungle;
   }
 
-  // Miscellaneous stats
+  // Objectives stats
   if (player.MISC) {
-    update.misc = {};
-    if (player.MISC.towersDestroyed != null) update.misc.towersDestroyed = player.MISC.towersDestroyed;
-    if (player.MISC.inhibitorsDestroyed != null) update.misc.inhibitorsDestroyed = player.MISC.inhibitorsDestroyed;
+    update.objectives = {};
+    if (player.MISC.towersDestroyed != null) update.objectives.turrets = player.MISC.towersDestroyed;
+    if (player.MISC.inhibitorsDestroyed != null) update.objectives.inhibitors = player.MISC.inhibitorsDestroyed;
   }
 
   return update;
@@ -591,7 +584,7 @@ function buildPlayerUpdate(player) {
   if (player.kills != null) update.kills = player.kills;
   if (player.deaths != null) update.deaths = player.deaths;
   if (player.assists != null) update.assists = player.assists;
-  if (player.cs != null) update.creep = player.cs;
+  if (player.cs != null) update.cs = player.cs;
   if (player.gold != null) update.gold = player.gold;
 
   return { ...update, ...buildStatsUpdate(player) };
