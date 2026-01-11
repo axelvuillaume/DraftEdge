@@ -14,7 +14,7 @@ const S3_SECRETACCESSKEY = process.env.S3_SECRETACCESSKEY || '';
 
 const BREVO_KEY = process.env.BREVO_KEY || '';
 
-const RIOT_API_KEY = 'RGAPI-f0870ba9-2502-48b6-9b13-ddf71fbfb6df' || '';
+const RIOT_API_KEY = 'RGAPI-a05bd425-7b9c-4bc0-9c9e-d6dddb689944' || '';
 
 const CONFIG = {
   ENVIRONMENT,
