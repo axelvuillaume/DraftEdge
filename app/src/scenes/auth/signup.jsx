@@ -1,5 +1,5 @@
-import React, { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import React, { useState, useEffect } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import toast from "react-hot-toast"
 import { Shield, Mail, Lock, Users, ArrowRight, Gamepad2, BarChart3, Trophy } from "lucide-react"
 
@@ -11,6 +11,13 @@ export default () => {
   const [values, setValues] = useState({ team_name: "", email: "", password: "" })
   const { user, setUser } = store()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const teamId = searchParams.get("team_id")
+  const teamName = searchParams.get("team_name")
+
+  useEffect(() => {
+    if (teamName && teamId) setValues(v => ({ ...v, team_name: teamName, team_id: teamId }))
+  }, [teamId, teamName])
 
   const send = async () => {
     try {
@@ -91,7 +98,7 @@ export default () => {
 
           <div className="mb-10">
             <h1 className="text-3xl font-bold text-white mb-3">Create your account</h1>
-            <p className="text-slate-500">Start tracking your team's performance</p>
+            <p className="text-slate-500">{teamId ? "Join your team and start tracking" : "Start tracking your team's performance"}</p>
           </div>
 
           <div className="space-y-6">
@@ -103,11 +110,12 @@ export default () => {
               <div className="relative">
                 <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600" />
                 <input
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-4 pl-12 pr-4 text-white placeholder-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors text-base"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-4 pl-12 pr-4 text-white placeholder-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors text-base autofill:shadow-[0_0_0_1000px_#0f172a_inset] autofill:text-white"
                   type="text"
                   id="team_name"
+                  disabled={!!teamId}
+                  value={teamId ? teamName : values.team_name}
                   placeholder="Your team name"
-                  value={values.team_name}
                   onChange={e => setValues({ ...values, team_name: e.target.value })}
                 />
               </div>
@@ -121,7 +129,7 @@ export default () => {
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600" />
                 <input
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-4 pl-12 pr-4 text-white placeholder-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors text-base"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-4 pl-12 pr-4 text-white placeholder-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors text-base autofill:shadow-[0_0_0_1000px_#0f172a_inset] autofill:text-white"
                   name="email"
                   type="email"
                   id="email"
@@ -140,7 +148,7 @@ export default () => {
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600" />
                 <input
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-4 pl-12 pr-4 text-white placeholder-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors text-base"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-4 pl-12 pr-4 text-white placeholder-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors text-base autofill:shadow-[0_0_0_1000px_#0f172a_inset] autofill:text-white"
                   name="password"
                   type="password"
                   id="password"
@@ -157,7 +165,7 @@ export default () => {
               className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-semibold rounded-xl transition-all duration-200 text-base mt-2"
               onClick={send}
             >
-              <span>Create account</span>
+              <span>{teamId ? "Join team" : "Create account"}</span>
               <ArrowRight className="w-5 h-5" />
             </LoadingButton>
 

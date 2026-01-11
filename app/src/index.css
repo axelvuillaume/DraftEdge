@@ -63,7 +63,18 @@
   input,
   textarea,
   select {
-    @apply bg-transparent ring-1 ring-inset ring-light-border rounded-md py-3.5 px-3 text-base focus:ring-inset focus:ring-primary focus:outline-none transition-colors disabled:bg-gray-100;
+    @apply bg-transparent ring-1 ring-inset ring-light-border rounded-md py-3.5 px-3 text-base focus:ring-inset focus:ring-primary focus:outline-none transition-colors;
+  }
+
+  /* Correction globale pour l'autofill du navigateur */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: white !important; /* On force le texte en blanc */
+    transition: background-color 5000s ease-in-out 0s;
+    box-shadow: inset 0 0 20px 20px #0f172a; /* On force le fond sombre */
   }
 
   ::-webkit-inner-spin-button,
