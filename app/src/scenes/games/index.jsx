@@ -129,14 +129,14 @@ function GameCard({ game, onDelete }) {
 
           <div className="text-left">
             <div className="flex items-center gap-3">
-              <span className={`text-sm font-bold uppercase tracking-wider ${game.win ? "text-emerald-400" : "text-red-400"}`}>{game.win ? "Victory" : "Defeat"}</span>
+              <span className={`text-base font-bold uppercase tracking-wider ${game.win ? "text-emerald-400" : "text-red-400"}`}>{game.win ? "Victory" : "Defeat"}</span>
+              <span className="text-white text-base font-medium">{new Date(game.date).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "numeric" })} </span>
               <span className="text-slate-500 text-sm">•</span>
               <span className="text-slate-400 text-sm flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
                 {Math.floor(game.duration / 60)}m{game.duration % 60}
               </span>
             </div>
-            <p className="text-slate-500 text-sm mt-0.5">{game.date}</p>
             {game.name && <p className="text-slate-600 text-xs mt-0.5">{game.name}</p>}
           </div>
         </div>
@@ -246,7 +246,7 @@ function GameCard({ game, onDelete }) {
                   }`}
                 >
                   <Eye className="w-4 h-4" />
-                  Overview
+                  Scoreboard
                 </button>
                 <button
                   onClick={() => setActiveTab("damage")}
@@ -349,21 +349,33 @@ function PlayerRow({ player, isOpponent = false, isEditing }) {
         {/* Champion & Player Info */}
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            {isEditing ? (
+            {isEditing && (
               <input
                 type="text"
                 value={champion}
                 onChange={e => setChampion(e.target.value)}
                 onBlur={handleSave}
                 onKeyDown={e => e.key === "Enter" && e.target.blur()}
-                className={`bg-transparent text-white text-sm font-medium w-24 px-1 py-0.5 rounded border border-transparent hover:border-slate-600 focus:border-amber-500 focus:outline-none`}
+                className="bg-transparent text-white text-sm font-medium w-24 px-1 py-0.5 rounded border border-transparent hover:border-slate-600 focus:border-amber-500 focus:outline-none"
               />
-            ) : (
-              <p className="text-white text-sm font-medium truncate">{champion}</p>
             )}
-            <span className={`text-xs px-1.5 py-0.5 rounded ${roleIconColors[player.role]} bg-slate-700/50`}>{roleLabels[player.role]}</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <a
+                href={`https://dpm.lol/${player.summoner_name}-${player.riot_tag}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-white text-sm font-medium truncate hover:text-amber-400 transition-colors"
+              >
+                {player.summoner_name}
+              </a>
+              {player.tier && (
+                <span className="text-slate-400 text-[10px] font-medium uppercase bg-slate-700/50 px-1.5 py-0.5 rounded">
+                  {player.tier} {["MASTER", "GRANDMASTER", "CHALLENGER"].includes(player.tier.toUpperCase()) ? `${player.league_points} LP` : player.rank}
+                </span>
+              )}
+            </div>
+            <span className={`text-xs px-1.5 py-0.5 rounded ${roleIconColors[player.role]} bg-slate-700/50 flex-shrink-0`}>{roleLabels[player.role]}</span>
           </div>
-          <p className="text-slate-500 text-xs truncate">{player.summoner_name}</p>
         </div>
       </div>
 
@@ -382,7 +394,6 @@ function PlayerRow({ player, isOpponent = false, isEditing }) {
         </div>
 
         <div className="text-right w-16">
-          <p className="text-amber-400 text-sm">{(player.gold / 1000).toFixed(1)}k</p>
           <p className="text-slate-500 text-xs">{player.cs} CS</p>
         </div>
       </div>
