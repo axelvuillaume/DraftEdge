@@ -477,11 +477,6 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           enemy: parseFloat((enemyStats.deaths > 0 ? (enemyStats.kills + enemyStats.assists) / enemyStats.deaths : enemyStats.kills + enemyStats.assists).toFixed(1)),
         },
         {
-          label: 'First Blood %',
-          team: Math.round(getAvg(teamStats.first_blood, teamStats.games) * 100),
-          enemy: Math.round(getAvg(enemyStats.first_blood, enemyStats.games) * 100),
-        },
-        {
           label: 'DMG / Gold',
           team: parseFloat((teamStats.gold > 0 ? teamStats.damage / teamStats.gold : 0).toFixed(2)),
           enemy: parseFloat((enemyStats.gold > 0 ? enemyStats.damage / enemyStats.gold : 0).toFixed(2)),
