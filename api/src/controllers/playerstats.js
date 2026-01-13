@@ -32,6 +32,8 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
   try {
     let query = {};
 
+    if (req.body.team_id) query.team_id = req.body.team_id;
+    if (req.body.role) query.role = req.body.role;
     if (req.body.game_id) query.game_id = req.body.game_id;
     const limit = req.body.limit || 50;
     const skip = req.body.offset || 0;
@@ -342,6 +344,158 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
     });
 
     return res.status(200).send({ ok: true, data: result });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const query = { team_id: req.user.team_id };
+    const allTeamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
+    const playerStats = req.body.role ? allTeamStats.filter((s) => s.role === req.body.role) : allTeamStats;
+
+    const allEnemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true });
+    const enemyStats = req.body.role ? allEnemyStats.filter((s) => s.role === req.body.role) : allEnemyStats;
+
+    const calculateScore = (teamStats, enemyStats) => {
+      if (!teamStats.length) return 50;
+      const aggregate = (stats) =>
+        stats.reduce(
+          (acc, curr) => ({
+            kills: acc.kills + (curr.kills || 0),
+            deaths: acc.deaths + (curr.deaths || 0),
+            assists: acc.assists + (curr.assists || 0),
+            damage: acc.damage + (curr.damage?.total_to_champions || 0),
+            duration: acc.duration + (curr.game_duration || 0),
+            games: acc.games + 1,
+          }),
+          { kills: 0, deaths: 0, assists: 0, damage: 0, duration: 0, games: 0 }
+        );
+
+      const t = aggregate(teamStats);
+      const e = aggregate(enemyStats);
+      if (t.games === 0) return 50;
+      const eGames = e.games || 1;
+
+      const getPerGame = (total, games) => total / games;
+      const getPerMin = (total, duration) => (duration > 0 ? total / (duration / 60) : 0);
+
+      const metrics = [
+        {
+          // DMG / min
+          team: getPerMin(t.damage, t.duration),
+          enemy: getPerMin(e.damage, e.duration),
+          weight: 1,
+        },
+        {
+          // Kills / game
+          team: getPerGame(t.kills, t.games),
+          enemy: getPerGame(e.kills, eGames),
+          weight: 1,
+        },
+        {
+          // Deaths / game (Lower is better, so invert comparison)
+          team: getPerGame(t.deaths, t.games),
+          enemy: getPerGame(e.deaths, eGames),
+          weight: 1,
+          invert: true,
+        },
+        {
+          // KDA
+          team: t.deaths > 0 ? (t.kills + t.assists) / t.deaths : t.kills + t.assists,
+          enemy: e.deaths > 0 ? (e.kills + e.assists) / e.deaths : e.kills + e.assists,
+          weight: 1,
+        },
+      ];
+
+      let totalScoreChange = 0;
+
+      metrics.forEach((m) => {
+        if (m.enemy === 0) return;
+        let diffPercent = ((m.team - m.enemy) / m.enemy) * 100;
+        if (m.invert) diffPercent = -diffPercent;
+        totalScoreChange += Math.max(Math.min(diffPercent, 100), -100) * 0.25;
+      });
+
+      let score = 50 + totalScoreChange;
+      return Math.round(Math.max(0, Math.min(100, score)));
+    };
+
+    const roles = ['top', 'jungle', 'mid', 'bottom', 'support'];
+    const scores = roles.map((role) => {
+      const roleTeamStats = allTeamStats.filter((s) => s.role === role);
+      const roleEnemyStats = allEnemyStats.filter((s) => s.role === role);
+      return { role, score: calculateScore(roleTeamStats, roleEnemyStats) };
+    });
+
+    const aggregateStats = (stats) => {
+      return stats.reduce(
+        (acc, curr) => {
+          acc.kills += curr.kills || 0;
+          acc.deaths += curr.deaths || 0;
+          acc.assists += curr.assists || 0;
+          acc.gold += curr.gold || 0;
+          acc.damage += curr.damage?.total_to_champions || 0;
+          acc.duration += curr.game_duration || 0;
+          acc.first_blood += curr.combat?.first_blood ? 1 : 0;
+          acc.games += 1;
+          return acc;
+        },
+        { kills: 0, deaths: 0, assists: 0, gold: 0, damage: 0, duration: 0, first_blood: 0, games: 0 }
+      );
+    };
+
+    const team = aggregateStats(playerStats);
+    const enemy = aggregateStats(enemyStats);
+
+    const formatMetrics = (teamStats, enemyStats) => {
+      const getAvg = (total, games) => (games > 0 ? total / games : 0);
+      const getPerMin = (total, duration) => (duration > 0 ? total / (duration / 60) : 0);
+
+      const metrics = [
+        {
+          label: 'DMG / min',
+          team: Math.round(getPerMin(teamStats.damage, teamStats.duration)),
+          enemy: Math.round(getPerMin(enemyStats.damage, enemyStats.duration)),
+        },
+        {
+          label: 'Kills / game',
+          team: parseFloat(getAvg(teamStats.kills, teamStats.games).toFixed(1)),
+          enemy: parseFloat(getAvg(enemyStats.kills, enemyStats.games).toFixed(1)),
+        },
+        {
+          label: 'Deaths / game',
+          team: parseFloat(getAvg(teamStats.deaths, teamStats.games).toFixed(1)),
+          enemy: parseFloat(getAvg(enemyStats.deaths, enemyStats.games).toFixed(1)),
+          invert: true,
+        },
+        {
+          label: 'Team KDA',
+          team: parseFloat((teamStats.deaths > 0 ? (teamStats.kills + teamStats.assists) / teamStats.deaths : teamStats.kills + teamStats.assists).toFixed(1)),
+          enemy: parseFloat((enemyStats.deaths > 0 ? (enemyStats.kills + enemyStats.assists) / enemyStats.deaths : enemyStats.kills + enemyStats.assists).toFixed(1)),
+        },
+        {
+          label: 'First Blood %',
+          team: Math.round(getAvg(teamStats.first_blood, teamStats.games) * 100),
+          enemy: Math.round(getAvg(enemyStats.first_blood, enemyStats.games) * 100),
+        },
+        {
+          label: 'DMG / Gold',
+          team: parseFloat((teamStats.gold > 0 ? teamStats.damage / teamStats.gold : 0).toFixed(2)),
+          enemy: parseFloat((enemyStats.gold > 0 ? enemyStats.damage / enemyStats.gold : 0).toFixed(2)),
+        },
+      ];
+
+      return metrics.map((m) => {
+        const diff = m.enemy > 0 ? ((m.team - m.enemy) / m.enemy) * 100 : 0;
+        const sign = diff > 0 ? '+' : '';
+        return { ...m, diff: `${sign}${diff.toFixed(1)}%` };
+      });
+    };
+
+    return res.status(200).send({ ok: true, data: formatMetrics(team, enemy), scores });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });

@@ -2,7 +2,8 @@ import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
-import { Trophy, Swords, Target, TrendingUp, Clock, Shield, Crosshair, Zap, Gamepad2 } from "lucide-react"
+import { Trophy, Swords, Target, TrendingUp, Clock, Shield, Crosshair, Zap, Gamepad2, TrendingDown, AlertTriangle } from "lucide-react"
+import Sheet from "@/components/sheet"
 
 export default function FutureHome() {
   const [stats, setStats] = useState()
@@ -10,6 +11,7 @@ export default function FutureHome() {
   const [games, setGames] = useState([])
   const [bestChampions, setBestChampions] = useState([])
   const { user } = useStore()
+  const [selectedBubble, setSelectedBubble] = useState(null)
 
   const fetchGameStats = async () => {
     try {
@@ -80,6 +82,10 @@ export default function FutureHome() {
 
   return (
     <div className="min-h-[calc(100vh-65px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+      <Sheet isOpen={!!selectedBubble} onClose={() => setSelectedBubble(null)} title={selectedBubble?.title || "Détails"} modal={false}>
+        {selectedBubble && <BubbleDetailView bubble={selectedBubble} />}
+      </Sheet>
+
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -133,7 +139,7 @@ export default function FutureHome() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <div className="lg:col-span-7">
-            <PerformanceMindMap />
+            <PerformanceMindMap onNodeClick={setSelectedBubble} />
           </div>
           <div className="lg:col-span-5 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -204,15 +210,201 @@ export default function FutureHome() {
   )
 }
 
-function PerformanceMindMap() {
+function BubbleDetailView({ bubble }) {
+  const { user } = useStore()
+  const [data, setData] = useState([])
+  const [scores, setScores] = useState([])
+  const [filters, setFilters] = useState({ role: undefined })
+
+  const fetchplayerstats = async () => {
+    try {
+      const { ok, data, scores, code } = await api.post("/playerstats/bubble_stats", filters)
+      if (!ok) return toast.error(code)
+      setData(data)
+      if (scores) setScores(scores)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+  useEffect(() => {
+    fetchplayerstats()
+  }, [filters])
+
+  const toggleRoleFilter = role => {
+    setFilters(prev => {
+      if (prev.role === role) {
+        const { role: removed, ...rest } = prev
+        return rest
+      }
+      return { ...prev, role }
+    })
+  }
+
+  const teamScore = scores.length > 0 ? (scores.reduce((acc, curr) => acc + curr.score, 0) / scores.length).toFixed(1) : 0
+
+  // Mock analysis data - À remplacer par des données venant de l'API plus tard
+  const analysis = {
+    weaknesses: [
+      { role: "TOP", title: "Lane Pressure", desc: "Top perd trop de trades 1v1, -27% solo kills vs opponents" },
+      { role: "SUP", title: "Support Survivability", desc: "Support meurt trop souvent, positioning à améliorer" },
+      { role: "ADC", title: "Safety", desc: "ADC bon DPS mais +19% deaths, protéger mieux en TF" }
+    ],
+    strengths: [
+      { role: "MID", title: "Mid Dominance", desc: "Mid carry les fights, +17% DMG vs lane opponent" },
+      { role: "JGL", title: "Jungle Skirmish", desc: "JGL gagne les 2v2/3v3, excellent en early fights" }
+    ]
+  }
+
+  return (
+    <div className="bg-slate-900/40 backdrop-blur-md rounded-2xl border border-slate-800 p-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {/* Colonne Gauche: Filtres + Tableau */}
+        <div className="flex flex-col h-full">
+          {/* Header Filters */}
+          <div className="flex items-center gap-4 mb-6 flex-wrap">
+            <div
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-all ${
+                !filters.role ? "bg-slate-800 border-slate-600 ring-1 ring-slate-500" : "bg-slate-800/50 border-slate-700/50 hover:bg-slate-800"
+              }`}
+              onClick={() => setFilters(prev => ({ ...prev, role: undefined }))}
+            >
+              <div className="p-1 rounded bg-slate-700">
+                <Gamepad2 className="w-4 h-4 text-slate-400" />
+              </div>
+              <span className="text-white font-bold">TEAM</span>
+            </div>
+
+            {[{ role: "top" }, { role: "jungle" }, { role: "mid" }, { role: "bottom" }, { role: "support" }].map(roleDef => {
+              const score = scores?.find(s => s.role === roleDef.role)?.score || 0
+              return (
+                <div
+                  key={roleDef.role}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-all ${
+                    filters.role === roleDef.role ? "bg-slate-800 border-slate-600 ring-1 ring-slate-500" : "bg-slate-800/50 border-slate-700/50 hover:bg-slate-800"
+                  }`}
+                  onClick={() => toggleRoleFilter(roleDef.role)}
+                >
+                  <span className="text-slate-400 text-sm font-medium">{roleDef.role}</span>
+                  <span className={`font-bold ${score >= 70 ? "text-emerald-400" : score >= 50 ? "text-orange-400" : "text-red-400"}`}>{score}</span>
+                </div>
+              )
+            })}
+          </div>
+
+          <h3 className="text-lg font-bold text-white mb-4">Team vs Adversaires</h3>
+
+          {/* Stats Table */}
+          <div className="w-full flex-1">
+            <div className="grid grid-cols-4 gap-4 px-4 py-2 border-b border-slate-700/50 text-sm font-medium text-slate-400">
+              <div>Métrique</div>
+              <div className="text-center">Team</div>
+              <div className="text-center">Ennemis</div>
+              <div className="text-right">Diff</div>
+            </div>
+
+            <div className="divide-y divide-slate-700/50">
+              {data.map((row, i) => {
+                return (
+                  <div key={i} className="grid grid-cols-4 gap-4 px-4 py-3 hover:bg-slate-800/30 transition-colors items-center text-sm">
+                    <div className="text-slate-200 font-medium">{row.label}</div>
+                    <div className="text-center text-white font-mono">
+                      {row.team}
+                      {row.label.includes("%") ? "%" : ""}
+                    </div>
+                    <div className="text-center text-slate-400 font-mono">
+                      {row.enemy}
+                      {row.label.includes("%") ? "%" : ""}
+                    </div>
+                    <div className={`text-right font-bold font-mono ${row.team > row.enemy ? "text-emerald-400" : "text-red-400"} flex items-center justify-end gap-2`}>
+                      {row.diff}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Colonne Droite: Score + Insights */}
+        <div className="space-y-6">
+          {/* Global Score Card */}
+          <div className="bg-slate-950/40 border border-slate-800 p-6 rounded-xl flex items-center gap-6 shadow-xl">
+            <div className="w-16 h-16 rounded-xl flex items-center justify-center border border-slate-700/50" style={{ backgroundColor: bubble.color + "20" }}>
+              <bubble.icon className="w-8 h-8" style={{ color: bubble.color }} />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-2xl font-black text-white uppercase tracking-wider mb-1" style={{ color: bubble.color }}>
+                {bubble.title}
+              </h3>
+              <p className="text-sm text-slate-500 font-medium">{user?.team_name || "Team"} • Moyenne</p>
+            </div>
+            <div className="text-right">
+              <div className="text-5xl font-black text-white tracking-tighter">{teamScore}</div>
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">/ 100</div>
+            </div>
+          </div>
+
+          {/* Analysis Section */}
+          <div className="space-y-4">
+            {/* Points à Améliorer */}
+            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+                <h4 className="text-red-400 font-bold text-base">Points à Améliorer</h4>
+              </div>
+              <div className="space-y-4">
+                {analysis.weaknesses.map((item, i) => (
+                  <div key={i} className="flex gap-3 items-start">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-2 shrink-0" />
+                    <div>
+                      <div className="text-white font-semibold text-sm">
+                        <span className="text-red-400 mr-2 uppercase text-xs font-bold tracking-wider">{item.role}</span>
+                        {item.title}
+                      </div>
+                      <p className="text-slate-400 text-xs mt-0.5 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Points Forts */}
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <TrendingUp className="w-5 h-5 text-emerald-400" />
+                <h4 className="text-emerald-400 font-bold text-base">Points Forts</h4>
+              </div>
+              <div className="space-y-4">
+                {analysis.strengths.map((item, i) => (
+                  <div key={i} className="flex gap-3 items-start">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 shrink-0" />
+                    <div>
+                      <div className="text-white font-semibold text-sm">
+                        <span className="text-emerald-400 mr-2 uppercase text-xs font-bold tracking-wider">{item.role}</span>
+                        {item.title}
+                      </div>
+                      <p className="text-slate-400 text-xs mt-0.5 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PerformanceMindMap({ onNodeClick }) {
   const nodes = [
-    { id: 1, x: 20, y: 25, color: "#3b82f6", icon: Swords }, // Top Left
-    { id: 2, x: 48, y: 18, color: "#f97316", icon: Target }, // Top Middle
-    { id: 3, x: 78, y: 22, color: "#0ea5e9", icon: Gamepad2 }, // Top Right
-    { id: 4, x: 82, y: 52, color: "#a855f7", icon: Zap }, // Right
-    { id: 5, x: 72, y: 82, color: "#22c55e", icon: Shield }, // Bottom Right
-    { id: 6, x: 38, y: 88, color: "#eab308", icon: TrendingUp }, // Bottom Middle
-    { id: 7, x: 22, y: 72, color: "#ef4444", icon: Trophy } // Bottom Left
+    { id: 1, x: 20, y: 25, color: "#3b82f6", icon: Swords, title: "Combat" }, // Top Left
+    { id: 2, x: 48, y: 18, color: "#f97316", icon: Target, title: "Objectives" }, // Top Middle
+    { id: 3, x: 78, y: 22, color: "#0ea5e9", icon: Gamepad2, title: "Mechanics" }, // Top Right
+    { id: 4, x: 82, y: 52, color: "#a855f7", icon: Zap, title: "Reactivity" }, // Right
+    { id: 5, x: 72, y: 82, color: "#22c55e", icon: Shield, title: "Defense" }, // Bottom Right
+    { id: 6, x: 38, y: 88, color: "#eab308", icon: TrendingUp, title: "Scaling" }, // Bottom Middle
+    { id: 7, x: 22, y: 72, color: "#ef4444", icon: Trophy, title: "Victory" } // Bottom Left
   ]
 
   const centerX = 50
@@ -221,7 +413,7 @@ function PerformanceMindMap() {
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-4 relative min-h-[400px] h-full flex items-center justify-center overflow-hidden">
       {/* Title */}
-      <div className="absolute top-4 left-4 z-30">
+      <div className="absolute top-4 left-4">
         <h3 className="text-sm font-semibold text-white uppercase tracking-wider opacity-70">Team performance</h3>
       </div>
 
@@ -272,12 +464,13 @@ function PerformanceMindMap() {
       {nodes.map(node => (
         <div
           key={node.id}
-          className="absolute z-20 w-12 h-12 bg-slate-800/90 backdrop-blur-md border border-slate-700/50 rounded-2xl flex flex-col items-center justify-end overflow-hidden shadow-lg transition-all duration-300 hover:scale-110 group"
+          className="absolute z-20 w-12 h-12 bg-slate-800/90 backdrop-blur-md border border-slate-700/50 rounded-2xl flex flex-col items-center justify-end overflow-hidden shadow-lg transition-all duration-300 hover:scale-110 group cursor-pointer"
           style={{
             left: `${node.x}%`,
             top: `${node.y}%`,
             transform: "translate(-50%, -50%)"
           }}
+          onClick={() => onNodeClick && onNodeClick(node)}
         >
           {/* Liquid/Level fill effect */}
           <div

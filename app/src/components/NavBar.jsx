@@ -28,7 +28,7 @@ const Navbar = () => {
   }, [location])
 
   return (
-    <div className="h-screen w-64 bg-slate-900 border-r border-slate-700/50 flex flex-col">
+    <div className="h-screen w-64 bg-slate-900 border-r border-slate-700/50 flex flex-col relative z-40">
       {/* Logo */}
       <div className="p-6 border-b border-slate-700/50">
         <div className="flex items-center gap-3">
@@ -316,7 +316,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
             <FileText className="w-4 h-4" />
             Replay (.rofl)
           </button>
-          <button
+          {/* <button
             className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
               uploadType === "scoreboard" ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-700"
             }`}
@@ -331,7 +331,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
             onClick={() => handleTypeChange("advanced")}
           >
             Stats avancées
-          </button>
+          </button> */}
         </div>
 
         {/* File drop zone */}
