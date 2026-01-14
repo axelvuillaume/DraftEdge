@@ -60,7 +60,7 @@ router.post('/signin', async (req, res) => {
 
 router.post('/signup', async (req, res) => {
   try {
-    const { password, email, team_name, team_id } = req.body;
+    const { password, email, team_name, team_id, name } = req.body;
 
     if (password && !validatePassword(password)) return res.status(400).send({ ok: false, user: null, code: ERROR_CODES.PASSWORD_NOT_VALIDATED });
 
@@ -76,7 +76,7 @@ router.post('/signup', async (req, res) => {
       teamId = team._id;
     }
 
-    const user = await UserObject.create({ team_name: finalTeamName, password, email, team_id: teamId });
+    const user = await UserObject.create({ team_name: finalTeamName, password, email, team_id: teamId, name });
     const token = jwt.sign({ _id: user._id }, config.SECRET, { expiresIn: JWT_MAX_AGE });
     res.cookie('jwt', token, cookieOptions());
 

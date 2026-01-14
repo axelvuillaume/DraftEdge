@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import toast from "react-hot-toast"
-import { Shield, Mail, Lock, Users, ArrowRight, Gamepad2, BarChart3, Trophy } from "lucide-react"
+import { Shield, Mail, Lock, Users, ArrowRight, Gamepad2, BarChart3, Trophy, User } from "lucide-react"
 
 import LoadingButton from "@/components/loadingButton"
 import store from "@/services/store"
 import api from "@/services/api"
 
 export default () => {
-  const [values, setValues] = useState({ team_name: "", email: "", password: "" })
+  const [values, setValues] = useState({ team_name: "", email: "", password: "", name: "" })
   const { user, setUser } = store()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -113,10 +113,30 @@ export default () => {
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl py-4 pl-12 pr-4 text-white placeholder-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors text-base autofill:shadow-[0_0_0_1000px_#0f172a_inset] autofill:text-white"
                   type="text"
                   id="team_name"
+                  required
                   disabled={!!teamId}
                   value={teamId ? teamName : values.team_name}
                   placeholder="Your team name"
                   onChange={e => setValues({ ...values, team_name: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2.5" htmlFor="name">
+                Pseudo
+              </label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600" />
+                <input
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-4 pl-12 pr-4 text-white placeholder-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors text-base autofill:shadow-[0_0_0_1000px_#0f172a_inset] autofill:text-white"
+                  name="name"
+                  type="text"
+                  id="name"
+                  required
+                  placeholder="Your pseudo"
+                  value={values.name}
+                  onChange={e => setValues({ ...values, name: e.target.value })}
                 />
               </div>
             </div>

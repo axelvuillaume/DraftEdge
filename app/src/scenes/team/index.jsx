@@ -31,12 +31,7 @@ export default function Team() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Team Members</h1>
-            <p className="text-slate-400">Manage your team and invite new members</p>
-          </div>
-        </div>
+        <div className="flex items-center justify-between"></div>
 
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
           <table className="w-full">

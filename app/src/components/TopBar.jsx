@@ -45,11 +45,6 @@ const ProfileMenu = () => {
   return (
     <Menu as="div" className="relative">
       <Menu.Button className="flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700/50 hover:border-slate-600/50 transition-all duration-200">
-        {/* Avatar */}
-        <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
-          <span className="text-slate-900 font-bold text-sm">{getInitials(user?.name)}</span>
-        </div>
-
         {/* User Info */}
         <div className="hidden sm:flex flex-col items-start">
           <span className="text-white text-sm font-semibold leading-tight">{user?.name || "User"}</span>
