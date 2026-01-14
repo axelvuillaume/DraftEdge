@@ -294,8 +294,6 @@ function BubbleDetailView({ bubble }) {
             })}
           </div>
 
-          <h3 className="text-lg font-bold text-white mb-4">Team vs Adversaires</h3>
-
           {/* Stats Table */}
           <div className="w-full flex-1">
             <div className="grid grid-cols-4 gap-4 px-4 py-2 border-b border-slate-700/50 text-sm font-medium text-slate-400">
