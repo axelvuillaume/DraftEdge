@@ -4,6 +4,7 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import { Trophy, Swords, Target, TrendingUp, Clock, Shield, Crosshair, Zap, Gamepad2, TrendingDown, AlertTriangle } from "lucide-react"
 import Sheet from "@/components/sheet"
+import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
 
 export default function FutureHome() {
   const [stats, setStats] = useState()
@@ -214,14 +215,16 @@ function BubbleDetailView({ bubble }) {
   const { user } = useStore()
   const [data, setData] = useState([])
   const [scores, setScores] = useState([])
+  const [globalScore, setGlobalScore] = useState(null)
   const [filters, setFilters] = useState({ role: undefined })
 
   const fetchplayerstats = async () => {
     try {
-      const { ok, data, scores, code } = await api.post("/playerstats/bubble_stats", filters)
+      const { ok, data, scores, score, code } = await api.post("/playerstats/bubble_stats", { ...filters, category: bubble?.title })
       if (!ok) return toast.error(code)
       setData(data)
-      if (scores) setScores(scores)
+      setScores(scores || [])
+      setGlobalScore(score ?? null)
     } catch (error) {
       toast.error(error.message)
     }
@@ -240,7 +243,7 @@ function BubbleDetailView({ bubble }) {
     })
   }
 
-  const teamScore = scores.length > 0 ? (scores.reduce((acc, curr) => acc + curr.score, 0) / scores.length).toFixed(1) : 0
+  const teamScore = globalScore !== null ? globalScore : scores.length > 0 ? (scores.reduce((acc, curr) => acc + curr.score, 0) / scores.length).toFixed(1) : 0
 
   // Mock analysis data - À remplacer par des données venant de l'API plus tard
   const analysis = {
@@ -397,18 +400,29 @@ function BubbleDetailView({ bubble }) {
 }
 
 function PerformanceMindMap({ onNodeClick }) {
+  const [teamPerformance, setTeamPerformance] = useState()
+
   const nodes = [
-    { id: 1, x: 20, y: 25, color: "#3b82f6", icon: Swords, title: "Combat" }, // Top Left
-    { id: 2, x: 48, y: 18, color: "#f97316", icon: Target, title: "Objectives" }, // Top Middle
-    { id: 3, x: 78, y: 22, color: "#0ea5e9", icon: Gamepad2, title: "Mechanics" }, // Top Right
-    { id: 4, x: 82, y: 52, color: "#a855f7", icon: Zap, title: "Reactivity" }, // Right
-    { id: 5, x: 72, y: 82, color: "#22c55e", icon: Shield, title: "Defense" }, // Bottom Right
-    { id: 6, x: 38, y: 88, color: "#eab308", icon: TrendingUp, title: "Scaling" }, // Bottom Middle
-    { id: 7, x: 22, y: 72, color: "#ef4444", icon: Trophy, title: "Victory" } // Bottom Left
+    { id: 1, x: 20, y: 25, color: "#3b82f6", icon: CombatIcon, title: "Combat" }, // Top Left
+    { id: 2, x: 48, y: 18, color: "#f97316", icon: ObjectivesIcon, title: "Objectives" }, // Top Middle
+    { id: 3, x: 78, y: 22, color: "#0ea5e9", icon: PatternIcon, title: "Vision" }, // Top Right
+    { id: 4, x: 82, y: 52, color: "#a855f7", icon: ScalingIcon, title: "Income" } // Right
   ]
 
-  const centerX = 50
-  const centerY = 50
+  const fetchTeamPerformance = async () => {
+    try {
+      const { ok, data, code } = await api.post("/playerstats/team_performance", {})
+      if (!ok) return toast.error(code)
+      setTeamPerformance(data)
+
+      console.log(data)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+  useEffect(() => {
+    fetchTeamPerformance()
+  }, [])
 
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-4 relative min-h-[400px] h-full flex items-center justify-center overflow-hidden">
@@ -431,16 +445,16 @@ function PerformanceMindMap({ onNodeClick }) {
             ))}
           </defs>
           {nodes.map(node => {
-            const dx = node.x - centerX
-            const cp1X = centerX + dx * 0.4
-            const cp1Y = centerY
+            const dx = node.x - 50
+            const cp1X = 50 + dx * 0.4
+            const cp1Y = 50
             const cp2X = node.x - dx * 0.4
             const cp2Y = node.y
 
             return (
               <path
                 key={node.id}
-                d={`M ${centerX} ${centerY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${node.x} ${node.y}`}
+                d={`M ${50} ${50} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${node.x} ${node.y}`}
                 fill="none"
                 stroke={`url(#grad-${node.id})`}
                 strokeWidth="0.6"
@@ -455,50 +469,53 @@ function PerformanceMindMap({ onNodeClick }) {
       {/* Central Node */}
       <div className="relative z-10 w-24 h-24 bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-[2rem] flex items-center justify-center shadow-2xl">
         <div className="text-center">
-          <span className="text-4xl font-black text-white tracking-tighter">65</span>
-          <span className="text-xl font-bold text-slate-500">.6</span>
+          <span className="text-4xl font-black text-white tracking-tighter">{Math.floor(teamPerformance?.globalScore)}</span>
+          <span className="text-xl font-bold text-slate-500">{(teamPerformance?.globalScore % 1).toFixed(1).substring(1)}</span>
         </div>
       </div>
 
       {/* Surrounding Nodes */}
-      {nodes.map(node => (
-        <div
-          key={node.id}
-          className="absolute z-20 w-12 h-12 bg-slate-800/90 backdrop-blur-md border border-slate-700/50 rounded-2xl flex flex-col items-center justify-end overflow-hidden shadow-lg transition-all duration-300 hover:scale-110 group cursor-pointer"
-          style={{
-            left: `${node.x}%`,
-            top: `${node.y}%`,
-            transform: "translate(-50%, -50%)"
-          }}
-          onClick={() => onNodeClick && onNodeClick(node)}
-        >
-          {/* Liquid/Level fill effect */}
+      {nodes.map(node => {
+        const categoryScore = teamPerformance?.categoryScores?.find(c => c.category === node.title)?.score ?? 50
+        return (
           <div
-            className="absolute bottom-0 left-0 w-full transition-all duration-1000 opacity-20"
+            key={node.id}
+            className="absolute z-20 w-12 h-12 bg-slate-800/90 backdrop-blur-md border border-slate-700/50 rounded-2xl flex flex-col items-center justify-end overflow-hidden shadow-lg transition-all duration-300 hover:scale-110 group cursor-pointer"
             style={{
-              height: "60%",
-              backgroundColor: node.color,
-              boxShadow: `0 0 20px ${node.color}`
+              left: `${node.x}%`,
+              top: `${node.y}%`,
+              transform: "translate(-50%, -50%)"
             }}
-          />
+            onClick={() => onNodeClick && onNodeClick(node)}
+          >
+            {/* Liquid/Level fill effect */}
+            <div
+              className="absolute bottom-0 left-0 w-full transition-all duration-1000 opacity-30"
+              style={{
+                height: `${categoryScore}%`,
+                backgroundColor: node.color,
+                boxShadow: `0 0 20px ${node.color}`
+              }}
+            />
 
-          <div className="relative mb-2.5 z-10 transition-transform duration-300 group-hover:scale-110">
-            <node.icon className="w-5 h-5" style={{ color: node.color, filter: `drop-shadow(0 0 8px ${node.color})` }} />
-          </div>
+            <div className="relative mb-2 z-10 transition-transform duration-300 group-hover:scale-110">
+              <node.icon className="w-5 h-5" style={{ color: node.color, filter: `drop-shadow(0 0 8px ${node.color})` }} />
+            </div>
 
-          {/* Decorative radiating lines */}
-          <div className="absolute inset-[-15px] pointer-events-none opacity-20">
-            {[0, 45, 90, 135, 180, 225, 270, 315].map(angle => (
-              <div key={angle} className="absolute top-1/2 left-1/2 w-5 h-[1px] bg-slate-400 origin-left" style={{ transform: `rotate(${angle}deg) translate(28px)` }} />
-            ))}
-          </div>
+            {/* Decorative radiating lines */}
+            <div className="absolute inset-[-15px] pointer-events-none opacity-20">
+              {[0, 45, 90, 135, 180, 225, 270, 315].map(angle => (
+                <div key={angle} className="absolute top-1/2 left-1/2 w-5 h-[1px] bg-slate-400 origin-left" style={{ transform: `rotate(${angle}deg) translate(28px)` }} />
+              ))}
+            </div>
 
-          {/* Glow ring on hover */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="w-full h-full rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ring-2 ring-inset" style={{ borderColor: node.color }} />
+            {/* Glow ring on hover */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="w-full h-full rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ring-2 ring-inset" style={{ borderColor: node.color }} />
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -519,16 +536,10 @@ function WinRateByDuration({ games }) {
     games.forEach(game => {
       const durationMin = game.duration / 60
       const bucket = stats.find(b => durationMin >= b.min && durationMin < b.max)
-      if (bucket) {
-        game.win ? bucket.wins++ : bucket.losses++
-      }
+      if (bucket) game.win ? bucket.wins++ : bucket.losses++
     })
 
-    return stats.map(s => ({
-      ...s,
-      total: s.wins + s.losses,
-      winRate: s.wins + s.losses > 0 ? Math.round((s.wins / (s.wins + s.losses)) * 100) : 0
-    }))
+    return stats.map(s => ({ ...s, total: s.wins + s.losses, winRate: s.wins + s.losses > 0 ? Math.round((s.wins / (s.wins + s.losses)) * 100) : 0 }))
   }
 
   const stats = calculateStats()
@@ -542,7 +553,7 @@ function WinRateByDuration({ games }) {
       <div className="relative h-40 w-full mt-2">
         {/* Y-axis labels & Grid lines */}
         <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
-          {[60, 40, 20, 0].map(val => (
+          {[100, 75, 50, 25, 0].map(val => (
             <div key={val} className="flex items-center gap-2 w-full">
               <span className="text-[10px] text-slate-500 w-6 text-right">{val}%</span>
               <div className="flex-1 border-t border-slate-700/30 border-dashed" />
@@ -553,7 +564,7 @@ function WinRateByDuration({ games }) {
         {/* Chart Area */}
         <div className="absolute inset-0 ml-8 pb-6 flex items-end justify-between px-2">
           {stats.map((stat, i) => {
-            const height = Math.min((stat.winRate / 60) * 100, 100)
+            const height = stat.winRate
             return (
               <div key={i} className="relative flex flex-col items-center flex-1 h-full justify-end">
                 {/* Bar */}

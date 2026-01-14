@@ -4,6 +4,7 @@ const passport = require('passport');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const PlayerStats = require('../models/playerstats');
+const Game = require('../models/game');
 
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
@@ -352,83 +353,102 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
 
 router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const query = { team_id: req.user.team_id };
-    const allTeamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
-    const playerStats = req.body.role ? allTeamStats.filter((s) => s.role === req.body.role) : allTeamStats;
+    const { role, category } = req.body;
+    if (category === 'Objectives') {
+      const games = await Game.find({ team_id: req.user.team_id });
+      if (!games.length) return res.status(200).send({ ok: true, data: [], scores: [] });
 
-    const allEnemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true });
-    const enemyStats = req.body.role ? allEnemyStats.filter((s) => s.role === req.body.role) : allEnemyStats;
+      const aggregateObjectives = (gamesList) => {
+        return gamesList.reduce(
+          (acc, game) => {
+            const isBlue = game.team_side === 'blue';
+            const teamStats = isBlue ? game.blue_team : game.red_team;
+            const enemyStats = isBlue ? game.red_team : game.blue_team;
 
-    const calculateScore = (teamStats, enemyStats) => {
-      if (!teamStats.length) return 50;
-      const aggregate = (stats) =>
-        stats.reduce(
-          (acc, curr) => ({
-            kills: acc.kills + (curr.kills || 0),
-            deaths: acc.deaths + (curr.deaths || 0),
-            assists: acc.assists + (curr.assists || 0),
-            damage: acc.damage + (curr.damage?.total_to_champions || 0),
-            duration: acc.duration + (curr.game_duration || 0),
-            games: acc.games + 1,
-          }),
-          { kills: 0, deaths: 0, assists: 0, damage: 0, duration: 0, games: 0 }
+            acc.team.dragons += teamStats?.dragons || 0;
+            acc.team.barons += teamStats?.barons || 0;
+            acc.team.heralds += teamStats?.heralds || 0;
+            acc.team.grubs += teamStats?.grubs || 0;
+            acc.team.towers += teamStats?.towers || 0;
+            acc.team.inhibitors += teamStats?.inhibitors || 0;
+
+            acc.enemy.dragons += enemyStats?.dragons || 0;
+            acc.enemy.barons += enemyStats?.barons || 0;
+            acc.enemy.heralds += enemyStats?.heralds || 0;
+            acc.enemy.grubs += enemyStats?.grubs || 0;
+            acc.enemy.towers += enemyStats?.towers || 0;
+            acc.enemy.inhibitors += enemyStats?.inhibitors || 0;
+
+            acc.games += 1;
+            return acc;
+          },
+          {
+            team: { dragons: 0, barons: 0, heralds: 0, grubs: 0, towers: 0, inhibitors: 0 },
+            enemy: { dragons: 0, barons: 0, heralds: 0, grubs: 0, towers: 0, inhibitors: 0 },
+            games: 0,
+          }
         );
+      };
 
-      const t = aggregate(teamStats);
-      const e = aggregate(enemyStats);
-      if (t.games === 0) return 50;
-      const eGames = e.games || 1;
+      const agg = aggregateObjectives(games);
+      const totalGames = agg.games;
 
-      const getPerGame = (total, games) => total / games;
-      const getPerMin = (total, duration) => (duration > 0 ? total / (duration / 60) : 0);
+      const getAvg = (val) => (totalGames > 0 ? parseFloat((val / totalGames).toFixed(1)) : 0);
+
+      const calcDiff = (teamVal, enemyVal) => {
+        if (enemyVal === 0 && teamVal === 0) return '0%';
+        if (enemyVal === 0) return '+100%';
+        const diff = ((teamVal - enemyVal) / enemyVal) * 100;
+        const sign = diff > 0 ? '+' : '';
+        return `${sign}${Math.round(diff)}%`;
+      };
+
+      const getTrend = (teamVal, enemyVal) => {
+        if (teamVal > enemyVal) return 'up';
+        if (teamVal < enemyVal) return 'down';
+        return 'neutral';
+      };
 
       const metrics = [
-        {
-          // DMG / min
-          team: getPerMin(t.damage, t.duration),
-          enemy: getPerMin(e.damage, e.duration),
-          weight: 1,
-        },
-        {
-          // Kills / game
-          team: getPerGame(t.kills, t.games),
-          enemy: getPerGame(e.kills, eGames),
-          weight: 1,
-        },
-        {
-          // Deaths / game (Lower is better, so invert comparison)
-          team: getPerGame(t.deaths, t.games),
-          enemy: getPerGame(e.deaths, eGames),
-          weight: 1,
-          invert: true,
-        },
-        {
-          // KDA
-          team: t.deaths > 0 ? (t.kills + t.assists) / t.deaths : t.kills + t.assists,
-          enemy: e.deaths > 0 ? (e.kills + e.assists) / e.deaths : e.kills + e.assists,
-          weight: 1,
-        },
+        { label: 'Dragons / game', team: getAvg(agg.team.dragons), enemy: getAvg(agg.enemy.dragons) },
+        { label: 'Barons / game', team: getAvg(agg.team.barons), enemy: getAvg(agg.enemy.barons) },
+        { label: 'Heralds / game', team: getAvg(agg.team.heralds), enemy: getAvg(agg.enemy.heralds) },
+        { label: 'Grubs / game', team: getAvg(agg.team.grubs), enemy: getAvg(agg.enemy.grubs) },
+        { label: 'Turrets / game', team: getAvg(agg.team.towers), enemy: getAvg(agg.enemy.towers) },
+        { label: 'Inhibs / game', team: getAvg(agg.team.inhibitors), enemy: getAvg(agg.enemy.inhibitors) },
       ];
 
+      // Calculate score for objectives
       let totalScoreChange = 0;
-
+      let validMetricsCount = 0;
       metrics.forEach((m) => {
-        if (m.enemy === 0) return;
-        let diffPercent = ((m.team - m.enemy) / m.enemy) * 100;
-        if (m.invert) diffPercent = -diffPercent;
-        totalScoreChange += Math.max(Math.min(diffPercent, 100), -100) * 0.25;
+        if (m.enemy === 0 && m.team === 0) return;
+        if (m.enemy === 0) {
+          totalScoreChange += 10;
+          return;
+        }
+        const diffPercent = ((m.team - m.enemy) / m.enemy) * 100;
+        totalScoreChange += Math.max(Math.min(diffPercent, 100), -100);
+        validMetricsCount++;
       });
+      const avgChange = validMetricsCount > 0 ? totalScoreChange / validMetricsCount : 0;
+      const score = Math.round(Math.max(0, Math.min(100, 50 + avgChange * 0.5)));
 
-      let score = 50 + totalScoreChange;
-      return Math.round(Math.max(0, Math.min(100, score)));
-    };
+      // Add diff and trend to metrics
+      const dataMetrics = metrics.map((m) => ({
+        ...m,
+        diff: calcDiff(m.team, m.enemy),
+        trend: getTrend(m.team, m.enemy),
+      }));
 
-    const roles = ['top', 'jungle', 'mid', 'bottom', 'support'];
-    const scores = roles.map((role) => {
-      const roleTeamStats = allTeamStats.filter((s) => s.role === role);
-      const roleEnemyStats = allEnemyStats.filter((s) => s.role === role);
-      return { role, score: calculateScore(roleTeamStats, roleEnemyStats) };
-    });
+      return res.status(200).send({ ok: true, data: dataMetrics, scores: [], score });
+    }
+
+    const allTeamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
+    const playerStats = role ? allTeamStats.filter((s) => s.role === role) : allTeamStats;
+
+    const allEnemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true });
+    const enemyStats = role ? allEnemyStats.filter((s) => s.role === role) : allEnemyStats;
 
     const aggregateStats = (stats) => {
       return stats.reduce(
@@ -439,61 +459,420 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           acc.gold += curr.gold || 0;
           acc.damage += curr.damage?.total_to_champions || 0;
           acc.duration += curr.game_duration || 0;
-          acc.first_blood += curr.combat?.first_blood ? 1 : 0;
+
+          // New aggregation fields
+          acc.cs += curr.cs || 0;
+          acc.wins += curr.game_win ? 1 : 0;
+          acc.solo_kills += curr.combat?.solo_kills || 0;
+          acc.damage_objectives += curr.damage?.to_objectives || 0;
+          acc.tank_taken += curr.tank?.total_taken || 0;
+          acc.tank_mitigated += curr.tank?.self_mitigated || 0;
+          acc.vision_score += curr.vision?.score || 0;
+          acc.wards_placed += curr.vision?.wards_placed || 0;
+          acc.wards_killed += curr.vision?.wards_killed || 0;
+          acc.control_wards_bought += curr.vision?.control_wards_bought || 0;
+          acc.level += curr.level || 0;
+          acc.turrets += curr.objectives?.turrets || 0;
+          acc.dragons += curr.objectives?.dragons || 0;
+          acc.barons += curr.objectives?.barons || 0;
+          acc.enemy_jungle += curr.farm?.enemy_jungle || 0;
           acc.games += 1;
           return acc;
         },
-        { kills: 0, deaths: 0, assists: 0, gold: 0, damage: 0, duration: 0, first_blood: 0, games: 0 }
+        {
+          level: 0,
+          kills: 0,
+          deaths: 0,
+          assists: 0,
+          gold: 0,
+          damage: 0,
+          duration: 0,
+          games: 0,
+          cs: 0,
+          wins: 0,
+          solo_kills: 0,
+          damage_objectives: 0,
+          tank_taken: 0,
+          tank_mitigated: 0,
+          vision_score: 0,
+          wards_placed: 0,
+          wards_killed: 0,
+          control_wards_bought: 0,
+          enemy_jungle: 0,
+          turrets: 0,
+          dragons: 0,
+          barons: 0,
+        }
       );
     };
 
-    const team = aggregateStats(playerStats);
-    const enemy = aggregateStats(enemyStats);
-
-    const formatMetrics = (teamStats, enemyStats) => {
+    const getMetrics = (t, e) => {
       const getAvg = (total, games) => (games > 0 ? total / games : 0);
       const getPerMin = (total, duration) => (duration > 0 ? total / (duration / 60) : 0);
 
-      const metrics = [
-        {
-          label: 'DMG / min',
-          team: Math.round(getPerMin(teamStats.damage, teamStats.duration)),
-          enemy: Math.round(getPerMin(enemyStats.damage, enemyStats.duration)),
-        },
-        {
-          label: 'Kills / game',
-          team: parseFloat(getAvg(teamStats.kills, teamStats.games).toFixed(1)),
-          enemy: parseFloat(getAvg(enemyStats.kills, enemyStats.games).toFixed(1)),
-        },
-        {
-          label: 'Deaths / game',
-          team: parseFloat(getAvg(teamStats.deaths, teamStats.games).toFixed(1)),
-          enemy: parseFloat(getAvg(enemyStats.deaths, enemyStats.games).toFixed(1)),
-          invert: true,
-        },
-        {
-          label: 'Team KDA',
-          team: parseFloat((teamStats.deaths > 0 ? (teamStats.kills + teamStats.assists) / teamStats.deaths : teamStats.kills + teamStats.assists).toFixed(1)),
-          enemy: parseFloat((enemyStats.deaths > 0 ? (enemyStats.kills + enemyStats.assists) / enemyStats.deaths : enemyStats.kills + enemyStats.assists).toFixed(1)),
-        },
-        {
-          label: 'DMG / Gold',
-          team: parseFloat((teamStats.gold > 0 ? teamStats.damage / teamStats.gold : 0).toFixed(2)),
-          enemy: parseFloat((enemyStats.gold > 0 ? enemyStats.damage / enemyStats.gold : 0).toFixed(2)),
-        },
-      ];
+      if (category === 'Combat') {
+        return [
+          {
+            label: 'DMG / min',
+            team: Math.round(getPerMin(t.damage, t.duration)),
+            enemy: Math.round(getPerMin(e.damage, e.duration)),
+          },
+          {
+            label: 'Kills / game',
+            team: parseFloat(getAvg(t.kills, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.kills, e.games).toFixed(1)),
+          },
+          {
+            label: 'Deaths / game',
+            team: parseFloat(getAvg(t.deaths, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.deaths, e.games).toFixed(1)),
+            invert: true,
+          },
+          {
+            label: 'KDA',
+            team: parseFloat((t.deaths > 0 ? (t.kills + t.assists) / t.deaths : t.kills + t.assists).toFixed(2)),
+            enemy: parseFloat((e.deaths > 0 ? (e.kills + e.assists) / e.deaths : e.kills + e.assists).toFixed(2)),
+          },
+          {
+            label: 'DMG / Gold',
+            team: parseFloat((t.gold > 0 ? t.damage / t.gold : 0).toFixed(2)),
+            enemy: parseFloat((e.gold > 0 ? e.damage / e.gold : 0).toFixed(2)),
+          },
+        ];
+      }
+      if (category === 'Vision') {
+        return [
+          {
+            label: 'Vision Score / min',
+            team: parseFloat(getPerMin(t.vision_score, t.duration).toFixed(1)),
+            enemy: parseFloat(getPerMin(e.vision_score, e.duration).toFixed(1)),
+          },
+          {
+            label: 'Wards Placed / game',
+            team: (t.wards_placed / t.games).toFixed(1),
+            enemy: (e.wards_placed / e.games).toFixed(1),
+          },
+          {
+            label: 'Wards / min',
+            team: parseFloat(getPerMin(t.wards_placed, t.duration).toFixed(1)),
+            enemy: parseFloat(getPerMin(e.wards_placed, e.duration).toFixed(1)),
+          },
+          {
+            label: 'Control Wards Placed / game',
+            team: t.control_wards_bought / t.games,
+            enemy: e.control_wards_bought / e.games,
+          },
+          {
+            label: 'Wards Killed / game',
+            team: t.wards_killed / t.games,
+            enemy: e.wards_killed / e.games,
+          },
+          {
+            label: 'Ward Denial %',
+            team: parseFloat((t.wards_killed / e.wards_placed) * 100).toFixed(1),
+            enemy: parseFloat((e.wards_killed / t.wards_placed) * 100).toFixed(1),
+          },
+          {
+            label: 'Control Wards Bought / game',
+            team: t.control_wards_bought / t.games,
+            enemy: e.control_wards_bought / e.games,
+          },
+        ];
+      }
 
-      return metrics.map((m) => {
-        const diff = m.enemy > 0 ? ((m.team - m.enemy) / m.enemy) * 100 : 0;
-        const sign = diff > 0 ? '+' : '';
-        return { ...m, diff: `${sign}${diff.toFixed(1)}%` };
-      });
+      if (category === 'Income') {
+        return [
+          {
+            label: 'Gold / min',
+            team: parseFloat(getPerMin(t.gold, t.duration).toFixed(1)),
+            enemy: parseFloat(getPerMin(e.gold, e.duration).toFixed(1)),
+          },
+          {
+            label: 'CS / game',
+            team: (t.cs / t.games).toFixed(1),
+            enemy: (e.cs / e.games).toFixed(1),
+          },
+          {
+            label: 'Gold Efficiency',
+            team: parseFloat((t.damage / t.gold).toFixed(1)),
+            enemy: parseFloat((e.damage / e.gold).toFixed(1)),
+          },
+          {
+            label: 'Level',
+            team: parseFloat((t.level / t.games).toFixed(1)),
+            enemy: parseFloat((e.level / e.games).toFixed(1)),
+          },
+          {
+            label: 'Enemy jungle monsters / game',
+            team: (t.enemy_jungle / t.games).toFixed(1),
+            enemy: (e.enemy_jungle / e.games).toFixed(1),
+          },
+          {
+            label: 'Gold Plates / game',
+            team: 0,
+            enemy: 0,
+          },
+          {
+            label: 'Shutdown / game',
+            team: 0,
+            enemy: 0,
+          },
+        ];
+      }
     };
 
-    return res.status(200).send({ ok: true, data: formatMetrics(team, enemy), scores });
+    const calculateScore = (teamStats, enemyStats) => {
+      if (!teamStats.length) return 50;
+      const t = aggregateStats(teamStats);
+      const e = aggregateStats(enemyStats);
+
+      // Use the metrics relevant to the category for scoring too
+      const metrics = getMetrics(t, e);
+
+      let totalScoreChange = 0;
+      let validMetricsCount = 0;
+
+      metrics.forEach((m) => {
+        if (m.enemy === 0 && m.team === 0) return;
+        if (m.enemy === 0) {
+          totalScoreChange += 10; // Bonus if enemy has 0 and we have something
+          return;
+        }
+        let diffPercent = ((m.team - m.enemy) / m.enemy) * 100;
+        if (m.invert) diffPercent = -diffPercent;
+
+        // Cap impact of single metric
+        totalScoreChange += Math.max(Math.min(diffPercent, 100), -100);
+        validMetricsCount++;
+      });
+
+      const avgChange = validMetricsCount > 0 ? totalScoreChange / validMetricsCount : 0;
+      // Scale result to be around 50 (0 change = 50, +20% change = 60, etc.)
+      let score = 50 + avgChange * 0.5;
+      return Math.round(Math.max(0, Math.min(100, score)));
+    };
+
+    const roles = ['top', 'jungle', 'mid', 'bottom', 'support'];
+    const scores = roles.map((role) => {
+      const roleTeamStats = allTeamStats.filter((s) => s.role === role);
+      const roleEnemyStats = allEnemyStats.filter((s) => s.role === role);
+      return { role, score: calculateScore(roleTeamStats, roleEnemyStats) };
+    });
+
+    const teamAgg = aggregateStats(playerStats);
+    const enemyAgg = aggregateStats(enemyStats);
+
+    // Get formatted metrics for response
+    const dataMetrics = getMetrics(teamAgg, enemyAgg).map((m) => {
+      const diff = m.enemy > 0 ? ((m.team - m.enemy) / m.enemy) * 100 : m.team > 0 ? 100 : 0;
+      const sign = diff > 0 ? '+' : '';
+      // Fix for infinite/NaN
+      const safeDiff = isFinite(diff) ? diff : 0;
+      return { ...m, diff: `${sign}${safeDiff.toFixed(1)}%` };
+    });
+
+    return res.status(200).send({ ok: true, data: dataMetrics, scores });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
   }
 });
+
+router.post('/team_performance', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const allTeamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
+    const allEnemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true });
+
+    const aggregateStats = (stats) => {
+      return stats.reduce(
+        (acc, curr) => {
+          acc.kills += curr.kills || 0;
+          acc.deaths += curr.deaths || 0;
+          acc.assists += curr.assists || 0;
+          acc.gold += curr.gold || 0;
+          acc.damage += curr.damage?.total_to_champions || 0;
+          acc.duration += curr.game_duration || 0;
+          acc.cs += curr.cs || 0;
+          acc.wins += curr.game_win ? 1 : 0;
+          acc.vision_score += curr.vision?.score || 0;
+          acc.wards_placed += curr.vision?.wards_placed || 0;
+          acc.wards_killed += curr.vision?.wards_killed || 0;
+          acc.control_wards_bought += curr.vision?.control_wards_bought || 0;
+          acc.level += curr.level || 0;
+          acc.enemy_jungle += curr.farm?.enemy_jungle || 0;
+          acc.games += 1;
+          return acc;
+        },
+        {
+          kills: 0,
+          deaths: 0,
+          assists: 0,
+          gold: 0,
+          damage: 0,
+          duration: 0,
+          games: 0,
+          cs: 0,
+          wins: 0,
+          vision_score: 0,
+          wards_placed: 0,
+          wards_killed: 0,
+          control_wards_bought: 0,
+          level: 0,
+          enemy_jungle: 0,
+        }
+      );
+    };
+
+    const getMetricsByCategory = (t, e, category) => {
+      const getAvg = (total, games) => (games > 0 ? total / games : 0);
+      const getPerMin = (total, duration) => (duration > 0 ? total / (duration / 60) : 0);
+
+      if (category === 'Combat') {
+        return [
+          { label: 'DMG / min', team: Math.round(getPerMin(t.damage, t.duration)), enemy: Math.round(getPerMin(e.damage, e.duration)) },
+          { label: 'Kills / game', team: parseFloat(getAvg(t.kills, t.games).toFixed(1)), enemy: parseFloat(getAvg(e.kills, e.games).toFixed(1)) },
+          { label: 'Deaths / game', team: parseFloat(getAvg(t.deaths, t.games).toFixed(1)), enemy: parseFloat(getAvg(e.deaths, e.games).toFixed(1)), invert: true },
+          {
+            label: 'KDA',
+            team: parseFloat((t.deaths > 0 ? (t.kills + t.assists) / t.deaths : t.kills + t.assists).toFixed(2)),
+            enemy: parseFloat((e.deaths > 0 ? (e.kills + e.assists) / e.deaths : e.kills + e.assists).toFixed(2)),
+          },
+          { label: 'DMG / Gold', team: parseFloat((t.gold > 0 ? t.damage / t.gold : 0).toFixed(2)), enemy: parseFloat((e.gold > 0 ? e.damage / e.gold : 0).toFixed(2)) },
+        ];
+      }
+      if (category === 'Vision') {
+        return [
+          { label: 'Vision Score / min', team: parseFloat(getPerMin(t.vision_score, t.duration).toFixed(1)), enemy: parseFloat(getPerMin(e.vision_score, e.duration).toFixed(1)) },
+          { label: 'Wards Placed / game', team: t.games > 0 ? (t.wards_placed / t.games).toFixed(1) : 0, enemy: e.games > 0 ? (e.wards_placed / e.games).toFixed(1) : 0 },
+          { label: 'Wards / min', team: parseFloat(getPerMin(t.wards_placed, t.duration).toFixed(1)), enemy: parseFloat(getPerMin(e.wards_placed, e.duration).toFixed(1)) },
+          { label: 'Control Wards Placed / game', team: t.games > 0 ? t.control_wards_bought / t.games : 0, enemy: e.games > 0 ? e.control_wards_bought / e.games : 0 },
+          { label: 'Wards Killed / game', team: t.games > 0 ? t.wards_killed / t.games : 0, enemy: e.games > 0 ? e.wards_killed / e.games : 0 },
+          {
+            label: 'Ward Denial %',
+            team: e.wards_placed > 0 ? parseFloat((t.wards_killed / e.wards_placed) * 100).toFixed(1) : 0,
+            enemy: t.wards_placed > 0 ? parseFloat((e.wards_killed / t.wards_placed) * 100).toFixed(1) : 0,
+          },
+          { label: 'Control Wards Bought / game', team: t.games > 0 ? t.control_wards_bought / t.games : 0, enemy: e.games > 0 ? e.control_wards_bought / e.games : 0 },
+        ];
+      }
+      if (category === 'Income') {
+        return [
+          { label: 'Gold / min', team: parseFloat(getPerMin(t.gold, t.duration).toFixed(1)), enemy: parseFloat(getPerMin(e.gold, e.duration).toFixed(1)) },
+          { label: 'CS / game', team: t.games > 0 ? (t.cs / t.games).toFixed(1) : 0, enemy: e.games > 0 ? (e.cs / e.games).toFixed(1) : 0 },
+          { label: 'Gold Efficiency', team: parseFloat((t.gold > 0 ? t.damage / t.gold : 0).toFixed(1)), enemy: parseFloat((e.gold > 0 ? e.damage / e.gold : 0).toFixed(1)) },
+          { label: 'Level', team: parseFloat((t.level / t.games).toFixed(1)), enemy: parseFloat((e.level / e.games).toFixed(1)) },
+          { label: 'Enemy jungle monsters / game', team: t.games > 0 ? (t.enemy_jungle / t.games).toFixed(1) : 0, enemy: e.games > 0 ? (e.enemy_jungle / e.games).toFixed(1) : 0 },
+          { label: 'Gold Plates / game', team: 0, enemy: 0 },
+          { label: 'Shutdown / game', team: 0, enemy: 0 },
+        ];
+      }
+      return [];
+    };
+
+    const calculateRoleScore = (teamStats, enemyStats, category) => {
+      if (!teamStats.length) return 50;
+      const t = aggregateStats(teamStats);
+      const e = aggregateStats(enemyStats);
+      const metrics = getMetricsByCategory(t, e, category);
+
+      let totalScoreChange = 0;
+      let validMetricsCount = 0;
+
+      metrics.forEach((m) => {
+        if (m.enemy === 0 && m.team === 0) return;
+        if (m.enemy === 0) {
+          totalScoreChange += 10;
+          return;
+        }
+        let diffPercent = ((m.team - m.enemy) / m.enemy) * 100;
+        if (m.invert) diffPercent = -diffPercent;
+        totalScoreChange += Math.max(Math.min(diffPercent, 100), -100);
+        validMetricsCount++;
+      });
+
+      const avgChange = validMetricsCount > 0 ? totalScoreChange / validMetricsCount : 0;
+      return Math.round(Math.max(0, Math.min(100, 50 + avgChange * 0.5)));
+    };
+
+    // Calculate score per role for each category (same logic as bubble_stats)
+    const roles = ['top', 'jungle', 'mid', 'bottom', 'support'];
+
+    const categoryScores = ['Combat', 'Vision', 'Income'].map((category) => {
+      const roleScores = roles.map((role) => {
+        const roleTeamStats = allTeamStats.filter((s) => s.role === role);
+        const roleEnemyStats = allEnemyStats.filter((s) => s.role === role);
+        return calculateRoleScore(roleTeamStats, roleEnemyStats, category);
+      });
+      const avgScore = roleScores.reduce((sum, s) => sum + s, 0) / roleScores.length;
+      return { category, score: Math.round(avgScore * 10) / 10 };
+    });
+
+    // Calculate Objectives score from Game model
+    const games = await Game.find({ team_id: req.user.team_id });
+    let objectivesScore = 50;
+    if (games.length) {
+      const agg = games.reduce(
+        (acc, game) => {
+          const isBlue = game.team_side === 'blue';
+          const teamStats = isBlue ? game.blue_team : game.red_team;
+          const enemyStats = isBlue ? game.red_team : game.blue_team;
+          acc.team.dragons += teamStats?.dragons || 0;
+          acc.team.barons += teamStats?.barons || 0;
+          acc.team.heralds += teamStats?.heralds || 0;
+          acc.team.grubs += teamStats?.grubs || 0;
+          acc.team.towers += teamStats?.towers || 0;
+          acc.team.inhibitors += teamStats?.inhibitors || 0;
+          acc.enemy.dragons += enemyStats?.dragons || 0;
+          acc.enemy.barons += enemyStats?.barons || 0;
+          acc.enemy.heralds += enemyStats?.heralds || 0;
+          acc.enemy.grubs += enemyStats?.grubs || 0;
+          acc.enemy.towers += enemyStats?.towers || 0;
+          acc.enemy.inhibitors += enemyStats?.inhibitors || 0;
+          acc.games += 1;
+          return acc;
+        },
+        {
+          team: { dragons: 0, barons: 0, heralds: 0, grubs: 0, towers: 0, inhibitors: 0 },
+          enemy: { dragons: 0, barons: 0, heralds: 0, grubs: 0, towers: 0, inhibitors: 0 },
+          games: 0,
+        }
+      );
+
+      const totalGames = agg.games;
+      const getAvg = (val) => (totalGames > 0 ? val / totalGames : 0);
+      const objMetrics = [
+        { team: getAvg(agg.team.dragons), enemy: getAvg(agg.enemy.dragons) },
+        { team: getAvg(agg.team.barons), enemy: getAvg(agg.enemy.barons) },
+        { team: getAvg(agg.team.heralds), enemy: getAvg(agg.enemy.heralds) },
+        { team: getAvg(agg.team.grubs), enemy: getAvg(agg.enemy.grubs) },
+        { team: getAvg(agg.team.towers), enemy: getAvg(agg.enemy.towers) },
+        { team: getAvg(agg.team.inhibitors), enemy: getAvg(agg.enemy.inhibitors) },
+      ];
+
+      let totalScoreChange = 0;
+      let validMetricsCount = 0;
+      objMetrics.forEach((m) => {
+        if (m.enemy === 0 && m.team === 0) return;
+        if (m.enemy === 0) {
+          totalScoreChange += 10;
+          return;
+        }
+        const diffPercent = ((m.team - m.enemy) / m.enemy) * 100;
+        totalScoreChange += Math.max(Math.min(diffPercent, 100), -100);
+        validMetricsCount++;
+      });
+      const avgChange = validMetricsCount > 0 ? totalScoreChange / validMetricsCount : 0;
+      objectivesScore = Math.round(Math.max(0, Math.min(100, 50 + avgChange * 0.5)));
+    }
+    categoryScores.push({ category: 'Objectives', score: objectivesScore });
+
+    const globalScore = Math.round((categoryScores.reduce((sum, c) => sum + c.score, 0) / categoryScores.length) * 10) / 10;
+
+    return res.status(200).send({ ok: true, data: { globalScore, categoryScores } });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 module.exports = router;
