@@ -401,10 +401,10 @@ function PerformanceMindMap({ onNodeClick }) {
   const [teamPerformance, setTeamPerformance] = useState()
 
   const nodes = [
-    { id: 1, x: 20, y: 25, color: "#3b82f6", icon: CombatIcon, title: "Combat" }, // Top Left
-    { id: 2, x: 48, y: 18, color: "#f97316", icon: ObjectivesIcon, title: "Objectives" }, // Top Middle
-    { id: 3, x: 78, y: 22, color: "#0ea5e9", icon: PatternIcon, title: "Vision" }, // Top Right
-    { id: 4, x: 82, y: 52, color: "#a855f7", icon: ScalingIcon, title: "Income" } // Right
+    { id: 1, x: 20, y: 20, color: "#3b82f6", icon: CombatIcon, title: "Combat" }, // Top Left
+    { id: 2, x: 80, y: 20, color: "#f97316", icon: ObjectivesIcon, title: "Objectives" }, // Top Right
+    { id: 3, x: 80, y: 80, color: "#0ea5e9", icon: PatternIcon, title: "Vision" }, // Bottom Right
+    { id: 4, x: 20, y: 80, color: "#a855f7", icon: ScalingIcon, title: "Income" } // Bottom Left
   ]
 
   const fetchTeamPerformance = async () => {
