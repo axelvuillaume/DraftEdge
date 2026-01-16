@@ -32,14 +32,11 @@ export default function Sheet({ isOpen, onClose, children, title, modal = true }
                 leaveFrom="translate-y-0"
                 leaveTo="translate-y-full"
               >
-                <div className="w-full relative bg-slate-900 border-t border-slate-700 shadow-xl h-full flex flex-col">
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-                    <h2 className="text-lg font-medium text-white">{title}</h2>
-                    <button type="button" className="rounded-md text-slate-400 hover:text-white focus:outline-none transition-colors" onClick={onClose}>
-                      <span className="sr-only">Close panel</span>
-                      <X className="h-6 w-6" aria-hidden="true" />
-                    </button>
-                  </div>
+                <div className="w-full relative bg-slate-900 shadow-xl h-full flex flex-col">
+                  <button type="button" className="absolute top-4 right-4 z-10 rounded-md text-slate-400 hover:text-white focus:outline-none transition-colors" onClick={onClose}>
+                    <span className="sr-only">Close panel</span>
+                    <X className="h-6 w-6" aria-hidden="true" />
+                  </button>
                   <div className="relative flex-1 px-4 sm:px-6 overflow-y-auto py-6">{children}</div>
                 </div>
               </Transition.Child>
@@ -77,13 +74,10 @@ export default function Sheet({ isOpen, onClose, children, title, modal = true }
               leaveTo="translate-y-full"
             >
               <div className="w-full relative bg-slate-900 border-t border-slate-700 shadow-xl h-full flex flex-col">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-                  <Dialog.Title className="text-lg font-medium text-white">{title}</Dialog.Title>
-                  <button type="button" className="rounded-md text-slate-400 hover:text-white focus:outline-none transition-colors" onClick={onClose}>
-                    <span className="sr-only">Close panel</span>
-                    <X className="h-6 w-6" aria-hidden="true" />
-                  </button>
-                </div>
+                <button type="button" className="absolute top-4 right-4 z-10 rounded-md text-slate-400 hover:text-white focus:outline-none transition-colors" onClick={onClose}>
+                  <span className="sr-only">Close panel</span>
+                  <X className="h-6 w-6" aria-hidden="true" />
+                </button>
                 <div className="relative flex-1 px-4 sm:px-6 overflow-y-auto py-6">{children}</div>
               </div>
             </Transition.Child>

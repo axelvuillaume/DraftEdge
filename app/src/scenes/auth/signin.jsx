@@ -56,7 +56,7 @@ export default () => {
               <div className="w-10 h-10 rounded-lg bg-slate-800/80 flex items-center justify-center">
                 <Gamepad2 className="w-5 h-5 text-amber-500" />
               </div>
-              <span>Upload game screenshots automatically</span>
+              <span>Upload replay files</span>
             </div>
             <div className="flex items-center gap-4 text-slate-300">
               <div className="w-10 h-10 rounded-lg bg-slate-800/80 flex items-center justify-center">
