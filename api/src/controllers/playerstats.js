@@ -308,10 +308,10 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
 
     const result = Object.values(statsByPlayer).map((player) => {
       const avgKda = player.total_deaths > 0 ? (player.total_kills + player.total_assists) / player.total_deaths : player.total_kills + player.total_assists;
-      const csPerMin = player.total_duration / 60 > 0 ? player.total_creep / player.total_duration / 60 : 0;
+      const csPerMin = player.total_duration > 0 ? player.total_creep / (player.total_duration / 60) : 0;
       const champions = Object.values(player.champions).map((champ) => {
         const champKda = champ.total_deaths > 0 ? (champ.total_kills + champ.total_assists) / champ.total_deaths : champ.total_kills + champ.total_assists;
-        const champCsPerMin = champ.total_duration / 60 > 0 ? champ.total_creep / champ.total_duration / 60 : 0;
+        const champCsPerMin = champ.total_duration > 0 ? champ.total_creep / (champ.total_duration / 60) : 0;
 
         return {
           champion: champ.champion,
