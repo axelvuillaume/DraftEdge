@@ -141,10 +141,79 @@ router.post('/forgot_password', async (req, res) => {
     obj.set({ forgot_password_reset_token: token, forgot_password_reset_expires: Date.now() + 7200000 }); //2h
     await obj.save();
 
-    await brevo.sendTemplate(BREVO_TEMPLATES.FORGOT_PASSWORD, {
-      emailTo: [{ email: obj.email }],
-      params: { cta: `${config.APP_URL}/auth/reset?token=${token}` },
-    });
+    const resetLink = `${config.APP_URL}/auth/reset?token=${token}`;
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f7f8fa; font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f7f8fa; padding: 40px 20px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 520px; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);">
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #027AF2 0%, #3D99F4 100%); padding: 40px 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">DraftEdge</h1>
+                  </td>
+                </tr>
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 40px;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                      <div style="width: 72px; height: 72px; background: linear-gradient(135deg, #ECF5FE 0%, #D5E9FC 100%); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 32px;">🔐</span>
+                      </div>
+                      <h2 style="margin: 0 0 10px; color: #273237; font-size: 24px; font-weight: 600;">Reset Your Password</h2>
+                      <p style="margin: 0; color: #60768b; font-size: 15px; line-height: 1.6;">We received a request to reset your password. Click the button below to create a new one.</p>
+                    </div>
+                    
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td align="center" style="padding: 10px 0 30px;">
+                          <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #027AF2 0%, #3D99F4 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(2, 122, 242, 0.4);">
+                            Reset Password
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <div style="background-color: #f7f8fa; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+                      <p style="margin: 0 0 8px; color: #60768b; font-size: 13px;">Or copy and paste this link into your browser:</p>
+                      <p style="margin: 0; color: #027AF2; font-size: 13px; word-break: break-all;">${resetLink}</p>
+                    </div>
+
+                    <div style="border-top: 1px solid #e1e5e8; padding-top: 25px;">
+                      <p style="margin: 0 0 8px; color: #60768b; font-size: 13px; line-height: 1.5;">
+                        ⏱️ This link will expire in <strong style="color: #273237;">2 hours</strong>.
+                      </p>
+                      <p style="margin: 0; color: #60768b; font-size: 13px; line-height: 1.5;">
+                        If you didn't request this password reset, you can safely ignore this email.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #273237; padding: 25px 40px; border-radius: 0 0 16px 16px; text-align: center;">
+                    <p style="margin: 0; color: #60768b; font-size: 12px;">
+                      © ${new Date().getFullYear()} DraftEdge. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    await brevo.sendEmail([{ email: obj.email }], 'Reset your password - DraftEdge', emailHtml);
 
     res.status(200).send({ ok: true });
   } catch (error) {

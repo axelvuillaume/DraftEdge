@@ -12,7 +12,7 @@ const S3_ENDPOINT = process.env.S3_ENDPOINT || '';
 const S3_ACCESSKEYID = process.env.S3_ACCESSKEYID || '';
 const S3_SECRETACCESSKEY = process.env.S3_SECRETACCESSKEY || '';
 
-const BREVO_KEY = process.env.BREVO_KEY || '';
+const BREVO_KEY = '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';
 
 const RIOT_API_KEY = 'RGAPI-a05bd425-7b9c-4bc0-9c9e-d6dddb689944' || '';
 
