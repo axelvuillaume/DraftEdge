@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
-import { Clock, Swords, Trash2, Eye, X, MoreVertical, Pencil, Save, Shield, DollarSign, Target } from "lucide-react"
+import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target } from "lucide-react"
 import useStore from "@/services/store"
 
 const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
@@ -81,9 +81,7 @@ function GameCard({ game, onDelete }) {
   const [expanded, setExpanded] = useState(false)
   const [playerStats, setPlayerStats] = useState([])
   const [loading, setLoading] = useState(false)
-  const [showScreenshot, setShowScreenshot] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
 
   const fetchPlayerStats = async () => {
@@ -159,19 +157,6 @@ function GameCard({ game, onDelete }) {
             </div>
           </div>
 
-          {isEditing && (
-            <button
-              onClick={e => {
-                e.stopPropagation()
-                setIsEditing(false)
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-black text-sm font-medium transition-colors"
-            >
-              <Save className="w-4 h-4" />
-              Save
-            </button>
-          )}
-
           {/* Dropdown Menu */}
           <div className="relative">
             <button
@@ -193,30 +178,6 @@ function GameCard({ game, onDelete }) {
                   }}
                 />
                 <div className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 py-1">
-                  {game.screenshot && (
-                    <button
-                      onClick={e => {
-                        e.stopPropagation()
-                        setShowScreenshot(true)
-                        setShowDropdown(false)
-                      }}
-                      className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white flex items-center gap-2"
-                    >
-                      <Eye className="w-4 h-4" />
-                      Screenshot
-                    </button>
-                  )}
-                  <button
-                    onClick={e => {
-                      e.stopPropagation()
-                      setIsEditing(!isEditing)
-                      setShowDropdown(false)
-                    }}
-                    className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white flex items-center gap-2"
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Éditer
-                  </button>
                   <button onClick={handleDelete} className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2">
                     <Trash2 className="w-4 h-4" />
                     Supprimer
@@ -245,7 +206,7 @@ function GameCard({ game, onDelete }) {
                     activeTab === "overview" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
                   }`}
                 >
-                  <Eye className="w-4 h-4" />
+                  <Swords className="w-4 h-4" />
                   Scoreboard
                 </button>
                 <button
@@ -284,7 +245,7 @@ function GameCard({ game, onDelete }) {
                   <div>
                     <div className="space-y-2">
                       {sortPlayersByRole(playerStats.filter(p => !p.opponent)).map((player, idx) => (
-                        <PlayerRow key={player._id || idx} player={player} isEditing={isEditing} />
+                        <PlayerRow key={player._id || idx} player={player} />
                       ))}
                     </div>
                   </div>
@@ -293,7 +254,7 @@ function GameCard({ game, onDelete }) {
                   <div>
                     <div className="space-y-2">
                       {sortPlayersByRole(playerStats.filter(p => p.opponent)).map((player, idx) => (
-                        <PlayerRow key={player._id || idx} player={player} isOpponent isEditing={isEditing} />
+                        <PlayerRow key={player._id || idx} player={player} isOpponent />
                       ))}
                     </div>
                   </div>
@@ -307,58 +268,22 @@ function GameCard({ game, onDelete }) {
           )}
         </div>
       )}
-
-      {/* Screenshot Modal */}
-      {showScreenshot && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowScreenshot(false)}>
-          <div className="relative max-w-5xl w-full max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            <button
-              onClick={() => setShowScreenshot(false)}
-              className="absolute -top-3 -right-3 w-10 h-10 flex items-center justify-center rounded-full bg-slate-700 hover:bg-slate-600 text-white shadow-lg transition-colors z-10"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <img src={`data:image/png;base64,${game.screenshot}`} alt="Game Screenshot" className="w-full h-auto rounded-xl shadow-2xl border border-slate-600/50" />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
 
-function PlayerRow({ player, isOpponent = false, isEditing }) {
-  const [champion, setChampion] = useState(player.champion)
-
-  const handleSave = async () => {
-    try {
-      const { ok, code } = await api.put(`/playerstats/${player._id}`, { champion })
-      if (!ok) return toast.error(code)
-    } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
+function PlayerRow({ player, isOpponent = false }) {
   return (
     <div className={`flex items-center justify-between p-2.5 rounded-lg ${isOpponent ? "bg-red-500/5" : "bg-blue-500/5"}`}>
       <div className="flex items-center gap-3 min-w-0">
-        {champion && (
+        {player.champion && (
           <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-slate-700/50 border border-slate-600/50">
-            <img src={`/champions/${champion}.png`} alt={champion} className="w-full h-full object-cover" />
+            <img src={`/champions/${player.champion}.png`} alt={player.champion} className="w-full h-full object-cover" />
           </div>
         )}
         {/* Champion & Player Info */}
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            {isEditing && (
-              <input
-                type="text"
-                value={champion}
-                onChange={e => setChampion(e.target.value)}
-                onBlur={handleSave}
-                onKeyDown={e => e.key === "Enter" && e.target.blur()}
-                className="bg-transparent text-white text-sm font-medium w-24 px-1 py-0.5 rounded border border-transparent hover:border-slate-600 focus:border-amber-500 focus:outline-none"
-              />
-            )}
             <div className="flex items-center gap-2 min-w-0">
               <a
                 href={`https://dpm.lol/${player.summoner_name}-${player.riot_tag}`}
