@@ -514,8 +514,8 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
         return [
           {
             label: 'DMG / min',
-            team: Math.round(getPerMin(t.damage, t.duration)),
-            enemy: Math.round(getPerMin(e.damage, e.duration)),
+            team: parseFloat(getPerMin(t.damage, t.duration).toFixed(1)),
+            enemy: parseFloat(getPerMin(e.damage, e.duration).toFixed(1)),
           },
           {
             label: 'Kills / game',
@@ -559,13 +559,13 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           },
           {
             label: 'Control Wards Placed / game',
-            team: t.control_wards_bought / t.games,
-            enemy: e.control_wards_bought / e.games,
+            team: (t.control_wards_bought / t.games).toFixed(1),
+            enemy: (e.control_wards_bought / e.games).toFixed(1),
           },
           {
             label: 'Wards Killed / game',
-            team: t.wards_killed / t.games,
-            enemy: e.wards_killed / e.games,
+            team: (t.wards_killed / t.games).toFixed(1),
+            enemy: (e.wards_killed / e.games).toFixed(1),
           },
           {
             label: 'Ward Denial %',
@@ -574,8 +574,8 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           },
           {
             label: 'Control Wards Bought / game',
-            team: t.control_wards_bought / t.games,
-            enemy: e.control_wards_bought / e.games,
+            team: (t.control_wards_bought / t.games).toFixed(1),
+            enemy: (e.control_wards_bought / e.games).toFixed(1),
           },
         ];
       }
