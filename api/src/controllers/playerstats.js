@@ -316,7 +316,7 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
         return {
           champion: champ.champion,
           kda: Math.round(champKda * 100) / 100,
-          win_rate: Math.round(champ.games > 0 ? champ.wins / champ.games : 0 * 1000) / 1000,
+          win_rate: Math.round((champ.games > 0 ? champ.wins / champ.games : 0) * 1000) / 1000,
           cs_per_min: Math.round(champCsPerMin * 10) / 10,
           games: champ.games,
           wins: champ.wins,
@@ -331,7 +331,7 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
       return {
         summoner_name: player.summoner_name,
         kda: Math.round(avgKda * 100) / 100,
-        win_rate: Math.round(player.games > 0 ? player.wins / player.games : 0 * 1000) / 1000,
+        win_rate: Math.round((player.games > 0 ? player.wins / player.games : 0) * 1000) / 1000,
         cs_per_min: Math.round(csPerMin * 10) / 10,
         games: player.games,
         wins: player.wins,
