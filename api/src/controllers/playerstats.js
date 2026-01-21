@@ -251,7 +251,19 @@ router.post('/card_average', passport.authenticate(['admin', 'user'], { session:
 
 router.post('/player_stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
+    // Fetch both team players and opponents to build matchup data
+    const allStats = await PlayerStats.find({ team_id: req.user.team_id });
+    const playerStats = allStats.filter((s) => !s.opponent);
+    const opponentStats = allStats.filter((s) => s.opponent);
+
+    // Build a map of game_id + role -> opponent champion for quick lookup
+    const opponentMap = {};
+    for (const opp of opponentStats) {
+      if (opp.game_id && opp.role) {
+        const key = `${opp.game_id}_${opp.role}`;
+        opponentMap[key] = opp.champion;
+      }
+    }
 
     const statsByPlayer = playerStats.reduce((acc, curr) => {
       const playerName = curr.summoner_name;
@@ -291,6 +303,7 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
           total_duration: 0,
           wins: 0,
           games: 0,
+          matchups: {},
         };
       }
 
@@ -304,6 +317,32 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
       if (curr.game_win) champStats.wins += 1;
       champStats.games += 1;
 
+      // Track matchup against opponent champion
+      const opponentKey = `${curr.game_id}_${curr.role}`;
+      const opponentChamp = opponentMap[opponentKey];
+      if (opponentChamp) {
+        if (!champStats.matchups[opponentChamp]) {
+          champStats.matchups[opponentChamp] = {
+            opponent: opponentChamp,
+            wins: 0,
+            games: 0,
+            total_kills: 0,
+            total_deaths: 0,
+            total_assists: 0,
+            total_creep: 0,
+            total_duration: 0,
+          };
+        }
+        const matchup = champStats.matchups[opponentChamp];
+        matchup.games += 1;
+        if (curr.game_win) matchup.wins += 1;
+        matchup.total_kills += curr.kills || 0;
+        matchup.total_deaths += curr.deaths || 0;
+        matchup.total_assists += curr.assists || 0;
+        matchup.total_creep += curr.cs || 0;
+        matchup.total_duration += curr.game_duration || 0;
+      }
+
       return acc;
     }, {});
 
@@ -313,6 +352,23 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
       const champions = Object.values(player.champions).map((champ) => {
         const champKda = champ.total_deaths > 0 ? (champ.total_kills + champ.total_assists) / champ.total_deaths : champ.total_kills + champ.total_assists;
         const champCsPerMin = champ.total_duration > 0 ? champ.total_creep / (champ.total_duration / 60) : 0;
+
+        // Build matchups array with win rates and stats
+        const matchups = Object.values(champ.matchups).map((m) => {
+          const matchupKda = m.total_deaths > 0 ? (m.total_kills + m.total_assists) / m.total_deaths : m.total_kills + m.total_assists;
+          const matchupCsPerMin = m.total_duration > 0 ? m.total_creep / (m.total_duration / 60) : 0;
+          return {
+            opponent: m.opponent,
+            games: m.games,
+            wins: m.wins,
+            win_rate: Math.round((m.games > 0 ? m.wins / m.games : 0) * 1000) / 1000,
+            kda: Math.round(matchupKda * 100) / 100,
+            cs_per_min: Math.round(matchupCsPerMin * 10) / 10,
+            kills: m.total_kills,
+            deaths: m.total_deaths,
+            assists: m.total_assists,
+          };
+        });
 
         return {
           champion: champ.champion,
@@ -326,6 +382,7 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
           assists: champ.total_assists,
           creep: champ.total_creep,
           gold: champ.total_gold,
+          matchups: matchups.sort((a, b) => b.games - a.games),
         };
       });
 
