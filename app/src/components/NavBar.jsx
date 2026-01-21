@@ -44,7 +44,6 @@ const Navbar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 p-4">
-        <p className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-3 px-3">Menu</p>
         <div className="space-y-1">
           {MENU.map((menu, index) => {
             const Icon = menu.icon
