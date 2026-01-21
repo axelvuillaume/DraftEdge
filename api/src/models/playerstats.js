@@ -244,6 +244,16 @@ const Schema = new mongoose.Schema(
       legendary_items_count: { type: Number, default: 0 },
       plants_destroyed: { type: Number, default: 0 },
     },
+
+    hol_stats: {
+      jungle_camps_stolen: { type: Number, default: 0 }, // HoL_JungleCampsStolen
+      outnumbered_takedowns: { type: Number, default: 0 }, // HoL_OutnumberedTakedowns
+      kills_while_low_hp: { type: Number, default: 0 }, // HoL_KillsWhileLowHealth
+      fights_survived_low_hp: { type: Number, default: 0 }, // HoL_FightsSurvivedWhileLowHealth
+      takedowns_under_enemy_tower: { type: Number, default: 0 }, // HoL_EnemyTakedownUnderTower
+      champions_damaged_while_hidden: { type: Number, default: 0 }, // HoL_ChampionsDamagedWhileHidden
+      hidden_enemies_damaged: { type: Number, default: 0 }, // HoL_HiddenEnemiesDamaged
+    },
   },
   { timestamps: true }
 );

@@ -404,6 +404,16 @@ function parsePlayerStats(p, gameData) {
       legendary_items_count: parseInt(p.Missions_LegendaryItems) || 0,
       plants_destroyed: parseInt(p.Missions_DestroyPlants) || 0,
     },
+
+    hol_stats: {
+      jungle_camps_stolen: parseInt(p.HoL_JungleCampsStolen) || 0,
+      outnumbered_takedowns: parseInt(p.HoL_OutnumberedTakedowns) || 0,
+      kills_while_low_hp: parseInt(p.HoL_KillsWhileLowHealth) || 0,
+      fights_survived_low_hp: parseInt(p.HoL_FightsSurvivedWhileLowHealth) || 0,
+      takedowns_under_enemy_tower: parseInt(p.HoL_EnemyTakedownUnderTower) || 0,
+      champions_damaged_while_hidden: parseInt(p.HoL_ChampionsDamagedWhileHidden) || 0,
+      hidden_enemies_damaged: parseInt(p.HoL_HiddenEnemiesDamaged) || 0,
+    },
   };
 }
 

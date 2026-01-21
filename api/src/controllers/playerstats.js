@@ -602,11 +602,6 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
             team: parseFloat((t.gold > 0 ? t.damage / t.gold : 0).toFixed(2)),
             enemy: parseFloat((e.gold > 0 ? e.damage / e.gold : 0).toFixed(2)),
           },
-          {
-            label: 'Solo Kills / game',
-            team: parseFloat(getAvg(t.solo_kills, t.games).toFixed(1)),
-            enemy: parseFloat(getAvg(e.solo_kills, e.games).toFixed(1)),
-          },
         ];
       }
       if (category === 'Vision') {
@@ -788,7 +783,6 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
             enemy: parseFloat((e.deaths > 0 ? (e.kills + e.assists) / e.deaths : e.kills + e.assists).toFixed(2)),
           },
           { label: 'DMG / Gold', team: parseFloat((t.gold > 0 ? t.damage / t.gold : 0).toFixed(2)), enemy: parseFloat((e.gold > 0 ? e.damage / e.gold : 0).toFixed(2)) },
-          { label: 'Solo Kills / game', team: parseFloat(getAvg(t.solo_kills, t.games).toFixed(1)), enemy: parseFloat(getAvg(e.solo_kills, e.games).toFixed(1)) },
         ];
       }
       if (category === 'Vision') {
