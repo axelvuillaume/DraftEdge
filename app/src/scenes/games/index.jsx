@@ -241,20 +241,20 @@ function GameCard({ game, onDelete }) {
               {/* Tab Content */}
               {activeTab === "overview" && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Your Team */}
+                  {/* Blue Team */}
                   <div>
                     <div className="space-y-2">
-                      {sortPlayersByRole(playerStats.filter(p => !p.opponent)).map((player, idx) => (
+                      {sortPlayersByRole(playerStats.filter(p => p.side === "blue")).map((player, idx) => (
                         <PlayerRow key={player._id || idx} player={player} />
                       ))}
                     </div>
                   </div>
 
-                  {/* Opponents */}
+                  {/* Red Team */}
                   <div>
                     <div className="space-y-2">
-                      {sortPlayersByRole(playerStats.filter(p => p.opponent)).map((player, idx) => (
-                        <PlayerRow key={player._id || idx} player={player} isOpponent />
+                      {sortPlayersByRole(playerStats.filter(p => p.side === "red")).map((player, idx) => (
+                        <PlayerRow key={player._id || idx} player={player} />
                       ))}
                     </div>
                   </div>
@@ -272,9 +272,10 @@ function GameCard({ game, onDelete }) {
   )
 }
 
-function PlayerRow({ player, isOpponent = false }) {
+function PlayerRow({ player }) {
+  const isRedSide = player.side === "red"
   return (
-    <div className={`flex items-center justify-between p-2.5 rounded-lg ${isOpponent ? "bg-red-500/5" : "bg-blue-500/5"}`}>
+    <div className={`flex items-center justify-between p-2.5 rounded-lg ${isRedSide ? "bg-red-500/5" : "bg-blue-500/5"}`}>
       <div className="flex items-center gap-3 min-w-0">
         {player.champion && (
           <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-slate-700/50 border border-slate-600/50">
@@ -327,8 +328,8 @@ function PlayerRow({ player, isOpponent = false }) {
 }
 
 function DamageTab({ playerStats }) {
-  const yourTeam = sortPlayersByRole(playerStats.filter(p => !p.opponent))
-  const opponents = sortPlayersByRole(playerStats.filter(p => p.opponent))
+  const blueTeam = sortPlayersByRole(playerStats.filter(p => p.side === "blue"))
+  const redTeam = sortPlayersByRole(playerStats.filter(p => p.side === "red"))
 
   const allPlayers = [...playerStats]
   const maxDamage = Math.max(...allPlayers.map(p => p.damage?.total_to_champions || 0))
@@ -399,18 +400,18 @@ function DamageTab({ playerStats }) {
 
   return (
     <div className="space-y-2">
-      {yourTeam.map((yourPlayer, idx) => {
-        const opponentPlayer = opponents[idx]
+      {blueTeam.map((bluePlayer, idx) => {
+        const redPlayer = redTeam[idx]
 
-        return <DamageRow key={idx} leftPlayer={yourPlayer} rightPlayer={opponentPlayer} maxDamage={maxDamage} />
+        return <DamageRow key={idx} leftPlayer={bluePlayer} rightPlayer={redPlayer} maxDamage={maxDamage} />
       })}
     </div>
   )
 }
 
 function IncomeTab({ playerStats }) {
-  const yourTeam = sortPlayersByRole(playerStats.filter(p => !p.opponent))
-  const opponents = sortPlayersByRole(playerStats.filter(p => p.opponent))
+  const blueTeam = sortPlayersByRole(playerStats.filter(p => p.side === "blue"))
+  const redTeam = sortPlayersByRole(playerStats.filter(p => p.side === "red"))
 
   const allPlayers = [...playerStats]
   const maxGold = Math.max(...allPlayers.map(p => p.gold || 0))
@@ -458,18 +459,18 @@ function IncomeTab({ playerStats }) {
 
   return (
     <div className="space-y-2">
-      {yourTeam.map((yourPlayer, idx) => {
-        const opponentPlayer = opponents[idx]
+      {blueTeam.map((bluePlayer, idx) => {
+        const redPlayer = redTeam[idx]
 
-        return <IncomeRow key={idx} leftPlayer={yourPlayer} rightPlayer={opponentPlayer} maxGold={maxGold} />
+        return <IncomeRow key={idx} leftPlayer={bluePlayer} rightPlayer={redPlayer} maxGold={maxGold} />
       })}
     </div>
   )
 }
 
 function VisionTab({ playerStats }) {
-  const yourTeam = sortPlayersByRole(playerStats.filter(p => !p.opponent))
-  const opponents = sortPlayersByRole(playerStats.filter(p => p.opponent))
+  const blueTeam = sortPlayersByRole(playerStats.filter(p => p.side === "blue"))
+  const redTeam = sortPlayersByRole(playerStats.filter(p => p.side === "red"))
 
   const allPlayers = [...playerStats]
   const maxVisionScore = Math.max(...allPlayers.map(p => p.vision?.score || 0))
@@ -519,10 +520,10 @@ function VisionTab({ playerStats }) {
 
   return (
     <div className="space-y-2">
-      {yourTeam.map((yourPlayer, idx) => {
-        const opponentPlayer = opponents[idx]
+      {blueTeam.map((bluePlayer, idx) => {
+        const redPlayer = redTeam[idx]
 
-        return <VisionRow key={idx} leftPlayer={yourPlayer} rightPlayer={opponentPlayer} maxVisionScore={maxVisionScore} />
+        return <VisionRow key={idx} leftPlayer={bluePlayer} rightPlayer={redPlayer} maxVisionScore={maxVisionScore} />
       })}
     </div>
   )
