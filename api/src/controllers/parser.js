@@ -144,25 +144,54 @@ function normalizeRole(role) {
   return roleMap[role.toUpperCase()] || null;
 }
 
+/**
+ * Parse les stats d'un joueur depuis le ROFL
+ */
 function parsePlayerStats(p, gameData) {
   const durationMinutes = gameData.duration / 60;
+
+  // Basic stats
   const kills = parseInt(p.CHAMPIONS_KILLED) || 0;
   const deaths = parseInt(p.NUM_DEATHS) || 0;
   const assists = parseInt(p.ASSISTS) || 0;
-  const cs = (parseInt(p.MINIONS_KILLED) || 0) + (parseInt(p.NEUTRAL_MINIONS_KILLED) || 0);
+  const minions = parseInt(p.MINIONS_KILLED) || 0;
+  const jungleMonsters = parseInt(p.NEUTRAL_MINIONS_KILLED) || 0;
+  const cs = minions + jungleMonsters;
   const gold = parseInt(p.GOLD_EARNED) || 0;
-  const totalDamage = parseInt(p.TOTAL_DAMAGE_DEALT_TO_CHAMPIONS) || 0;
+  const totalDamageToChampions = parseInt(p.TOTAL_DAMAGE_DEALT_TO_CHAMPIONS) || 0;
+
+  // Pings - calculer le total
+  const pingsData = {
+    all_in: parseInt(p.ALL_IN_PINGS) || 0,
+    assist_me: parseInt(p.ASSIST_ME_PINGS) || 0,
+    basic: parseInt(p.BASIC_PINGS) || 0,
+    command: parseInt(p.COMMAND_PINGS) || 0,
+    danger: parseInt(p.DANGER_PINGS) || 0,
+    enemy_missing: parseInt(p.ENEMY_MISSING_PINGS) || 0,
+    enemy_vision: parseInt(p.ENEMY_VISION_PINGS) || 0,
+    get_back: parseInt(p.GET_BACK_PINGS) || 0,
+    hold: parseInt(p.HOLD_PINGS) || 0,
+    need_vision: parseInt(p.NEED_VISION_PINGS) || 0,
+    on_my_way: parseInt(p.ON_MY_WAY_PINGS) || 0,
+    push: parseInt(p.PUSH_PINGS) || 0,
+    retreat: parseInt(p.RETREAT_PINGS) || 0,
+    vision_cleared: parseInt(p.VISION_CLEARED_PINGS) || 0,
+  };
+  pingsData.total = Object.values(pingsData).reduce((a, b) => a + b, 0);
 
   return {
-    // Game info
+    // ==================== GAME INFO ====================
     game_id: gameData.game_id,
     game_name: gameData.name,
     game_win: p.WIN === 'Win',
     game_duration: gameData.duration,
 
+    // ==================== PLAYER INFO ====================
     summoner_name: p.RIOT_ID_GAME_NAME || p.NAME,
     riot_tag: p.RIOT_ID_TAG_LINE || '',
-    PUUID: null,
+    PUUID: p.PUUID || null,
+
+    // Ranked info (enrichi via API Riot)
     tier: null,
     rank: null,
     league_points: null,
@@ -171,7 +200,7 @@ function parsePlayerStats(p, gameData) {
     total_games: null,
     win_rate: null,
 
-    // Team context
+    // ==================== TEAM & ROLE ====================
     team_id: null,
     team_name: null,
     opponent: null,
@@ -179,19 +208,30 @@ function parsePlayerStats(p, gameData) {
     role: normalizeRole(p.TEAM_POSITION || p.INDIVIDUAL_POSITION),
     champion: p.SKIN,
 
-    // Basic stats
+    // ==================== BASIC STATS ====================
     kills,
     deaths,
     assists,
     level: parseInt(p.LEVEL) || 0,
+    exp: parseInt(p.EXP) || 0,
 
-    // CS & Gold
-    cs,
-    cs_per_min: durationMinutes > 0 ? Math.round((cs / durationMinutes) * 10) / 10 : 0,
+    // ==================== GOLD ====================
     gold,
+    gold_spent: parseInt(p.GOLD_SPENT) || 0,
     gold_per_min: durationMinutes > 0 ? Math.round(gold / durationMinutes) : 0,
 
-    // Multi-kills
+    // ==================== CS & FARM ====================
+    cs,
+    cs_per_min: durationMinutes > 0 ? Math.round((cs / durationMinutes) * 10) / 10 : 0,
+
+    farm: {
+      minions,
+      jungle_monsters: jungleMonsters,
+      enemy_jungle: parseInt(p.NEUTRAL_MINIONS_KILLED_ENEMY_JUNGLE) || 0,
+      ally_jungle: parseInt(p.NEUTRAL_MINIONS_KILLED_YOUR_JUNGLE) || 0,
+    },
+
+    // ==================== MULTI-KILLS ====================
     multi_kills: {
       double: parseInt(p.DOUBLE_KILLS) || 0,
       triple: parseInt(p.TRIPLE_KILLS) || 0,
@@ -199,63 +239,79 @@ function parsePlayerStats(p, gameData) {
       penta: parseInt(p.PENTA_KILLS) || 0,
     },
 
-    // Combat
+    // ==================== COMBAT ====================
     combat: {
-      killing_spree: parseInt(p.LARGEST_KILLING_SPREE) || 0,
+      killing_sprees: parseInt(p.KILLING_SPREES) || 0,
+      largest_killing_spree: parseInt(p.LARGEST_KILLING_SPREE) || 0,
       largest_multi_kill: parseInt(p.LARGEST_MULTI_KILL) || 0,
-      first_blood: false,
+      largest_critical_strike: parseInt(p.LARGEST_CRITICAL_STRIKE) || 0,
+      largest_ability_damage: parseInt(p.LARGEST_ABILITY_DAMAGE) || 0,
+      largest_attack_damage: parseInt(p.LARGEST_ATTACK_DAMAGE) || 0,
       solo_kills: parseInt(p.HoL_SoloKills) || 0,
-      time_ccing: parseInt(p.TIME_CCING_OTHERS) || 0,
+      time_ccing_champions: parseInt(p.TIME_CCING_OTHERS) || 0,
+      total_time_cc_dealt: parseInt(p.TOTAL_TIME_CROWD_CONTROL_DEALT) || 0,
+      total_time_cc_dealt_to_champions: parseInt(p.TOTAL_TIME_CROWD_CONTROL_DEALT_TO_CHAMPIONS) || 0,
     },
 
-    // Damage dealt
+    // ==================== DAMAGE DEALT ====================
     damage: {
-      total_to_champions: totalDamage,
+      total: parseInt(p.TOTAL_DAMAGE_DEALT) || 0,
+      total_to_champions: totalDamageToChampions,
       physical_to_champions: parseInt(p.PHYSICAL_DAMAGE_DEALT_TO_CHAMPIONS) || 0,
       magic_to_champions: parseInt(p.MAGIC_DAMAGE_DEALT_TO_CHAMPIONS) || 0,
       true_to_champions: parseInt(p.TRUE_DAMAGE_DEALT_TO_CHAMPIONS) || 0,
+      physical_total: parseInt(p.PHYSICAL_DAMAGE_DEALT_PLAYER) || 0,
+      magic_total: parseInt(p.MAGIC_DAMAGE_DEALT_PLAYER) || 0,
+      true_total: parseInt(p.TRUE_DAMAGE_DEALT_PLAYER) || 0,
       to_turrets: parseInt(p.TOTAL_DAMAGE_DEALT_TO_TURRETS) || 0,
+      to_buildings: parseInt(p.TOTAL_DAMAGE_DEALT_TO_BUILDINGS) || 0,
       to_objectives: parseInt(p.TOTAL_DAMAGE_DEALT_TO_OBJECTIVES) || 0,
-      damage_per_min: durationMinutes > 0 ? Math.round(totalDamage / durationMinutes) : 0,
+      to_epic_monsters: parseInt(p.TOTAL_DAMAGE_DEALT_TO_EPIC_MONSTERS) || 0,
+      damage_per_min: durationMinutes > 0 ? Math.round(totalDamageToChampions / durationMinutes) : 0,
+      damage_share: null, // Calculé après avec les stats d'équipe
     },
 
-    // Tank stats
+    // ==================== DAMAGE TAKEN / TANK ====================
     tank: {
       total_taken: parseInt(p.TOTAL_DAMAGE_TAKEN) || 0,
       physical_taken: parseInt(p.PHYSICAL_DAMAGE_TAKEN) || 0,
       magic_taken: parseInt(p.MAGIC_DAMAGE_TAKEN) || 0,
       true_taken: parseInt(p.TRUE_DAMAGE_TAKEN) || 0,
       self_mitigated: parseInt(p.TOTAL_DAMAGE_SELF_MITIGATED) || 0,
-      healed: parseInt(p.TOTAL_HEAL) || 0,
-      shielded_to_allies: parseInt(p.TOTAL_DAMAGE_SHIELDED_ON_TEAMMATES) || 0,
+      total_healed: parseInt(p.TOTAL_HEAL) || 0,
+      healed_on_teammates: parseInt(p.TOTAL_HEAL_ON_TEAMMATES) || 0,
+      units_healed: parseInt(p.TOTAL_UNITS_HEALED) || 0,
+      shielded_on_teammates: parseInt(p.TOTAL_DAMAGE_SHIELDED_ON_TEAMMATES) || 0,
     },
 
-    // Vision
+    // ==================== VISION ====================
     vision: {
       score: parseInt(p.VISION_SCORE) || 0,
       wards_placed: parseInt(p.WARD_PLACED) || 0,
       wards_killed: parseInt(p.WARD_KILLED) || 0,
+      control_wards_placed: parseInt(p.WARD_PLACED_DETECTOR) || 0,
       control_wards_bought: parseInt(p.VISION_WARDS_BOUGHT_IN_GAME) || 0,
+      stealth_wards_bought: parseInt(p.SIGHT_WARDS_BOUGHT_IN_GAME) || 0,
     },
 
-    // Farm
-    farm: {
-      minions: parseInt(p.MINIONS_KILLED) || 0,
-      jungle_monsters: parseInt(p.NEUTRAL_MINIONS_KILLED) || 0,
-      enemy_jungle: parseInt(p.NEUTRAL_MINIONS_KILLED_ENEMY_JUNGLE) || 0,
-      ally_jungle: parseInt(p.NEUTRAL_MINIONS_KILLED_YOUR_JUNGLE) || 0,
-    },
-
-    // Objectives
+    // ==================== OBJECTIVES ====================
     objectives: {
-      turrets: parseInt(p.TURRETS_KILLED) || 0,
-      inhibitors: parseInt(p.BARRACKS_KILLED) || 0,
+      turrets_killed: parseInt(p.TURRETS_KILLED) || 0,
+      turret_takedowns: parseInt(p.TURRET_TAKEDOWNS) || 0,
+      inhibitors_killed: parseInt(p.BARRACKS_KILLED) || 0,
+      inhibitor_takedowns: parseInt(p.BARRACKS_TAKEDOWNS) || 0,
       dragons: parseInt(p.DRAGON_KILLS) || 0,
       barons: parseInt(p.BARON_KILLS) || 0,
       heralds: parseInt(p.RIFT_HERALD_KILLS) || 0,
+      grubs: parseInt(p.HORDE_KILLS) || 0,
+      atakhan: parseInt(p.ATAKHAN_KILLS) || 0,
+      nexus_killed: (parseInt(p.HQ_KILLED) || 0) > 0,
+      nexus_takedown: (parseInt(p.HQ_TAKEDOWNS) || 0) > 0,
+      objectives_stolen: parseInt(p.OBJECTIVES_STOLEN) || 0,
+      objectives_stolen_assists: parseInt(p.OBJECTIVES_STOLEN_ASSISTS) || 0,
     },
 
-    // Items
+    // ==================== ITEMS ====================
     items: [
       parseInt(p.ITEM0) || 0,
       parseInt(p.ITEM1) || 0,
@@ -265,47 +321,177 @@ function parsePlayerStats(p, gameData) {
       parseInt(p.ITEM5) || 0,
       parseInt(p.ITEM6) || 0,
     ].filter((id) => id > 0),
+    items_purchased: parseInt(p.ITEMS_PURCHASED) || 0,
+    consumables_purchased: parseInt(p.CONSUMABLES_PURCHASED) || 0,
 
-    // Runes
+    // ==================== RUNES ====================
     runes: {
-      keystone: parseInt(p.KEYSTONE_ID) || 0,
+      keystone: parseInt(p.KEYSTONE_ID) || parseInt(p.PERK0) || 0,
       primary_tree: parseInt(p.PERK_PRIMARY_STYLE) || 0,
       secondary_tree: parseInt(p.PERK_SUB_STYLE) || 0,
+      perks: [parseInt(p.PERK0) || 0, parseInt(p.PERK1) || 0, parseInt(p.PERK2) || 0, parseInt(p.PERK3) || 0, parseInt(p.PERK4) || 0, parseInt(p.PERK5) || 0],
+      stat_perks: {
+        offense: parseInt(p.STAT_PERK_0) || 0,
+        flex: parseInt(p.STAT_PERK_1) || 0,
+        defense: parseInt(p.STAT_PERK_2) || 0,
+      },
+      perk_values: [
+        { perk_id: parseInt(p.PERK0) || 0, var1: parseInt(p.PERK0_VAR1) || 0, var2: parseInt(p.PERK0_VAR2) || 0, var3: parseInt(p.PERK0_VAR3) || 0 },
+        { perk_id: parseInt(p.PERK1) || 0, var1: parseInt(p.PERK1_VAR1) || 0, var2: parseInt(p.PERK1_VAR2) || 0, var3: parseInt(p.PERK1_VAR3) || 0 },
+        { perk_id: parseInt(p.PERK2) || 0, var1: parseInt(p.PERK2_VAR1) || 0, var2: parseInt(p.PERK2_VAR2) || 0, var3: parseInt(p.PERK2_VAR3) || 0 },
+        { perk_id: parseInt(p.PERK3) || 0, var1: parseInt(p.PERK3_VAR1) || 0, var2: parseInt(p.PERK3_VAR2) || 0, var3: parseInt(p.PERK3_VAR3) || 0 },
+        { perk_id: parseInt(p.PERK4) || 0, var1: parseInt(p.PERK4_VAR1) || 0, var2: parseInt(p.PERK4_VAR2) || 0, var3: parseInt(p.PERK4_VAR3) || 0 },
+        { perk_id: parseInt(p.PERK5) || 0, var1: parseInt(p.PERK5_VAR1) || 0, var2: parseInt(p.PERK5_VAR2) || 0, var3: parseInt(p.PERK5_VAR3) || 0 },
+      ],
     },
 
-    // Summoner spells
+    // ==================== SUMMONER SPELLS ====================
     summoner_spells: {
       spell1: parseInt(p.SUMMONER_SPELL_1) || 0,
       spell2: parseInt(p.SUMMONER_SPELL_2) || 0,
+      spell1_casts: parseInt(p.SUMMON_SPELL1_CAST) || 0,
+      spell2_casts: parseInt(p.SUMMON_SPELL2_CAST) || 0,
     },
 
-    // Time
+    // ==================== SPELL CASTS ====================
+    spell_casts: {
+      q: parseInt(p.SPELL1_CAST) || 0,
+      w: parseInt(p.SPELL2_CAST) || 0,
+      e: parseInt(p.SPELL3_CAST) || 0,
+      r: parseInt(p.SPELL4_CAST) || 0,
+    },
+
+    // ==================== TIME ====================
     time: {
-      played: Math.round((parseInt(p.TIME_PLAYED) || 0) / 1000),
-      dead: Math.round((parseInt(p.TOTAL_TIME_SPENT_DEAD) || 0) / 1000),
-      longest_life: Math.round((parseInt(p.LONGEST_TIME_SPENT_LIVING) || 0) / 1000),
+      played: parseInt(p.TIME_PLAYED) || 0,
+      dead: parseInt(p.TOTAL_TIME_SPENT_DEAD) || 0,
+      longest_life: parseInt(p.LONGEST_TIME_SPENT_LIVING) || 0,
+      disconnected: parseInt(p.TIME_SPENT_DISCONNECTED) || 0,
+    },
+
+    // ==================== PLAYER BEHAVIOR ====================
+    behavior: {
+      was_afk: p.WAS_AFK === '1',
+      was_afk_after_failed_surrender: p.WAS_AFK_AFTER_FAILED_SURRENDER === '1',
+      was_leaver: p.WAS_LEAVER === '1',
+      was_early_surrender_accomplice: p.WAS_EARLY_SURRENDER_ACCOMPLICE === '1',
+      muted_all: p.MUTED_ALL === '1',
+      players_muted: parseInt(p.PLAYERS_I_MUTED) || 0,
+      muted_by_players: parseInt(p.PLAYERS_THAT_MUTED_ME) || 0,
+    },
+
+    // ==================== PINGS ====================
+    pings: pingsData,
+
+    // ==================== GAME END INFO ====================
+    game_ended_in_surrender: p.GAME_ENDED_IN_SURRENDER === '1',
+    game_ended_in_early_surrender: p.GAME_ENDED_IN_EARLY_SURRENDER === '1',
+
+    // ==================== NETWORK ====================
+    ping_ms: parseInt(p.PING) || 0,
+
+    // ==================== TURRET PLATES ====================
+    turret_plates_destroyed: parseInt(p.Missions_TurretPlatesDestroyed) || 0,
+    gold_from_turret_plates: parseInt(p.Missions_GoldFromTurretPlatesTaken) || 0,
+
+    // ==================== ADVANCED STATS ====================
+    advanced: {
+      takedowns_under_turret: parseInt(p.Missions_TakedownsUnderTurret) || 0,
+      immobilize_champions: parseInt(p.Missions_ImmobilizeChampions) || 0,
+      legendary_items_count: parseInt(p.Missions_LegendaryItems) || 0,
+      plants_destroyed: parseInt(p.Missions_DestroyPlants) || 0,
     },
   };
 }
 
 /**
- * Calcule les stats d'équipe
+ * Calcule les stats d'équipe agrégées
  */
 function calculateTeamStats(teamId, statsJson) {
   const teamPlayers = statsJson.filter((p) => p.TEAM === teamId);
 
+  const sum = (key) => teamPlayers.reduce((s, p) => s + (parseInt(p[key]) || 0), 0);
+
+  // Déterminer les "first" en comparant avec l'autre équipe
+  const otherTeamId = teamId === '100' ? '200' : '100';
+  const otherTeamPlayers = statsJson.filter((p) => p.TEAM === otherTeamId);
+
+  const teamDragons = sum('DRAGON_KILLS');
+  const otherDragons = otherTeamPlayers.reduce((s, p) => s + (parseInt(p.DRAGON_KILLS) || 0), 0);
+
+  const teamBarons = sum('BARON_KILLS');
+  const otherBarons = otherTeamPlayers.reduce((s, p) => s + (parseInt(p.BARON_KILLS) || 0), 0);
+
+  const teamHeralds = sum('RIFT_HERALD_KILLS');
+  const otherHeralds = otherTeamPlayers.reduce((s, p) => s + (parseInt(p.RIFT_HERALD_KILLS) || 0), 0);
+
+  const teamGrubs = sum('HORDE_KILLS');
+  const otherGrubs = otherTeamPlayers.reduce((s, p) => s + (parseInt(p.HORDE_KILLS) || 0), 0);
+
+  const teamTowers = sum('TURRETS_KILLED');
+  const otherTowers = otherTeamPlayers.reduce((s, p) => s + (parseInt(p.TURRETS_KILLED) || 0), 0);
+
+  const teamInhibs = sum('BARRACKS_KILLED');
+  const otherInhibs = otherTeamPlayers.reduce((s, p) => s + (parseInt(p.BARRACKS_KILLED) || 0), 0);
+
   return {
     win: teamPlayers[0]?.WIN === 'Win',
-    kills: teamPlayers.reduce((s, p) => s + (parseInt(p.CHAMPIONS_KILLED) || 0), 0),
-    deaths: teamPlayers.reduce((s, p) => s + (parseInt(p.NUM_DEATHS) || 0), 0),
-    assists: teamPlayers.reduce((s, p) => s + (parseInt(p.ASSISTS) || 0), 0),
-    gold: teamPlayers.reduce((s, p) => s + (parseInt(p.GOLD_EARNED) || 0), 0),
-    dragons: teamPlayers.reduce((s, p) => s + (parseInt(p.DRAGON_KILLS) || 0), 0),
-    barons: teamPlayers.reduce((s, p) => s + (parseInt(p.BARON_KILLS) || 0), 0),
-    heralds: teamPlayers.reduce((s, p) => s + (parseInt(p.RIFT_HERALD_KILLS) || 0), 0),
-    towers: teamPlayers.reduce((s, p) => s + (parseInt(p.TURRETS_KILLED) || 0), 0),
-    inhibitors: teamPlayers.reduce((s, p) => s + (parseInt(p.BARRACKS_KILLED) || 0), 0),
+
+    // KDA
+    kills: sum('CHAMPIONS_KILLED'),
+    deaths: sum('NUM_DEATHS'),
+    assists: sum('ASSISTS'),
+
+    // Economy
+    gold: sum('GOLD_EARNED'),
+    gold_spent: sum('GOLD_SPENT'),
+
+    // Objectives
+    dragons: teamDragons,
+    barons: teamBarons,
+    heralds: teamHeralds,
+    grubs: teamGrubs,
+    atakhan: sum('ATAKHAN_KILLS'),
+    towers: teamTowers,
+    tower_takedowns: sum('TURRET_TAKEDOWNS'),
+    inhibitors: teamInhibs,
+    inhibitor_takedowns: sum('BARRACKS_TAKEDOWNS'),
+
+    // Damage
+    total_damage_to_champions: sum('TOTAL_DAMAGE_DEALT_TO_CHAMPIONS'),
+    total_damage_taken: sum('TOTAL_DAMAGE_TAKEN'),
+
+    // Vision
+    vision_score: sum('VISION_SCORE'),
+    wards_placed: sum('WARD_PLACED'),
+    wards_killed: sum('WARD_KILLED'),
+    control_wards_bought: sum('VISION_WARDS_BOUGHT_IN_GAME'),
+
+    // Turret plates
+    turret_plates_destroyed: teamPlayers.reduce((s, p) => s + (parseInt(p.Missions_TurretPlatesDestroyed) || 0), 0),
+    gold_from_turret_plates: teamPlayers.reduce((s, p) => s + (parseInt(p.Missions_GoldFromTurretPlatesTaken) || 0), 0),
+
+    // CS
+    total_cs: sum('MINIONS_KILLED') + sum('NEUTRAL_MINIONS_KILLED'),
+    total_jungle_cs: sum('NEUTRAL_MINIONS_KILLED'),
   };
+}
+
+/**
+ * Extrait les champions par rôle pour une équipe
+ */
+function extractChampionsByRole(teamId, statsJson) {
+  const teamPlayers = statsJson.filter((p) => p.TEAM === teamId);
+  const champions = {};
+
+  teamPlayers.forEach((p) => {
+    const role = normalizeRole(p.TEAM_POSITION || p.INDIVIDUAL_POSITION);
+    if (role) {
+      champions[role] = p.SKIN;
+    }
+  });
+
+  return champions;
 }
 
 /**
@@ -337,25 +523,83 @@ function processRoflData(metadata, filename) {
     date: new Date(),
   };
 
+  // Calculer les stats d'équipe
+  const blueTeamStats = calculateTeamStats('100', statsJson);
+  const redTeamStats = calculateTeamStats('200', statsJson);
+
+  // Calculer les stats summary
+  const allPlayers = statsJson;
+  const statsSummary = {
+    total_kills: blueTeamStats.kills + redTeamStats.kills,
+    total_gold: blueTeamStats.gold + redTeamStats.gold,
+    total_cs: blueTeamStats.total_cs + redTeamStats.total_cs,
+    total_vision_score: blueTeamStats.vision_score + redTeamStats.vision_score,
+    longest_game_time_alive: Math.max(...allPlayers.map((p) => parseInt(p.LONGEST_TIME_SPENT_LIVING) || 0)),
+    double_kills: allPlayers.reduce((s, p) => s + (parseInt(p.DOUBLE_KILLS) || 0), 0),
+    triple_kills: allPlayers.reduce((s, p) => s + (parseInt(p.TRIPLE_KILLS) || 0), 0),
+    quadra_kills: allPlayers.reduce((s, p) => s + (parseInt(p.QUADRA_KILLS) || 0), 0),
+    penta_kills: allPlayers.reduce((s, p) => s + (parseInt(p.PENTA_KILLS) || 0), 0),
+  };
+
+  // Vérifier surrender
+  const anySurrender = allPlayers.some((p) => p.GAME_ENDED_IN_SURRENDER === '1');
+  const anyEarlySurrender = allPlayers.some((p) => p.GAME_ENDED_IN_EARLY_SURRENDER === '1');
+  const surrenderDueToAfk = allPlayers.some((p) => p.WAS_SURRENDER_DUE_TO_AFK === '1');
+  const nexusKilled = allPlayers.some((p) => (parseInt(p.HQ_KILLED) || 0) > 0);
+
   // Game document
   const game = {
     game_id: riotGameId,
+    match_id: riotGameId ? `EUW1_${riotGameId.split('-')[1]}` : null,
     name: null,
     duration: durationSeconds,
     patch: metadata.gameVersion,
     date: new Date(),
-    screenshot: null,
+
     team_id: null,
     team_name: null,
     team_side: null,
     win: null,
+    opponent_id: null,
     opponent_name: null,
-    blue_team: calculateTeamStats('100', statsJson),
-    red_team: calculateTeamStats('200', statsJson),
+
+    blue_team: blueTeamStats,
+    red_team: redTeamStats,
+
+    game_end: {
+      surrender: anySurrender,
+      early_surrender: anyEarlySurrender,
+      surrender_due_to_afk: surrenderDueToAfk,
+      nexus_killed: nexusKilled,
+    },
+
+    champions: {
+      blue: extractChampionsByRole('100', statsJson),
+      red: extractChampionsByRole('200', statsJson),
+    },
+
+    stats_summary: statsSummary,
+
+    tags: [],
+    notes: null,
+
+    rofl: {
+      filename: filename,
+      imported_at: new Date(),
+      file_patch: metadata.gameVersion,
+    },
   };
 
   // PlayerStats documents
   const players = statsJson.map((p) => parsePlayerStats(p, gameData));
+
+  // Calculer le damage_share pour chaque joueur
+  players.forEach((player) => {
+    const teamDamage = player.side === 'blue' ? blueTeamStats.total_damage_to_champions : redTeamStats.total_damage_to_champions;
+    if (teamDamage > 0) {
+      player.damage.damage_share = Math.round((player.damage.total_to_champions / teamDamage) * 1000) / 10; // Pourcentage avec 1 décimale
+    }
+  });
 
   return { game, players, raw: { statsJson } };
 }
