@@ -5,6 +5,7 @@ const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const PlayerStats = require('../models/playerstats');
 const Game = require('../models/game');
+const { client: geminiClient } = require('../services/gemini');
 
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
@@ -542,6 +543,11 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
             team: parseFloat((t.gold > 0 ? t.damage / t.gold : 0).toFixed(2)),
             enemy: parseFloat((e.gold > 0 ? e.damage / e.gold : 0).toFixed(2)),
           },
+          {
+            label: 'Solo Kills / game',
+            team: parseFloat(getAvg(t.solo_kills, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.solo_kills, e.games).toFixed(1)),
+          },
         ];
       }
       if (category === 'Vision') {
@@ -693,6 +699,7 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
           acc.duration += curr.game_duration || 0;
           acc.cs += curr.cs || 0;
           acc.wins += curr.game_win ? 1 : 0;
+          acc.solo_kills += curr.combat?.solo_kills || 0;
           acc.vision_score += curr.vision?.score || 0;
           acc.wards_placed += curr.vision?.wards_placed || 0;
           acc.wards_killed += curr.vision?.wards_killed || 0;
@@ -709,6 +716,7 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
           gold: 0,
           damage: 0,
           duration: 0,
+          solo_kills: 0,
           games: 0,
           cs: 0,
           wins: 0,
@@ -737,6 +745,7 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
             enemy: parseFloat((e.deaths > 0 ? (e.kills + e.assists) / e.deaths : e.kills + e.assists).toFixed(2)),
           },
           { label: 'DMG / Gold', team: parseFloat((t.gold > 0 ? t.damage / t.gold : 0).toFixed(2)), enemy: parseFloat((e.gold > 0 ? e.damage / e.gold : 0).toFixed(2)) },
+          { label: 'Solo Kills / game', team: parseFloat(getAvg(t.solo_kills, t.games).toFixed(1)), enemy: parseFloat(getAvg(e.solo_kills, e.games).toFixed(1)) },
         ];
       }
       if (category === 'Vision') {

@@ -3,7 +3,9 @@ const router = express.Router();
 const multer = require('multer');
 const Game = require('../models/game');
 const PlayerStats = require('../models/playerstats');
+const AIFeedBack = require('../models/AIFeedBack');
 const CONFIG = require('../config');
+const { client: geminiClient } = require('../services/gemini');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
@@ -685,22 +687,10 @@ router.post('/import', upload.single('replay'), async (req, res) => {
 
     const savedPlayers = await PlayerStats.insertMany(playersToSave);
 
-    // Stats de l'enrichissement
-    const enrichedCount = savedPlayers.filter((p) => p.PUUID).length;
-    console.log(`Enriched ${enrichedCount}/${savedPlayers.length} players with Riot data`);
+    res.json({ ok: true, data: { game: savedGame, players: savedPlayers } });
 
-    res.json({
-      ok: true,
-      data: {
-        game: savedGame,
-        players: savedPlayers,
-        enrichment: {
-          total: savedPlayers.length,
-          enriched: enrichedCount,
-          apiKeyConfigured: !!RIOT_API_KEY,
-        },
-      },
-    });
+    // Générer et sauvegarder les feedbacks IA
+    // await generateAndSaveAIFeedback(team_id, team_name);
   } catch (error) {
     console.error('Erreur import ROFL:', error);
 
@@ -725,5 +715,170 @@ router.get('/', (req, res) => {
     },
   });
 });
+
+/**
+ * Génère et sauvegarde les feedbacks IA pour une équipe (appelé après import)
+ */
+async function generateAndSaveAIFeedback(team_id, team_name) {
+  if (!team_id) return;
+
+  const validRoles = ['top', 'jungle', 'mid', 'bottom', 'support'];
+
+  try {
+    const allTeamStats = await PlayerStats.find({ team_id, opponent: false });
+    const allEnemyStats = await PlayerStats.find({ team_id, opponent: true });
+
+    if (!allTeamStats.length) {
+      console.log('No team stats found for AI feedback generation');
+      return;
+    }
+
+    const aggregateStats = (stats) => {
+      return stats.reduce(
+        (acc, curr) => {
+          acc.kills += curr.kills || 0;
+          acc.deaths += curr.deaths || 0;
+          acc.assists += curr.assists || 0;
+          acc.gold += curr.gold || 0;
+          acc.damage += curr.damage?.total_to_champions || 0;
+          acc.duration += curr.game_duration || 0;
+          acc.solo_kills += curr.combat?.solo_kills || 0;
+          acc.games += 1;
+          return acc;
+        },
+        { kills: 0, deaths: 0, assists: 0, gold: 0, damage: 0, duration: 0, solo_kills: 0, games: 0 }
+      );
+    };
+
+    const getAvg = (total, games) => (games > 0 ? total / games : 0);
+    const getPerMin = (total, duration) => (duration > 0 ? total / (duration / 60) : 0);
+
+    // Générer feedback pour chaque rôle
+    for (const role of validRoles) {
+      const teamStats = allTeamStats.filter((s) => s.role === role);
+      const enemyStats = allEnemyStats.filter((s) => s.role === role);
+
+      if (!teamStats.length) continue;
+
+      const teamAgg = aggregateStats(teamStats);
+      const enemyAgg = aggregateStats(enemyStats);
+
+      const combatMetrics = [
+        {
+          label: 'DMG / min',
+          team: parseFloat(getPerMin(teamAgg.damage, teamAgg.duration).toFixed(1)),
+          enemy: parseFloat(getPerMin(enemyAgg.damage, enemyAgg.duration).toFixed(1)),
+          description: 'Average damage dealt to champions per minute',
+        },
+        {
+          label: 'Kills / game',
+          team: parseFloat(getAvg(teamAgg.kills, teamAgg.games).toFixed(1)),
+          enemy: parseFloat(getAvg(enemyAgg.kills, enemyAgg.games).toFixed(1)),
+          description: 'Average kills per game',
+        },
+        {
+          label: 'Deaths / game',
+          team: parseFloat(getAvg(teamAgg.deaths, teamAgg.games).toFixed(1)),
+          enemy: parseFloat(getAvg(enemyAgg.deaths, enemyAgg.games).toFixed(1)),
+          description: 'Average deaths per game',
+          invert: true,
+        },
+        {
+          label: 'KDA',
+          team: parseFloat((teamAgg.deaths > 0 ? (teamAgg.kills + teamAgg.assists) / teamAgg.deaths : teamAgg.kills + teamAgg.assists).toFixed(2)),
+          enemy: parseFloat((enemyAgg.deaths > 0 ? (enemyAgg.kills + enemyAgg.assists) / enemyAgg.deaths : enemyAgg.kills + enemyAgg.assists).toFixed(2)),
+          description: 'Kill/Death/Assist ratio',
+        },
+        {
+          label: 'DMG / Gold',
+          team: parseFloat((teamAgg.gold > 0 ? teamAgg.damage / teamAgg.gold : 0).toFixed(2)),
+          enemy: parseFloat((enemyAgg.gold > 0 ? enemyAgg.damage / enemyAgg.gold : 0).toFixed(2)),
+          description: 'Damage efficiency relative to gold earned',
+        },
+        {
+          label: 'Kill Participation %',
+          team: parseFloat((((teamAgg.kills + teamAgg.assists) / Math.max(teamAgg.kills + teamAgg.deaths + teamAgg.assists, 1)) * 100).toFixed(1)),
+          enemy: parseFloat((((enemyAgg.kills + enemyAgg.assists) / Math.max(enemyAgg.kills + enemyAgg.deaths + enemyAgg.assists, 1)) * 100).toFixed(1)),
+          description: 'Percentage of team kills participated in',
+        },
+        {
+          label: 'Solo Kills / game',
+          team: parseFloat(getAvg(teamAgg.solo_kills, teamAgg.games).toFixed(1)),
+          enemy: parseFloat(getAvg(enemyAgg.solo_kills, enemyAgg.games).toFixed(1)),
+          description: 'Average solo kills per game',
+        },
+      ];
+
+      // Calculate diff percentage for each metric
+      const metricsWithDiff = combatMetrics.map((m) => {
+        let diffPercent = 0;
+        if (m.enemy > 0) {
+          diffPercent = ((m.team - m.enemy) / m.enemy) * 100;
+        } else if (m.team > 0) {
+          diffPercent = 100;
+        }
+        if (m.invert) diffPercent = -diffPercent;
+        return { ...m, diff: parseFloat(diffPercent.toFixed(1)) };
+      });
+
+      // Prepare prompt for Gemini
+      const statsPrompt = metricsWithDiff.map((m) => `- ${m.label}: Team ${m.team} vs Enemy ${m.enemy} (${m.diff > 0 ? '+' : ''}${m.diff}%) - ${m.description}`).join('\n');
+
+      const prompt = `Tu es un analyste expert de League of Legends. Analyse les statistiques de combat suivantes pour le rôle ${role.toUpperCase()} comparées aux adversaires et identifie exactement 2 points forts et 2 axes d'amélioration. Donne des conseils spécifiques au rôle ${role}.
+
+Statistiques de Combat:
+${statsPrompt}
+
+Nombre total de parties analysées: ${teamAgg.games}
+
+Réponds UNIQUEMENT en JSON valide avec ce format exact (sans markdown, sans backticks):
+{
+  "strengths": [
+    {"title": "Titre court", "description": "Explication concise en 1-2 phrases"},
+    {"title": "Titre court", "description": "Explication concise en 1-2 phrases"}
+  ],
+  "improvements": [
+    {"title": "Titre court", "description": "Explication concise en 1-2 phrases"},
+    {"title": "Titre court", "description": "Explication concise en 1-2 phrases"}
+  ]
+}`;
+
+      try {
+        const response = await geminiClient.models.generateContent({
+          model: 'gemini-3-pro-preview',
+          contents: prompt,
+        });
+
+        let analysis = { strengths: [], improvements: [] };
+        const responseText = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const cleanedText = responseText
+          .replace(/```json\n?/g, '')
+          .replace(/```\n?/g, '')
+          .trim();
+        analysis = JSON.parse(cleanedText);
+
+        // Supprimer l'ancien feedback pour ce rôle/type/team
+        // await AIFeedBack.deleteMany({ team_id, role, type: 'combat' });
+
+        // Sauvegarder le nouveau feedback
+        await AIFeedBack.create({
+          role,
+          strengths: analysis.strengths,
+          improvements: analysis.improvements,
+          type: 'combat',
+          team_id,
+          team_name: team_name || '',
+          statsPrompt,
+        });
+
+        console.log(`AI Feedback generated for role ${role}`);
+      } catch (parseError) {
+        console.error(`Failed to generate AI feedback for role ${role}:`, parseError.message);
+      }
+    }
+  } catch (error) {
+    console.error('Error generating AI feedback:', error);
+  }
+}
 
 module.exports = router;
