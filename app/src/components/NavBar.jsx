@@ -37,7 +37,6 @@ const Navbar = () => {
           </div>
           <div>
             <span className="text-white font-bold text-lg tracking-tight">DraftEdge</span>
-            <p className="text-slate-500 text-xs">Scrim Tracker</p>
           </div>
         </div>
       </div>
