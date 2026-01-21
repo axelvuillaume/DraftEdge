@@ -254,7 +254,7 @@ function BubbleDetailView({ bubble }) {
     ],
     strengths: [
       { role: "MID", title: "Mid Dominance", desc: "Mid carry les fights, +17% DMG vs lane opponent" },
-      { role: "JGL", title: "Jungle Skirmish", desc: "JGL gagne les 2v2/3v3, excellent en early fights" }
+      { role: "JGL", title: "Jungle Skirmish", desc: "JGL vole plus camp en moyenne que les autres" }
     ]
   }
 
