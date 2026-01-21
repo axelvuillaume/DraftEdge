@@ -468,6 +468,7 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           acc.damage_objectives += curr.damage?.to_objectives || 0;
           acc.tank_taken += curr.tank?.total_taken || 0;
           acc.tank_mitigated += curr.tank?.self_mitigated || 0;
+          acc.control_wards_placed += curr.vision?.control_wards_placed || 0;
           acc.vision_score += curr.vision?.score || 0;
           acc.wards_placed += curr.vision?.wards_placed || 0;
           acc.wards_killed += curr.vision?.wards_killed || 0;
@@ -490,6 +491,7 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           gold: 0,
           damage: 0,
           duration: 0,
+          control_wards_placed: 0,
           games: 0,
           cs: 0,
           wins: 0,
@@ -552,40 +554,18 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
       }
       if (category === 'Vision') {
         return [
+          { label: 'Vision Score / min', team: parseFloat(getPerMin(t.vision_score, t.duration).toFixed(1)), enemy: parseFloat(getPerMin(e.vision_score, e.duration).toFixed(1)) },
+          { label: 'Wards Placed / game', team: parseFloat(getAvg(t.wards_placed, t.games).toFixed(1)), enemy: parseFloat(getAvg(e.wards_placed, e.games).toFixed(1)) },
+          { label: 'Wards Killed / game', team: parseFloat(getAvg(t.wards_killed, t.games).toFixed(1)), enemy: parseFloat(getAvg(e.wards_killed, e.games).toFixed(1)) },
           {
-            label: 'Vision Score / min',
-            team: parseFloat(getPerMin(t.vision_score, t.duration).toFixed(1)),
-            enemy: parseFloat(getPerMin(e.vision_score, e.duration).toFixed(1)),
-          },
-          {
-            label: 'Wards Placed / game',
-            team: parseFloat(getAvg(t.wards_placed, t.games).toFixed(1)),
-            enemy: parseFloat(getAvg(e.wards_placed, e.games).toFixed(1)),
-          },
-          {
-            label: 'Wards / min',
-            team: parseFloat(getPerMin(t.wards_placed, t.duration).toFixed(1)),
-            enemy: parseFloat(getPerMin(e.wards_placed, e.duration).toFixed(1)),
+            label: 'Ward placed / killed',
+            team: e.wards_placed > 0 ? parseFloat((t.wards_killed / e.wards_placed) * 100).toFixed(1) : 0,
+            enemy: t.wards_placed > 0 ? parseFloat((e.wards_killed / t.wards_placed) * 100).toFixed(1) : 0,
           },
           {
             label: 'Control Wards Placed / game',
-            team: parseFloat(getAvg(t.control_wards_bought, t.games).toFixed(1)),
-            enemy: parseFloat(getAvg(e.control_wards_bought, e.games).toFixed(1)),
-          },
-          {
-            label: 'Wards Killed / game',
-            team: parseFloat(getAvg(t.wards_killed, t.games).toFixed(1)),
-            enemy: parseFloat(getAvg(e.wards_killed, e.games).toFixed(1)),
-          },
-          {
-            label: 'Wards Killed / Wards Placed',
-            team: parseFloat(getAvg(t.wards_killed, t.wards_placed).toFixed(1)),
-            enemy: parseFloat(getAvg(e.wards_killed, e.wards_placed).toFixed(1)),
-          },
-          {
-            label: 'Control Wards Bought / game',
-            team: parseFloat(getAvg(t.control_wards_bought, t.games).toFixed(1)),
-            enemy: parseFloat(getAvg(e.control_wards_bought, e.games).toFixed(1)),
+            team: parseFloat(getAvg(t.control_wards_placed, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.control_wards_placed, e.games).toFixed(1)),
           },
         ];
       }
@@ -603,7 +583,7 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
             enemy: parseFloat(getAvg(e.cs, e.games).toFixed(1)),
           },
           {
-            label: 'Level',
+            label: 'Level / game',
             team: parseFloat(getAvg(t.level, t.games).toFixed(1)),
             enemy: parseFloat(getAvg(e.level, e.games).toFixed(1)),
           },
@@ -613,7 +593,7 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
             enemy: parseFloat(getAvg(e.enemy_jungle, e.games).toFixed(1)),
           },
           {
-            label: 'Gold Plates / game',
+            label: 'Plates / game',
             team: parseFloat(getAvg(t.gold_from_turret_plates, t.games).toFixed(1)),
             enemy: parseFloat(getAvg(e.gold_from_turret_plates, e.games).toFixed(1)),
           },
@@ -704,6 +684,7 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
           acc.wards_placed += curr.vision?.wards_placed || 0;
           acc.wards_killed += curr.vision?.wards_killed || 0;
           acc.control_wards_bought += curr.vision?.control_wards_bought || 0;
+          acc.control_wards_placed += curr.vision?.control_wards_placed || 0;
           acc.level += curr.level || 0;
           acc.enemy_jungle += curr.farm?.enemy_jungle || 0;
           acc.games += 1;
@@ -724,6 +705,7 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
           wards_placed: 0,
           wards_killed: 0,
           control_wards_bought: 0,
+          control_wards_placed: 0,
           level: 0,
           enemy_jungle: 0,
         }
@@ -751,16 +733,15 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
       if (category === 'Vision') {
         return [
           { label: 'Vision Score / min', team: parseFloat(getPerMin(t.vision_score, t.duration).toFixed(1)), enemy: parseFloat(getPerMin(e.vision_score, e.duration).toFixed(1)) },
-          { label: 'Wards Placed / game', team: t.games > 0 ? (t.wards_placed / t.games).toFixed(1) : 0, enemy: e.games > 0 ? (e.wards_placed / e.games).toFixed(1) : 0 },
+          { label: 'Wards Placed / game', team: parseFloat(getAvg(t.wards_placed, t.games).toFixed(1)), enemy: parseFloat(getAvg(e.wards_placed, e.games).toFixed(1)) },
           { label: 'Wards / min', team: parseFloat(getPerMin(t.wards_placed, t.duration).toFixed(1)), enemy: parseFloat(getPerMin(e.wards_placed, e.duration).toFixed(1)) },
-          { label: 'Control Wards Placed / game', team: t.games > 0 ? t.control_wards_bought / t.games : 0, enemy: e.games > 0 ? e.control_wards_bought / e.games : 0 },
-          { label: 'Wards Killed / game', team: t.games > 0 ? t.wards_killed / t.games : 0, enemy: e.games > 0 ? e.wards_killed / e.games : 0 },
+          { label: 'Wards Killed / game', team: parseFloat(getAvg(t.wards_killed, t.games).toFixed(1)), enemy: parseFloat(getAvg(e.wards_killed, e.games).toFixed(1)) },
           {
             label: 'Ward Denial %',
             team: e.wards_placed > 0 ? parseFloat((t.wards_killed / e.wards_placed) * 100).toFixed(1) : 0,
             enemy: t.wards_placed > 0 ? parseFloat((e.wards_killed / t.wards_placed) * 100).toFixed(1) : 0,
           },
-          { label: 'Control Wards Bought / game', team: t.games > 0 ? t.control_wards_bought / t.games : 0, enemy: e.games > 0 ? e.control_wards_bought / e.games : 0 },
+          { label: 'Control Wards Placed / game', team: t.games > 0 ? t.control_wards_placed / t.games : 0, enemy: e.games > 0 ? e.control_wards_placed / e.games : 0 },
         ];
       }
       if (category === 'Income') {
