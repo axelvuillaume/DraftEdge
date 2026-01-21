@@ -593,7 +593,7 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
             invert: true,
           },
           {
-            label: 'Kill Participation %',
+            label: 'Kill Participation',
             team: parseFloat((t.kills / (t.kills + t.deaths + t.assists)) * 100).toFixed(1),
             enemy: parseFloat((e.kills / (e.kills + e.deaths + e.assists)) * 100).toFixed(1),
           },

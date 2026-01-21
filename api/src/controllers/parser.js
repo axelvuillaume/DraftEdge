@@ -796,7 +796,7 @@ async function generateAndSaveAIFeedback(team_id, team_name) {
           description: 'Damage efficiency relative to gold earned',
         },
         {
-          label: 'Kill Participation %',
+          label: 'Kill Participation',
           team: parseFloat((((teamAgg.kills + teamAgg.assists) / Math.max(teamAgg.kills + teamAgg.deaths + teamAgg.assists, 1)) * 100).toFixed(1)),
           enemy: parseFloat((((enemyAgg.kills + enemyAgg.assists) / Math.max(enemyAgg.kills + enemyAgg.deaths + enemyAgg.assists, 1)) * 100).toFixed(1)),
           description: 'Percentage of team kills participated in',
