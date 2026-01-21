@@ -42,6 +42,7 @@ const Schema = new mongoose.Schema(
     gold: { type: Number, default: 0 }, // GOLD_EARNED
     gold_spent: { type: Number, default: 0 },
     gold_per_min: { type: Number }, // Calculé
+    gold_from_shutdowns: { type: Number, default: 0 },
 
     // ==================== CS & FARM ====================
     cs: { type: Number, default: 0 }, // Total minions + jungle

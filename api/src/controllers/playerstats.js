@@ -476,6 +476,8 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           acc.dragons += curr.objectives?.dragons || 0;
           acc.barons += curr.objectives?.barons || 0;
           acc.enemy_jungle += curr.farm?.enemy_jungle || 0;
+          acc.gold_from_turret_plates += curr.gold_from_turret_plates || 0;
+          acc.gold_from_shutdowns += curr.gold_from_shutdowns || 0;
           acc.games += 1;
           return acc;
         },
@@ -502,6 +504,8 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           turrets: 0,
           dragons: 0,
           barons: 0,
+          gold_from_turret_plates: 0,
+          gold_from_shutdowns: 0,
         }
       );
     };
@@ -529,9 +533,9 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
             invert: true,
           },
           {
-            label: 'KDA',
-            team: parseFloat((t.deaths > 0 ? (t.kills + t.assists) / t.deaths : t.kills + t.assists).toFixed(2)),
-            enemy: parseFloat((e.deaths > 0 ? (e.kills + e.assists) / e.deaths : e.kills + e.assists).toFixed(2)),
+            label: 'Kill Participation %',
+            team: parseFloat((t.kills / (t.kills + t.deaths + t.assists)) * 100).toFixed(1),
+            enemy: parseFloat((e.kills / (e.kills + e.deaths + e.assists)) * 100).toFixed(1),
           },
           {
             label: 'DMG / Gold',
@@ -549,8 +553,8 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           },
           {
             label: 'Wards Placed / game',
-            team: (t.wards_placed / t.games).toFixed(1),
-            enemy: (e.wards_placed / e.games).toFixed(1),
+            team: parseFloat(getAvg(t.wards_placed, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.wards_placed, e.games).toFixed(1)),
           },
           {
             label: 'Wards / min',
@@ -559,23 +563,23 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           },
           {
             label: 'Control Wards Placed / game',
-            team: (t.control_wards_bought / t.games).toFixed(1),
-            enemy: (e.control_wards_bought / e.games).toFixed(1),
+            team: parseFloat(getAvg(t.control_wards_bought, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.control_wards_bought, e.games).toFixed(1)),
           },
           {
             label: 'Wards Killed / game',
-            team: (t.wards_killed / t.games).toFixed(1),
-            enemy: (e.wards_killed / e.games).toFixed(1),
+            team: parseFloat(getAvg(t.wards_killed, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.wards_killed, e.games).toFixed(1)),
           },
           {
-            label: 'Ward Denial %',
-            team: parseFloat((t.wards_killed / e.wards_placed) * 100).toFixed(1),
-            enemy: parseFloat((e.wards_killed / t.wards_placed) * 100).toFixed(1),
+            label: 'Wards Killed / Wards Placed',
+            team: parseFloat(getAvg(t.wards_killed, t.wards_placed).toFixed(1)),
+            enemy: parseFloat(getAvg(e.wards_killed, e.wards_placed).toFixed(1)),
           },
           {
             label: 'Control Wards Bought / game',
-            team: (t.control_wards_bought / t.games).toFixed(1),
-            enemy: (e.control_wards_bought / e.games).toFixed(1),
+            team: parseFloat(getAvg(t.control_wards_bought, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.control_wards_bought, e.games).toFixed(1)),
           },
         ];
       }
@@ -589,33 +593,28 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           },
           {
             label: 'CS / game',
-            team: (t.cs / t.games).toFixed(1),
-            enemy: (e.cs / e.games).toFixed(1),
-          },
-          {
-            label: 'Gold Efficiency',
-            team: parseFloat((t.damage / t.gold).toFixed(1)),
-            enemy: parseFloat((e.damage / e.gold).toFixed(1)),
+            team: parseFloat(getAvg(t.cs, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.cs, e.games).toFixed(1)),
           },
           {
             label: 'Level',
-            team: parseFloat((t.level / t.games).toFixed(1)),
-            enemy: parseFloat((e.level / e.games).toFixed(1)),
+            team: parseFloat(getAvg(t.level, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.level, e.games).toFixed(1)),
           },
           {
             label: 'Enemy jungle monsters / game',
-            team: (t.enemy_jungle / t.games).toFixed(1),
-            enemy: (e.enemy_jungle / e.games).toFixed(1),
+            team: parseFloat(getAvg(t.enemy_jungle, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.enemy_jungle, e.games).toFixed(1)),
           },
           {
             label: 'Gold Plates / game',
-            team: 0,
-            enemy: 0,
+            team: parseFloat(getAvg(t.gold_from_turret_plates, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.gold_from_turret_plates, e.games).toFixed(1)),
           },
           {
-            label: 'Shutdown / game',
-            team: 0,
-            enemy: 0,
+            label: 'Shutdowns / game',
+            team: parseFloat(getAvg(t.gold_from_shutdowns, t.games).toFixed(1)),
+            enemy: parseFloat(getAvg(e.gold_from_shutdowns, e.games).toFixed(1)),
           },
         ];
       }

@@ -219,6 +219,7 @@ function parsePlayerStats(p, gameData) {
     gold,
     gold_spent: parseInt(p.GOLD_SPENT) || 0,
     gold_per_min: durationMinutes > 0 ? Math.round(gold / durationMinutes) : 0,
+    gold_from_shutdowns: parseInt(p.HoL_ShutdownGoldCollected) || 0,
 
     // ==================== CS & FARM ====================
     cs,
