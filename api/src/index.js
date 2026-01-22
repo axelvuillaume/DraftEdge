@@ -17,7 +17,7 @@ if (ENVIRONMENT === 'development') {
 
 require('./services/mongo');
 
-app.use(cors({ credentials: true, origin: [APP_URL, 'your production url because sometimes theres a cors issue'] }));
+app.use(cors({ credentials: true, origin: [APP_URL, 'https://draftedge.lol'] }));
 app.use(cookieParser());
 
 app.use('/parser', require('./controllers/parser'));
