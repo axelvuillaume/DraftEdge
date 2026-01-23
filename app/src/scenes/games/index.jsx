@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
-import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target } from "lucide-react"
+import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target, Folder, Plus, Check, FolderInput, X } from "lucide-react"
+import Modal from "@/components/modal"
 import useStore from "@/services/store"
 
 const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
@@ -34,10 +35,30 @@ export default function Games() {
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(true)
   const { user } = useStore()
+  const [folders, setFolders] = useState([])
+  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false)
+  const [newFolder, setNewFolder] = useState({ name: "" })
+  const [hoveredFolder, setHoveredFolder] = useState(null)
+  const [filters, setFilters] = useState({ folder_id: null })
+  const [selectedGames, setSelectedGames] = useState([])
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [showMoveDropdown, setShowMoveDropdown] = useState(false)
 
+  const deleteFolder = async folderId => {
+    if (!confirm("Are you sure you want to delete this folder?")) return
+    try {
+      const { ok, code } = await api.delete(`/folder/${folderId}`)
+      if (!ok) return toast.error(code)
+      setFolders(folders.filter(f => f._id !== folderId))
+      toast.success("Folder deleted")
+      setFilters({ ...filters, folder_id: null })
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
   const fetchGames = async () => {
     try {
-      const { ok, data, code } = await api.post("/game/search", { team_id: user?.team_id })
+      const { ok, data, code } = await api.post("/game/search", { team_id: user?.team_id, ...filters })
       if (!ok) return toast.error(code)
       setGames(data)
     } catch (error) {
@@ -47,9 +68,51 @@ export default function Games() {
     }
   }
 
+  const fetchFolders = async () => {
+    try {
+      const { ok, data, code } = await api.post("/folder/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code)
+      setFolders(data)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const createFolder = async () => {
+    try {
+      const { ok, data, code } = await api.post("/folder", { name: newFolder.name })
+      if (!ok) return toast.error(code)
+      setFolders([...folders, data])
+      setNewFolder({ name: "" })
+      setShowCreateFolderModal(false)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const moveGamesToFolder = async folderId => {
+    try {
+      const { ok, code } = await api.put("/game/move", { game_ids: selectedGames, folder_id: folderId })
+      if (!ok) return toast.error(code)
+      toast.success("Games moved to folder")
+      setSelectedGames([])
+      setSelectionMode(false)
+      setShowMoveDropdown(false)
+      fetchGames()
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const selectAllGames = () => {
+    setSelectedGames(games.map(g => g._id))
+    if (selectedGames.length === games.length) setSelectedGames([])
+  }
+
   useEffect(() => {
     fetchGames()
-  }, [])
+    fetchFolders()
+  }, [filters])
 
   if (loading) {
     return (
@@ -66,9 +129,169 @@ export default function Games() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <section>
-          <div className="space-y-3">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Default "All" folder */}
+              <div
+                onClick={() => setFilters({ ...filters, folder_id: null })}
+                className={`bg-slate-800/50 border rounded-xl overflow-visible transition-all duration-200 hover:border-amber-500/50 hover:bg-slate-800 group cursor-pointer relative ${filters.folder_id === null ? "border-amber-500" : "border-slate-700/50"}`}
+              >
+                <div className="px-4 py-3 flex items-center justify-between min-w-[100px]">
+                  <div className="flex items-center gap-3">
+                    <Folder className={`w-5 h-5 transition-colors ${filters.folder_id === null ? "text-amber-500" : "text-amber-500/80 group-hover:text-amber-500"}`} />
+                    <span className={`text-sm font-medium transition-colors ${filters.folder_id === null ? "text-white" : "text-slate-300 group-hover:text-white"}`}>All</span>
+                  </div>
+                </div>
+              </div>
+
+              {folders.map(folder => (
+                <div
+                  key={folder._id}
+                  className={`bg-slate-800/50 border rounded-xl overflow-visible transition-all duration-200 hover:border-amber-500/50 hover:bg-slate-800 group cursor-pointer relative ${filters.folder_id === folder._id ? "border-amber-500" : "border-slate-700/50"}`}
+                  onMouseEnter={() => setHoveredFolder(folder._id)}
+                  onMouseLeave={() => setHoveredFolder(null)}
+                  onClick={() => setFilters({ ...filters, folder_id: folder._id })}
+                >
+                  <div className="px-4 py-3 flex items-center justify-between min-w-[160px]">
+                    <div className="flex items-center gap-3">
+                      <Folder className={`w-5 h-5 transition-colors ${filters.folder_id === folder._id ? "text-amber-500" : "text-amber-500/80 group-hover:text-amber-500"}`} />
+                      <span className={`text-sm font-medium transition-colors ${filters.folder_id === folder._id ? "text-white" : "text-slate-300 group-hover:text-white"}`}>
+                        {folder.name}
+                      </span>
+                    </div>
+                    <button
+                      onClick={e => (e.stopPropagation(), deleteFolder(folder._id))}
+                      className={`ml-2 p-1 rounded-lg hover:bg-red-500/20 transition-all duration-200 ${hoveredFolder === folder._id ? "opacity-100" : "opacity-0"}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-400 hover:text-red-300" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                onClick={() => setShowCreateFolderModal(true)}
+                className="bg-slate-800/30 border border-slate-700/50 border-dashed rounded-xl px-4 py-3 flex items-center justify-center hover:border-amber-500/50 hover:bg-slate-800/50 transition-all duration-200 group h-[50px] w-[50px]"
+              >
+                <Plus className="w-5 h-5 text-slate-500 group-hover:text-amber-500 transition-colors" />
+              </button>
+            </div>
+
+            <Modal isOpen={showCreateFolderModal} onClose={() => setShowCreateFolderModal(false)} className="w-full max-w-md !bg-slate-900 border border-slate-700/50 shadow-xl">
+              <div className="p-6 space-y-4">
+                <h3 className="text-lg font-medium text-white">Create New Folder</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Folder Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Scrims vs KC"
+                      value={newFolder.name}
+                      onChange={e => setNewFolder({ ...newFolder, name: e.target.value })}
+                      className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-all duration-200"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex items-center justify-end gap-3 pt-4">
+                    <button
+                      onClick={createFolder}
+                      disabled={!newFolder.name.trim()}
+                      className="bg-amber-500 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-amber-500/20"
+                    >
+                      Create Folder
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Modal>
+
+            {/* Selection Toolbar */}
+            {selectionMode && (
+              <div className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-4">
+                  <button onClick={selectAllGames} className="flex items-center gap-2 text-sm text-slate-300 hover:text-white transition-colors">
+                    <div
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                        selectedGames.length === games.length && games.length > 0 ? "bg-amber-500 border-amber-500" : "border-slate-500 hover:border-slate-400"
+                      }`}
+                    >
+                      {selectedGames.length === games.length && games.length > 0 && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    Select all
+                  </button>
+                  <span className="text-slate-500 text-sm">{selectedGames.length} selected</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {selectedGames.length > 0 && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowMoveDropdown(!showMoveDropdown)}
+                        className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors"
+                      >
+                        <FolderInput className="w-4 h-4" />
+                        Move to folder
+                      </button>
+                      {showMoveDropdown && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowMoveDropdown(false)} />
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 py-1">
+                            <button
+                              onClick={() => moveGamesToFolder(null)}
+                              className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"
+                            >
+                              <Folder className="w-4 h-4 text-slate-500" />
+                              No folder
+                            </button>
+                            {folders.map(folder => (
+                              <button
+                                key={folder._id}
+                                onClick={() => moveGamesToFolder(folder._id)}
+                                className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"
+                              >
+                                <Folder className="w-4 h-4 text-amber-500" />
+                                {folder.name}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => (setSelectedGames([]), setSelectionMode(false), setShowMoveDropdown(false))}
+                    className="flex items-center gap-2 text-slate-400 hover:text-white px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Toggle Selection Mode Button */}
+            {!selectionMode && games.length > 0 && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setSelectionMode(true)}
+                  className="flex items-center gap-2 text-slate-400 hover:text-white text-sm px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-colors"
+                >
+                  <Check className="w-4 h-4" />
+                  Select games
+                </button>
+              </div>
+            )}
+
             {games.map(game => (
-              <GameCard key={game._id} game={game} onDelete={fetchGames} />
+              <GameCard
+                key={game._id}
+                game={game}
+                onDelete={fetchGames}
+                selectionMode={selectionMode}
+                isSelected={selectedGames.includes(game._id)}
+                onToggleSelect={gameId => setSelectedGames(prev => (prev.includes(gameId) ? prev.filter(id => id !== gameId) : [...prev, gameId]))}
+                folders={folders}
+              />
             ))}
           </div>
         </section>
@@ -77,7 +300,7 @@ export default function Games() {
   )
 }
 
-function GameCard({ game, onDelete }) {
+function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, folders }) {
   const [expanded, setExpanded] = useState(false)
   const [playerStats, setPlayerStats] = useState([])
   const [loading, setLoading] = useState(false)
@@ -118,10 +341,22 @@ function GameCard({ game, onDelete }) {
   }
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-visible transition-all duration-200 hover:border-slate-600/50 relative">
-      {/* Game Header */}
-      <button onClick={handleToggle} className="w-full p-4 flex items-center justify-between hover:bg-slate-700/20 transition-colors">
+    <div
+      className={`bg-slate-800/50 border rounded-xl overflow-visible transition-all duration-200 hover:border-slate-600/50 relative ${isSelected ? "border-amber-500" : "border-slate-700/50"}`}
+    >
+      <button
+        onClick={e => (e.preventDefault(), selectionMode ? onToggleSelect(game._id) : handleToggle())}
+        className="w-full p-4 flex items-center justify-between hover:bg-slate-700/20 transition-colors"
+      >
         <div className="flex items-center gap-4">
+          {/* Selection Checkbox */}
+          {selectionMode && (
+            <div
+              className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? "bg-amber-500 border-amber-500" : "border-slate-500 hover:border-slate-400"}`}
+            >
+              {isSelected && <Check className="w-3 h-3 text-white" />}
+            </div>
+          )}
           {/* Win/Loss Indicator */}
           <div className={`w-1.5 h-12 rounded-full ${game.win ? "bg-emerald-500" : "bg-red-500"}`} />
 
@@ -139,44 +374,40 @@ function GameCard({ game, onDelete }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          {/* Team Score Preview */}
-          <div className="hidden sm:flex items-center gap-4 text-sm">
-            <div className="text-center">
-              <p className="text-white font-semibold">
-                {game.blue_team?.kills || 0}/{game.blue_team?.deaths || 0}/{game.blue_team?.assists || 0}
-              </p>
-              <p className="text-xs text-slate-500">Blue</p>
+        <div className="flex items-center gap-4">
+          {/* Folder indicator */}
+          {game.folder_id && (
+            <div className="hidden sm:flex items-center gap-1.5 text-slate-500 text-xs">
+              <Folder className="w-3 h-3" />
+              <span>{folders?.find(f => f._id === game.folder_id)?.name || "Folder"}</span>
             </div>
-            <span className="text-slate-600">vs</span>
-            <div className="text-center">
-              <p className="text-white font-semibold">
-                {game.red_team?.kills || 0}/{game.red_team?.deaths || 0}/{game.red_team?.assists || 0}
-              </p>
-              <p className="text-xs text-slate-500">Red</p>
+          )}
+
+          {/* Team Champions */}
+          {game.champions && game.champions[game.team_side] && (
+            <div className="hidden sm:flex items-center gap-1">
+              {ROLE_ORDER.map(role => {
+                const champion = game.champions[game.team_side]?.[role]
+                return champion ? (
+                  <div key={role} className="w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 border border-slate-600/50">
+                    <img src={`/champions/${champion}.png`} alt={champion} className="w-full h-full object-cover" />
+                  </div>
+                ) : null
+              })}
             </div>
-          </div>
+          )}
 
           {/* Dropdown Menu */}
           <div className="relative">
             <button
-              onClick={e => {
-                e.stopPropagation()
-                setShowDropdown(!showDropdown)
-              }}
+              onClick={e => (e.stopPropagation(), setShowDropdown(!showDropdown))}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-white transition-colors"
             >
               <MoreVertical className="w-5 h-5" />
             </button>
             {showDropdown && (
               <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={e => {
-                    e.stopPropagation()
-                    setShowDropdown(false)
-                  }}
-                />
+                <div className="fixed inset-0 z-40" onClick={e => (e.stopPropagation(), setShowDropdown(false))} />
                 <div className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 py-1">
                   <button onClick={handleDelete} className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2">
                     <Trash2 className="w-4 h-4" />

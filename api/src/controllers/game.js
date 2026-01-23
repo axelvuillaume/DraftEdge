@@ -7,6 +7,21 @@ const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const { client } = require('../services/gemini');
 
+// Move games to folder - must be before /:id routes
+router.put('/move', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const { game_ids, folder_id } = req.body;
+    if (!game_ids || !Array.isArray(game_ids)) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    await Game.updateMany({ _id: { $in: game_ids } }, { $set: { folder_id: folder_id || null } });
+
+    return res.status(200).send({ ok: true });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const game = await Game.findById(req.params.id);
@@ -35,6 +50,9 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     let query = {};
 
     if (req.body.team_id) query.team_id = req.body.team_id;
+    // folder_id: null or undefined = all games, "none" = games without folder, otherwise filter by folder_id
+    if (req.body.folder_id === 'none') query.folder_id = { $in: [null, undefined] };
+    else if (req.body.folder_id) query.folder_id = req.body.folder_id;
     const limit = req.body.limit || 50;
     const skip = req.body.offset || 0;
     const total = await Game.countDocuments(query);
@@ -101,7 +119,7 @@ router.post('/stats', passport.authenticate(['admin', 'user'], { session: false,
       .map((p) => {
         if (!p.tier) return null;
         const t = TIER_VALUE[p.tier.toUpperCase()] ?? 0;
-        const r = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.tier.toUpperCase()) ? 0 : RANK_VALUE[p.rank] ?? 0;
+        const r = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.tier.toUpperCase()) ? 0 : (RANK_VALUE[p.rank] ?? 0);
         return t + r + (p.league_points ?? 0);
       })
       .filter((e) => e !== null);

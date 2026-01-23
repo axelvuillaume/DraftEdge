@@ -73,6 +73,10 @@ const Schema = new mongoose.Schema(
       nexus_killed: { type: Boolean, default: true }, // Si HQ_KILLED > 0
     },
 
+    // ==================== FOLDER INFO ====================
+    folder_id: { type: String },
+    folder_name: { type: String },
+
     // ==================== CHAMPIONS PLAYED ====================
     // Référence rapide sans avoir à query les playerstats
     champions: {
@@ -119,7 +123,7 @@ const Schema = new mongoose.Schema(
       file_patch: { type: String }, // Version du client depuis le ROFL
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Index unique pour éviter les doublons

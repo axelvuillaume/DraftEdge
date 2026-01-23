@@ -38,7 +38,7 @@ app.use('/user', require('./controllers/user'));
 app.use('/file', require('./controllers/file'));
 app.use('/game', require('./controllers/game'));
 app.use('/aifeedback', require('./controllers/AIFeedBack'));
-
+app.use('/folder', require('./controllers/folder'));
 app.use('/playerstats', require('./controllers/playerstats'));
 
 setupErrorHandler(app);
