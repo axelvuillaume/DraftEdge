@@ -13,7 +13,7 @@ import Loader from "@/components/loader"
 import Team from "@/scenes/team"
 import useStore from "@/services/store"
 import api from "@/services/api"
-
+import StatsV2 from "@/scenes/statsV2"
 import { environment, SENTRY_URL } from "./config"
 
 if (environment === "production") {
@@ -32,6 +32,7 @@ export default function App() {
           <Route path="/games" element={<Games />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/team" element={<Team />} />
+          <Route path="/statsV2" element={<StatsV2 />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
