@@ -150,7 +150,7 @@ router.post('/card_average', passport.authenticate(['admin', 'user'], { session:
         acc.nb_games += 1;
         return acc;
       },
-      { kills: 0, deaths: 0, assists: 0, gold: 0, level: 0, nb_games: 0 }
+      { kills: 0, deaths: 0, assists: 0, gold: 0, level: 0, nb_games: 0 },
     );
 
     const alliesKda = alliesTotals.deaths > 0 ? (alliesTotals.kills + alliesTotals.assists) / alliesTotals.deaths : alliesTotals.kills + alliesTotals.assists;
@@ -194,7 +194,7 @@ router.post('/card_average', passport.authenticate(['admin', 'user'], { session:
         acc.nb_games += 1;
         return acc;
       },
-      { kills: 0, deaths: 0, assists: 0, gold: 0, nb_games: 0 }
+      { kills: 0, deaths: 0, assists: 0, gold: 0, nb_games: 0 },
     );
 
     const enemiesKda = enemiesTotals.deaths > 0 ? (enemiesTotals.kills + enemiesTotals.assists) / enemiesTotals.deaths : enemiesTotals.kills + enemiesTotals.assists;
@@ -444,7 +444,7 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
             team: { dragons: 0, barons: 0, heralds: 0, grubs: 0, towers: 0, inhibitors: 0 },
             enemy: { dragons: 0, barons: 0, heralds: 0, grubs: 0, towers: 0, inhibitors: 0 },
             games: 0,
-          }
+          },
         );
       };
 
@@ -566,7 +566,7 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
           barons: 0,
           gold_from_turret_plates: 0,
           gold_from_shutdowns: 0,
-        }
+        },
       );
     };
 
@@ -715,6 +715,485 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
   }
 });
 
+// New endpoint for StatsV2 - returns team, players, and matchup data with category scores
+router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const allStats = await PlayerStats.find({ team_id: req.user.team_id });
+    const playerStats = allStats.filter((s) => !s.opponent);
+    const opponentStats = allStats.filter((s) => s.opponent);
+    const games = await Game.find({ team_id: req.user.team_id });
+
+    // Build opponent map for matchups
+    const opponentMap = {};
+    for (const opp of opponentStats) {
+      if (opp.game_id && opp.role) {
+        const key = `${opp.game_id}_${opp.role}`;
+        opponentMap[key] = opp;
+      }
+    }
+
+    // Helper functions
+    const getAvg = (total, count) => (count > 0 ? total / count : 0);
+    const getPerMin = (total, duration) => (duration > 0 ? total / (duration / 60) : 0);
+    const round1 = (val) => Math.round(val * 10) / 10;
+    const round2 = (val) => Math.round(val * 100) / 100;
+
+    // Aggregate stats helper
+    const aggregateStats = (stats) => {
+      return stats.reduce(
+        (acc, curr) => {
+          acc.kills += curr.kills || 0;
+          acc.deaths += curr.deaths || 0;
+          acc.assists += curr.assists || 0;
+          acc.gold += curr.gold || 0;
+          acc.damage += curr.damage?.total_to_champions || 0;
+          acc.duration += curr.game_duration || 0;
+          acc.cs += curr.cs || 0;
+          acc.wins += curr.game_win ? 1 : 0;
+          acc.vision_score += curr.vision?.score || 0;
+          acc.wards_placed += curr.vision?.wards_placed || 0;
+          acc.wards_killed += curr.vision?.wards_killed || 0;
+          acc.control_wards_placed += curr.vision?.control_wards_placed || 0;
+          acc.level += curr.level || 0;
+          acc.enemy_jungle += curr.farm?.enemy_jungle || 0;
+          acc.gold_from_turret_plates += curr.gold_from_turret_plates || 0;
+          acc.damage_objectives += curr.damage?.to_objectives || 0;
+          acc.turrets += curr.objectives?.turrets || 0;
+          acc.dragons += curr.objectives?.dragons || 0;
+          acc.barons += curr.objectives?.barons || 0;
+          acc.heralds += curr.objectives?.heralds || 0;
+          acc.games += 1;
+          return acc;
+        },
+        {
+          kills: 0,
+          deaths: 0,
+          assists: 0,
+          gold: 0,
+          damage: 0,
+          duration: 0,
+          cs: 0,
+          wins: 0,
+          vision_score: 0,
+          wards_placed: 0,
+          wards_killed: 0,
+          control_wards_placed: 0,
+          level: 0,
+          enemy_jungle: 0,
+          gold_from_turret_plates: 0,
+          damage_objectives: 0,
+          turrets: 0,
+          dragons: 0,
+          barons: 0,
+          heralds: 0,
+          games: 0,
+        },
+      );
+    };
+
+    // Get metrics by category
+    const getMetrics = (t, e, category) => {
+      if (category === 'Combat') {
+        return [
+          { name: 'DMG / min', team: round1(getPerMin(t.damage, t.duration)), enemies: round1(getPerMin(e.damage, e.duration)) },
+          { name: 'Kills / game', team: round1(getAvg(t.kills, t.games)), enemies: round1(getAvg(e.kills, e.games)) },
+          { name: 'Deaths / game', team: round1(getAvg(t.deaths, t.games)), enemies: round1(getAvg(e.deaths, e.games)), invert: true },
+          {
+            name: 'Kill Participation %',
+            team: round1(t.kills + t.deaths + t.assists > 0 ? (t.kills / (t.kills + t.deaths + t.assists)) * 100 : 0),
+            enemies: round1(e.kills + e.deaths + e.assists > 0 ? (e.kills / (e.kills + e.deaths + e.assists)) * 100 : 0),
+          },
+          { name: 'DMG / Gold', team: round2(t.gold > 0 ? t.damage / t.gold : 0), enemies: round2(e.gold > 0 ? e.damage / e.gold : 0) },
+        ];
+      }
+      if (category === 'Objectives') {
+        return [
+          { name: 'Dragons / game', team: round1(getAvg(t.dragons, t.games)), enemies: round1(getAvg(e.dragons, e.games)) },
+          { name: 'Heralds / game', team: round1(getAvg(t.heralds, t.games)), enemies: round1(getAvg(e.heralds, e.games)) },
+          { name: 'Barons / game', team: round1(getAvg(t.barons, t.games)), enemies: round1(getAvg(e.barons, e.games)) },
+          { name: 'Turrets / game', team: round1(getAvg(t.turrets, t.games)), enemies: round1(getAvg(e.turrets, e.games)) },
+          { name: 'Objective DMG / game', team: round1(getAvg(t.damage_objectives, t.games)), enemies: round1(getAvg(e.damage_objectives, e.games)) },
+        ];
+      }
+      if (category === 'Vision') {
+        return [
+          { name: 'Vision Score / min', team: round1(getPerMin(t.vision_score, t.duration)), enemies: round1(getPerMin(e.vision_score, e.duration)) },
+          { name: 'Wards Placed / game', team: round1(getAvg(t.wards_placed, t.games)), enemies: round1(getAvg(e.wards_placed, e.games)) },
+          { name: 'Wards Killed / game', team: round1(getAvg(t.wards_killed, t.games)), enemies: round1(getAvg(e.wards_killed, e.games)) },
+          { name: 'Control Wards / game', team: round1(getAvg(t.control_wards_placed, t.games)), enemies: round1(getAvg(e.control_wards_placed, e.games)) },
+          {
+            name: 'Ward Clear %',
+            team: round1(e.wards_placed > 0 ? (t.wards_killed / e.wards_placed) * 100 : 0),
+            enemies: round1(t.wards_placed > 0 ? (e.wards_killed / t.wards_placed) * 100 : 0),
+          },
+        ];
+      }
+      if (category === 'Income') {
+        return [
+          { name: 'Gold / min', team: round1(getPerMin(t.gold, t.duration)), enemies: round1(getPerMin(e.gold, e.duration)) },
+          { name: 'CS / min', team: round1(getPerMin(t.cs, t.duration)), enemies: round1(getPerMin(e.cs, e.duration)) },
+          { name: 'Level / game', team: round1(getAvg(t.level, t.games)), enemies: round1(getAvg(e.level, e.games)) },
+          { name: 'Enemy Jungle / game', team: round1(getAvg(t.enemy_jungle, t.games)), enemies: round1(getAvg(e.enemy_jungle, e.games)) },
+          { name: 'Plates Gold / game', team: round1(getAvg(t.gold_from_turret_plates, t.games)), enemies: round1(getAvg(e.gold_from_turret_plates, e.games)) },
+        ];
+      }
+      return [];
+    };
+
+    // Add diff to metrics
+    const addDiff = (metrics) => {
+      return metrics.map((m) => {
+        let diff = m.enemies > 0 ? ((m.team - m.enemies) / m.enemies) * 100 : m.team > 0 ? 100 : 0;
+        if (m.invert) diff = -diff;
+        return { name: m.name, team: m.team, enemies: m.enemies, diff: round1(diff) };
+      });
+    };
+
+    // Calculate score from metrics
+    const calculateScore = (metrics) => {
+      let totalChange = 0;
+      let count = 0;
+      metrics.forEach((m) => {
+        if (m.enemies === 0 && m.team === 0) return;
+        let diff = m.enemies > 0 ? ((m.team - m.enemies) / m.enemies) * 100 : 10;
+        if (m.invert) diff = -diff;
+        totalChange += Math.max(Math.min(diff, 100), -100);
+        count++;
+      });
+      const avgChange = count > 0 ? totalChange / count : 0;
+      return Math.round(Math.max(0, Math.min(100, 50 + avgChange * 0.5)));
+    };
+
+    // Calculate Objectives score from Game model
+    const calculateObjectivesScoreFromGames = () => {
+      if (!games.length) return 50;
+      const agg = games.reduce(
+        (acc, game) => {
+          const isBlue = game.team_side === 'blue';
+          const team = isBlue ? game.blue_team : game.red_team;
+          const enemy = isBlue ? game.red_team : game.blue_team;
+          acc.team.dragons += team?.dragons || 0;
+          acc.team.barons += team?.barons || 0;
+          acc.team.heralds += team?.heralds || 0;
+          acc.team.towers += team?.towers || 0;
+          acc.enemy.dragons += enemy?.dragons || 0;
+          acc.enemy.barons += enemy?.barons || 0;
+          acc.enemy.heralds += enemy?.heralds || 0;
+          acc.enemy.towers += enemy?.towers || 0;
+          acc.games++;
+          return acc;
+        },
+        { team: { dragons: 0, barons: 0, heralds: 0, towers: 0 }, enemy: { dragons: 0, barons: 0, heralds: 0, towers: 0 }, games: 0 },
+      );
+
+      const objMetrics = [
+        { team: agg.team.dragons / agg.games, enemies: agg.enemy.dragons / agg.games },
+        { team: agg.team.barons / agg.games, enemies: agg.enemy.barons / agg.games },
+        { team: agg.team.heralds / agg.games, enemies: agg.enemy.heralds / agg.games },
+        { team: agg.team.towers / agg.games, enemies: agg.enemy.towers / agg.games },
+      ];
+      return calculateScore(objMetrics);
+    };
+
+    // Get category scores
+    const getCategoryScores = (teamAgg, enemyAgg) => {
+      const categories = ['Combat', 'Vision', 'Income'];
+      const scores = {};
+      categories.forEach((cat) => {
+        const metrics = getMetrics(teamAgg, enemyAgg, cat);
+        scores[cat] = calculateScore(metrics);
+      });
+      scores.Objectives = calculateObjectivesScoreFromGames();
+      return scores;
+    };
+
+    // Get all metrics by category
+    const getAllMetrics = (teamAgg, enemyAgg) => {
+      const result = {};
+      ['Combat', 'Objectives', 'Vision', 'Income'].forEach((cat) => {
+        result[cat] = addDiff(getMetrics(teamAgg, enemyAgg, cat));
+      });
+      return result;
+    };
+
+    // Calculate win rate by side using PlayerStats (side field)
+    const calculateWinRateBySide = (statsList) => {
+      // Group by game_id to count unique games, using PlayerStats side field
+      const gamesBySide = {};
+      statsList.forEach((s) => {
+        if (!s.game_id || !s.side) return;
+        if (!gamesBySide[s.game_id]) {
+          gamesBySide[s.game_id] = { side: s.side, win: s.game_win };
+        }
+      });
+
+      let blueWins = 0, blueTotal = 0, redWins = 0, redTotal = 0;
+      Object.values(gamesBySide).forEach((g) => {
+        if (g.side === 'blue') {
+          blueTotal++;
+          if (g.win) blueWins++;
+        } else if (g.side === 'red') {
+          redTotal++;
+          if (g.win) redWins++;
+        }
+      });
+
+      return {
+        blue: blueTotal > 0 ? Math.round((blueWins / blueTotal) * 100) : 0,
+        red: redTotal > 0 ? Math.round((redWins / redTotal) * 100) : 0,
+      };
+    };
+
+    // Calculate win rate by duration using PlayerStats (game_duration field)
+    const calculateWinRateByDuration = (statsList) => {
+      // Group by game_id to count unique games
+      const gamesByDuration = {};
+      statsList.forEach((s) => {
+        if (!s.game_id) return;
+        if (!gamesByDuration[s.game_id]) {
+          gamesByDuration[s.game_id] = { duration: s.game_duration || 0, win: s.game_win };
+        }
+      });
+
+      const buckets = [
+        { label: '-20', min: 0, max: 20 },
+        { label: '20-25', min: 20, max: 25 },
+        { label: '25-30', min: 25, max: 30 },
+        { label: '30-35', min: 30, max: 35 },
+        { label: '35+', min: 35, max: Infinity },
+      ];
+
+      return buckets.map((b) => {
+        const bucketGames = Object.values(gamesByDuration).filter((g) => {
+          const durationMin = g.duration / 60;
+          return durationMin >= b.min && durationMin < b.max;
+        });
+        const wins = bucketGames.filter((g) => g.win).length;
+        return { label: b.label, value: bucketGames.length > 0 ? Math.round((wins / bucketGames.length) * 100) : 0, games: bucketGames.length };
+      });
+    };
+
+    // Calculate global score
+    const calculateGlobalScore = (categoryScores) => {
+      const values = Object.values(categoryScores);
+      return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
+    };
+
+    // --- Build Team Data ---
+    const teamAgg = aggregateStats(playerStats);
+    const enemyAgg = aggregateStats(opponentStats);
+    const teamCategoryScores = getCategoryScores(teamAgg, enemyAgg);
+    const teamMetrics = getAllMetrics(teamAgg, enemyAgg);
+    const teamWinRate = games.length > 0 ? round1((games.filter((g) => g.win).length / games.length) * 100) : 0;
+
+    // Calculate KDA helper
+    const calculateKDA = (agg) => {
+      if (agg.deaths === 0) return round1(agg.kills + agg.assists);
+      return round1((agg.kills + agg.assists) / agg.deaths);
+    };
+
+    const teamData = {
+      name: req.user.team_name || 'Team',
+      score: calculateGlobalScore(teamCategoryScores),
+      winRate: teamWinRate,
+      games: games.length,
+      kda: calculateKDA(teamAgg),
+      categoryScores: teamCategoryScores,
+      metrics: teamMetrics,
+      winRateBySide: calculateWinRateBySide(playerStats),
+      winRateByDuration: calculateWinRateByDuration(playerStats),
+    };
+
+    // --- Build Players Data ---
+    const playersByName = {};
+    playerStats.forEach((stat) => {
+      const name = stat.summoner_name;
+      if (!playersByName[name]) {
+        playersByName[name] = { stats: [], role: stat.role };
+      }
+      playersByName[name].stats.push(stat);
+      if (stat.role) playersByName[name].role = stat.role;
+    });
+
+    const players = Object.entries(playersByName).map(([name, data]) => {
+      const pStats = data.stats;
+      const pGames = [...new Set(pStats.map((s) => s.game_id))];
+      const pGameDocs = games.filter((g) => pGames.includes(g.game_id));
+
+      // Get opponent stats for this player's games
+      const pOpponentStats = opponentStats.filter((o) => pGames.includes(o.game_id) && o.role === data.role);
+
+      const pAgg = aggregateStats(pStats);
+      const pEnemyAgg = aggregateStats(pOpponentStats);
+      const pCategoryScores = getCategoryScores(pAgg, pEnemyAgg);
+
+      // Build matchups
+      const matchupMap = {};
+      pStats.forEach((stat) => {
+        const oppKey = `${stat.game_id}_${stat.role}`;
+        const opponent = opponentMap[oppKey];
+        if (!opponent) return;
+        const oppChamp = opponent.champion;
+        if (!matchupMap[oppChamp]) {
+          matchupMap[oppChamp] = { teamStats: [], enemyStats: [] };
+        }
+        matchupMap[oppChamp].teamStats.push(stat);
+        matchupMap[oppChamp].enemyStats.push(opponent);
+      });
+
+      const matchups = Object.entries(matchupMap).map(([champName, m]) => {
+        const mTeamAgg = aggregateStats(m.teamStats);
+        const mEnemyAgg = aggregateStats(m.enemyStats);
+        const mCategoryScores = getCategoryScores(mTeamAgg, mEnemyAgg);
+        const mScore = calculateGlobalScore(mCategoryScores);
+        const mWinRate = mTeamAgg.games > 0 ? round1((mTeamAgg.wins / mTeamAgg.games) * 100) : 0;
+        const avgWinRate = pAgg.games > 0 ? (pAgg.wins / pAgg.games) * 100 : 50;
+        const diff = round1(mWinRate - avgWinRate);
+
+        // Build sub-matchups: player's champion performance when facing this opponent champion
+        const subMatchupMap = {};
+        m.teamStats.forEach((stat) => {
+          const playerChamp = stat.champion;
+          if (!playerChamp) return;
+          if (!subMatchupMap[playerChamp]) {
+            subMatchupMap[playerChamp] = { wins: 0, games: 0 };
+          }
+          subMatchupMap[playerChamp].games++;
+          if (stat.game_win) subMatchupMap[playerChamp].wins++;
+        });
+
+        const subMatchups = Object.entries(subMatchupMap).map(([playerChamp, stats]) => {
+          const subWinRate = stats.games > 0 ? round1((stats.wins / stats.games) * 100) : 0;
+          const subDiff = round1(subWinRate - mWinRate);
+          return { name: playerChamp, winRate: subWinRate, games: stats.games, diff: subDiff };
+        });
+
+        const sortedSubMatchups = subMatchups.sort((a, b) => a.diff - b.diff);
+        const mWeakAgainst = sortedSubMatchups.filter((s) => s.diff < 0).slice(0, 4);
+        const mStrongAgainst = sortedSubMatchups.filter((s) => s.diff >= 0).sort((a, b) => b.diff - a.diff).slice(0, 4);
+
+        return {
+          name: champName,
+          score: mScore,
+          winRate: mWinRate,
+          games: mTeamAgg.games,
+          kda: calculateKDA(mTeamAgg),
+          diff,
+          categoryScores: mCategoryScores,
+          metrics: getAllMetrics(mTeamAgg, mEnemyAgg),
+          winRateBySide: calculateWinRateBySide(m.teamStats),
+          winRateByDuration: calculateWinRateByDuration(m.teamStats),
+          weakAgainst: mWeakAgainst,
+          strongAgainst: mStrongAgainst,
+        };
+      });
+
+      // Build player's champions stats (for Best/Worst WR display)
+      const playerChampionMap = {};
+      pStats.forEach((stat) => {
+        const champ = stat.champion;
+        if (!champ) return;
+        if (!playerChampionMap[champ]) {
+          playerChampionMap[champ] = { wins: 0, games: 0, stats: [] };
+        }
+        playerChampionMap[champ].games++;
+        if (stat.game_win) playerChampionMap[champ].wins++;
+        playerChampionMap[champ].stats.push(stat);
+      });
+
+      const playerChampions = Object.entries(playerChampionMap).map(([champName, champData]) => {
+        const champWinRate = champData.games > 0 ? round1((champData.wins / champData.games) * 100) : 0;
+        const champAgg = aggregateStats(champData.stats);
+        const champOpponentStats = opponentStats.filter((o) => champData.stats.some((s) => s.game_id === o.game_id && s.role === o.role));
+        const champEnemyAgg = aggregateStats(champOpponentStats);
+        const champCategoryScores = getCategoryScores(champAgg, champEnemyAgg);
+
+        // Build matchups against enemy champions for this player champion
+        const champMatchupMap = {};
+        champData.stats.forEach((stat) => {
+          const oppKey = `${stat.game_id}_${stat.role}`;
+          const opponent = opponentMap[oppKey];
+          if (!opponent) return;
+          const oppChamp = opponent.champion;
+          if (!champMatchupMap[oppChamp]) {
+            champMatchupMap[oppChamp] = { wins: 0, games: 0, teamStats: [], enemyStats: [] };
+          }
+          champMatchupMap[oppChamp].games++;
+          if (stat.game_win) champMatchupMap[oppChamp].wins++;
+          champMatchupMap[oppChamp].teamStats.push(stat);
+          champMatchupMap[oppChamp].enemyStats.push(opponent);
+        });
+
+        const champMatchups = Object.entries(champMatchupMap).map(([oppChamp, mData]) => {
+          const mWinRate = mData.games > 0 ? round1((mData.wins / mData.games) * 100) : 0;
+          const mDiff = round1(mWinRate - champWinRate);
+          const mTeamAgg = aggregateStats(mData.teamStats);
+          const mEnemyAgg = aggregateStats(mData.enemyStats);
+          const mCategoryScores = getCategoryScores(mTeamAgg, mEnemyAgg);
+          return {
+            name: oppChamp,
+            winRate: mWinRate,
+            games: mData.games,
+            diff: mDiff,
+            score: calculateGlobalScore(mCategoryScores),
+            categoryScores: mCategoryScores,
+            metrics: getAllMetrics(mTeamAgg, mEnemyAgg),
+            winRateBySide: calculateWinRateBySide(mData.teamStats),
+            winRateByDuration: calculateWinRateByDuration(mData.teamStats),
+          };
+        });
+
+        const sortedChampMatchups = champMatchups.sort((a, b) => a.winRate - b.winRate);
+        const champWeakAgainst = sortedChampMatchups.slice(0, 4);
+        const champStrongAgainst = [...champMatchups].sort((a, b) => b.winRate - a.winRate).slice(0, 4);
+
+        return {
+          name: champName,
+          winRate: champWinRate,
+          games: champData.games,
+          kda: calculateKDA(champAgg),
+          score: calculateGlobalScore(champCategoryScores),
+          categoryScores: champCategoryScores,
+          metrics: getAllMetrics(champAgg, champEnemyAgg),
+          winRateBySide: calculateWinRateBySide(champData.stats),
+          winRateByDuration: calculateWinRateByDuration(champData.stats),
+          weakAgainst: champWeakAgainst,
+          strongAgainst: champStrongAgainst,
+        };
+      });
+
+      // Sort player's champions by winrate for Best/Worst WR
+      const sortedPlayerChampions = [...playerChampions].sort((a, b) => a.winRate - b.winRate);
+      const worstChampions = sortedPlayerChampions.slice(0, 4);
+      const bestChampions = [...playerChampions].sort((a, b) => b.winRate - a.winRate).slice(0, 4);
+
+      return {
+        name,
+        role: data.role || 'Unknown',
+        score: calculateGlobalScore(pCategoryScores),
+        winRate: pAgg.games > 0 ? round1((pAgg.wins / pAgg.games) * 100) : 0,
+        games: pAgg.games,
+        kda: calculateKDA(pAgg),
+        categoryScores: pCategoryScores,
+        metrics: getAllMetrics(pAgg, pEnemyAgg),
+        winRateBySide: calculateWinRateBySide(pStats),
+        winRateByDuration: calculateWinRateByDuration(pStats),
+        weakAgainst: worstChampions,
+        strongAgainst: bestChampions,
+      };
+    });
+
+    // Sort players by role order
+    const roleOrder = { top: 0, jungle: 1, mid: 2, bottom: 3, support: 4 };
+    players.sort((a, b) => (roleOrder[a.role] ?? 5) - (roleOrder[b.role] ?? 5));
+
+    return res.status(200).send({ ok: true, data: { ...teamData, players } });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 router.post('/team_performance', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const allTeamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
@@ -764,7 +1243,7 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
           enemy_jungle: 0,
           gold_from_turret_plates: 0,
           gold_from_shutdowns: 0,
-        }
+        },
       );
     };
 
@@ -881,7 +1360,7 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
           team: { dragons: 0, barons: 0, heralds: 0, grubs: 0, towers: 0, inhibitors: 0 },
           enemy: { dragons: 0, barons: 0, heralds: 0, grubs: 0, towers: 0, inhibitors: 0 },
           games: 0,
-        }
+        },
       );
 
       const totalGames = agg.games;

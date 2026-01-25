@@ -255,7 +255,7 @@ const Schema = new mongoose.Schema(
       hidden_enemies_damaged: { type: Number, default: 0 }, // HoL_HiddenEnemiesDamaged
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 Schema.index({ team_id: 1, createdAt: -1 });
 Schema.index({ champion: 1, role: 1 });
