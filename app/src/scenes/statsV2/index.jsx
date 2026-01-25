@@ -393,7 +393,7 @@ function PlayersList({ players, onPlayerClick }) {
 
 function Matchups({ weakAgainst, strongAgainst, onChampionClick, activeChampion, readOnly }) {
   const filteredWeak = weakAgainst.filter(m => m.winRate <= 50)
-  const filteredStrong = strongAgainst.filter(m => m.winRate >= 50)
+  const filteredStrong = strongAgainst.filter(m => m.winRate > 50)
 
   return (
     <div className="grid grid-cols-2 gap-6">
