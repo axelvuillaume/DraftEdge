@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
+import useStore from "@/services/store"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
 import { Shield, ChevronLeft } from "lucide-react"
 
 export default function StatsV2() {
+  const { searchNavigation, setSearchNavigation } = useStore()
   const [teamData, setTeamData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activePlayer, setActivePlayer] = useState(null)
   const [activeChampion, setActiveChampion] = useState(null)
+  const [activeEnemyChampion, setActiveEnemyChampion] = useState(null)
   const [activeCategory, setActiveCategory] = useState("Combat")
 
   const categories = [
@@ -23,8 +26,10 @@ export default function StatsV2() {
       const { ok, data, code } = await api.post("/playerstats/team_stats_v2", {})
       if (!ok) return toast.error(code)
       setTeamData(data)
+      return data
     } catch (error) {
       toast.error(error.message)
+      return null
     } finally {
       setLoading(false)
     }
@@ -33,6 +38,51 @@ export default function StatsV2() {
   useEffect(() => {
     fetchStats()
   }, [])
+
+  // Handle search navigation changes (works even when already on statsV2 page)
+  useEffect(() => {
+    if (!searchNavigation || !teamData) return
+
+    const applyNavigation = async () => {
+      if (searchNavigation.type === "player") {
+        const player = teamData.players?.find(p => p.name === searchNavigation.data.name)
+        if (player) {
+          setActivePlayer(player)
+          setActiveChampion(null)
+          setActiveEnemyChampion(null)
+        }
+      } else if (searchNavigation.type === "allyChampion") {
+        // Find the player and their champion stats
+        const playerName = searchNavigation.data.playerName
+        const championName = searchNavigation.data.name
+        const player = teamData.players?.find(p => p.name === playerName)
+        if (player) {
+          setActivePlayer(player)
+          setActiveEnemyChampion(null)
+          // Find the champion in weakAgainst or strongAgainst (these are the player's own champions)
+          const champion = [...(player.weakAgainst || []), ...(player.strongAgainst || [])].find(c => c.name === championName)
+          if (champion) {
+            setActiveChampion(champion)
+          }
+        }
+      } else if (searchNavigation.type === "enemyChampion") {
+        // Fetch enemy champion stats from API
+        try {
+          const { ok, data } = await api.post("/playerstats/enemy_champion_stats", { championName: searchNavigation.data.name })
+          if (ok) {
+            setActivePlayer(null)
+            setActiveChampion(null)
+            setActiveEnemyChampion(data)
+          }
+        } catch (error) {
+          toast.error("Erreur lors du chargement des stats du champion ennemi")
+        }
+      }
+      setSearchNavigation(null)
+    }
+
+    applyNavigation()
+  }, [searchNavigation?.timestamp, teamData])
 
   if (loading) {
     return (
@@ -53,11 +103,13 @@ export default function StatsV2() {
     )
   }
 
-  const isTeam = activePlayer === null && activeChampion === null
-  const isPlayer = activePlayer !== null && activeChampion === null
-  const isChampion = activeChampion !== null
+  const isEnemyChampion = activeEnemyChampion !== null
+  const isTeam = activePlayer === null && activeChampion === null && !isEnemyChampion
+  const isPlayer = activePlayer !== null && activeChampion === null && !isEnemyChampion
+  const isChampion = activeChampion !== null && !isEnemyChampion
 
   const getCurrentData = () => {
+    if (isEnemyChampion) return activeEnemyChampion
     if (isChampion) return activeChampion
     if (isPlayer) return activePlayer
     return teamData
@@ -73,17 +125,22 @@ export default function StatsV2() {
           players={teamData.players || []}
           activePlayer={activePlayer}
           activeChampion={activeChampion}
+          activeEnemyChampion={activeEnemyChampion}
           onTeamClick={() => {
             setActivePlayer(null)
             setActiveChampion(null)
+            setActiveEnemyChampion(null)
           }}
           onPlayerChange={player => {
             setActivePlayer(player)
             setActiveChampion(null)
+            setActiveEnemyChampion(null)
           }}
           onChampionChange={setActiveChampion}
           onBack={() => {
-            if (activeChampion) {
+            if (activeEnemyChampion) {
+              setActiveEnemyChampion(null)
+            } else if (activeChampion) {
               setActiveChampion(null)
             } else if (activePlayer) {
               setActivePlayer(null)
@@ -91,7 +148,14 @@ export default function StatsV2() {
           }}
         />
 
-        <HeaderSection data={currentData} isTeam={isTeam} isChampion={isChampion} winRateBySide={currentData.winRateBySide} winRateByDuration={currentData.winRateByDuration} />
+        <HeaderSection
+          data={currentData}
+          isTeam={isTeam}
+          isChampion={isChampion}
+          isEnemyChampion={isEnemyChampion}
+          winRateBySide={currentData.winRateBySide}
+          winRateByDuration={currentData.winRateByDuration}
+        />
 
         {/* Séparateur principal */}
         <div className="h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent mb-4 flex-shrink-0" />
@@ -100,7 +164,7 @@ export default function StatsV2() {
           {/* Colonne gauche - Métriques */}
           <SectionCard title="Performance par catégorie">
             <CategoryTabs categories={categories} activeCategory={activeCategory} onCategoryChange={setActiveCategory} categoryScores={currentData.categoryScores} />
-            <MetricsTable metrics={currentData.metrics?.[activeCategory] || []} />
+            <MetricsTable metrics={currentData.metrics?.[activeCategory] || []} isEnemyChampion={isEnemyChampion} />
           </SectionCard>
 
           {/* Colonne droite - Listes */}
@@ -119,6 +183,12 @@ export default function StatsV2() {
           {isChampion && (
             <SectionCard title="Détails du matchup">
               <Matchups weakAgainst={activeChampion.weakAgainst || []} strongAgainst={activeChampion.strongAgainst || []} readOnly />
+            </SectionCard>
+          )}
+
+          {isEnemyChampion && (
+            <SectionCard title="Nos champions vs ce champion">
+              <Matchups weakAgainst={activeEnemyChampion.weakAgainst || []} strongAgainst={activeEnemyChampion.strongAgainst || []} readOnly isEnemyContext />
             </SectionCard>
           )}
         </div>
@@ -170,12 +240,12 @@ function CategoryTabs({ categories, activeCategory, onCategoryChange, categorySc
   )
 }
 
-function Breadcrumb({ teamName, players, activePlayer, activeChampion, onTeamClick, onPlayerChange, onChampionChange, onBack }) {
+function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEnemyChampion, onTeamClick, onPlayerChange, onChampionChange, onBack }) {
   const allChampions = activePlayer
     ? [...(activePlayer.weakAgainst || []), ...(activePlayer.strongAgainst || [])].filter((champ, idx, arr) => arr.findIndex(c => c.name === champ.name) === idx)
     : []
 
-  const showBackButton = activePlayer || activeChampion
+  const showBackButton = activePlayer || activeChampion || activeEnemyChampion
 
   return (
     <div className="flex items-center gap-2 mb-3 text-sm flex-shrink-0">
@@ -183,14 +253,26 @@ function Breadcrumb({ teamName, players, activePlayer, activeChampion, onTeamCli
         <button
           onClick={onBack}
           className="w-6 h-6 flex items-center justify-center rounded bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 hover:text-white transition-colors"
-          title={activeChampion ? "Retour au joueur" : "Retour à l'équipe"}
+          title={activeEnemyChampion ? "Retour à l'équipe" : activeChampion ? "Retour au joueur" : "Retour à l'équipe"}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
       )}
-      <button onClick={onTeamClick} className={`font-medium transition-colors ${!activePlayer && !activeChampion ? "text-emerald-400" : "text-slate-400 hover:text-white"}`}>
+      <button
+        onClick={onTeamClick}
+        className={`font-medium transition-colors ${!activePlayer && !activeChampion && !activeEnemyChampion ? "text-emerald-400" : "text-slate-400 hover:text-white"}`}
+      >
         {teamName}
       </button>
+      {activeEnemyChampion && (
+        <>
+          <span className="text-slate-600">/</span>
+          <span className="text-red-400 font-medium flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-red-500" />
+            {activeEnemyChampion.name}
+          </span>
+        </>
+      )}
       {activePlayer && (
         <>
           <span className="text-slate-600">/</span>
@@ -251,8 +333,8 @@ function Breadcrumb({ teamName, players, activePlayer, activeChampion, onTeamCli
   )
 }
 
-function HeaderSection({ data, isTeam, isChampion, winRateBySide, winRateByDuration }) {
-  const isPlayer = !isTeam && !isChampion
+function HeaderSection({ data, isTeam, isChampion, isEnemyChampion, winRateBySide, winRateByDuration }) {
+  const isPlayer = !isTeam && !isChampion && !isEnemyChampion
   const side = winRateBySide || { blue: 0, red: 0 }
 
   return (
@@ -263,6 +345,10 @@ function HeaderSection({ data, isTeam, isChampion, winRateBySide, winRateByDurat
             <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
               <Shield className="w-10 h-10 text-slate-900" />
             </div>
+          ) : isEnemyChampion ? (
+            <div className="w-20 h-20 bg-slate-700/50 border-2 border-red-500/50 rounded-lg flex items-center justify-center overflow-hidden">
+              <img src={`/champions/${data.name}.png`} alt={data.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+            </div>
           ) : (
             <div className="w-20 h-20 bg-slate-700/50 border border-emerald-500/30 rounded-lg flex items-center justify-center overflow-hidden">
               {isChampion && <img src={`/champions/${data.name}.png`} alt={data.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />}
@@ -272,15 +358,16 @@ function HeaderSection({ data, isTeam, isChampion, winRateBySide, winRateByDurat
         </div>
 
         <div>
-          <h1 className="text-4xl font-bold text-white tracking-wide">{(data.name || "").toUpperCase()}</h1>
+          <h1 className={`text-4xl font-bold tracking-wide ${isEnemyChampion ? "text-red-400" : "text-white"}`}>{(data.name || "").toUpperCase()}</h1>
           {isPlayer && data.role && <p className="text-slate-400 capitalize">{data.role}</p>}
           {isChampion && <p className="text-slate-400">Champion Matchup</p>}
+          {isEnemyChampion && <p className="text-red-400/70">Champion Ennemi • {data.role}</p>}
         </div>
       </div>
 
       <div className="flex items-center justify-center gap-6">
         {/* Score */}
-        <ScoreCircle score={data.score || 0} />
+        <ScoreCircle score={data.score || 0} isEnemy={isEnemyChampion} />
 
         {/* Stats */}
         <div className="flex flex-col gap-2">
@@ -303,28 +390,30 @@ function HeaderSection({ data, isTeam, isChampion, winRateBySide, winRateByDurat
           </div>
 
           {/* Mini Side bars */}
-          <div className="flex items-center gap-3 mt-1">
-            <div className="flex items-center gap-1">
-              <div className="w-8 h-2 bg-blue-500 rounded" style={{ opacity: side.blue > 0 ? 1 : 0.3 }} />
-              <span className="text-blue-400 text-[10px] font-medium">{side.blue}%</span>
+          {!isEnemyChampion && (
+            <div className="flex items-center gap-3 mt-1">
+              <div className="flex items-center gap-1">
+                <div className="w-8 h-2 bg-blue-500 rounded" style={{ opacity: side.blue > 0 ? 1 : 0.3 }} />
+                <span className="text-blue-400 text-[10px] font-medium">{side.blue}%</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-8 h-2 bg-red-400 rounded" style={{ opacity: side.red > 0 ? 1 : 0.3 }} />
+                <span className="text-red-400 text-[10px] font-medium">{side.red}%</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-8 h-2 bg-red-400 rounded" style={{ opacity: side.red > 0 ? 1 : 0.3 }} />
-              <span className="text-red-400 text-[10px] font-medium">{side.red}%</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-function ScoreCircle({ score }) {
+function ScoreCircle({ score, isEnemy }) {
   return (
     <div className="relative w-20 h-20">
       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="42" fill="none" stroke="rgb(51 65 85 / 0.5)" strokeWidth="6" />
-        <circle cx="50" cy="50" r="42" fill="none" stroke="rgb(16 185 129)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(score / 100) * 264} 264`} />
+        <circle cx="50" cy="50" r="42" fill="none" stroke={"rgb(16 185 129)"} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(score / 100) * 264} 264`} />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         <span className="text-2xl font-bold text-white">{score}</span>
@@ -334,7 +423,7 @@ function ScoreCircle({ score }) {
   )
 }
 
-function MetricsTable({ metrics }) {
+function MetricsTable({ metrics, isEnemyChampion }) {
   if (!metrics || metrics.length === 0) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
@@ -344,8 +433,8 @@ function MetricsTable({ metrics }) {
       {/* Header */}
       <div className="grid grid-cols-4 gap-4 pb-3 border-b border-slate-600/50">
         <div className="text-slate-400 text-xs font-medium uppercase tracking-wider">Métrique</div>
-        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">Équipe</div>
-        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">Ennemis</div>
+        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">{isEnemyChampion ? "Nous" : "Équipe"}</div>
+        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">{isEnemyChampion ? "Ce champ" : "Ennemis"}</div>
         <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">Diff</div>
       </div>
 
@@ -354,7 +443,7 @@ function MetricsTable({ metrics }) {
         <div key={idx} className={`grid grid-cols-4 gap-4 py-4 items-center ${idx !== metrics.length - 1 ? "border-b border-slate-700/30" : ""}`}>
           <div className="text-white font-medium text-sm">{metric.name}</div>
           <div className="text-center text-slate-300 text-sm">{metric.team}</div>
-          <div className="text-center text-slate-400 text-sm">{metric.enemies}</div>
+          <div className={`text-center text-sm ${isEnemyChampion ? "text-red-400" : "text-slate-400"}`}>{metric.enemies}</div>
           <div className={`text-center font-semibold text-sm ${metric.diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
             {metric.diff >= 0 ? "+" : ""}
             {metric.diff}%
@@ -391,9 +480,13 @@ function PlayersList({ players, onPlayerClick }) {
   )
 }
 
-function Matchups({ weakAgainst, strongAgainst, onChampionClick, activeChampion, readOnly }) {
+function Matchups({ weakAgainst, strongAgainst, onChampionClick, activeChampion, readOnly, isEnemyContext }) {
   const filteredWeak = weakAgainst.filter(m => m.winRate <= 50)
   const filteredStrong = strongAgainst.filter(m => m.winRate > 50)
+
+  // For enemy context: labels are inverted - our weak champions against enemy = we lose more
+  const weakLabel = isEnemyContext ? "Nos pires picks" : readOnly ? "Pires matchups" : "Pire WR"
+  const strongLabel = isEnemyContext ? "Nos meilleurs picks" : readOnly ? "Meilleurs matchups" : "Meilleur WR"
 
   return (
     <div className="grid grid-cols-2 gap-6">
@@ -401,7 +494,7 @@ function Matchups({ weakAgainst, strongAgainst, onChampionClick, activeChampion,
       <div>
         <div className="flex items-center gap-2 mb-4">
           <div className="w-2 h-2 rounded-full bg-red-500 shadow-lg shadow-red-500/50" />
-          <span className="text-slate-400 text-xs font-medium tracking-wider uppercase">{readOnly ? "Pires matchups" : "Pire WR"}</span>
+          <span className="text-slate-400 text-xs font-medium tracking-wider uppercase">{weakLabel}</span>
         </div>
         <div className="space-y-2">
           {filteredWeak.length === 0 ? (
@@ -435,7 +528,7 @@ function Matchups({ weakAgainst, strongAgainst, onChampionClick, activeChampion,
       <div>
         <div className="flex items-center gap-2 mb-4">
           <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
-          <span className="text-slate-400 text-xs font-medium tracking-wider uppercase">{readOnly ? "Meilleurs matchups" : "Meilleur WR"}</span>
+          <span className="text-slate-400 text-xs font-medium tracking-wider uppercase">{strongLabel}</span>
         </div>
         <div className="space-y-2">
           {filteredStrong.length === 0 ? (
