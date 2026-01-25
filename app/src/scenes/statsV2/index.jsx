@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
-import { Shield } from "lucide-react"
+import { Shield, ChevronLeft } from "lucide-react"
 
 export default function StatsV2() {
   const [teamData, setTeamData] = useState(null)
@@ -66,8 +66,8 @@ export default function StatsV2() {
   const currentData = getCurrentData()
 
   return (
-    <div className="h-[calc(100vh-64px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6 overflow-hidden flex flex-col">
-      <div className="max-w-5xl mx-auto w-full flex flex-col flex-1 min-h-0">
+    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
+      <div className="max-w-5xl mx-auto w-full">
         <Breadcrumb
           teamName={teamData.name}
           players={teamData.players || []}
@@ -82,6 +82,13 @@ export default function StatsV2() {
             setActiveChampion(null)
           }}
           onChampionChange={setActiveChampion}
+          onBack={() => {
+            if (activeChampion) {
+              setActiveChampion(null)
+            } else if (activePlayer) {
+              setActivePlayer(null)
+            }
+          }}
         />
 
         <HeaderSection data={currentData} isTeam={isTeam} isChampion={isChampion} winRateBySide={currentData.winRateBySide} winRateByDuration={currentData.winRateByDuration} />
@@ -89,35 +96,31 @@ export default function StatsV2() {
         {/* Séparateur principal */}
         <div className="h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent mb-4 flex-shrink-0" />
 
-        <div className="grid lg:grid-cols-2 gap-6 flex-1 min-h-0">
+        <div className="grid lg:grid-cols-2 gap-6 items-start">
           {/* Colonne gauche - Métriques */}
-          <div className="h-full min-h-0">
-            <SectionCard title="Performance par catégorie" scrollable>
-              <CategoryTabs categories={categories} activeCategory={activeCategory} onCategoryChange={setActiveCategory} categoryScores={currentData.categoryScores} />
-              <MetricsTable metrics={currentData.metrics?.[activeCategory] || []} />
-            </SectionCard>
-          </div>
+          <SectionCard title="Performance par catégorie">
+            <CategoryTabs categories={categories} activeCategory={activeCategory} onCategoryChange={setActiveCategory} categoryScores={currentData.categoryScores} />
+            <MetricsTable metrics={currentData.metrics?.[activeCategory] || []} />
+          </SectionCard>
 
           {/* Colonne droite - Listes */}
-          <div className="h-full min-h-0">
-            {isTeam && (
-              <SectionCard title="Joueurs de l'équipe" scrollable>
-                <PlayersList players={teamData.players || []} onPlayerClick={setActivePlayer} />
-              </SectionCard>
-            )}
+          {isTeam && (
+            <SectionCard title="Joueurs de l'équipe">
+              <PlayersList players={teamData.players || []} onPlayerClick={setActivePlayer} />
+            </SectionCard>
+          )}
 
-            {isPlayer && (
-              <SectionCard title="Matchups" scrollable>
-                <Matchups weakAgainst={activePlayer.weakAgainst || []} strongAgainst={activePlayer.strongAgainst || []} onChampionClick={setActiveChampion} />
-              </SectionCard>
-            )}
+          {isPlayer && (
+            <SectionCard title="Matchups">
+              <Matchups weakAgainst={activePlayer.weakAgainst || []} strongAgainst={activePlayer.strongAgainst || []} onChampionClick={setActiveChampion} />
+            </SectionCard>
+          )}
 
-            {isChampion && (
-              <SectionCard title="Détails du matchup" scrollable>
-                <Matchups weakAgainst={activeChampion.weakAgainst || []} strongAgainst={activeChampion.strongAgainst || []} readOnly />
-              </SectionCard>
-            )}
-          </div>
+          {isChampion && (
+            <SectionCard title="Détails du matchup">
+              <Matchups weakAgainst={activeChampion.weakAgainst || []} strongAgainst={activeChampion.strongAgainst || []} readOnly />
+            </SectionCard>
+          )}
         </div>
       </div>
     </div>
@@ -125,16 +128,16 @@ export default function StatsV2() {
 }
 
 // Composant réutilisable pour les sections avec titre
-function SectionCard({ title, children, scrollable }) {
+function SectionCard({ title, children }) {
   return (
-    <div className={`bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 ${scrollable ? "h-full flex flex-col" : ""}`}>
+    <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
       {title && (
         <>
-          <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4 flex-shrink-0">{title}</h2>
-          <div className="h-px bg-slate-700/50 -mx-5 mb-4 flex-shrink-0" />
+          <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">{title}</h2>
+          <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
         </>
       )}
-      <div className={scrollable ? "flex-1 overflow-y-auto min-h-0" : ""}>{children}</div>
+      {children}
     </div>
   )
 }
@@ -167,11 +170,24 @@ function CategoryTabs({ categories, activeCategory, onCategoryChange, categorySc
   )
 }
 
-function Breadcrumb({ teamName, players, activePlayer, activeChampion, onTeamClick, onPlayerChange, onChampionChange }) {
-  const allChampions = activePlayer ? [...(activePlayer.weakAgainst || []), ...(activePlayer.strongAgainst || [])] : []
+function Breadcrumb({ teamName, players, activePlayer, activeChampion, onTeamClick, onPlayerChange, onChampionChange, onBack }) {
+  const allChampions = activePlayer
+    ? [...(activePlayer.weakAgainst || []), ...(activePlayer.strongAgainst || [])].filter((champ, idx, arr) => arr.findIndex(c => c.name === champ.name) === idx)
+    : []
+
+  const showBackButton = activePlayer || activeChampion
 
   return (
     <div className="flex items-center gap-2 mb-3 text-sm flex-shrink-0">
+      {showBackButton && (
+        <button
+          onClick={onBack}
+          className="w-6 h-6 flex items-center justify-center rounded bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 hover:text-white transition-colors"
+          title={activeChampion ? "Retour au joueur" : "Retour à l'équipe"}
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      )}
       <button onClick={onTeamClick} className={`font-medium transition-colors ${!activePlayer && !activeChampion ? "text-emerald-400" : "text-slate-400 hover:text-white"}`}>
         {teamName}
       </button>
