@@ -13,6 +13,7 @@ const ERROR_CODES = require('../utils/errorCodes');
 
 const brevo = require('../services/brevo');
 const { capture } = require('../services/sentry');
+const { capture: posthogCapture, identify } = require('../services/posthog');
 
 // 1 years
 const COOKIE_MAX_AGE = 31557600000;
@@ -51,6 +52,8 @@ router.post('/signin', async (req, res) => {
     const token = jwt.sign({ _id: user.id }, config.SECRET, { expiresIn: JWT_MAX_AGE });
     res.cookie('jwt', token, cookieOptions());
 
+    posthogCapture(user._id.toString(), 'user_signed_in', { email: user.email, method: 'email' });
+
     return res.status(200).send({ ok: true, token, user });
   } catch (error) {
     capture(error);
@@ -80,6 +83,9 @@ router.post('/signup', async (req, res) => {
     const token = jwt.sign({ _id: user._id }, config.SECRET, { expiresIn: JWT_MAX_AGE });
     res.cookie('jwt', token, cookieOptions());
 
+    identify(user._id.toString(), { email: user.email, name: user.name, team_name: finalTeamName });
+    posthogCapture(user._id.toString(), 'user_signed_up', { email: user.email, team_name: finalTeamName, joined_existing_team: !!team_id });
+
     return res.status(200).send({ user, token, ok: true });
   } catch (error) {
     console.log('e', error);
@@ -105,8 +111,9 @@ router.post('/check-email', async (req, res) => {
   }
 });
 
-router.post('/logout', async (_, res) => {
+router.post('/logout', passport.authenticate(['user'], { session: false }), async (req, res) => {
   try {
+    posthogCapture(req.user._id.toString(), 'user_logged_out');
     res.clearCookie('jwt', cookieOptions());
     return res.status(200).send({ ok: true });
   } catch (error) {

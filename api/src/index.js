@@ -6,10 +6,12 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const passport = require('passport');
 const { initSentry, setupErrorHandler } = require('./services/sentry');
+const { initPostHog, capture } = require('./services/posthog');
 const { PORT, ENVIRONMENT, APP_URL } = require('./config');
 
 const app = express();
 initSentry(app);
+initPostHog();
 
 if (ENVIRONMENT === 'development') {
   app.use(morgan('tiny'));

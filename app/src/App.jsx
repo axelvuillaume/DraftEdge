@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom"
 import { Toaster } from "react-hot-toast"
 import * as Sentry from "@sentry/browser"
+import posthog from "posthog-js"
 
 import Auth from "@/scenes/auth"
 import Home from "@/scenes/home"
@@ -14,10 +15,26 @@ import Team from "@/scenes/team"
 import useStore from "@/services/store"
 import api from "@/services/api"
 import StatsV2 from "@/scenes/statsV2"
-import { environment, SENTRY_URL } from "./config"
+import { environment, SENTRY_URL, POSTHOG_API_KEY, POSTHOG_HOST } from "./config"
 
 if (environment === "production") {
   Sentry.init({ dsn: SENTRY_URL, environment: "app" })
+}
+
+// Initialize PostHog with Session Replay (only in production)
+if (environment === "production") {
+  posthog.init(POSTHOG_API_KEY, {
+    api_host: POSTHOG_HOST,
+    person_profiles: "identified_only",
+    capture_pageview: true,
+    capture_pageleave: true,
+    session_recording: {
+      maskAllInputs: false,
+      maskInputOptions: {
+        password: true,
+      },
+    },
+  })
 }
 
 export default function App() {
@@ -56,10 +73,18 @@ const UserLayout = () => {
       const { ok, token, user } = await api.get("/user/signin_token")
       if (!ok) {
         setUser(null)
+        posthog.reset()
         return
       }
       api.setToken(token)
       setUser(user)
+
+      // Identify user in PostHog for Session Replay
+      posthog.identify(user._id, {
+        email: user.email,
+        name: user.name,
+        team_name: user.team_name,
+      })
     } catch (e) {
       console.log(e)
       setUser(null)

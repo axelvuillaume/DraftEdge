@@ -5,6 +5,7 @@ const Game = require('../models/game');
 const PlayerStats = require('../models/playerstats');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
+const { capture: posthogCapture } = require('../services/posthog');
 const { client } = require('../services/gemini');
 
 // Move games to folder - must be before /:id routes
@@ -69,6 +70,8 @@ router.post('/', passport.authenticate(['admin', 'user'], { session: false, fail
     if (!req.body.title || !req.body.message || !req.body.user_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
     const game = await Game.create(req.body);
 
+    posthogCapture(req.user._id.toString(), 'game_created', { game_id: game._id.toString(), title: game.title });
+
     return res.status(200).send({ ok: true, data: game });
   } catch (error) {
     capture(error);
@@ -82,6 +85,8 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
     if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
 
     await PlayerStats.deleteMany({ game_id: game._id });
+
+    posthogCapture(req.user._id.toString(), 'game_deleted', { game_id: game._id.toString() });
 
     return res.status(200).send({ ok: true });
   } catch (error) {

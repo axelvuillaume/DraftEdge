@@ -32,6 +32,7 @@
     "node-fetch": "^2.6.1",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
+    "posthog-node": "^5.21.2",
     "sib-api-v3-sdk": "^8.5.0"
   },
   "devDependencies": {
