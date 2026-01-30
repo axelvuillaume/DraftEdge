@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
 import { Toaster } from "react-hot-toast"
 import * as Sentry from "@sentry/browser"
 import posthog from "posthog-js"
@@ -26,7 +26,7 @@ if (environment === "production") {
   posthog.init(POSTHOG_API_KEY, {
     api_host: POSTHOG_HOST,
     person_profiles: "identified_only",
-    capture_pageview: true,
+    capture_pageview: false, // We'll capture manually for SPA
     capture_pageleave: true,
     session_recording: {
       maskAllInputs: false,
@@ -37,9 +37,25 @@ if (environment === "production") {
   })
 }
 
+// Component to track page views on route changes
+function PostHogPageView() {
+  const location = useLocation()
+
+  useEffect(() => {
+    if (environment === "production") {
+      posthog.capture("$pageview", {
+        $current_url: window.location.href,
+      })
+    }
+  }, [location])
+
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <PostHogPageView />
       <Routes>
         <Route element={<AuthLayout />}>
           <Route path="/auth/*" element={<Auth />} />
