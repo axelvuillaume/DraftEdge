@@ -83,12 +83,12 @@ const Information = ({ user, setUser }) => {
     <div>
       <div className="grid grid-cols-2 gap-5 mb-3">
         <div className="w-full">
-          <div className="text-sm font-medium mb-2">Nom</div>
+          <div className="text-sm font-medium mb-2">Name</div>
           <input className="input" value={values.name} onChange={(e) => setValues({ ...values, name: e.target.value })} />
         </div>
 
         <div className="w-full">
-          <div className="text-sm font-medium mb-2">E-mail</div>
+          <div className="text-sm font-medium mb-2">Email</div>
           <input className="input" value={values.email} onChange={(e) => setValues({ ...values, email: e.target.value })} />
         </div>
 
@@ -97,11 +97,11 @@ const Information = ({ user, setUser }) => {
 
       <div className="flex items-center justify-end space-x-2 mt-10">
         <LoadingButton className="btn btn-black" loading={btnLoading} onClick={() => onUpdate()}>
-          Mise à jour
+          Update
         </LoadingButton>
 
         <button className="btn bg-red-500" onClick={onDelete}>
-          Supprimer
+          Delete
         </button>
       </div>
     </div>

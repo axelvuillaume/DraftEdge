@@ -86,7 +86,7 @@ const TopBar = () => {
               setShowResults(true)
             }}
             onFocus={() => setShowResults(true)}
-            placeholder="Rechercher un joueur ou champion..."
+            placeholder="Search for a player or champion..."
             className="w-full h-10 pl-10 pr-10 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
           />
           {searchQuery && (
@@ -106,15 +106,15 @@ const TopBar = () => {
         {showResults && searchQuery.trim().length >= 2 && (
           <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700/50 rounded-xl shadow-xl shadow-black/20 overflow-hidden max-h-80 overflow-y-auto">
             {isSearching ? (
-              <div className="p-4 text-center text-slate-400 text-sm">Recherche...</div>
+              <div className="p-4 text-center text-slate-400 text-sm">Searching...</div>
             ) : !hasResults ? (
-              <div className="p-4 text-center text-slate-400 text-sm">Aucun résultat</div>
+              <div className="p-4 text-center text-slate-400 text-sm">No results</div>
             ) : (
               <>
                 {searchResults.players.length > 0 && (
                   <div>
                     <div className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-900/50">
-                      Joueurs
+                      Players
                     </div>
                     {searchResults.players.map((player, idx) => (
                       <button
@@ -144,7 +144,7 @@ const TopBar = () => {
                   <div>
                     <div className="px-4 py-2 text-xs font-semibold text-emerald-500 uppercase tracking-wider bg-slate-900/50 flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                      Champions Alliés
+                      Allied Champions
                     </div>
                     {searchResults.allyChampions.map((champion, idx) => (
                       <button
@@ -174,7 +174,7 @@ const TopBar = () => {
                   <div>
                     <div className="px-4 py-2 text-xs font-semibold text-red-400 uppercase tracking-wider bg-slate-900/50 flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-red-500" />
-                      Champions Ennemis
+                      Enemy Champions
                     </div>
                     {searchResults.enemyChampions.map((champion, idx) => (
                       <button
@@ -192,7 +192,7 @@ const TopBar = () => {
                         </div>
                         <div className="flex-1">
                           <span className="text-white font-medium text-sm">{champion.name}</span>
-                          <span className="text-red-400/70 text-xs ml-2">Ennemi</span>
+                          <span className="text-red-400/70 text-xs ml-2">Enemy</span>
                         </div>
                         <span className="text-red-400 text-xs">{champion.games} games</span>
                       </button>
@@ -256,7 +256,7 @@ const ProfileMenu = () => {
               {({ active }) => (
                 <button className={`${active ? "bg-slate-700/50" : ""} w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 transition-colors`}>
                   <User className="w-4 h-4 text-slate-400" />
-                  <span>Mon profil</span>
+                  <span>My Profile</span>
                 </button>
               )}
             </Menu.Item>
@@ -267,7 +267,7 @@ const ProfileMenu = () => {
               {({ active }) => (
                 <button onClick={handleLogout} className={`${active ? "bg-red-500/10" : ""} w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 transition-colors`}>
                   <LogOut className="w-4 h-4" />
-                  <span>Déconnexion</span>
+                  <span>Log Out</span>
                 </button>
               )}
             </Menu.Item>

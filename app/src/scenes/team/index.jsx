@@ -62,7 +62,7 @@ export default function Team() {
                 <td colSpan="4" className="px-6 py-6">
                   <div className="flex items-center justify-center gap-3 text-amber-500 font-medium">
                     <UserPlus className="w-5 h-5" />
-                    <span>Copier le lien d'invitation</span>
+                    <span>Copy invitation link</span>
                     <div className="ml-2 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] uppercase tracking-wider">Click to copy</div>
                   </div>
                 </td>

@@ -411,7 +411,7 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
                 <div className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 py-1">
                   <button onClick={handleDelete} className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2">
                     <Trash2 className="w-4 h-4" />
-                    Supprimer
+                    Delete
                   </button>
                 </div>
               </>

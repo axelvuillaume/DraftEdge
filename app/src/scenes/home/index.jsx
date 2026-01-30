@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
-import { Trophy, Swords, Target, TrendingUp, Clock, Shield, Crosshair, Zap, Gamepad2, TrendingDown, AlertTriangle } from "lucide-react"
+import { Trophy, Swords, Target, TrendingUp, Clock, Shield, Crosshair, Zap, Gamepad2, TrendingDown, AlertTriangle, Info } from "lucide-react"
 import Sheet from "@/components/sheet"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
 
@@ -83,7 +83,7 @@ export default function FutureHome() {
 
   return (
     <div className="min-h-[calc(100vh-65px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      <Sheet isOpen={!!selectedBubble} onClose={() => setSelectedBubble(null)} title={selectedBubble?.title || "Détails"} modal={false}>
+      <Sheet isOpen={!!selectedBubble} onClose={() => setSelectedBubble(null)} title={selectedBubble?.title || "Details"} modal={false}>
         {selectedBubble && <BubbleDetailView bubble={selectedBubble} />}
       </Sheet>
 
@@ -96,7 +96,7 @@ export default function FutureHome() {
               <div className="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center">
                 <Gamepad2 className="w-4 h-4 text-teal-400" />
               </div>
-              <p className="text-xs text-slate-400">Games Jouées:</p>
+              <p className="text-xs text-slate-400">Games Played:</p>
             </div>
             <p className="text-2xl font-bold text-white">{gameStats?.total_games || 0}</p>
           </div>
@@ -118,7 +118,7 @@ export default function FutureHome() {
               <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center">
                 <Clock className="w-4 h-4 text-orange-400" />
               </div>
-              <p className="text-xs text-slate-400">Durée Moyenne:</p>
+              <p className="text-xs text-slate-400">Average Duration:</p>
             </div>
             <p className="text-2xl font-bold text-white whitespace-nowrap">
               {Math.floor(Math.round(games.reduce((sum, game) => sum + (game.duration || 0), 0) / games.length) / 60)}:
@@ -132,7 +132,7 @@ export default function FutureHome() {
               <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
                 <span className="text-[10px] font-bold text-purple-400">KDA</span>
               </div>
-              <p className="text-xs text-slate-400">KDA Moyen:</p>
+              <p className="text-xs text-slate-400">Average KDA:</p>
             </div>
             <p className="text-2xl font-bold text-white">{avgKDA.toFixed(2)}</p>
           </div>
@@ -248,13 +248,13 @@ function BubbleDetailView({ bubble }) {
   // Mock analysis data - À remplacer par des données venant de l'API plus tard
   const analysis = {
     weaknesses: [
-      { role: "TOP", title: "Lane Pressure", desc: "Top perd trop de trades 1v1, -27% solo kills vs opponents" },
-      { role: "SUP", title: "Support Survivability", desc: "Support meurt trop souvent, positioning à améliorer" },
-      { role: "ADC", title: "Safety", desc: "ADC bon DPS mais +19% deaths, protéger mieux en TF" }
+      { role: "TOP", title: "Lane Pressure", desc: "Top loses too many 1v1 trades, -27% solo kills vs opponents" },
+      { role: "SUP", title: "Support Survivability", desc: "Support meurt trop souvent, positioning to improve" },
+      { role: "ADC", title: "Safety", desc: "ADC good DPS but +19% deaths, protect better in TF" }
     ],
     strengths: [
-      { role: "MID", title: "Mid Dominance", desc: "Mid carry les fights, +17% DMG vs lane opponent" },
-      { role: "JGL", title: "Jungle Skirmish", desc: "JGL vole plus camp en moyenne que les autres" }
+      { role: "MID", title: "Mid Dominance", desc: "Mid carries the fights, +17% DMG vs lane opponent" },
+      { role: "JGL", title: "Jungle Skirmish", desc: "JGL steals more camps on average than others" }
     ]
   }
 
@@ -297,9 +297,9 @@ function BubbleDetailView({ bubble }) {
           {/* Stats Table */}
           <div className="w-full flex-1">
             <div className="grid grid-cols-4 gap-4 px-4 py-2 border-b border-slate-700/50 text-sm font-medium text-slate-400">
-              <div>Métrique</div>
+              <div>Metric</div>
               <div className="text-center">Team</div>
-              <div className="text-center">Ennemis</div>
+              <div className="text-center">Enemies</div>
               <div className="text-right">Diff</div>
             </div>
 
@@ -347,11 +347,13 @@ function BubbleDetailView({ bubble }) {
 
           {/* Analysis Section */}
           <div className="space-y-4">
+            <p className="text-slate-400 text-xs mt-0.5 leading-relaxed">Improvements section and strengths section are place holders, feature not implemented yet</p>
+
             {/* Points à Améliorer */}
             <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-5">
               <div className="flex items-center gap-3 mb-4">
                 <AlertTriangle className="w-5 h-5 text-red-400" />
-                <h4 className="text-red-400 font-bold text-base">Points à Améliorer</h4>
+                <h4 className="text-red-400 font-bold text-base">Areas for Improvement</h4>
               </div>
               <div className="space-y-4">
                 {analysis.weaknesses.map((item, i) => (
@@ -373,7 +375,7 @@ function BubbleDetailView({ bubble }) {
             <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-5">
               <div className="flex items-center gap-3 mb-4">
                 <TrendingUp className="w-5 h-5 text-emerald-400" />
-                <h4 className="text-emerald-400 font-bold text-base">Points Forts</h4>
+                <h4 className="text-emerald-400 font-bold text-base">Strengths</h4>
               </div>
               <div className="space-y-4">
                 {analysis.strengths.map((item, i) => (

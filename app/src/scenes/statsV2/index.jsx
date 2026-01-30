@@ -75,7 +75,7 @@ export default function StatsV2() {
             setActiveEnemyChampion(data)
           }
         } catch (error) {
-          toast.error("Erreur lors du chargement des stats du champion ennemi")
+          toast.error("Error loading enemy champion stats")
         }
       }
       setSearchNavigation(null)
@@ -162,14 +162,14 @@ export default function StatsV2() {
 
         <div className="grid lg:grid-cols-2 gap-6 items-start">
           {/* Colonne gauche - Métriques */}
-          <SectionCard title="Performance par catégorie">
+          <SectionCard title="Performance by Category">
             <CategoryTabs categories={categories} activeCategory={activeCategory} onCategoryChange={setActiveCategory} categoryScores={currentData.categoryScores} />
             <MetricsTable metrics={currentData.metrics?.[activeCategory] || []} isEnemyChampion={isEnemyChampion} />
           </SectionCard>
 
           {/* Colonne droite - Listes */}
           {isTeam && (
-            <SectionCard title="Joueurs de l'équipe">
+            <SectionCard title="Team Players">
               <PlayersList players={teamData.players || []} onPlayerClick={setActivePlayer} />
             </SectionCard>
           )}
@@ -181,13 +181,13 @@ export default function StatsV2() {
           )}
 
           {isChampion && (
-            <SectionCard title="Détails du matchup">
+            <SectionCard title="Matchup Details">
               <Matchups weakAgainst={activeChampion.weakAgainst || []} strongAgainst={activeChampion.strongAgainst || []} readOnly />
             </SectionCard>
           )}
 
           {isEnemyChampion && (
-            <SectionCard title="Nos champions vs ce champion">
+            <SectionCard title="Our champions vs this champion">
               <Matchups weakAgainst={activeEnemyChampion.weakAgainst || []} strongAgainst={activeEnemyChampion.strongAgainst || []} readOnly isEnemyContext />
             </SectionCard>
           )}
@@ -253,7 +253,7 @@ function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEne
         <button
           onClick={onBack}
           className="w-6 h-6 flex items-center justify-center rounded bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 hover:text-white transition-colors"
-          title={activeEnemyChampion ? "Retour à l'équipe" : activeChampion ? "Retour au joueur" : "Retour à l'équipe"}
+          title={activeEnemyChampion ? "Back to team" : activeChampion ? "Back to player" : "Back to team"}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -361,7 +361,7 @@ function HeaderSection({ data, isTeam, isChampion, isEnemyChampion, winRateBySid
           <h1 className={`text-4xl font-bold tracking-wide ${isEnemyChampion ? "text-red-400" : "text-white"}`}>{(data.name || "").toUpperCase()}</h1>
           {isPlayer && data.role && <p className="text-slate-400 capitalize">{data.role}</p>}
           {isChampion && <p className="text-slate-400">Champion Matchup</p>}
-          {isEnemyChampion && <p className="text-red-400/70">Champion Ennemi • {data.role}</p>}
+          {isEnemyChampion && <p className="text-red-400/70">Enemy Champion • {data.role}</p>}
         </div>
       </div>
 
@@ -432,9 +432,9 @@ function MetricsTable({ metrics, isEnemyChampion }) {
     <div className="overflow-hidden">
       {/* Header */}
       <div className="grid grid-cols-4 gap-4 pb-3 border-b border-slate-600/50">
-        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider">Métrique</div>
-        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">{isEnemyChampion ? "Nous" : "Équipe"}</div>
-        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">{isEnemyChampion ? "Ce champ" : "Ennemis"}</div>
+        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider">Metric</div>
+        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">{isEnemyChampion ? "Us" : "Team"}</div>
+        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">{isEnemyChampion ? "This champ" : "Enemies"}</div>
         <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">Diff</div>
       </div>
 
@@ -485,8 +485,8 @@ function Matchups({ weakAgainst, strongAgainst, onChampionClick, activeChampion,
   const filteredStrong = strongAgainst.filter(m => m.winRate > 50)
 
   // For enemy context: labels are inverted - our weak champions against enemy = we lose more
-  const weakLabel = isEnemyContext ? "Nos pires picks" : readOnly ? "Pires matchups" : "Pire WR"
-  const strongLabel = isEnemyContext ? "Nos meilleurs picks" : readOnly ? "Meilleurs matchups" : "Meilleur WR"
+  const weakLabel = isEnemyContext ? "Our worst picks" : readOnly ? "Worst matchups" : "Worst WR"
+  const strongLabel = isEnemyContext ? "Our best picks" : readOnly ? "Best matchups" : "Best WR"
 
   return (
     <div className="grid grid-cols-2 gap-6">
@@ -498,7 +498,7 @@ function Matchups({ weakAgainst, strongAgainst, onChampionClick, activeChampion,
         </div>
         <div className="space-y-2">
           {filteredWeak.length === 0 ? (
-            <div className="text-slate-500 text-sm text-center py-6 bg-slate-900/30 rounded-lg">Aucune donnée</div>
+            <div className="text-slate-500 text-sm text-center py-6 bg-slate-900/30 rounded-lg">No data</div>
           ) : (
             filteredWeak.map((matchup, idx) => (
               <div
@@ -532,7 +532,7 @@ function Matchups({ weakAgainst, strongAgainst, onChampionClick, activeChampion,
         </div>
         <div className="space-y-2">
           {filteredStrong.length === 0 ? (
-            <div className="text-slate-500 text-sm text-center py-6 bg-slate-900/30 rounded-lg">Aucune donnée</div>
+            <div className="text-slate-500 text-sm text-center py-6 bg-slate-900/30 rounded-lg">No data</div>
           ) : (
             filteredStrong.map((matchup, idx) => (
               <div

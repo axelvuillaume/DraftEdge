@@ -66,9 +66,9 @@ export default () => {
               <table className="min-w-[600px] w-full divide-y divide-primary-black-50 rounded-lg overflow-hidden">
                 <thead>
                   <tr>
-                    <th className="p-3 text-left font-medium text-xs lg:text-sm">Nom</th>
-                    <th className="p-3 text-left font-medium text-xs lg:text-sm">E-mail</th>
-                    <th className="p-3 text-left font-medium text-xs lg:text-sm">Dernière connexion</th>
+                    <th className="p-3 text-left font-medium text-xs lg:text-sm">Name</th>
+                    <th className="p-3 text-left font-medium text-xs lg:text-sm">Email</th>
+                    <th className="p-3 text-left font-medium text-xs lg:text-sm">Last Login</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-primary-black-50 bg-gray-50">
