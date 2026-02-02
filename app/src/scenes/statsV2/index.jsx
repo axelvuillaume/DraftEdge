@@ -175,7 +175,7 @@ export default function StatsV2() {
           )}
 
           {isPlayer && (
-            <SectionCard title="Matchups">
+            <SectionCard title="Champions">
               <Matchups weakAgainst={activePlayer.weakAgainst || []} strongAgainst={activePlayer.strongAgainst || []} onChampionClick={setActiveChampion} />
             </SectionCard>
           )}
