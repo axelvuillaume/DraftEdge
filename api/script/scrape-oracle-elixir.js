@@ -1,0 +1,191 @@
+const mongoose = require("mongoose");
+const https = require("https");
+const { parse } = require("csv-parse");
+const { MONGODB_ENDPOINT } = require("../src/config.js");
+const ProMatch = require("../src/models/pro-game.js");
+
+// Google Drive file ID for 2026 LoL esports data
+const FILE_ID = "1gLSw0RLjBbtaNy0dgnGQDAZOHIgCe-HH";
+// Direct download URL for the CSV (you'll need to get the actual file ID)
+// For now, we'll use a local file path - download the CSV manually first
+const CSV_URL = "https://drive.google.com/uc?export=download&id=";
+
+// Configuration
+const YEAR = 2026;
+const BATCH_SIZE = 100;
+
+async function connectDB() {
+  console.log("Connecting to MongoDB...");
+  await mongoose.connect(MONGODB_ENDPOINT);
+  console.log("MongoDB Connected");
+}
+
+function parseCSVFromFile(filePath) {
+  const fs = require("fs");
+  return new Promise((resolve, reject) => {
+    const records = [];
+
+    fs.createReadStream(filePath)
+      .pipe(
+        parse({
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+        }),
+      )
+      .on("data", (row) => {
+        records.push(row);
+      })
+      .on("end", () => {
+        resolve(records);
+      })
+      .on("error", (error) => {
+        reject(error);
+      });
+  });
+}
+
+function parseDuration(gamelength) {
+  // gamelength is in seconds, convert to "MM:SS" format
+  if (!gamelength || isNaN(gamelength)) return null;
+  const totalSeconds = parseInt(gamelength, 10);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function parseDate(dateStr) {
+  // Format: "2026-01-08 17:08:27"
+  if (!dateStr) return null;
+  return new Date(dateStr);
+}
+
+function transformRowToMatch(row) {
+  // Only process team rows (participantid 100 = blue team, 200 = red team)
+  const participantId = parseInt(row.participantid, 10);
+  if (participantId !== 100 && participantId !== 200) {
+    return null;
+  }
+
+  const side = participantId === 100 ? "blue" : "red";
+
+  // Parse bans (ban1-ban5)
+  const bans = [];
+  for (let i = 1; i <= 5; i++) {
+    if (row[`ban${i}`]) {
+      bans.push(row[`ban${i}`]);
+    }
+  }
+
+  // Parse picks (pick1-pick5)
+  const picks = [];
+  for (let i = 1; i <= 5; i++) {
+    if (row[`pick${i}`]) {
+      picks.push(row[`pick${i}`]);
+    }
+  }
+
+  // Determine winner based on result (1 = win, 0 = loss)
+  const result = parseInt(row.result, 10);
+  const winner = result === 1 ? row.teamname : null;
+
+  return {
+    matchId: row.gameid,
+    team_name: row.teamname,
+    winner: winner,
+    side: side,
+    dateTime: parseDate(row.date),
+    league: row.league,
+    year: parseInt(row.year, 10) || YEAR,
+    split: row.split,
+    gameNumber: parseInt(row.game, 10) || 1,
+    duration: parseDuration(row.gamelength),
+    bans: bans,
+    picks: picks,
+    kills: parseInt(row.teamkills, 10) || 0,
+    gold: parseInt(row.totalgold, 10) || 0,
+    towers: parseInt(row.towers, 10) || 0,
+    dragons: parseInt(row.dragons, 10) || 0,
+    barons: parseInt(row.barons, 10) || 0,
+  };
+}
+
+async function scrapeAndImport(csvFilePath) {
+  try {
+    await connectDB();
+
+    console.log(`Parsing CSV file: ${csvFilePath}`);
+    const rows = await parseCSVFromFile(csvFilePath);
+    console.log(`Total rows in CSV: ${rows.length}`);
+
+    // Filter and transform team rows
+    const matches = [];
+    const processedGameIds = new Set();
+
+    for (const row of rows) {
+      const match = transformRowToMatch(row);
+      if (match && match.matchId && match.team_name) {
+        // Create a unique key for deduplication
+        const key = `${match.matchId}-${match.team_name}`;
+        if (!processedGameIds.has(key)) {
+          processedGameIds.add(key);
+          matches.push(match);
+        }
+      }
+    }
+
+    console.log(`Team rows to import: ${matches.length}`);
+
+    // Import in batches
+    let imported = 0;
+    let updated = 0;
+    let errors = 0;
+
+    for (let i = 0; i < matches.length; i += BATCH_SIZE) {
+      const batch = matches.slice(i, i + BATCH_SIZE);
+
+      const operations = batch.map((match) => ({
+        updateOne: {
+          filter: { matchId: match.matchId, team_name: match.team_name },
+          update: { $set: match },
+          upsert: true,
+        },
+      }));
+
+      try {
+        const result = await ProMatch.bulkWrite(operations);
+        imported += result.upsertedCount;
+        updated += result.modifiedCount;
+        console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${result.upsertedCount} inserted, ${result.modifiedCount} updated`);
+      } catch (error) {
+        console.error(`Error in batch ${Math.floor(i / BATCH_SIZE) + 1}:`, error.message);
+        errors += batch.length;
+      }
+    }
+
+    console.log("\n=== Import Summary ===");
+    console.log(`Total matches processed: ${matches.length}`);
+    console.log(`New matches inserted: ${imported}`);
+    console.log(`Existing matches updated: ${updated}`);
+    console.log(`Errors: ${errors}`);
+  } catch (error) {
+    console.error("Error during import:", error);
+  } finally {
+    await mongoose.disconnect();
+    console.log("MongoDB disconnected");
+  }
+}
+
+// Get CSV file path from command line argument
+const csvFilePath = process.argv[2];
+
+if (!csvFilePath) {
+  console.log("Usage: node scrape-oracle-elixir.js <path-to-csv-file>");
+  console.log("");
+  console.log("Example: node scrape-oracle-elixir.js ./2026_LoL_esports_match_data_from_OraclesElixir.csv");
+  console.log("");
+  console.log("Download the CSV from: https://drive.google.com/drive/folders/1gLSw0RLjBbtaNy0dgnGQDAZOHIgCe-HH");
+  process.exit(1);
+}
+
+scrapeAndImport(csvFilePath);

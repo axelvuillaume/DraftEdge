@@ -7,6 +7,7 @@ import Auth from "@/scenes/auth"
 import Home from "@/scenes/home"
 import Games from "@/scenes/games"
 import Stats from "@/scenes/stats"
+import Draft from "@/scenes/draft"
 import Navbar from "@/components/NavBar"
 import TopBar from "@/components/TopBar"
 import Loader from "@/components/loader"
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/stats" element={<Stats />} />
           <Route path="/team" element={<Team />} />
           <Route path="/statsV2" element={<StatsV2 />} />
+          <Route path="/draft/*" element={<Draft />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

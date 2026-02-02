@@ -40,6 +40,7 @@ app.use('/game', require('./controllers/game'));
 app.use('/aifeedback', require('./controllers/AIFeedBack'));
 app.use('/folder', require('./controllers/folder'));
 app.use('/playerstats', require('./controllers/playerstats'));
+app.use('/draft-scenario', require('./controllers/draft-scenario'));
 
 setupErrorHandler(app);
 require('./services/passport')(app);
