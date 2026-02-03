@@ -8,6 +8,10 @@ const Schema = new mongoose.Schema(
     description: { type: String },
     team_id: { type: String, required: true },
     team_name: { type: String, required: true },
+    blueBans: [{ type: String }],
+    redBans: [{ type: String }],
+    bluePicks: [{ type: String }],
+    redPicks: [{ type: String }],
   },
   { timestamps: true },
 );

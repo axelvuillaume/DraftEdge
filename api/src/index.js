@@ -41,7 +41,8 @@ app.use('/aifeedback', require('./controllers/AIFeedBack'));
 app.use('/folder', require('./controllers/folder'));
 app.use('/playerstats', require('./controllers/playerstats'));
 app.use('/draft-scenario', require('./controllers/draft-scenario'));
-
+app.use('/pro-game', require('./controllers/pro-game'));
+app.use('/team', require('./controllers/team'));
 setupErrorHandler(app);
 require('./services/passport')(app);
 

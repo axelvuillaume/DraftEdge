@@ -93,7 +93,33 @@ function parseDate(dateStr) {
   return new Date(dateStr);
 }
 
-function transformRowToMatch(row) {
+// Remove spaces from champion names: "Xin Zhao" => "XinZhao", "Lee Sin" => "LeeSin"
+function normalizeChampionName(name) {
+  if (!name) return name;
+  return name.replace(/[\s']+/g, '');
+}
+
+// Build a map of champion -> role for each game/team from player rows
+function buildChampionRoleMap(rows) {
+  // Key: "gameid-teamname", Value: { championName: role }
+  const map = {};
+  for (const row of rows) {
+    const participantId = parseInt(row.participantid, 10);
+    // Player rows have participantid 1-10
+    if (participantId >= 1 && participantId <= 10) {
+      const key = `${row.gameid}-${row.teamname}`;
+      if (!map[key]) {
+        map[key] = {};
+      }
+      if (row.champion && row.position) {
+        map[key][normalizeChampionName(row.champion)] = row.position;
+      }
+    }
+  }
+  return map;
+}
+
+function transformRowToMatch(row, championRoleMap) {
   // Only process team rows (participantid 100 = blue team, 200 = red team)
   const participantId = parseInt(row.participantid, 10);
   if (participantId !== 100 && participantId !== 200) {
@@ -106,15 +132,20 @@ function transformRowToMatch(row) {
   const bans = [];
   for (let i = 1; i <= 5; i++) {
     if (row[`ban${i}`]) {
-      bans.push(row[`ban${i}`]);
+      bans.push(normalizeChampionName(row[`ban${i}`]));
     }
   }
 
-  // Parse picks (pick1-pick5)
+  // Parse picks (pick1-pick5) in draft pick order with role
   const picks = [];
+  const roleMap = championRoleMap[`${row.gameid}-${row.teamname}`] || {};
   for (let i = 1; i <= 5; i++) {
     if (row[`pick${i}`]) {
-      picks.push(row[`pick${i}`]);
+      const champion = normalizeChampionName(row[`pick${i}`]);
+      picks.push({
+        champion: champion,
+        role: roleMap[champion] || '',
+      });
     }
   }
 
@@ -153,12 +184,16 @@ async function scrapeAndImport() {
     const rows = await parseCSV(csvData);
     console.log(`Total rows in CSV: ${rows.length}`);
 
+    // Build champion -> role mapping from player rows
+    const championRoleMap = buildChampionRoleMap(rows);
+    console.log(`Champion-role mappings built for ${Object.keys(championRoleMap).length} game-team combinations`);
+
     // Filter and transform team rows
     const matches = [];
     const processedGameIds = new Set();
 
     for (const row of rows) {
-      const match = transformRowToMatch(row);
+      const match = transformRowToMatch(row, championRoleMap);
       if (match && match.matchId && match.team_name) {
         // Create a unique key for deduplication
         const key = `${match.matchId}-${match.team_name}`;

@@ -91,7 +91,7 @@ router.post('/search_nav', passport.authenticate(['admin', 'user'], { session: f
     const allyChampionsMap = {};
     const enemyChampionsMap = {};
 
-    allStats.forEach(stat => {
+    allStats.forEach((stat) => {
       const playerName = stat.summoner_name;
       const champion = stat.champion;
       const isOpponent = stat.opponent;
@@ -103,7 +103,7 @@ router.post('/search_nav', passport.authenticate(['admin', 'user'], { session: f
             name: playerName,
             role: stat.role,
             games: 0,
-            wins: 0
+            wins: 0,
           };
         }
         playersMap[playerName].games++;
@@ -118,7 +118,7 @@ router.post('/search_nav', passport.authenticate(['admin', 'user'], { session: f
             role: stat.role,
             games: 0,
             wins: 0,
-            isAlly: true
+            isAlly: true,
           };
         }
         allyChampionsMap[champKey].games++;
@@ -131,7 +131,7 @@ router.post('/search_nav', passport.authenticate(['admin', 'user'], { session: f
             role: stat.role,
             games: 0,
             wins: 0,
-            isAlly: false
+            isAlly: false,
           };
         }
         enemyChampionsMap[champion].games++;
@@ -142,19 +142,19 @@ router.post('/search_nav', passport.authenticate(['admin', 'user'], { session: f
 
     // Filter and format players
     const players = Object.values(playersMap)
-      .filter(p => p.name.toLowerCase().includes(searchQuery))
+      .filter((p) => p.name.toLowerCase().includes(searchQuery))
       .sort((a, b) => b.games - a.games)
       .slice(0, 5);
 
     // Filter and format ally champions
     const allyChampions = Object.values(allyChampionsMap)
-      .filter(c => c.name.toLowerCase().includes(searchQuery))
+      .filter((c) => c.name.toLowerCase().includes(searchQuery))
       .sort((a, b) => b.games - a.games)
       .slice(0, 5);
 
     // Filter and format enemy champions
     const enemyChampions = Object.values(enemyChampionsMap)
-      .filter(c => c.name.toLowerCase().includes(searchQuery))
+      .filter((c) => c.name.toLowerCase().includes(searchQuery))
       .sort((a, b) => b.games - a.games)
       .slice(0, 5);
 
@@ -1020,7 +1020,10 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
         }
       });
 
-      let blueWins = 0, blueTotal = 0, redWins = 0, redTotal = 0;
+      let blueWins = 0,
+        blueTotal = 0,
+        redWins = 0,
+        redTotal = 0;
       Object.values(gamesBySide).forEach((g) => {
         if (g.side === 'blue') {
           blueTotal++;
@@ -1163,7 +1166,10 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
 
         const sortedSubMatchups = subMatchups.sort((a, b) => a.diff - b.diff);
         const mWeakAgainst = sortedSubMatchups.filter((s) => s.diff < 0).slice(0, 4);
-        const mStrongAgainst = sortedSubMatchups.filter((s) => s.diff >= 0).sort((a, b) => b.diff - a.diff).slice(0, 4);
+        const mStrongAgainst = sortedSubMatchups
+          .filter((s) => s.diff >= 0)
+          .sort((a, b) => b.diff - a.diff)
+          .slice(0, 4);
 
         return {
           name: champName,
@@ -1334,10 +1340,27 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
           return acc;
         },
         {
-          kills: 0, deaths: 0, assists: 0, gold: 0, damage: 0, duration: 0, cs: 0, wins: 0,
-          vision_score: 0, wards_placed: 0, wards_killed: 0, control_wards_placed: 0,
-          level: 0, enemy_jungle: 0, gold_from_turret_plates: 0, damage_objectives: 0,
-          turrets: 0, dragons: 0, barons: 0, heralds: 0, games: 0,
+          kills: 0,
+          deaths: 0,
+          assists: 0,
+          gold: 0,
+          damage: 0,
+          duration: 0,
+          cs: 0,
+          wins: 0,
+          vision_score: 0,
+          wards_placed: 0,
+          wards_killed: 0,
+          control_wards_placed: 0,
+          level: 0,
+          enemy_jungle: 0,
+          gold_from_turret_plates: 0,
+          damage_objectives: 0,
+          turrets: 0,
+          dragons: 0,
+          barons: 0,
+          heralds: 0,
+          games: 0,
         },
       );
     };
@@ -1349,7 +1372,11 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
           { name: 'DMG / min', team: round1(getPerMin(t.damage, t.duration)), enemies: round1(getPerMin(e.damage, e.duration)) },
           { name: 'Kills / game', team: round1(getAvg(t.kills, t.games)), enemies: round1(getAvg(e.kills, e.games)) },
           { name: 'Deaths / game', team: round1(getAvg(t.deaths, t.games)), enemies: round1(getAvg(e.deaths, e.games)), invert: true },
-          { name: 'Kill Participation %', team: round1(t.kills + t.deaths + t.assists > 0 ? (t.kills / (t.kills + t.deaths + t.assists)) * 100 : 0), enemies: round1(e.kills + e.deaths + e.assists > 0 ? (e.kills / (e.kills + e.deaths + e.assists)) * 100 : 0) },
+          {
+            name: 'Kill Participation %',
+            team: round1(t.kills + t.deaths + t.assists > 0 ? (t.kills / (t.kills + t.deaths + t.assists)) * 100 : 0),
+            enemies: round1(e.kills + e.deaths + e.assists > 0 ? (e.kills / (e.kills + e.deaths + e.assists)) * 100 : 0),
+          },
           { name: 'DMG / Gold', team: round2(t.gold > 0 ? t.damage / t.gold : 0), enemies: round2(e.gold > 0 ? e.damage / e.gold : 0) },
         ];
       }
@@ -1368,7 +1395,11 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
           { name: 'Wards Placed / game', team: round1(getAvg(t.wards_placed, t.games)), enemies: round1(getAvg(e.wards_placed, e.games)) },
           { name: 'Wards Killed / game', team: round1(getAvg(t.wards_killed, t.games)), enemies: round1(getAvg(e.wards_killed, e.games)) },
           { name: 'Control Wards / game', team: round1(getAvg(t.control_wards_placed, t.games)), enemies: round1(getAvg(e.control_wards_placed, e.games)) },
-          { name: 'Ward Clear %', team: round1(e.wards_placed > 0 ? (t.wards_killed / e.wards_placed) * 100 : 0), enemies: round1(t.wards_placed > 0 ? (e.wards_killed / t.wards_placed) * 100 : 0) },
+          {
+            name: 'Ward Clear %',
+            team: round1(e.wards_placed > 0 ? (t.wards_killed / e.wards_placed) * 100 : 0),
+            enemies: round1(t.wards_placed > 0 ? (e.wards_killed / t.wards_placed) * 100 : 0),
+          },
         ];
       }
       if (category === 'Income') {
@@ -1431,10 +1462,18 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
           gamesBySide[s.game_id] = { side: s.side, win: s.game_win };
         }
       });
-      let blueWins = 0, blueTotal = 0, redWins = 0, redTotal = 0;
+      let blueWins = 0,
+        blueTotal = 0,
+        redWins = 0,
+        redTotal = 0;
       Object.values(gamesBySide).forEach((g) => {
-        if (g.side === 'blue') { blueTotal++; if (g.win) blueWins++; }
-        else if (g.side === 'red') { redTotal++; if (g.win) redWins++; }
+        if (g.side === 'blue') {
+          blueTotal++;
+          if (g.win) blueWins++;
+        } else if (g.side === 'red') {
+          redTotal++;
+          if (g.win) redWins++;
+        }
       });
       return {
         blue: blueTotal > 0 ? Math.round((blueWins / blueTotal) * 100) : 0,
@@ -1537,7 +1576,10 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
 
     const sortedMatchups = matchups.sort((a, b) => a.winRate - b.winRate);
     const weakAgainst = sortedMatchups.filter((m) => m.winRate <= 50).slice(0, 4);
-    const strongAgainst = [...matchups].sort((a, b) => b.winRate - a.winRate).filter((m) => m.winRate > 50).slice(0, 4);
+    const strongAgainst = [...matchups]
+      .sort((a, b) => b.winRate - a.winRate)
+      .filter((m) => m.winRate > 50)
+      .slice(0, 4);
 
     // Calculate enemy champion's win rate (inverse of ours) and KDA
     const enemyWinRate = uniqueGames.length > 0 ? round1(100 - winRateVsChamp) : 0;
@@ -1770,6 +1812,167 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
     const globalScore = Math.round((categoryScores.reduce((sum, c) => sum + c.score, 0) / categoryScores.length) * 10) / 10;
 
     return res.status(200).send({ ok: true, data: { globalScore, categoryScores } });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// Most played champions per role for my team (from scrims/ranked data)
+const ROLE_DISPLAY = { top: 'TOP', jungle: 'JGL', mid: 'MID', bottom: 'ADC', support: 'SUP' };
+
+router.post('/most-played', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team_id = req.body.team_id || req.user.team_id;
+    if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const query = { team_id, opponent: false };
+
+    // Count total unique games for PR calculation
+    const totalGamesAgg = await PlayerStats.aggregate([{ $match: query }, { $group: { _id: '$game_id' } }, { $count: 'total' }]);
+    const totalGames = totalGamesAgg[0]?.total || 0;
+    if (totalGames === 0) return res.status(200).send({ ok: true, data: {}, totalGames: 0 });
+
+    // Aggregate champion stats per role
+    const stats = await PlayerStats.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: { role: '$role', champion: '$champion' },
+          games: { $sum: 1 },
+          wins: { $sum: { $cond: ['$game_win', 1, 0] } },
+        },
+      },
+      { $sort: { games: -1 } },
+    ]);
+
+    const topN = req.body.limit || 3;
+    const result = {};
+    for (const [roleKey, displayName] of Object.entries(ROLE_DISPLAY)) {
+      result[displayName] = stats
+        .filter((s) => s._id.role === roleKey)
+        .slice(0, topN)
+        .map((s) => ({
+          name: s._id.champion,
+          games: s.games,
+          pr: Math.round((s.games / totalGames) * 100),
+          wr: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0,
+        }));
+    }
+
+    return res.status(200).send({ ok: true, data: result, totalGames });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// Most flexed champions (played on most different roles) for my team
+const ROLE_DISPLAY_FLEX = { top: 'TOP', jungle: 'JGL', mid: 'MID', bottom: 'ADC', support: 'SUP' };
+
+router.post('/most-flexed', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team_id = req.body.team_id || req.user.team_id;
+    if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const query = { team_id, opponent: false };
+
+    // Count total unique games for PR calculation
+    const totalGamesAgg = await PlayerStats.aggregate([{ $match: query }, { $group: { _id: '$game_id' } }, { $count: 'total' }]);
+    const totalGames = totalGamesAgg[0]?.total || 0;
+    if (totalGames === 0) return res.status(200).send({ ok: true, data: [], totalGames: 0 });
+
+    // Get all stats
+    const stats = await PlayerStats.find(query, { champion: 1, role: 1, game_win: 1 }).lean();
+
+    // Aggregate: for each champion, count per role stats
+    const champStats = {};
+    for (const s of stats) {
+      if (!s.champion || !s.role) continue;
+      const normalizedRole = ROLE_DISPLAY_FLEX[s.role] || s.role.toUpperCase();
+
+      if (!champStats[s.champion]) {
+        champStats[s.champion] = { roleStats: {}, totalGames: 0, totalWins: 0 };
+      }
+      if (!champStats[s.champion].roleStats[normalizedRole]) {
+        champStats[s.champion].roleStats[normalizedRole] = { games: 0, wins: 0 };
+      }
+      champStats[s.champion].roleStats[normalizedRole].games++;
+      champStats[s.champion].totalGames++;
+      if (s.game_win) {
+        champStats[s.champion].roleStats[normalizedRole].wins++;
+        champStats[s.champion].totalWins++;
+      }
+    }
+
+    // Filter champions with 2+ roles, sort by number of roles (desc), then by games (desc)
+    const topN = req.body.limit || 6;
+    const flexed = Object.entries(champStats)
+      .filter(([, s]) => Object.keys(s.roleStats).length >= 2)
+      .map(([name, s]) => {
+        const roles = Object.entries(s.roleStats).map(([role, stats]) => ({
+          role,
+          games: stats.games,
+          pr: Math.round((stats.games / totalGames) * 100),
+          wr: stats.games > 0 ? Math.round((stats.wins / stats.games) * 100) : 0,
+        }));
+        return {
+          name,
+          roles,
+          rolesCount: roles.length,
+          games: s.totalGames,
+        };
+      })
+      .sort((a, b) => b.rolesCount - a.rolesCount || b.games - a.games)
+      .slice(0, topN);
+
+    return res.status(200).send({ ok: true, data: flexed, totalGames });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// Best champion combos for my team (pairs that win together in scrims)
+router.post('/best-combos', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team_id = req.body.team_id || req.user.team_id;
+    if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    // Get all ally player stats grouped by game
+    const stats = await PlayerStats.find({ team_id, opponent: false }, { game_id: 1, champion: 1, game_win: 1 }).lean();
+
+    // Group by game_id
+    const gameMap = {};
+    for (const s of stats) {
+      if (!s.game_id || !s.champion) continue;
+      if (!gameMap[s.game_id]) gameMap[s.game_id] = { champions: [], win: s.game_win };
+      gameMap[s.game_id].champions.push(s.champion);
+    }
+
+    // Count all champion pairs
+    const pairStats = {};
+    for (const game of Object.values(gameMap)) {
+      const champs = game.champions;
+      for (let i = 0; i < champs.length; i++) {
+        for (let j = i + 1; j < champs.length; j++) {
+          const key = [champs[i], champs[j]].sort().join('+');
+          if (!pairStats[key]) pairStats[key] = { champ1: champs[i] < champs[j] ? champs[i] : champs[j], champ2: champs[i] < champs[j] ? champs[j] : champs[i], games: 0, wins: 0 };
+          pairStats[key].games++;
+          if (game.win) pairStats[key].wins++;
+        }
+      }
+    }
+
+    const minGames = req.body.minGames || 2;
+    const limit = req.body.limit || 3;
+    const combos = Object.values(pairStats)
+      .filter((p) => p.games >= minGames)
+      .map((p) => ({ champ1: p.champ1, champ2: p.champ2, games: p.games, wr: Math.round((p.wins / p.games) * 100) }))
+      .sort((a, b) => b.games - a.games || b.wr - a.wr)
+      .slice(0, limit);
+
+    return res.status(200).send({ ok: true, data: combos });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });

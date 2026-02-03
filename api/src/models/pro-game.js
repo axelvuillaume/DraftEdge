@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const MODELNAME = 'pro-match';
+const MODELNAME = 'pro-game';
 
 const Schema = new mongoose.Schema(
   {
@@ -23,7 +23,7 @@ const Schema = new mongoose.Schema(
 
     // Draft order
     bans: [{ type: String }],
-    picks: [{ type: String }],
+    picks: [{ champion: String, role: String }],
 
     // Stats
     kills: { type: Number },
@@ -40,5 +40,5 @@ Schema.index({ league: 1, year: 1, split: 1, dateTime: -1 });
 Schema.index({ team_name: 1, dateTime: -1 });
 Schema.index({ matchId: 1, team_name: 1 });
 
-const ProMatch = mongoose.model(MODELNAME, Schema);
-module.exports = ProMatch;
+const ProGame = mongoose.model(MODELNAME, Schema);
+module.exports = ProGame;
