@@ -390,8 +390,8 @@ export default function View() {
   // Load scenario from DB
   async function fetchScenario() {
     try {
-      const { ok, data } = await api.get(`/draft-scenario/${id}`)
-      if (!ok || !data) return
+      const { ok, data, code } = await api.get(`/draft-scenario/${id}`)
+      if (!ok) return toast.error(code || "Failed to load scenario")
       setScenarioName(data.name || "")
       const toSlots = arr => Array.from({ length: 5 }, (_, i) => (arr?.[i] ? { champion: arr[i] } : null))
       setBlueBans(toSlots(data.blueBans))
@@ -399,7 +399,7 @@ export default function View() {
       setBluePicks(toSlots(data.bluePicks))
       setRedPicks(toSlots(data.redPicks))
     } catch (error) {
-      console.error("Failed to load scenario:", error)
+      toast.error(error.message)
     }
   }
 
@@ -610,7 +610,6 @@ export default function View() {
     setRedBans(Array(5).fill(null))
     setBluePicks(Array(5).fill(null))
     setRedPicks(Array(5).fill(null))
-    setScenarioName("")
   }
 
   // Auto-save with debounce
@@ -895,55 +894,44 @@ function PriorityPicksPanel({ title, data }) {
 }
 
 function ChampionSlot({ champion, type, side, onClick, index, draftAverages, selectedLeagues }) {
-  const isBan = type === "ban"
   const [showTooltip, setShowTooltip] = useState(false)
   const [synergies, setSynergies] = useState(null)
 
-  const positionLabel = POSITION_LABELS[index] || ""
-  const typeLabel = isBan ? "ban" : "pick"
-
   // Use API draft averages or fallback to hardcoded
-  const proChampions = draftAverages ? (isBan ? draftAverages.bans?.[side]?.[index] : draftAverages.picks?.[side]?.[index]) : []
-  // Fetch synergies on hover when a champion is selected
+  const proChampions = draftAverages ? (type === "ban" ? draftAverages.bans?.[side]?.[index] : draftAverages.picks?.[side]?.[index]) : []
+
+  async function fetchSynergies() {
+    try {
+      const body = { champion: champion.champion }
+      if (selectedLeagues?.length) body.leagues = selectedLeagues
+      const { ok, data, code } = await api.post("/pro-game/synergies", body)
+      if (!ok) return toast.error(code || "Failed to fetch synergies")
+      setSynergies(data)
+    } catch (e) {
+      toast.error(error.message)
+    }
+  }
+
   useEffect(() => {
     if (!showTooltip || !champion?.champion) return
-    let cancelled = false
-    async function fetchSynergies() {
-      try {
-        const body = { champion: champion.champion }
-        if (selectedLeagues?.length) body.leagues = selectedLeagues
-        const res = await api.post("/pro-game/synergies", body)
-        if (!cancelled && res.ok) setSynergies(res.data)
-      } catch (e) {
-        console.error("Failed to fetch synergies:", e)
-      }
-    }
     fetchSynergies()
-    return () => {
-      cancelled = true
-    }
   }, [showTooltip, champion?.champion, selectedLeagues])
 
   const bestWith = synergies?.bestWith?.map(s => s.name) || []
   const bestAgainst = synergies?.bestAgainst?.map(s => s.name) || []
 
-  const isBlue = side === "blue"
-  const borderColor = isBlue ? "border-blue-500/50" : "border-red-500/50"
-  const bgColor = isBlue ? "bg-blue-500/10" : "bg-red-500/10"
-
-  const handleClick = () => {
-    setShowTooltip(false)
-    onClick()
-  }
-
   return (
     <div className={`relative ${showTooltip ? "z-[100]" : ""}`} onMouseEnter={() => setShowTooltip(true)} onMouseLeave={() => setShowTooltip(false)}>
       <button
-        onClick={handleClick}
+        onClick={() => {
+          setShowTooltip(false)
+          onClick()
+        }}
         className={`
-          ${isBan ? "w-12 h-12" : "w-14 h-14"}
-          rounded-lg border-2 border-dashed transition-all
-          ${champion ? (isBan ? `${borderColor} ${bgColor} grayscale` : `${borderColor} ${bgColor}`) : "border-slate-600 bg-slate-700/30"}
+          ${type === "ban" ? "w-12 h-12" : "w-14 h-14"}
+          rounded-lg border-2 border-dashed transition-all cursor-pointer
+          ${champion ? (type === "ban" ? `${side === "blue" ? "border-blue-500/50 hover:border-blue-400 hover:bg-blue-500/20" : "border-red-500/50 hover:border-red-400 hover:bg-red-500/20"} ${side === "blue" ? "bg-blue-500/10" : "bg-red-500/10"} grayscale hover:grayscale-0` : `${side === "blue" ? "border-blue-500/50 hover:border-blue-400 hover:bg-blue-500/20" : "border-red-500/50 hover:border-red-400 hover:bg-red-500/20"} ${side === "blue" ? "bg-blue-500/10" : "bg-red-500/10"}`) : "border-slate-600 bg-slate-700/30 hover:border-slate-500 hover:bg-slate-600/50"}
+          hover:scale-105 hover:shadow-lg
           flex items-center justify-center overflow-hidden
         `}
       >
@@ -952,33 +940,33 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, sel
             <img
               src={`/champions/${champion.champion}.png`}
               alt={champion.champion}
-              className={`w-full h-full object-cover ${isBan ? "grayscale opacity-50" : ""}`}
+              className={`w-full h-full object-cover ${type === "ban" ? "grayscale opacity-50" : ""}`}
               onError={e => {
                 e.target.style.display = "none"
               }}
             />
-            {isBan && (
+            {type === "ban" && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className={`w-full h-0.5 ${isBlue ? "bg-blue-500" : "bg-red-500"} rotate-45`} />
+                <div className={`w-full h-0.5 ${side === "blue" ? "bg-blue-500" : "bg-red-500"} rotate-45`} />
               </div>
             )}
           </div>
         ) : (
-          <span className={`text-xs ${isBlue ? "text-blue-400" : "text-red-400"}`}>{isBan ? "BAN" : side === "blue" ? "B" : "R"}</span>
+          <span className={`text-xs ${side === "blue" ? "text-blue-400" : "text-red-400"}`}>{type === "ban" ? "BAN" : side === "blue" ? "B" : "R"}</span>
         )}
       </button>
 
       {/* Tooltip - Show pro average + Best With/Against when champion selected */}
       {showTooltip && (champion || proChampions) && (
         <div
-          className={`absolute z-[100] left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 rounded-lg p-3 shadow-xl whitespace-nowrap ${isBan ? "top-full mt-2" : "bottom-full mb-2"}`}
+          className={`absolute z-[100] left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 rounded-lg p-3 shadow-xl whitespace-nowrap ${type === "ban" ? "top-full mt-2" : "bottom-full mb-2"}`}
         >
           <div className="space-y-3">
             {/* Always show pro average */}
             {proChampions && (
               <div>
                 <p className="text-white text-[10px] font-semibold uppercase mb-1.5">
-                  {positionLabel} {typeLabel} average Pro:
+                  {POSITION_LABELS[index]} {type === "ban" ? "ban" : "pick"} average Pro:
                 </p>
                 <div className="flex items-center gap-2">
                   {proChampions.map((champ, idx) => (
@@ -1038,7 +1026,7 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, sel
             )}
           </div>
           {/* Arrow */}
-          {isBan ? (
+          {type === "ban" ? (
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[6px] border-b-slate-700" />
           ) : (
             <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-700" />
@@ -1140,12 +1128,8 @@ function ChampionModal({ modalType, searchQuery, setSearchQuery, filteredChampio
 
   // Filter champions based on role selection
   const getFilteredChampions = () => {
-    if (searchQuery) {
-      return filteredChampions
-    }
-    if (selectedRole && CHAMPIONS_BY_ROLE[selectedRole]) {
-      return CHAMPIONS_BY_ROLE[selectedRole].filter(c => ALL_CHAMPIONS.includes(c))
-    }
+    if (searchQuery) return filteredChampions
+    if (selectedRole && CHAMPIONS_BY_ROLE[selectedRole]) return CHAMPIONS_BY_ROLE[selectedRole].filter(c => ALL_CHAMPIONS.includes(c))
     return filteredChampions
   }
 
