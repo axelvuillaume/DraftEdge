@@ -164,7 +164,7 @@ export default function StatsV2() {
           {/* Colonne gauche - Métriques */}
           <SectionCard title="Performance by Category">
             <CategoryTabs categories={categories} activeCategory={activeCategory} onCategoryChange={setActiveCategory} categoryScores={currentData.categoryScores} />
-            <MetricsTable metrics={currentData.metrics?.[activeCategory] || []} isEnemyChampion={isEnemyChampion} />
+            <SpiderChart metrics={currentData.metrics?.[activeCategory] || []} isEnemyChampion={isEnemyChampion} />
           </SectionCard>
 
           {/* Colonne droite - Listes */}
@@ -423,33 +423,199 @@ function ScoreCircle({ score, isEnemy }) {
   )
 }
 
-function MetricsTable({ metrics, isEnemyChampion }) {
+function SpiderChart({ metrics, isEnemyChampion }) {
+  const [hoveredIndex, setHoveredIndex] = useState(null)
+
   if (!metrics || metrics.length === 0) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
 
-  return (
-    <div className="overflow-hidden">
-      {/* Header */}
-      <div className="grid grid-cols-4 gap-4 pb-3 border-b border-slate-600/50">
-        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider">Metric</div>
-        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">{isEnemyChampion ? "Us" : "Team"}</div>
-        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">{isEnemyChampion ? "This champ" : "Enemies"}</div>
-        <div className="text-slate-400 text-xs font-medium uppercase tracking-wider text-center">Diff</div>
-      </div>
+  const size = 280
+  const center = size / 2
+  const maxRadius = size / 2 - 40
+  const levels = 5
 
-      {/* Rows */}
-      {metrics.map((metric, idx) => (
-        <div key={idx} className={`grid grid-cols-4 gap-4 py-4 items-center ${idx !== metrics.length - 1 ? "border-b border-slate-700/30" : ""}`}>
-          <div className="text-white font-medium text-sm">{metric.name}</div>
-          <div className="text-center text-slate-300 text-sm">{metric.team}</div>
-          <div className={`text-center text-sm ${isEnemyChampion ? "text-red-400" : "text-slate-400"}`}>{metric.enemies}</div>
-          <div className={`text-center font-semibold text-sm ${metric.diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-            {metric.diff >= 0 ? "+" : ""}
-            {metric.diff}%
-          </div>
+  // Calculate angle for each metric
+  const angleStep = (2 * Math.PI) / metrics.length
+  const startAngle = -Math.PI / 2 // Start from top
+
+  // Get point coordinates for a given value (0-100) and index
+  const getPoint = (value, index) => {
+    const angle = startAngle + index * angleStep
+    const radius = (value / 100) * maxRadius
+    return {
+      x: center + radius * Math.cos(angle),
+      y: center + radius * Math.sin(angle)
+    }
+  }
+
+  // Generate polygon points string
+  const getPolygonPoints = values => {
+    return values
+      .map((val, i) => {
+        const point = getPoint(val, i)
+        return `${point.x},${point.y}`
+      })
+      .join(" ")
+  }
+
+  // Generate grid lines for each level
+  const gridLevels = Array.from({ length: levels }, (_, i) => ((i + 1) / levels) * 100)
+
+  // Better normalization: use the diff to show actual magnitude of differences
+  // Center is at 50%, spread proportionally to the real difference
+  // This way: 75% vs 9.3% shows a HUGE visual gap, while 51% vs 49% shows minimal gap
+  const basePosition = 50 // Center of the chart
+  const maxSpread = 40 // Maximum deviation from center (so range is 10-90)
+  const invertedMetrics = ["Deaths / game", "Deaths"]
+
+  const teamValues = metrics.map(m => {
+    const isInverted = invertedMetrics.some(inv => m.name.includes(inv))
+    const diff = parseFloat(m.diff) || 0 // diff is already a percentage (-100 to +100)
+    
+    // Clamp diff to reasonable range and apply slight curve for better visibility
+    const clampedDiff = Math.max(-100, Math.min(100, diff))
+    // Apply sqrt scaling to make small differences more visible while preserving large ones
+    const sign = clampedDiff >= 0 ? 1 : -1
+    const scaledDiff = sign * Math.pow(Math.abs(clampedDiff) / 100, 0.7) * 100
+    
+    // For inverted metrics, flip the direction
+    const adjustedDiff = isInverted ? -scaledDiff : scaledDiff
+    
+    // Team position: when diff > 0 (team better), team goes outward
+    const offset = (adjustedDiff / 100) * maxSpread
+    return Math.max(15, Math.min(95, basePosition + offset))
+  })
+
+  const enemyValues = metrics.map(m => {
+    const isInverted = invertedMetrics.some(inv => m.name.includes(inv))
+    const diff = parseFloat(m.diff) || 0
+    
+    const clampedDiff = Math.max(-100, Math.min(100, diff))
+    const sign = clampedDiff >= 0 ? 1 : -1
+    const scaledDiff = sign * Math.pow(Math.abs(clampedDiff) / 100, 0.7) * 100
+    
+    const adjustedDiff = isInverted ? -scaledDiff : scaledDiff
+    
+    // Enemy position: opposite of team - when diff > 0 (team better), enemy goes inward
+    const offset = (adjustedDiff / 100) * maxSpread
+    return Math.max(15, Math.min(95, basePosition - offset))
+  })
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width={size} height={size} className="overflow-visible">
+        {/* Background grid circles */}
+        {gridLevels.map((level, i) => {
+          const points = metrics.map((_, idx) => getPoint(level, idx))
+          const pathData = points.map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ") + " Z"
+          return <path key={i} d={pathData} fill="none" stroke="rgb(51 65 85 / 0.3)" strokeWidth="1" pointerEvents="none" />
+        })}
+
+        {/* Axis lines */}
+        {metrics.map((_, i) => {
+          const endPoint = getPoint(100, i)
+          return <line key={i} x1={center} y1={center} x2={endPoint.x} y2={endPoint.y} stroke="rgb(51 65 85 / 0.4)" strokeWidth="1" pointerEvents="none" />
+        })}
+
+        {/* Enemy polygon (baseline) */}
+        <polygon points={getPolygonPoints(enemyValues)} fill="rgba(239, 68, 68, 0.1)" stroke="rgba(239, 68, 68, 0.5)" strokeWidth="2" pointerEvents="none" />
+
+        {/* Team polygon */}
+        <polygon points={getPolygonPoints(teamValues)} fill="rgba(16, 185, 129, 0.15)" stroke="rgb(16, 185, 129)" strokeWidth="2" pointerEvents="none" />
+
+        {/* Data points for enemies (rendered after polygons so they're visible) */}
+        {enemyValues.map((val, i) => {
+          const point = getPoint(val, i)
+          return <circle key={`enemy-${i}`} cx={point.x} cy={point.y} r="4" fill="rgb(239, 68, 68)" stroke="rgb(30, 41, 59)" strokeWidth="2" pointerEvents="none" />
+        })}
+
+        {/* Data points for team */}
+        {teamValues.map((val, i) => {
+          const point = getPoint(val, i)
+          return <circle key={`team-${i}`} cx={point.x} cy={point.y} r="4" fill="rgb(16, 185, 129)" stroke="rgb(30, 41, 59)" strokeWidth="2" pointerEvents="none" />
+        })}
+
+        {/* Invisible hover sectors (pie slices) for better hitbox */}
+        {metrics.map((_, i) => {
+          const angle1 = startAngle + (i - 0.5) * angleStep
+          const angle2 = startAngle + (i + 0.5) * angleStep
+          const r = maxRadius + 30
+
+          const x1 = center + r * Math.cos(angle1)
+          const y1 = center + r * Math.sin(angle1)
+          const x2 = center + r * Math.cos(angle2)
+          const y2 = center + r * Math.sin(angle2)
+
+          const pathData = `M ${center} ${center} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`
+
+          return (
+            <path
+              key={`hover-${i}`}
+              d={pathData}
+              fill="transparent"
+              className="cursor-pointer"
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
+          )
+        })}
+
+        {/* Metric labels */}
+        {metrics.map((metric, i) => {
+          const labelPoint = getPoint(115, i)
+          const angle = startAngle + i * angleStep
+          const isRight = Math.cos(angle) > 0.1
+          const isLeft = Math.cos(angle) < -0.1
+          const textAnchor = isRight ? "start" : isLeft ? "end" : "middle"
+
+          return (
+            <text key={i} x={labelPoint.x} y={labelPoint.y} textAnchor={textAnchor} dominantBaseline="middle" className="fill-slate-300 text-[10px] font-medium" pointerEvents="none">
+              {metric.name}
+            </text>
+          )
+        })}
+
+        {/* Tooltip on hover */}
+        {hoveredIndex !== null && (
+          <g pointerEvents="none">
+            <rect x={center - 60} y={center - 45} width="120" height="90" rx="8" fill="rgb(30, 41, 59)" stroke="rgb(71, 85, 105)" strokeWidth="1" />
+            <text x={center} y={center - 26} textAnchor="middle" className="fill-white text-[12px] font-semibold">
+              {metrics[hoveredIndex].name}
+            </text>
+            <line x1={center - 48} y1={center - 14} x2={center + 48} y2={center - 14} stroke="rgb(71, 85, 105)" strokeWidth="1" />
+            <text x={center - 48} y={center + 2} textAnchor="start" className="fill-slate-400 text-[10px]">
+              Team
+            </text>
+            <text x={center + 48} y={center + 2} textAnchor="end" className="fill-emerald-400 text-[11px] font-medium">
+              {metrics[hoveredIndex].team}
+            </text>
+            <text x={center - 48} y={center + 20} textAnchor="start" className="fill-slate-400 text-[10px]">
+              Enemies
+            </text>
+            <text x={center + 48} y={center + 20} textAnchor="end" className="fill-red-400 text-[11px] font-medium">
+              {metrics[hoveredIndex].enemies}
+            </text>
+            <line x1={center - 48} y1={center + 30} x2={center + 48} y2={center + 30} stroke="rgb(71, 85, 105)" strokeWidth="1" />
+            <text x={center} y={center + 42} textAnchor="middle" className={`text-[12px] font-bold ${metrics[hoveredIndex].diff >= 0 ? "fill-emerald-400" : "fill-red-400"}`}>
+              {metrics[hoveredIndex].diff >= 0 ? "+" : ""}
+              {metrics[hoveredIndex].diff}%
+            </text>
+          </g>
+        )}
+      </svg>
+
+      {/* Legend */}
+      <div className="flex items-center gap-6 mt-4">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-emerald-500" />
+          <span className="text-slate-400 text-xs">{isEnemyChampion ? "Us" : "Team"}</span>
         </div>
-      ))}
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-red-500" />
+          <span className="text-slate-400 text-xs">{isEnemyChampion ? "This champ" : "Enemies"}</span>
+        </div>
+      </div>
     </div>
   )
 }
