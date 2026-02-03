@@ -822,7 +822,7 @@ export default function View() {
 
           {/* Right Panel - Enemy Team Priority Picks */}
           <div className="col-span-3 space-y-4">
-            <PriorityPicksPanel title={`Most played - Enemy Team`} data={enemyTeamMostPlayed} />
+            <PriorityPicksPanel title={`Most played - Pro League`} data={enemyTeamMostPlayed} />
             <BestCombosPanel combos={enemyTeamCombos || []} />
           </div>
         </div>
