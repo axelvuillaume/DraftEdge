@@ -10,7 +10,8 @@ const MENU = [
   { title: "Dashboard", to: "/", icon: LayoutDashboard },
   { title: "Games", to: "/games", icon: Gamepad2 },
   { title: "Stats", to: "/statsV2", icon: BarChart },
-  { title: "My Team", to: "/team", icon: Shield }
+  { title: "My Team", to: "/team", icon: Shield },
+  { title: "Draft", to: "/draft", icon: Gamepad2 }
 ]
 
 const Navbar = () => {
