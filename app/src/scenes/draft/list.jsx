@@ -324,21 +324,21 @@ export default function List() {
         </div>
 
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden flex-1 min-h-0 flex flex-col">
-          <table className="w-full">
+          <table className="w-full table-fixed">
             <thead className="flex-shrink-0">
               <tr className="border-b border-slate-700/50">
-                <th className="text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Name</th>
-                <th className="text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Date</th>
-                <th className="text-right text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Actions</th>
+                <th className="w-1/2 text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Name</th>
+                <th className="w-1/4 text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Date</th>
+                <th className="w-1/4 text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Actions</th>
               </tr>
             </thead>
           </table>
           <div className="overflow-y-auto flex-1">
-            <table className="w-full">
+            <table className="w-full table-fixed">
               <tbody>
                 {scenarios.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="text-center text-slate-500 py-12 text-sm">
+                    <td colSpan={3} className="text-center text-slate-500 py-12 text-sm">
                       No scenarios yet
                     </td>
                   </tr>
@@ -349,16 +349,16 @@ export default function List() {
                     onClick={() => navigate(`/draft/${scenario._id}`)}
                     className="border-b border-slate-700/30 hover:bg-slate-700/20 cursor-pointer transition-colors"
                   >
-                    <td className="px-6 py-4">
+                    <td className="w-1/2 px-6 py-4">
                       <span className="text-white font-medium text-sm">{scenario.name || "Untitled"}</span>
                     </td>
-                    <td className="px-4 py-4 text-center">
+                    <td className="w-1/4 px-4 py-4 text-center">
                       <span className="text-slate-400 text-sm">
                         {new Date(scenario.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="w-1/4 px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
                         <button onClick={e => handleDelete(e, scenario._id)} className="p-1.5 text-slate-400 hover:text-red-400 transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </button>
