@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
-import { Link, useLocation } from "react-router-dom"
-import { LayoutDashboard, Gamepad2, Shield, ImagePlus, Loader2, Upload, X, BarChart, FileText, Check, ChevronDown } from "lucide-react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
+import { LayoutDashboard, Gamepad2, Shield, ImagePlus, Loader2, Upload, X, BarChart, FileText, Check, ChevronDown, Calendar, Target, Plus } from "lucide-react"
 import useStore from "@/services/store"
 import api from "@/services/api"
 import { toast } from "react-hot-toast"
@@ -8,15 +8,17 @@ import Modal from "@/components/modal"
 
 const MENU = [
   { title: "Dashboard", to: "/", icon: LayoutDashboard },
-  { title: "Games", to: "/games", icon: Gamepad2 },
   { title: "Stats", to: "/statsV2", icon: BarChart },
-  { title: "My Team", to: "/team", icon: Shield },
-  { title: "Draft", to: "/draft", icon: Gamepad2 }
+  { title: "Draft", to: "/draft", icon: Target },
+  { title: "Objectives Scrims", to: "/scrim-hub", icon: Calendar },
+  { title: "Games", to: "/games", icon: Gamepad2 },
+  { title: "My Team", to: "/team", icon: Shield }
 ]
 
 const Navbar = () => {
   const [selected, setSelected] = useState(0)
   const location = useLocation()
+  const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
   const { user } = useStore()
 
@@ -70,7 +72,22 @@ const Navbar = () => {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-slate-700/50">
+      <div className="p-4 border-t border-slate-700/50 space-y-2">
+        <button
+          onClick={async () => {
+            try {
+              const { ok, data, code } = await api.post("/scrim-session", {})
+              if (!ok) return toast.error(code)
+              navigate(`/scrim-hub/${data._id}`)
+            } catch (error) {
+              toast.error(error.message)
+            }
+          }}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm rounded-xl transition-all duration-200 border border-slate-700"
+        >
+          <Calendar className="w-4 h-4" />
+          <span>New Scrim Session</span>
+        </button>
         <button
           onClick={() => setIsOpen(true)}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-semibold text-sm rounded-xl transition-all duration-200"
@@ -90,7 +107,7 @@ const Navbar = () => {
   )
 }
 
-function UploadModal({ isOpen, onClose, user, onSuccess }) {
+export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName, opponentName }) {
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(null)
@@ -105,6 +122,38 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
   })
   const [roflPreview, setRoflPreview] = useState(null)
   const [parsing, setParsing] = useState(false)
+
+  // Enemy team dropdown state
+  const [enemyTeams, setEnemyTeams] = useState([])
+  const [showOpponentDropdown, setShowOpponentDropdown] = useState(false)
+  const [newTeamName, setNewTeamName] = useState("")
+
+  useEffect(() => {
+    if (isOpen && user?.team_id) {
+      api.post("/enemy-team/search", { team_id: user.team_id }).then(({ ok, data }) => {
+        if (ok) setEnemyTeams(data)
+      })
+    }
+  }, [isOpen, user?.team_id])
+
+  useEffect(() => {
+    if (isOpen && opponentName) {
+      setRoflConfig(prev => ({ ...prev, opponent_name: opponentName }))
+    }
+  }, [isOpen, opponentName])
+
+  const createEnemyTeam = async name => {
+    try {
+      const { ok, data, code } = await api.post("/enemy-team", { name })
+      if (!ok) return toast.error(code)
+      setEnemyTeams(prev => [data, ...prev])
+      setRoflConfig(prev => ({ ...prev, opponent_name: data.name }))
+      setNewTeamName("")
+      setShowOpponentDropdown(false)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
 
   const acceptedFiles = ".rofl"
 
@@ -183,6 +232,8 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
       formData.append("team_name", user?.team_name || "")
       formData.append("opponent_name", roflConfig.opponent_name)
       formData.append("name", roflConfig.name)
+      if (sessionId) formData.append("session_id", sessionId)
+      if (sessionName) formData.append("session_name", sessionName)
 
       const response = await api.postFormData("/parser/import", formData)
 
@@ -211,6 +262,8 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
     setUploadProgress(null)
     setRoflPreview(null)
     setRoflConfig({ team_side: "", opponent_name: "", name: "" })
+    setShowOpponentDropdown(false)
+    setNewTeamName("")
     onClose()
   }
 
@@ -360,16 +413,77 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
                   </div>
                 </div>
 
-                {/* Opponent name */}
-                <div>
+                {/* Opponent dropdown */}
+                <div className="relative">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Opponent Team</label>
-                  <input
-                    type="text"
-                    value={roflConfig.opponent_name}
-                    onChange={e => setRoflConfig(prev => ({ ...prev, opponent_name: e.target.value }))}
-                    placeholder="Ex: Team Vitality"
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOpponentDropdown(!showOpponentDropdown)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-300 hover:border-slate-400 transition-all text-left"
+                  >
+                    <span className={roflConfig.opponent_name ? "text-slate-800" : "text-slate-400"}>
+                      {roflConfig.opponent_name || "Select opponent..."}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  </button>
+
+                  {showOpponentDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowOpponentDropdown(false)} />
+                      <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+                        <div className="p-2 border-b border-slate-700/50">
+                          <form
+                            onSubmit={e => {
+                              e.preventDefault()
+                              if (newTeamName.trim()) createEnemyTeam(newTeamName.trim())
+                            }}
+                            className="flex items-center gap-1.5"
+                          >
+                            <input
+                              type="text"
+                              placeholder="New team..."
+                              value={newTeamName}
+                              onChange={e => setNewTeamName(e.target.value)}
+                              className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
+                              autoFocus
+                            />
+                            <button
+                              type="submit"
+                              disabled={!newTeamName.trim()}
+                              className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </form>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto p-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRoflConfig(prev => ({ ...prev, opponent_name: "" }))
+                              setShowOpponentDropdown(false)
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!roflConfig.opponent_name ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
+                          >
+                            No opponent
+                          </button>
+                          {enemyTeams.map(team => (
+                            <button
+                              key={team._id}
+                              type="button"
+                              onClick={() => {
+                                setRoflConfig(prev => ({ ...prev, opponent_name: team.name }))
+                                setShowOpponentDropdown(false)
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${roflConfig.opponent_name === team.name ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                            >
+                              {team.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Game name */}

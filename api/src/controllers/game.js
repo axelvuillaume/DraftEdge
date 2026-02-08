@@ -51,6 +51,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     let query = {};
 
     if (req.body.team_id) query.team_id = req.body.team_id;
+    if (req.body.session_id) query.session_id = req.body.session_id;
     // folder_id: null or undefined = all games, "none" = games without folder, otherwise filter by folder_id
     if (req.body.folder_id === 'none') query.folder_id = { $in: [null, undefined] };
     else if (req.body.folder_id) query.folder_id = req.body.folder_id;

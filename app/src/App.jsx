@@ -16,6 +16,7 @@ import Team from "@/scenes/team"
 import useStore from "@/services/store"
 import api from "@/services/api"
 import StatsV2 from "@/scenes/statsV2"
+import ScrimHub from "@/scenes/scrim-hub"
 import { environment, SENTRY_URL, POSTHOG_API_KEY, POSTHOG_HOST } from "./config"
 
 if (environment === "production") {
@@ -32,9 +33,9 @@ if (environment === "production") {
     session_recording: {
       maskAllInputs: false,
       maskInputOptions: {
-        password: true,
-      },
-    },
+        password: true
+      }
+    }
   })
 }
 
@@ -45,7 +46,7 @@ function PostHogPageView() {
   useEffect(() => {
     if (environment === "production") {
       posthog.capture("$pageview", {
-        $current_url: window.location.href,
+        $current_url: window.location.href
       })
     }
   }, [location])
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="/team" element={<Team />} />
           <Route path="/statsV2" element={<StatsV2 />} />
           <Route path="/draft/*" element={<Draft />} />
+          <Route path="/scrim-hub/*" element={<ScrimHub />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
@@ -101,7 +103,7 @@ const UserLayout = () => {
       posthog.identify(user._id, {
         email: user.email,
         name: user.name,
-        team_name: user.team_name,
+        team_name: user.team_name
       })
     } catch (e) {
       console.log(e)

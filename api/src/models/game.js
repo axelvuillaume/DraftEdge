@@ -73,6 +73,10 @@ const Schema = new mongoose.Schema(
       nexus_killed: { type: Boolean, default: true }, // Si HQ_KILLED > 0
     },
 
+    // ==================== SESSION INFO ====================
+    session_id: { type: String },
+    session_name: { type: String },
+
     // ==================== FOLDER INFO ====================
     folder_id: { type: String },
     folder_name: { type: String },
