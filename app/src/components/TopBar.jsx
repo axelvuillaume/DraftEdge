@@ -16,7 +16,7 @@ const TopBar = () => {
   const searchRef = useRef(null)
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handleClickOutside = event => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowResults(false)
       }
@@ -49,21 +49,21 @@ const TopBar = () => {
     return () => clearTimeout(debounce)
   }, [searchQuery])
 
-  const handleSelectPlayer = (player) => {
+  const handleSelectPlayer = player => {
     setSearchNavigation({ type: "player", data: player })
     setSearchQuery("")
     setShowResults(false)
     navigate("/statsV2")
   }
 
-  const handleSelectAllyChampion = (champion) => {
+  const handleSelectAllyChampion = champion => {
     setSearchNavigation({ type: "allyChampion", data: champion })
     setSearchQuery("")
     setShowResults(false)
     navigate("/statsV2")
   }
 
-  const handleSelectEnemyChampion = (champion) => {
+  const handleSelectEnemyChampion = champion => {
     setSearchNavigation({ type: "enemyChampion", data: champion })
     setSearchQuery("")
     setShowResults(false)
@@ -81,7 +81,7 @@ const TopBar = () => {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => {
+            onChange={e => {
               setSearchQuery(e.target.value)
               setShowResults(true)
             }}
@@ -113,9 +113,7 @@ const TopBar = () => {
               <>
                 {searchResults.players.length > 0 && (
                   <div>
-                    <div className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-900/50">
-                      Players
-                    </div>
+                    <div className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-900/50">Players</div>
                     {searchResults.players.map((player, idx) => (
                       <button
                         key={`player-${idx}`}
@@ -123,12 +121,7 @@ const TopBar = () => {
                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700/50 transition-colors text-left"
                       >
                         <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                          <img
-                            src={`/roles/${player.role}.png`}
-                            alt={player.role}
-                            className="w-5 h-5"
-                            onError={(e) => (e.target.style.display = "none")}
-                          />
+                          <img src={`/roles/${player.role}.png`} alt={player.role} className="w-5 h-5" onError={e => (e.target.style.display = "none")} />
                         </div>
                         <div className="flex-1">
                           <span className="text-white font-medium text-sm">{player.name}</span>
@@ -157,7 +150,7 @@ const TopBar = () => {
                             src={`/champions/${champion.name}.png`}
                             alt={champion.name}
                             className="w-full h-full object-cover"
-                            onError={(e) => (e.target.style.display = "none")}
+                            onError={e => (e.target.style.display = "none")}
                           />
                         </div>
                         <div className="flex-1">
@@ -187,7 +180,7 @@ const TopBar = () => {
                             src={`/champions/${champion.name}.png`}
                             alt={champion.name}
                             className="w-full h-full object-cover"
-                            onError={(e) => (e.target.style.display = "none")}
+                            onError={e => (e.target.style.display = "none")}
                           />
                         </div>
                         <div className="flex-1">
@@ -251,17 +244,6 @@ const ProfileMenu = () => {
         leaveTo="transform opacity-0 scale-95"
       >
         <Menu.Items className="absolute right-0 mt-2 w-56 origin-top-right bg-slate-800 border border-slate-700/50 rounded-xl shadow-xl shadow-black/20 overflow-hidden focus:outline-none z-50">
-          <div className="py-1">
-            <Menu.Item>
-              {({ active }) => (
-                <button className={`${active ? "bg-slate-700/50" : ""} w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 transition-colors`}>
-                  <User className="w-4 h-4 text-slate-400" />
-                  <span>My Profile</span>
-                </button>
-              )}
-            </Menu.Item>
-          </div>
-
           <div className="border-t border-slate-700/50 py-1">
             <Menu.Item>
               {({ active }) => (
