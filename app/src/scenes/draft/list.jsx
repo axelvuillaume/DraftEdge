@@ -419,9 +419,6 @@ function AddScenario({ isOpen, setIsOpen, onCreated, navigate }) {
           />
         </div>
         <div className="flex items-center justify-end gap-3">
-          <button onClick={() => setIsOpen(false)} className="px-4 py-2 text-slate-400 hover:text-white text-sm transition-colors">
-            Cancel
-          </button>
           <button onClick={handleAddScenario} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg text-sm transition-colors">
             Create
           </button>

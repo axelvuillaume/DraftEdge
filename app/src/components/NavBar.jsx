@@ -20,6 +20,7 @@ const Navbar = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
+  const [isSessionModalOpen, setIsSessionModalOpen] = useState(false)
   const { user } = useStore()
 
   useEffect(() => {
@@ -74,15 +75,7 @@ const Navbar = () => {
       {/* Footer */}
       <div className="p-4 border-t border-slate-700/50 space-y-2">
         <button
-          onClick={async () => {
-            try {
-              const { ok, data, code } = await api.post("/scrim-session", {})
-              if (!ok) return toast.error(code)
-              navigate(`/scrim-hub/${data._id}`)
-            } catch (error) {
-              toast.error(error.message)
-            }
-          }}
+          onClick={() => setIsSessionModalOpen(true)}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm rounded-xl transition-all duration-200 border border-slate-700"
         >
           <Calendar className="w-4 h-4" />
@@ -103,11 +96,19 @@ const Navbar = () => {
         </div>
       </div>
       <UploadModal isOpen={isOpen} onClose={() => setIsOpen(false)} user={user} onSuccess={() => setIsOpen(false)} />
+      <NewSessionModal
+        isOpen={isSessionModalOpen}
+        onClose={() => setIsSessionModalOpen(false)}
+        onSuccess={sessionId => {
+          setIsSessionModalOpen(false)
+          navigate(`/scrim-hub/${sessionId}`)
+        }}
+      />
     </div>
   )
 }
 
-export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName, opponentName }) {
+function UploadModal({ isOpen, onClose, user, onSuccess }) {
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(null)
@@ -135,12 +136,6 @@ export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessi
       })
     }
   }, [isOpen, user?.team_id])
-
-  useEffect(() => {
-    if (isOpen && opponentName) {
-      setRoflConfig(prev => ({ ...prev, opponent_name: opponentName }))
-    }
-  }, [isOpen, opponentName])
 
   const createEnemyTeam = async name => {
     try {
@@ -232,8 +227,6 @@ export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessi
       formData.append("team_name", user?.team_name || "")
       formData.append("opponent_name", roflConfig.opponent_name)
       formData.append("name", roflConfig.name)
-      if (sessionId) formData.append("session_id", sessionId)
-      if (sessionName) formData.append("session_name", sessionName)
 
       const response = await api.postFormData("/parser/import", formData)
 
@@ -268,16 +261,16 @@ export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessi
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl w-full max-h-[90vh] overflow-y-auto bg-slate-800 border border-slate-700">
       <div className="p-6">
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Import a Game</h2>
-        <p className="text-slate-500 text-sm mb-6">Import a replay file (.rofl) to automatically extract all stats from the game.</p>
+        <h2 className="text-xl font-bold text-white mb-2">Import a Game</h2>
+        <p className="text-slate-400 text-sm mb-6">Import a replay file (.rofl) to automatically extract all stats from the game.</p>
 
         {/* File drop zone */}
         {!file ? (
           <div
             className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-              dragActive ? "border-amber-500 bg-amber-50" : "border-slate-300 hover:border-amber-400 hover:bg-amber-50/50"
+              dragActive ? "border-amber-500 bg-amber-500/10" : "border-slate-600 hover:border-amber-400 hover:bg-amber-500/5"
             }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -287,25 +280,25 @@ export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessi
           >
             <input ref={inputRef} type="file" accept={acceptedFiles} onChange={e => handleFiles(e.target.files)} className="hidden" />
             <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <p className="text-slate-600 font-medium mb-1">Drop your .rofl file here</p>
-            <p className="text-slate-400 text-sm">or click to browse</p>
-            <p className="text-slate-400 text-xs mt-2">📁 Documents/League of Legends/Replays/</p>
+            <p className="text-slate-300 font-medium mb-1">Drop your .rofl file here</p>
+            <p className="text-slate-500 text-sm">or click to browse</p>
+            <p className="text-slate-500 text-xs mt-2">📁 Documents/League of Legends/Replays/</p>
           </div>
         ) : (
           <div className="space-y-4">
             {/* File info */}
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-xl border border-slate-600">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-amber-600" />
+                <div className="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
-                  <p className="text-slate-800 font-medium">{file.name}</p>
+                  <p className="text-white font-medium">{file.name}</p>
                   <p className="text-slate-400 text-sm">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                 </div>
               </div>
               {!uploading && !parsing && (
-                <button onClick={removeFile} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                <button onClick={removeFile} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               )}
@@ -390,13 +383,13 @@ export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessi
               <div className="grid grid-cols-2 gap-4">
                 {/* Side selector */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Your team was *</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Your team was *</label>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => setRoflConfig(prev => ({ ...prev, team_side: "blue" }))}
                       className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
-                        roflConfig.team_side === "blue" ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        roflConfig.team_side === "blue" ? "bg-blue-500 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"
                       }`}
                     >
                       🔵 Blue
@@ -405,7 +398,7 @@ export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessi
                       type="button"
                       onClick={() => setRoflConfig(prev => ({ ...prev, team_side: "red" }))}
                       className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
-                        roflConfig.team_side === "red" ? "bg-red-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        roflConfig.team_side === "red" ? "bg-red-500 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"
                       }`}
                     >
                       🔴 Red
@@ -415,15 +408,13 @@ export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessi
 
                 {/* Opponent dropdown */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Opponent Team</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Opponent Team</label>
                   <button
                     type="button"
                     onClick={() => setShowOpponentDropdown(!showOpponentDropdown)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-300 hover:border-slate-400 transition-all text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all text-left"
                   >
-                    <span className={roflConfig.opponent_name ? "text-slate-800" : "text-slate-400"}>
-                      {roflConfig.opponent_name || "Select opponent..."}
-                    </span>
+                    <span className={roflConfig.opponent_name ? "text-white" : "text-slate-400"}>{roflConfig.opponent_name || "Select opponent..."}</span>
                     <ChevronDown className="w-4 h-4 text-slate-400" />
                   </button>
 
@@ -488,13 +479,13 @@ export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessi
 
                 {/* Game name */}
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Game Name (optional)</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Game Name (optional)</label>
                   <input
                     type="text"
                     value={roflConfig.name}
                     onChange={e => setRoflConfig(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Ex: Scrim Week 5 - Game 1"
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -508,7 +499,7 @@ export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessi
             <button
               onClick={handleUpload}
               disabled={!file || uploading || parsing || !roflConfig.team_side}
-              className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-300 disabled:to-slate-400 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
             >
               {uploading ? (
                 <>
@@ -528,6 +519,78 @@ export function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessi
               )}
             </button>
           </div>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function NewSessionModal({ isOpen, onClose, onSuccess }) {
+  const [name, setName] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const handleCreate = async () => {
+    if (!name.trim()) return
+    setLoading(true)
+    try {
+      const { ok, data, code } = await api.post("/scrim-session", { name })
+      if (!ok) return toast.error(code)
+      setName("")
+      onClose()
+      onSuccess(data._id)
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleClose = () => {
+    setName("")
+    onClose()
+  }
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {
+        setName("")
+        onClose()
+      }}
+      className="w-full max-w-md bg-slate-800 border border-slate-700"
+    >
+      <div className="p-6 space-y-4">
+        <h2 className="text-white font-semibold text-lg">New Scrim Session</h2>
+        <div>
+          <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5 block">Session Name</label>
+          <input
+            type="text"
+            placeholder="e.g. Scrim vs Team B"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="w-full border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2.5 text-sm"
+            onKeyDown={e => e.key === "Enter" && handleCreate()}
+            autoFocus
+          />
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            onClick={handleCreate}
+            disabled={!name.trim() || loading}
+            className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed text-sm"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Creating...</span>
+              </>
+            ) : (
+              <>
+                <Calendar className="w-4 h-4" />
+                <span>Create Session</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </Modal>
