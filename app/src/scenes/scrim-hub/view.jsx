@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
-import { ArrowLeft, Plus, X, Target, TrendingUp, ImagePlus, ChevronDown, Loader2, Upload, FileText, Check, Gamepad2, Search, Clock, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Plus, X, Target, TrendingUp, ImagePlus, ChevronDown, Loader2, Upload, FileText, Check, Gamepad2, Search, Clock, AlertTriangle, FolderOpen } from "lucide-react"
 import Modal from "@/components/modal"
 import DebounceInput from "@/components/debounceInput"
 
@@ -55,6 +55,10 @@ export default function View() {
   const [showOpponentDropdown, setShowOpponentDropdown] = useState(false)
   const [newTeamName, setNewTeamName] = useState("")
 
+  const [folders, setFolders] = useState([])
+  const [showFolderDropdown, setShowFolderDropdown] = useState(false)
+  const [newFolderName, setNewFolderName] = useState("")
+
   const [newObjectifName, setNewObjectifName] = useState("")
 
   const [showImportModal, setShowImportModal] = useState(false)
@@ -70,6 +74,7 @@ export default function View() {
     fetchObjectives()
     fetchResults()
     fetchEnemyTeams()
+    fetchFolders()
   }, [id])
 
   const fetchSession = async () => {
@@ -92,13 +97,50 @@ export default function View() {
     }
   }
 
-  const fetchEnemyTeams = async () => {
+  const fetchFolders = async () => {
     try {
-      const { ok, data } = await api.post("/enemy-team/search", { team_id: user?.team_id })
-      if (!ok) return
-      setEnemyTeams(data)
+      const { ok, data, code } = await api.post("/folder/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code)
+      setFolders(data)
+    } catch (error) {
+      toast.error(error.code)
+    }
+  }
+
+  const createFolder = async name => {
+    try {
+      const { ok, data, code } = await api.post("/folder", { name })
+      if (!ok) return toast.error(code)
+      setFolders(prev => [data, ...prev])
+      updateSessionFolder(data._id, data.name)
+      setNewFolderName("")
     } catch (error) {
       toast.error(error.message)
+    }
+  }
+
+  const updateSessionFolder = async (folderId, folderName) => {
+    updateSession("folder_id", folderId)
+    updateSession("folder_name", folderName)
+    setShowFolderDropdown(false)
+    if (selectedGames.length > 0) {
+      try {
+        const gameIds = selectedGames.map(g => g._id)
+        const { ok, code } = await api.put("/game/move", { game_ids: gameIds, folder_id: folderId || null })
+        if (!ok) return toast.error(code)
+      } catch (error) {
+        toast.error(error.code)
+      }
+    }
+  }
+
+  const fetchEnemyTeams = async () => {
+    try {
+      const { ok, data, code } = await api.post("/enemy-team/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code)
+      setEnemyTeams(data)
+    } catch (error) {
+      toast.error(error.code)
     }
   }
 
@@ -111,7 +153,7 @@ export default function View() {
       setNewTeamName("")
       setShowOpponentDropdown(false)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code)
     }
   }
 
@@ -133,7 +175,7 @@ export default function View() {
       if (!ok) return toast.error(code)
       setAllObjectives(data)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code)
     }
   }
 
@@ -194,6 +236,7 @@ export default function View() {
           game_name: game?.name,
           session_id: id,
           session_name: session?.name,
+          patch: session?.patch,
           ...updates
         })
         if (!ok) return toast.error(code)
@@ -227,32 +270,33 @@ export default function View() {
       <div className="max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate("/scrim-hub")} className="p-2 text-slate-400 hover:text-white transition-colors">
-              <ArrowLeft className="w-5 h-5" />
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate("/scrim-hub")} className="p-1.5 text-slate-400 hover:text-white transition-colors">
+              <ArrowLeft className="w-4 h-4" />
             </button>
             <DebounceInput
               type="text"
               placeholder="Session name..."
               value={session.name || ""}
               onChange={e => updateSession("name", e.target.value)}
-              className="bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-lg px-4 py-2 text-white placeholder-slate-400 text-sm w-72"
+              className="bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-lg px-3 py-1.5 text-white placeholder-slate-400 text-sm w-44"
             />
             <input
               type="date"
               value={formatDateInput(session.date)}
               onChange={e => updateSession("date", e.target.value)}
-              className="bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-lg px-4 py-2 text-white text-sm"
+              className="bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-lg px-3 py-1.5 text-white text-sm"
             />
             {session.patch && (
-              <span className="px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-mono">
-                {getPatchPrefix(session.patch)}
+              <span className="px-2 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-xs">
+                <span className="text-slate-400">Patch : </span>
+                <span className="text-emerald-400 font-mono">{getPatchPrefix(session.patch)}</span>
               </span>
             )}
             <div className="relative">
               <button
                 onClick={() => setShowOpponentDropdown(!showOpponentDropdown)}
-                className="flex items-center gap-2 bg-slate-700/50 rounded-lg px-4 py-2 text-sm w-48 hover:bg-slate-700/70 transition-colors"
+                className="flex items-center gap-2 bg-slate-700/50 rounded-lg px-3 py-1.5 text-sm w-36 hover:bg-slate-700/70 transition-colors"
               >
                 <span className={session.opponent ? "text-white" : "text-slate-400"}>{session.opponent || "Opponent..."}</span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-auto" />
@@ -319,14 +363,74 @@ export default function View() {
                 </>
               )}
             </div>
+            <div className="relative">
+              <button
+                onClick={() => setShowFolderDropdown(!showFolderDropdown)}
+                className="flex items-center gap-2 bg-slate-700/50 rounded-lg px-3 py-1.5 text-sm w-36 hover:bg-slate-700/70 transition-colors"
+              >
+                <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
+                <span className={session.folder_name ? "text-white" : "text-slate-400"}>{session.folder_name || "Folder..."}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-auto" />
+              </button>
+
+              {showFolderDropdown && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowFolderDropdown(false)} />
+                  <div className="absolute top-full left-0 mt-1 w-56 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+                    <div className="p-2 border-b border-slate-700/50">
+                      <form
+                        onSubmit={e => {
+                          e.preventDefault()
+                          if (newFolderName.trim()) createFolder(newFolderName.trim())
+                        }}
+                        className="flex items-center gap-1.5"
+                      >
+                        <input
+                          type="text"
+                          placeholder="New folder..."
+                          value={newFolderName}
+                          onChange={e => setNewFolderName(e.target.value)}
+                          className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          disabled={!newFolderName.trim()}
+                          className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </form>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto p-1">
+                      <button
+                        onClick={() => updateSessionFolder(null, null)}
+                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!session.folder_id ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
+                      >
+                        No folder
+                      </button>
+                      {folders.map(folder => (
+                        <button
+                          key={folder._id}
+                          onClick={() => updateSessionFolder(folder._id, folder.name)}
+                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${session.folder_id === folder._id ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                        >
+                          {folder.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             {sessionAvg != null && (
-              <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-2">
-                <TrendingUp className="w-4 h-4 text-amber-500" />
-                <span className="text-slate-400 text-xs">Session avg</span>
-                <span className={`text-lg font-bold ${getRatingTextColor(Math.round(sessionAvg))}`}>{sessionAvg.toFixed(1)}</span>
-                <span className="text-slate-600 text-xs">/ {RATING_MAX}</span>
+              <div className="flex items-center gap-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-slate-400 text-xs">Avg</span>
+                <span className={`text-base font-bold ${getRatingTextColor(Math.round(sessionAvg))}`}>{sessionAvg.toFixed(1)}</span>
+                <span className="text-slate-600 text-xs">/{RATING_MAX}</span>
               </div>
             )}
           </div>
@@ -603,6 +707,8 @@ export default function View() {
         sessionId={id}
         sessionName={session?.name}
         sessionPatch={session?.patch}
+        sessionFolderId={session?.folder_id}
+        sessionFolderName={session?.folder_name}
         opponentName={session?.opponent}
         existingGameIds={selectedGames.map(g => g._id)}
         onSuccess={gamePatch => {
@@ -617,7 +723,7 @@ export default function View() {
   )
 }
 
-function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName, sessionPatch, opponentName, existingGameIds = [] }) {
+function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName, sessionPatch, sessionFolderId, sessionFolderName, opponentName, existingGameIds = [] }) {
   const [activeTab, setActiveTab] = useState("import")
 
   // === Import tab state ===
@@ -679,7 +785,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
     setAddingGames(true)
     try {
       for (const gameId of selectedHistoryIds) {
-        const { ok, code } = await api.put(`/game/${gameId}`, { session_id: sessionId, session_name: sessionName })
+        const { ok, code } = await api.put(`/game/${gameId}`, { session_id: sessionId, session_name: sessionName, ...(sessionFolderId && { folder_id: sessionFolderId, folder_name: sessionFolderName }) })
         if (!ok) toast.error(code)
       }
       toast.success(`${selectedHistoryIds.length} game${selectedHistoryIds.length > 1 ? "s" : ""} added to session`)
@@ -774,6 +880,8 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
       formData.append("name", roflConfig.name)
       if (sessionId) formData.append("session_id", sessionId)
       if (sessionName) formData.append("session_name", sessionName)
+      if (sessionFolderId) formData.append("folder_id", sessionFolderId)
+      if (sessionFolderName) formData.append("folder_name", sessionFolderName)
       const response = await api.postFormData("/parser/import", formData)
       if (response.ok) {
         setUploadProgress("success")
