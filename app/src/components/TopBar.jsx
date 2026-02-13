@@ -78,8 +78,9 @@ const TopBar = () => {
   const hasResults = searchResults.players.length > 0 || searchResults.allyChampions.length > 0 || searchResults.enemyChampions.length > 0
 
   return (
-    <div className="w-full h-16 bg-slate-900/80 border-b border-slate-700/50 flex items-center justify-between px-6 relative z-40">
-      {/* Search Bar */}
+    <div className="w-full h-16 bg-slate-900/80 border-b border-slate-700/50 flex items-center px-6 relative z-40">
+      {/* Search Bar + Filters */}
+      <div className="flex items-center gap-3 flex-1">
       <div ref={searchRef} className="relative w-80">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -205,6 +206,7 @@ const TopBar = () => {
 
       {/* Global Filters */}
       {showFilters && <FilterBar />}
+      </div>
 
       {/* Profile Menu */}
       <ProfileMenu />

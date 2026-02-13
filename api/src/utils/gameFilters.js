@@ -17,11 +17,11 @@ async function buildGameFilters({ team_id, patch, folder_id, opponent_name }) {
   const gameQuery = {};
   if (patch) gameQuery.patch = { $regex: `^${patch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` };
   if (folder_id === 'none') gameQuery.folder_id = { $in: [null, undefined] };
-  if (folder_id) gameQuery.folder_id = folder_id;
+  else if (folder_id) gameQuery.folder_id = folder_id;
   if (opponent_name) gameQuery.opponent_name = opponent_name;
 
-  const games = await Game.find({ team_id, ...gameQuery }, { game_id: 1 }).lean();
-  const gameIds = games.map((g) => g.game_id);
+  const games = await Game.find({ team_id, ...gameQuery }, { _id: 1 }).lean();
+  const gameIds = games.map((g) => g._id.toString());
 
   return { gameIdFilter: { game_id: { $in: gameIds } }, gameQuery };
 }
