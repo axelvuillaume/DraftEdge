@@ -712,9 +712,7 @@ export default function View() {
         opponentName={session?.opponent}
         existingGameIds={selectedGames.map(g => g._id)}
         onSuccess={gamePatch => {
-          if (!session?.patch && gamePatch) {
-            updateSession("patch", gamePatch)
-          }
+          if (!session?.patch && gamePatch) updateSession("patch", gamePatch)
           setShowImportModal(false)
           fetchGames()
         }}
@@ -748,12 +746,17 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
   const [selectedHistoryIds, setSelectedHistoryIds] = useState([])
   const [addingGames, setAddingGames] = useState(false)
 
-  useEffect(() => {
-    if (isOpen && user?.team_id) {
-      api.post("/enemy-team/search", { team_id: user.team_id }).then(({ ok, data }) => {
-        if (ok) setEnemyTeams(data)
-      })
+  const fetchEnemyTeams = async () => {
+    try {
+      const { ok, data, code } = await api.post("/enemy-team/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code)
+      setEnemyTeams(data)
+    } catch (error) {
+      toast.error(error.code)
     }
+  }
+  useEffect(() => {
+    if (isOpen && user?.team_id) fetchEnemyTeams()
   }, [isOpen, user?.team_id])
 
   useEffect(() => {
@@ -768,7 +771,8 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
     setLoadingHistory(true)
     try {
       const { ok, data } = await api.post("/game/search", { team_id: user?.team_id, limit: 100 })
-      if (ok) setHistoryGames(data)
+      if (!ok) return toast.error(code)
+      setHistoryGames(data)
     } catch (error) {
       toast.error(error.message)
     } finally {
@@ -785,8 +789,12 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
     setAddingGames(true)
     try {
       for (const gameId of selectedHistoryIds) {
-        const { ok, code } = await api.put(`/game/${gameId}`, { session_id: sessionId, session_name: sessionName, ...(sessionFolderId && { folder_id: sessionFolderId, folder_name: sessionFolderName }) })
-        if (!ok) toast.error(code)
+        const { ok, code } = await api.put(`/game/${gameId}`, {
+          session_id: sessionId,
+          session_name: sessionName,
+          ...(sessionFolderId && { folder_id: sessionFolderId, folder_name: sessionFolderName })
+        })
+        if (!ok) return toast.error(code)
       }
       toast.success(`${selectedHistoryIds.length} game${selectedHistoryIds.length > 1 ? "s" : ""} added to session`)
       const firstAddedGame = historyGames.find(g => selectedHistoryIds.includes(g._id))
@@ -794,7 +802,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
       handleClose()
       onSuccess?.(firstAddedGame?.patch)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code)
     } finally {
       setAddingGames(false)
     }
@@ -809,17 +817,14 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
       setNewTeamName("")
       setShowOpponentDropdown(false)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code)
     }
   }
 
   const handleFiles = async selectedFiles => {
     if (!selectedFiles || selectedFiles.length === 0) return
     const selectedFile = selectedFiles[0]
-    if (!selectedFile.name.endsWith(".rofl")) {
-      toast.error("File must be a .rofl")
-      return
-    }
+    if (!selectedFile.name.endsWith(".rofl")) return toast.error("File must be a .rofl")
     setFile(selectedFile)
     setParsing(true)
     try {
@@ -834,7 +839,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
         setFile(null)
       }
     } catch (error) {
-      toast.error("Error: " + error.message)
+      toast.error(error.code)
       setFile(null)
     } finally {
       setParsing(false)
@@ -865,11 +870,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
     if (!file) return
     setUploading(true)
     setUploadProgress("uploading")
-    if (!roflConfig.team_side) {
-      toast.error("Select your side (Blue/Red)")
-      setUploading(false)
-      return
-    }
+    if (!roflConfig.team_side) return toast.error("Select your side (Blue/Red)")
     try {
       const formData = new FormData()
       formData.append("replay", file)
@@ -891,11 +892,11 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
           onSuccess?.(roflPreview?.game?.patch)
         }, 1000)
       } else {
-        toast.error(response.error || response.details || "Error during import")
+        return toast.error(response.error || response.details || "Error during import")
         setUploadProgress("error")
       }
     } catch (error) {
-      toast.error("Error: " + error.message)
+      toast.error(error.code)
       setUploadProgress("error")
     } finally {
       setUploading(false)
