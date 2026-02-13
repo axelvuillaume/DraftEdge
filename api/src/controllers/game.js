@@ -7,6 +7,25 @@ const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const { capture: posthogCapture } = require('../services/posthog');
 const { client } = require('../services/gemini');
+const Folder = require('../models/folder');
+const EnemyTeam = require('../models/enemy-team');
+const { buildGameFilters, extractFilters } = require('../utils/gameFilters');
+
+// Get available filter options (patches, opponents, folders)
+router.post('/filter-options', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team_id = req.user.team_id;
+    const [patches, enemyTeams, folders] = await Promise.all([Game.distinct('patch', { team_id }), EnemyTeam.find({ team_id }, { name: 1 }).lean(), Folder.find({ team_id }, { name: 1 }).lean()]);
+
+    // Group patches by major.minor (e.g. "25.S2.3" → "25.S2")
+    const majorMinor = [...new Set(patches.filter(Boolean).map((p) => p.split('.').slice(0, 2).join('.')))].sort().reverse();
+
+    return res.status(200).send({ ok: true, data: { patches: majorMinor, opponents: enemyTeams.map((t) => ({ _id: t._id, name: t.name })), folders: folders.map((f) => ({ _id: f._id, name: f.name })) } });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
 
 // Move games to folder - must be before /:id routes
 router.put('/move', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
@@ -55,6 +74,8 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     // folder_id: null or undefined = all games, "none" = games without folder, otherwise filter by folder_id
     if (req.body.folder_id === 'none') query.folder_id = { $in: [null, undefined] };
     else if (req.body.folder_id) query.folder_id = req.body.folder_id;
+    if (req.body.patch) query.patch = { $regex: `^${req.body.patch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` };
+    if (req.body.opponent_name) query.opponent_name = req.body.opponent_name;
     const limit = req.body.limit || 50;
     const skip = req.body.offset || 0;
     const total = await Game.countDocuments(query);
@@ -98,8 +119,10 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
 
 router.post('/stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const games = await Game.find({ team_id: req.user.team_id });
-    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true });
+    const filters = extractFilters(req.body);
+    const { gameIdFilter, gameQuery } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
+    const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
+    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
 
     const TIER_VALUE = {
       IRON: 0,

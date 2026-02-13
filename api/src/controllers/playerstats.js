@@ -6,6 +6,7 @@ const { capture } = require('../services/sentry');
 const PlayerStats = require('../models/playerstats');
 const Game = require('../models/game');
 const { client: geminiClient } = require('../services/gemini');
+const { buildGameFilters, extractFilters } = require('../utils/gameFilters');
 
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
@@ -83,8 +84,11 @@ router.post('/search_nav', passport.authenticate(['admin', 'user'], { session: f
     const searchQuery = query.trim().toLowerCase();
     const teamId = req.user.team_id;
 
+    const filters = extractFilters(req.body);
+    const { gameIdFilter } = await buildGameFilters({ team_id: teamId, ...filters });
+
     // Get all player stats for this team (both allies and opponents)
-    const allStats = await PlayerStats.find({ team_id: teamId });
+    const allStats = await PlayerStats.find({ team_id: teamId, ...gameIdFilter });
 
     // Build players list and champions data
     const playersMap = {};
@@ -167,7 +171,9 @@ router.post('/search_nav', passport.authenticate(['admin', 'user'], { session: f
 
 router.post('/best_wr', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const playerStats = await PlayerStats.find({ team_id: req.user.team_id });
+    const filters = extractFilters(req.body);
+    const { gameIdFilter } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
+    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, ...gameIdFilter });
 
     const calculateBestWR = (stats) => {
       const championsStats = stats.reduce((acc, curr) => {
@@ -211,14 +217,11 @@ router.post('/best_wr', passport.authenticate(['admin', 'user'], { session: fals
 
 router.post('/card_average', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const thisWeekStart = new Date();
-    thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
-    thisWeekStart.setHours(0, 0, 0, 0);
+    const filters = extractFilters(req.body);
+    const { gameIdFilter } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
 
-    // const playerStats = await PlayerStats.find({ team_id: req.user.team_id, createdAt: { $gte: thisWeekStart }, opponent: false });
-
-    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
-    const enemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true });
+    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false, ...gameIdFilter });
+    const enemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
 
     // Calculate allies stats by role
     const alliesStatsByRole = playerStats.reduce((acc, curr) => {
@@ -344,8 +347,10 @@ router.post('/card_average', passport.authenticate(['admin', 'user'], { session:
 
 router.post('/player_stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
+    const filters = extractFilters(req.body);
+    const { gameIdFilter } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
     // Fetch both team players and opponents to build matchup data
-    const allStats = await PlayerStats.find({ team_id: req.user.team_id });
+    const allStats = await PlayerStats.find({ team_id: req.user.team_id, ...gameIdFilter });
     const playerStats = allStats.filter((s) => !s.opponent);
     const opponentStats = allStats.filter((s) => s.opponent);
 
@@ -505,8 +510,10 @@ router.post('/player_stats', passport.authenticate(['admin', 'user'], { session:
 router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const { role, category } = req.body;
+    const filters = extractFilters(req.body);
+    const { gameIdFilter, gameQuery } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
     if (category === 'Objectives') {
-      const games = await Game.find({ team_id: req.user.team_id });
+      const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
       if (!games.length) return res.status(200).send({ ok: true, data: [], scores: [] });
 
       const aggregateObjectives = (gamesList) => {
@@ -595,10 +602,10 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
       return res.status(200).send({ ok: true, data: dataMetrics, scores: [], score });
     }
 
-    const allTeamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
+    const allTeamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false, ...gameIdFilter });
     const playerStats = role ? allTeamStats.filter((s) => s.role === role) : allTeamStats;
 
-    const allEnemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true });
+    const allEnemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
     const enemyStats = role ? allEnemyStats.filter((s) => s.role === role) : allEnemyStats;
 
     const aggregateStats = (stats) => {
@@ -811,10 +818,12 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
 // New endpoint for StatsV2 - returns team, players, and matchup data with category scores
 router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const allStats = await PlayerStats.find({ team_id: req.user.team_id });
+    const filters = extractFilters(req.body);
+    const { gameIdFilter, gameQuery } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
+    const allStats = await PlayerStats.find({ team_id: req.user.team_id, ...gameIdFilter });
     const playerStats = allStats.filter((s) => !s.opponent);
     const opponentStats = allStats.filter((s) => s.opponent);
-    const games = await Game.find({ team_id: req.user.team_id });
+    const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
 
     // Build opponent map for matchups
     const opponentMap = {};
@@ -1301,10 +1310,12 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
       return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
     }
 
-    const allStats = await PlayerStats.find({ team_id: req.user.team_id });
+    const filters = extractFilters(req.body);
+    const { gameIdFilter, gameQuery } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
+    const allStats = await PlayerStats.find({ team_id: req.user.team_id, ...gameIdFilter });
     const playerStats = allStats.filter((s) => !s.opponent);
     const opponentStats = allStats.filter((s) => s.opponent);
-    const games = await Game.find({ team_id: req.user.team_id });
+    const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
 
     // Helper functions
     const getAvg = (total, count) => (count > 0 ? total / count : 0);
@@ -1614,8 +1625,10 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
 
 router.post('/team_performance', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const allTeamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false });
-    const allEnemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true });
+    const filters = extractFilters(req.body);
+    const { gameIdFilter, gameQuery } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
+    const allTeamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false, ...gameIdFilter });
+    const allEnemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
 
     const aggregateStats = (stats) => {
       return stats.reduce(
@@ -1751,7 +1764,7 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
     });
 
     // Calculate Objectives score from Game model
-    const games = await Game.find({ team_id: req.user.team_id });
+    const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
     let objectivesScore = 50;
     if (games.length) {
       const agg = games.reduce(
@@ -1826,7 +1839,9 @@ router.post('/most-played', passport.authenticate(['admin', 'user'], { session: 
     const team_id = req.body.team_id || req.user.team_id;
     if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
 
-    const query = { team_id, opponent: false };
+    const filters = extractFilters(req.body);
+    const { gameIdFilter } = await buildGameFilters({ team_id, ...filters });
+    const query = { team_id, opponent: false, ...gameIdFilter };
 
     // Count total unique games for PR calculation
     const totalGamesAgg = await PlayerStats.aggregate([{ $match: query }, { $group: { _id: '$game_id' } }, { $count: 'total' }]);
@@ -1875,7 +1890,9 @@ router.post('/most-flexed', passport.authenticate(['admin', 'user'], { session: 
     const team_id = req.body.team_id || req.user.team_id;
     if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
 
-    const query = { team_id, opponent: false };
+    const filters = extractFilters(req.body);
+    const { gameIdFilter } = await buildGameFilters({ team_id, ...filters });
+    const query = { team_id, opponent: false, ...gameIdFilter };
 
     // Count total unique games for PR calculation
     const totalGamesAgg = await PlayerStats.aggregate([{ $match: query }, { $group: { _id: '$game_id' } }, { $count: 'total' }]);
@@ -1939,8 +1956,10 @@ router.post('/best-combos', passport.authenticate(['admin', 'user'], { session: 
     const team_id = req.body.team_id || req.user.team_id;
     if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
 
+    const filters = extractFilters(req.body);
+    const { gameIdFilter } = await buildGameFilters({ team_id, ...filters });
     // Get all ally player stats grouped by game
-    const stats = await PlayerStats.find({ team_id, opponent: false }, { game_id: 1, champion: 1, game_win: 1 }).lean();
+    const stats = await PlayerStats.find({ team_id, opponent: false, ...gameIdFilter }, { game_id: 1, champion: 1, game_win: 1 }).lean();
 
     // Group by game_id
     const gameMap = {};

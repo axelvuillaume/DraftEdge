@@ -1,14 +1,19 @@
 import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { Menu, Transition } from "@headlessui/react"
 import { LogOut, ChevronDown, User, Settings, Shield, Search, X } from "lucide-react"
 
 import useStore from "@/services/store"
 import api from "@/services/api"
+import FilterBar from "@/components/FilterBar"
+
+const FILTERED_ROUTES = ["/", "/statsV2", "/draft"]
 
 const TopBar = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { setSearchNavigation } = useStore()
+  const showFilters = FILTERED_ROUTES.some(route => (route === "/" ? location.pathname === "/" : location.pathname.startsWith(route)))
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState({ players: [], allyChampions: [], enemyChampions: [] })
   const [isSearching, setIsSearching] = useState(false)
@@ -198,6 +203,9 @@ const TopBar = () => {
         )}
       </div>
 
+      {/* Global Filters */}
+      {showFilters && <FilterBar />}
+
       {/* Profile Menu */}
       <ProfileMenu />
     </div>
@@ -212,16 +220,6 @@ const ProfileMenu = () => {
     setUser(null)
     api.removeToken()
     navigate("/auth")
-  }
-
-  const getInitials = name => {
-    if (!name) return "?"
-    return name
-      .split(" ")
-      .map(n => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2)
   }
 
   return (

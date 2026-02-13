@@ -11,12 +11,12 @@ export default function FutureHome() {
   const [gameStats, setGameStats] = useState()
   const [games, setGames] = useState([])
   const [bestChampions, setBestChampions] = useState([])
-  const { user } = useStore()
+  const { user, globalFilters } = useStore()
   const [selectedBubble, setSelectedBubble] = useState(null)
 
   const fetchGameStats = async () => {
     try {
-      const { ok, data, code } = await api.post("/game/stats", {})
+      const { ok, data, code } = await api.post("/game/stats", { ...globalFilters })
       if (!ok) return toast.error(code)
       setGameStats(data)
     } catch (error) {
@@ -26,7 +26,7 @@ export default function FutureHome() {
 
   const fetchCardAverage = async () => {
     try {
-      const { ok, data, code } = await api.post("/playerstats/card_average", {})
+      const { ok, data, code } = await api.post("/playerstats/card_average", { ...globalFilters })
       if (!ok) return toast.error(code)
       setStats(data)
     } catch (error) {
@@ -36,7 +36,7 @@ export default function FutureHome() {
 
   const fetchBestChampions = async () => {
     try {
-      const { ok, data, code } = await api.post("/playerstats/best_wr", {})
+      const { ok, data, code } = await api.post("/playerstats/best_wr", { ...globalFilters })
       if (!ok) return toast.error(code)
       setBestChampions(data)
     } catch (error) {
@@ -46,7 +46,7 @@ export default function FutureHome() {
 
   const fetchGames = async () => {
     try {
-      const { ok, data, code } = await api.post("/game/search", { limit: 50, team_id: user?.team_id })
+      const { ok, data, code } = await api.post("/game/search", { ...globalFilters, limit: 50, team_id: user?.team_id })
       if (!ok) return toast.error(code)
       setGames(data)
     } catch (error) {
@@ -59,7 +59,7 @@ export default function FutureHome() {
 
   useEffect(() => {
     fetchAll()
-  }, [])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
 
   const avgKDA =
     stats?.allies?.total && stats.allies.total.deaths > 0
@@ -212,7 +212,7 @@ export default function FutureHome() {
 }
 
 function BubbleDetailView({ bubble }) {
-  const { user } = useStore()
+  const { user, globalFilters } = useStore()
   const [data, setData] = useState([])
   const [scores, setScores] = useState([])
   const [globalScore, setGlobalScore] = useState(null)
@@ -220,7 +220,7 @@ function BubbleDetailView({ bubble }) {
 
   const fetchplayerstats = async () => {
     try {
-      const { ok, data, scores, score, code } = await api.post("/playerstats/bubble_stats", { ...filters, category: bubble?.title })
+      const { ok, data, scores, score, code } = await api.post("/playerstats/bubble_stats", { ...globalFilters, ...filters, category: bubble?.title })
       if (!ok) return toast.error(code)
       setData(data)
       setScores(scores || [])
@@ -231,7 +231,7 @@ function BubbleDetailView({ bubble }) {
   }
   useEffect(() => {
     fetchplayerstats()
-  }, [filters])
+  }, [filters, globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
 
   const toggleRoleFilter = role => {
     setFilters(prev => {
@@ -400,6 +400,7 @@ function BubbleDetailView({ bubble }) {
 }
 
 function PerformanceMindMap({ onNodeClick }) {
+  const { globalFilters } = useStore()
   const [teamPerformance, setTeamPerformance] = useState()
 
   const nodes = [
@@ -411,18 +412,16 @@ function PerformanceMindMap({ onNodeClick }) {
 
   const fetchTeamPerformance = async () => {
     try {
-      const { ok, data, code } = await api.post("/playerstats/team_performance", {})
+      const { ok, data, code } = await api.post("/playerstats/team_performance", { ...globalFilters })
       if (!ok) return toast.error(code)
       setTeamPerformance(data)
-
-      console.log(data)
     } catch (error) {
       toast.error(error.message)
     }
   }
   useEffect(() => {
     fetchTeamPerformance()
-  }, [])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
 
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-4 relative min-h-[400px] h-full flex items-center justify-center overflow-hidden">

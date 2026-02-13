@@ -371,7 +371,8 @@ const POSITION_LABELS = ["First", "Second", "Third", "Fourth", "Fifth"]
 
 export default function View() {
   const { id } = useParams()
-  const { user } = useStore()
+  const { user, globalFilters } = useStore()
+
   const [scenarioName, setScenarioName] = useState("")
   const [blueBans, setBlueBans] = useState(Array(5).fill(null))
   const [redBans, setRedBans] = useState(Array(5).fill(null))
@@ -452,7 +453,7 @@ export default function View() {
 
   async function fetchMyTeam() {
     try {
-      const { ok, data, code } = await api.post("/playerstats/most-played", {})
+      const { ok, data, code } = await api.post("/playerstats/most-played", { ...globalFilters })
       if (!ok) return toast.error(code || "Failed to fetch my team most-played")
       setMyTeamMostPlayed(data)
     } catch (error) {
@@ -473,7 +474,7 @@ export default function View() {
 
   async function fetchMyTeamCombos() {
     try {
-      const { ok, data, code } = await api.post("/playerstats/best-combos")
+      const { ok, data, code } = await api.post("/playerstats/best-combos", { ...globalFilters })
       if (!ok) return toast.error(code || "Failed to fetch my team combos")
       setMyTeamCombos(data)
     } catch (error) {
@@ -512,7 +513,7 @@ export default function View() {
 
   async function fetchMyTeamFlexed() {
     try {
-      const { ok, data, code } = await api.post("/playerstats/most-flexed", { limit: 3 })
+      const { ok, data, code } = await api.post("/playerstats/most-flexed", { ...globalFilters, limit: 3 })
       if (!ok) return toast.error(code || "Failed to fetch my team flexed champions")
       setMyTeamFlexed(data || [])
     } catch (error) {
@@ -532,12 +533,12 @@ export default function View() {
     }
   }
 
-  // Fetch my team data (doesn't depend on league)
+  // Fetch my team data (depends on global filters)
   useEffect(() => {
     fetchMyTeam()
     fetchMyTeamCombos()
     fetchMyTeamFlexed()
-  }, [])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
 
   // Fetch pro data (depends on selected leagues)
   useEffect(() => {
