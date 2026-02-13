@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
-import { ArrowLeft, Plus, X, Target, TrendingUp, ImagePlus, ChevronDown, Loader2, Upload, FileText, Check, Gamepad2, Search, Clock } from "lucide-react"
+import { ArrowLeft, Plus, X, Target, TrendingUp, ImagePlus, ChevronDown, Loader2, Upload, FileText, Check, Gamepad2, Search, Clock, AlertTriangle } from "lucide-react"
 import Modal from "@/components/modal"
 import DebounceInput from "@/components/debounceInput"
 
@@ -29,6 +29,16 @@ function formatDateInput(value) {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return ""
   return parsed.toISOString().slice(0, 10)
+}
+
+function getPatchPrefix(patch) {
+  if (!patch) return null
+  return patch.split(".").slice(0, 2).join(".")
+}
+
+function patchesMatch(patch1, patch2) {
+  if (!patch1 || !patch2) return true
+  return getPatchPrefix(patch1) === getPatchPrefix(patch2)
 }
 
 export default function View() {
@@ -234,6 +244,11 @@ export default function View() {
               onChange={e => updateSession("date", e.target.value)}
               className="bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-lg px-4 py-2 text-white text-sm"
             />
+            {session.patch && (
+              <span className="px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm font-mono">
+                {getPatchPrefix(session.patch)}
+              </span>
+            )}
             <div className="relative">
               <button
                 onClick={() => setShowOpponentDropdown(!showOpponentDropdown)}
@@ -587,9 +602,13 @@ export default function View() {
         user={user}
         sessionId={id}
         sessionName={session?.name}
+        sessionPatch={session?.patch}
         opponentName={session?.opponent}
         existingGameIds={selectedGames.map(g => g._id)}
-        onSuccess={() => {
+        onSuccess={gamePatch => {
+          if (!session?.patch && gamePatch) {
+            updateSession("patch", gamePatch)
+          }
           setShowImportModal(false)
           fetchGames()
         }}
@@ -598,7 +617,7 @@ export default function View() {
   )
 }
 
-function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName, opponentName, existingGameIds = [] }) {
+function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName, sessionPatch, opponentName, existingGameIds = [] }) {
   const [activeTab, setActiveTab] = useState("import")
 
   // === Import tab state ===
@@ -664,9 +683,10 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
         if (!ok) toast.error(code)
       }
       toast.success(`${selectedHistoryIds.length} game${selectedHistoryIds.length > 1 ? "s" : ""} added to session`)
+      const firstAddedGame = historyGames.find(g => selectedHistoryIds.includes(g._id))
       setSelectedHistoryIds([])
       handleClose()
-      onSuccess?.()
+      onSuccess?.(firstAddedGame?.patch)
     } catch (error) {
       toast.error(error.message)
     } finally {
@@ -760,7 +780,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
         toast.success("Game imported successfully!")
         setTimeout(() => {
           handleClose()
-          onSuccess?.()
+          onSuccess?.(roflPreview?.game?.patch)
         }, 1000)
       } else {
         toast.error(response.error || response.details || "Error during import")
@@ -789,6 +809,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
   }
 
   const filteredHistoryGames = historyGames.filter(g => {
+    if (sessionPatch && !patchesMatch(sessionPatch, g.patch)) return false
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase()
     return (
@@ -944,6 +965,16 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
                   </div>
                 )}
 
+                {roflPreview && sessionPatch && !patchesMatch(sessionPatch, roflPreview.game?.patch) && (
+                  <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <p className="text-red-400 text-sm">
+                      Patch mismatch: this game is on <span className="font-mono font-medium">{getPatchPrefix(roflPreview.game?.patch)}</span> but the session is on{" "}
+                      <span className="font-mono font-medium">{getPatchPrefix(sessionPatch)}</span>
+                    </p>
+                  </div>
+                )}
+
                 {roflPreview && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -1058,7 +1089,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
             <div className="flex justify-end mt-6">
               <button
                 onClick={handleUpload}
-                disabled={!file || uploading || parsing || !roflConfig.team_side}
+                disabled={!file || uploading || parsing || !roflConfig.team_side || (sessionPatch && roflPreview && !patchesMatch(sessionPatch, roflPreview.game?.patch))}
                 className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
               >
                 {uploading ? (

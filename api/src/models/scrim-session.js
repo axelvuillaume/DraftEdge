@@ -10,6 +10,7 @@ const Schema = new mongoose.Schema(
     team_id: { type: String, required: true },
     team_name: { type: String, required: true },
     comment: { type: String },
+    patch: { type: String },
   },
   { timestamps: true },
 );

@@ -37,7 +37,7 @@ export default function List() {
   const [objectifs, setObjectifs] = useState([])
   const [teamResults, setTeamResults] = useState([])
   const [sessions, setSessions] = useState([])
-  const { user } = useStore()
+  const { user, globalFilters } = useStore()
   const [showAddObjectifModal, setShowAddObjectifModal] = useState(false)
   const [showAddSessionModal, setShowAddSessionModal] = useState(false)
   const [showSessions, setShowSessions] = useState(false)
@@ -54,7 +54,7 @@ export default function List() {
 
   const fetchTeamResults = async () => {
     try {
-      const { ok, data, code } = await api.post("/scrim-objectif-result/search", { team_id: user?.team_id })
+      const { ok, data, code } = await api.post("/scrim-objectif-result/search", { team_id: user?.team_id, ...(globalFilters.patch && { patch: globalFilters.patch }) })
       if (!ok) return toast.error(code)
       setTeamResults(data)
     } catch (error) {
@@ -64,7 +64,11 @@ export default function List() {
 
   const fetchSessions = async () => {
     try {
-      const { ok, data, code } = await api.post("/scrim-session/search", { team_id: user?.team_id })
+      const { ok, data, code } = await api.post("/scrim-session/search", {
+        team_id: user?.team_id,
+        ...(globalFilters.patch && { patch: globalFilters.patch }),
+        ...(globalFilters.opponent_name && { opponent: globalFilters.opponent_name })
+      })
       if (!ok) return toast.error(code)
       setSessions(data)
     } catch (error) {
@@ -76,7 +80,7 @@ export default function List() {
     fetchObjectifs()
     fetchTeamResults()
     fetchSessions()
-  }, [user?.team_id])
+  }, [user?.team_id, globalFilters.patch, globalFilters.opponent_name])
 
   const handleDelete = async id => {
     try {

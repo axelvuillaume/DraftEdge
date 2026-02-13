@@ -31,6 +31,8 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
   try {
     let query = {};
     if (req.body.team_id) query.team_id = req.body.team_id;
+    if (req.body.patch) query.patch = { $regex: `^${req.body.patch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` };
+    if (req.body.opponent) query.opponent = req.body.opponent;
     const data = await ScrimSession.find(query).sort({ createdAt: -1 });
     return res.status(200).send({ ok: true, data });
   } catch (error) {
