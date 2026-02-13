@@ -35,6 +35,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     if (req.body.team_id) query.team_id = req.body.team_id;
     if (req.body.objectif_id) query.objectif_id = req.body.objectif_id;
     if (req.body.session_id) query.session_id = req.body.session_id;
+    if (req.body.patch) query.patch = { $regex: `^${req.body.patch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` };
     const limit = req.body.limit || 50;
     const skip = req.body.offset || 0;
     const total = await ScrimObjectifResult.countDocuments(query);

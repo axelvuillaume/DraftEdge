@@ -6,7 +6,7 @@ import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/componen
 import { Shield, ChevronLeft } from "lucide-react"
 
 export default function StatsV2() {
-  const { searchNavigation, setSearchNavigation } = useStore()
+  const { searchNavigation, setSearchNavigation, globalFilters } = useStore()
   const [teamData, setTeamData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activePlayer, setActivePlayer] = useState(null)
@@ -23,9 +23,12 @@ export default function StatsV2() {
 
   const fetchStats = async () => {
     try {
-      const { ok, data, code } = await api.post("/playerstats/team_stats_v2", {})
+      const { ok, data, code } = await api.post("/playerstats/team_stats_v2", { ...globalFilters })
       if (!ok) return toast.error(code)
       setTeamData(data)
+      setActivePlayer(null)
+      setActiveChampion(null)
+      setActiveEnemyChampion(null)
       return data
     } catch (error) {
       toast.error(error.message)
@@ -37,7 +40,7 @@ export default function StatsV2() {
 
   useEffect(() => {
     fetchStats()
-  }, [])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
 
   // Handle search navigation changes (works even when already on statsV2 page)
   useEffect(() => {
@@ -68,7 +71,7 @@ export default function StatsV2() {
       } else if (searchNavigation.type === "enemyChampion") {
         // Fetch enemy champion stats from API
         try {
-          const { ok, data } = await api.post("/playerstats/enemy_champion_stats", { championName: searchNavigation.data.name })
+          const { ok, data } = await api.post("/playerstats/enemy_champion_stats", { ...globalFilters, championName: searchNavigation.data.name })
           if (ok) {
             setActivePlayer(null)
             setActiveChampion(null)
@@ -472,16 +475,16 @@ function SpiderChart({ metrics, isEnemyChampion }) {
   const teamValues = metrics.map(m => {
     const isInverted = invertedMetrics.some(inv => m.name.includes(inv))
     const diff = parseFloat(m.diff) || 0 // diff is already a percentage (-100 to +100)
-    
+
     // Clamp diff to reasonable range and apply slight curve for better visibility
     const clampedDiff = Math.max(-100, Math.min(100, diff))
     // Apply sqrt scaling to make small differences more visible while preserving large ones
     const sign = clampedDiff >= 0 ? 1 : -1
     const scaledDiff = sign * Math.pow(Math.abs(clampedDiff) / 100, 0.7) * 100
-    
+
     // For inverted metrics, flip the direction
     const adjustedDiff = isInverted ? -scaledDiff : scaledDiff
-    
+
     // Team position: when diff > 0 (team better), team goes outward
     const offset = (adjustedDiff / 100) * maxSpread
     return Math.max(15, Math.min(95, basePosition + offset))
@@ -490,13 +493,13 @@ function SpiderChart({ metrics, isEnemyChampion }) {
   const enemyValues = metrics.map(m => {
     const isInverted = invertedMetrics.some(inv => m.name.includes(inv))
     const diff = parseFloat(m.diff) || 0
-    
+
     const clampedDiff = Math.max(-100, Math.min(100, diff))
     const sign = clampedDiff >= 0 ? 1 : -1
     const scaledDiff = sign * Math.pow(Math.abs(clampedDiff) / 100, 0.7) * 100
-    
+
     const adjustedDiff = isInverted ? -scaledDiff : scaledDiff
-    
+
     // Enemy position: opposite of team - when diff > 0 (team better), enemy goes inward
     const offset = (adjustedDiff / 100) * maxSpread
     return Math.max(15, Math.min(95, basePosition - offset))
@@ -570,7 +573,15 @@ function SpiderChart({ metrics, isEnemyChampion }) {
           const textAnchor = isRight ? "start" : isLeft ? "end" : "middle"
 
           return (
-            <text key={i} x={labelPoint.x} y={labelPoint.y} textAnchor={textAnchor} dominantBaseline="middle" className="fill-slate-300 text-[10px] font-medium" pointerEvents="none">
+            <text
+              key={i}
+              x={labelPoint.x}
+              y={labelPoint.y}
+              textAnchor={textAnchor}
+              dominantBaseline="middle"
+              className="fill-slate-300 text-[10px] font-medium"
+              pointerEvents="none"
+            >
               {metric.name}
             </text>
           )

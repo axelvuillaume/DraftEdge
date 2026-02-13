@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
@@ -37,7 +37,7 @@ export default function List() {
   const [objectifs, setObjectifs] = useState([])
   const [teamResults, setTeamResults] = useState([])
   const [sessions, setSessions] = useState([])
-  const { user } = useStore()
+  const { user, globalFilters } = useStore()
   const [showAddObjectifModal, setShowAddObjectifModal] = useState(false)
   const [showAddSessionModal, setShowAddSessionModal] = useState(false)
   const [showSessions, setShowSessions] = useState(false)
@@ -64,7 +64,12 @@ export default function List() {
 
   const fetchSessions = async () => {
     try {
-      const { ok, data, code } = await api.post("/scrim-session/search", { team_id: user?.team_id })
+      const { ok, data, code } = await api.post("/scrim-session/search", {
+        team_id: user?.team_id,
+        ...(globalFilters.patch && { patch: globalFilters.patch }),
+        ...(globalFilters.opponent_name && { opponent: globalFilters.opponent_name }),
+        ...(globalFilters.folder_id && { folder_id: globalFilters.folder_id })
+      })
       if (!ok) return toast.error(code)
       setSessions(data)
     } catch (error) {
@@ -76,7 +81,7 @@ export default function List() {
     fetchObjectifs()
     fetchTeamResults()
     fetchSessions()
-  }, [user?.team_id])
+  }, [user?.team_id, globalFilters.patch, globalFilters.opponent_name, globalFilters.folder_id])
 
   const handleDelete = async id => {
     try {
@@ -98,8 +103,12 @@ export default function List() {
       toast.error(error.message)
     }
   }
+  const hasActiveFilters = globalFilters.patch || globalFilters.opponent_name || globalFilters.folder_id
+  const filteredSessionIds = new Set(sessions.map(s => s._id))
+  const filteredResults = hasActiveFilters ? teamResults.filter(r => filteredSessionIds.has(r.session_id)) : teamResults
+
   // Compute aggregated stats
-  const stats = useMemo(() => {
+  const stats = (() => {
     let allRatings = []
     const byObjectif = {}
 
@@ -107,7 +116,7 @@ export default function List() {
       byObjectif[obj._id] = { ratings: [], results: [] }
     }
 
-    for (const result of teamResults) {
+    for (const result of filteredResults) {
       const bucket = byObjectif[result.objectif_id]
       if (!bucket) continue
       if (result.result != null) bucket.ratings.push(result.result)
@@ -136,7 +145,7 @@ export default function List() {
       : null
 
     return { globalAvg, totalEvaluations: allRatings.length, byObjectif, best, worst }
-  }, [objectifs, teamResults])
+  })()
 
   return (
     <div className="min-h-screen bg-slate-900 p-4 lg:p-6">
@@ -285,7 +294,7 @@ export default function List() {
               {objectifs.map(objectif => {
                 return (
                   <div key={objectif._id} className="px-5 py-4 hover:bg-slate-800/40 transition-colors group">
-                    <ObjectifOverviewRow objectif={objectif} onDelete={handleDelete} />
+                    <ObjectifOverviewRow objectif={objectif} onDelete={handleDelete} results={filteredResults.filter(r => r.objectif_id === objectif._id)} />
                   </div>
                 )
               })}
@@ -312,22 +321,7 @@ export default function List() {
   )
 }
 
-function ObjectifOverviewRow({ objectif, onDelete }) {
-  const [results, setResults] = useState([])
-  const fetchResults = async () => {
-    try {
-      const { ok, data, code } = await api.post("/scrim-objectif-result/search", { objectif_id: objectif._id })
-      if (!ok) return toast.error(code)
-      setResults(data)
-    } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
-  useEffect(() => {
-    fetchResults()
-  }, [objectif._id])
-
+function ObjectifOverviewRow({ objectif, onDelete, results }) {
   const ratings = results.filter(r => r.result != null).map(r => r.result)
   const avg = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null
   return (
