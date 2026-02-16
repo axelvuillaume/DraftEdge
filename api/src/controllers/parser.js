@@ -552,7 +552,7 @@ function processRoflData(metadata, filename) {
   const surrenderDueToAfk = allPlayers.some((p) => p.WAS_SURRENDER_DUE_TO_AFK === '1');
   const nexusKilled = allPlayers.some((p) => (parseInt(p.HQ_KILLED) || 0) > 0);
 
-  const game_fingerprint = `${durationSeconds}_${blueTeamStats.kills}_${blueTeamStats.deaths}_${blueTeamStats.assists}_${redTeamStats.kills}_${redTeamStats.deaths}_${redTeamStats.assists}`;
+  const game_fingerprint = `${durationSeconds}_${blueTeamStats.kills}_${blueTeamStats.deaths}_${blueTeamStats.assists}_${redTeamStats.kills}_${redTeamStats.deaths}_${redTeamStats.assists}_${team._id}`;
 
   // Game document
   const game = {
