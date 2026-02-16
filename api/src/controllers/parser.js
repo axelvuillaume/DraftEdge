@@ -502,7 +502,7 @@ function extractChampionsByRole(teamId, statsJson) {
 /**
  * Traite le fichier ROFL
  */
-function processRoflData(metadata, filename) {
+function processRoflData(metadata, filename, team_id) {
   let statsJson;
   try {
     statsJson = typeof metadata.statsJson === 'string' ? JSON.parse(metadata.statsJson) : metadata.statsJson;
@@ -552,7 +552,7 @@ function processRoflData(metadata, filename) {
   const surrenderDueToAfk = allPlayers.some((p) => p.WAS_SURRENDER_DUE_TO_AFK === '1');
   const nexusKilled = allPlayers.some((p) => (parseInt(p.HQ_KILLED) || 0) > 0);
 
-  const game_fingerprint = `${durationSeconds}_${blueTeamStats.kills}_${blueTeamStats.deaths}_${blueTeamStats.assists}_${redTeamStats.kills}_${redTeamStats.deaths}_${redTeamStats.assists}_${team._id}`;
+  const game_fingerprint = `${durationSeconds}_${blueTeamStats.kills}_${blueTeamStats.deaths}_${blueTeamStats.assists}_${redTeamStats.kills}_${redTeamStats.deaths}_${redTeamStats.assists}${team_id ? `_${team_id}` : ''}`;
 
   // Game document
   const game = {
@@ -659,7 +659,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     }
 
     const metadata = parseRoflBuffer(req.file.buffer);
-    const data = processRoflData(metadata, req.file.originalname);
+    const data = processRoflData(metadata, req.file.originalname, team_id);
 
     const existingGame = await Game.findOne({ game_fingerprint: data.game.game_fingerprint });
     if (existingGame) return res.status(409).json({ ok: false, error: 'This game already exists', existing_game_id: existingGame._id });
