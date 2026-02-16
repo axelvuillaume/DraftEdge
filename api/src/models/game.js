@@ -42,8 +42,9 @@ const Schema = new mongoose.Schema(
   {
     // ==================== GAME IDENTIFICATION ====================
     name: { type: String }, // Nom personnalisé de la game
-    game_id: { type: String, unique: true },
+    game_id: { type: String, unique: true, sparse: true },
     match_id: { type: String }, // Format Riot: EUW1_XXXXXXXXXX
+    game_fingerprint: { type: String, unique: true }, // duration_blueK_blueD_blueA_redK_redD_redA
 
     // ==================== GAME INFO ====================
     duration: { type: Number, required: true }, // en secondes

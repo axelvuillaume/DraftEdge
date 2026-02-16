@@ -315,15 +315,7 @@ function parsePlayerStats(p, gameData) {
     },
 
     // ==================== ITEMS ====================
-    items: [
-      parseInt(p.ITEM0) || 0,
-      parseInt(p.ITEM1) || 0,
-      parseInt(p.ITEM2) || 0,
-      parseInt(p.ITEM3) || 0,
-      parseInt(p.ITEM4) || 0,
-      parseInt(p.ITEM5) || 0,
-      parseInt(p.ITEM6) || 0,
-    ].filter((id) => id > 0),
+    items: [parseInt(p.ITEM0) || 0, parseInt(p.ITEM1) || 0, parseInt(p.ITEM2) || 0, parseInt(p.ITEM3) || 0, parseInt(p.ITEM4) || 0, parseInt(p.ITEM5) || 0, parseInt(p.ITEM6) || 0].filter((id) => id > 0),
     items_purchased: parseInt(p.ITEMS_PURCHASED) || 0,
     consumables_purchased: parseInt(p.CONSUMABLES_PURCHASED) || 0,
 
@@ -560,10 +552,13 @@ function processRoflData(metadata, filename) {
   const surrenderDueToAfk = allPlayers.some((p) => p.WAS_SURRENDER_DUE_TO_AFK === '1');
   const nexusKilled = allPlayers.some((p) => (parseInt(p.HQ_KILLED) || 0) > 0);
 
+  const game_fingerprint = `${durationSeconds}_${blueTeamStats.kills}_${blueTeamStats.deaths}_${blueTeamStats.assists}_${redTeamStats.kills}_${redTeamStats.deaths}_${redTeamStats.assists}`;
+
   // Game document
   const game = {
     game_id: riotGameId,
     match_id: riotGameId ? `EUW1_${riotGameId.split('-')[1]}` : null,
+    game_fingerprint,
     name: null,
     duration: durationSeconds,
     patch: metadata.gameVersion,
@@ -666,6 +661,9 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     const metadata = parseRoflBuffer(req.file.buffer);
     const data = processRoflData(metadata, req.file.originalname);
 
+    const existingGame = await Game.findOne({ game_fingerprint: data.game.game_fingerprint });
+    if (existingGame) return res.status(409).json({ ok: false, error: 'This game already exists', existing_game_id: existingGame._id });
+
     // Enrichir les données Game
     data.game.team_id = team_id || null;
     data.game.team_name = team_name || null;
@@ -709,7 +707,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     console.error('Erreur import ROFL:', error);
 
     if (error.code === 11000) {
-      return res.status(409).json({ ok: false, error: 'Cette game existe déjà' });
+      return res.status(409).json({ ok: false, error: 'This game already exists' });
     }
 
     res.status(500).json({ ok: false, error: 'Erreur import', details: error.message });
@@ -760,7 +758,7 @@ async function generateAndSaveAIFeedback(team_id, team_name) {
           acc.games += 1;
           return acc;
         },
-        { kills: 0, deaths: 0, assists: 0, gold: 0, damage: 0, duration: 0, solo_kills: 0, games: 0 }
+        { kills: 0, deaths: 0, assists: 0, gold: 0, damage: 0, duration: 0, solo_kills: 0, games: 0 },
       );
     };
 
