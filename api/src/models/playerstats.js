@@ -29,7 +29,7 @@ const Schema = new mongoose.Schema(
     opponent: { type: Boolean },
     side: { type: String, enum: ['blue', 'red'] }, // TEAM 100 = blue, 200 = red
     role: { type: String, enum: ['top', 'jungle', 'mid', 'bottom', 'support'] },
-    champion: { type: String },
+    champion: { type: String, trim: true },
 
     // ==================== BASIC STATS ====================
     kills: { type: Number, default: 0 },
