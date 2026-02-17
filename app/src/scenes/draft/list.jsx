@@ -5,6 +5,7 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
 import { useNavigate } from "react-router-dom"
+import { getChampionIcon } from "@/utils"
 
 const ALL_CHAMPIONS = [
   "Aatrox",
@@ -267,7 +268,7 @@ export default function List() {
               {prioPicks.map(champ => (
                 <div key={champ} className="flex items-center gap-1.5 bg-slate-700/50 rounded-lg px-2 py-1.5 group">
                   <div className="w-6 h-6 rounded overflow-hidden bg-slate-600">
-                    <img src={`/champions/${champ}.png`} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+                    <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
                   </div>
                   <span className="text-white text-xs">{champ}</span>
                   <button onClick={() => removeChampion("pick", champ)} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
@@ -300,7 +301,7 @@ export default function List() {
               {prioFlex.map(champ => (
                 <div key={champ} className="flex items-center gap-1.5 bg-slate-700/50 rounded-lg px-2 py-1.5 group">
                   <div className="w-6 h-6 rounded overflow-hidden bg-slate-600">
-                    <img src={`/champions/${champ}.png`} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+                    <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
                   </div>
                   <span className="text-white text-xs">{champ}</span>
                   <button onClick={() => removeChampion("flex", champ)} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
@@ -482,7 +483,7 @@ function ChampionModal({ isOpen, onClose, type, currentPicks, onUpdate }) {
                   className={`flex flex-col items-center p-1.5 rounded-lg transition-colors ${isUsed ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-700 cursor-pointer"}`}
                 >
                   <div className={`w-10 h-10 rounded-lg overflow-hidden bg-slate-700 ${isUsed ? "grayscale" : ""}`}>
-                    <img src={`/champions/${champion}.png`} alt={champion} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+                    <img src={getChampionIcon(champion)} alt={champion} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
                   </div>
                   <span className="text-slate-300 text-[9px] mt-1 text-center truncate w-full">{champion}</span>
                 </button>

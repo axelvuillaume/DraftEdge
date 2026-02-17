@@ -4,6 +4,7 @@ import api from "@/services/api"
 import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target, Folder, Plus, Check, FolderInput, X, Pencil, ChevronDown } from "lucide-react"
 import Modal from "@/components/modal"
 import useStore from "@/services/store"
+import { getChampionIcon } from "@/utils"
 
 const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
 
@@ -520,7 +521,7 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
                 const champion = game.champions[game.team_side]?.[role]
                 return champion ? (
                   <div key={role} className="w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 border border-slate-600/50">
-                    <img src={`/champions/${champion}.png`} alt={champion} className="w-full h-full object-cover" />
+                    <img src={getChampionIcon(champion)} alt={champion} className="w-full h-full object-cover" />
                   </div>
                 ) : null
               })}
@@ -751,7 +752,7 @@ function PlayerRow({ player }) {
       <div className="flex items-center gap-3 min-w-0">
         {player.champion && (
           <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-slate-700/50 border border-slate-600/50">
-            <img src={`/champions/${player.champion}.png`} alt={player.champion} className="w-full h-full object-cover" />
+            <img src={getChampionIcon(player.champion)} alt={player.champion} className="w-full h-full object-cover" />
           </div>
         )}
         {/* Champion & Player Info */}

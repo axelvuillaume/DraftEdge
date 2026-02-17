@@ -6,6 +6,7 @@ import { LogOut, ChevronDown, User, Settings, Shield, Search, X } from "lucide-r
 import useStore from "@/services/store"
 import api from "@/services/api"
 import FilterBar from "@/components/FilterBar"
+import { getChampionIcon } from "@/utils"
 
 const FILTERED_ROUTES = ["/", "/statsV2", "/draft", "/scrim-hub"]
 
@@ -153,7 +154,7 @@ const TopBar = () => {
                         >
                           <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden border border-emerald-500/30">
                             <img
-                              src={`/champions/${champion.name}.png`}
+                              src={getChampionIcon(champion.name)}
                               alt={champion.name}
                               className="w-full h-full object-cover"
                               onError={e => (e.target.style.display = "none")}
@@ -183,7 +184,7 @@ const TopBar = () => {
                         >
                           <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden border border-red-500/30">
                             <img
-                              src={`/champions/${champion.name}.png`}
+                              src={getChampionIcon(champion.name)}
                               alt={champion.name}
                               className="w-full h-full object-cover"
                               onError={e => (e.target.style.display = "none")}

@@ -13,3 +13,8 @@ export function formatDateToYYYYMMDD(isoDateString) {
   const formattedDay = day < 10 ? `0${day}` : day
   return `${year}-${formattedMonth}-${formattedDay}`
 }
+
+export function getChampionIcon(name) {
+  if (!name) return ""
+  return `/champions/${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.png`
+}

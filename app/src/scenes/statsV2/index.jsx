@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
+import { getChampionIcon } from "@/utils"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
 import { Shield, ChevronLeft } from "lucide-react"
 
@@ -350,11 +351,11 @@ function HeaderSection({ data, isTeam, isChampion, isEnemyChampion, winRateBySid
             </div>
           ) : isEnemyChampion ? (
             <div className="w-20 h-20 bg-slate-700/50 border-2 border-red-500/50 rounded-lg flex items-center justify-center overflow-hidden">
-              <img src={`/champions/${data.name}.png`} alt={data.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+              <img src={getChampionIcon(data.name)} alt={data.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
             </div>
           ) : (
             <div className="w-20 h-20 bg-slate-700/50 border border-emerald-500/30 rounded-lg flex items-center justify-center overflow-hidden">
-              {isChampion && <img src={`/champions/${data.name}.png`} alt={data.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />}
+              {isChampion && <img src={getChampionIcon(data.name)} alt={data.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />}
               {isPlayer && data.role && <img src={`/roles/${data.role}.png`} alt={data.role} className="w-10 h-10" onError={e => (e.target.style.display = "none")} />}
             </div>
           )}
@@ -688,7 +689,7 @@ function Matchups({ weakAgainst, strongAgainst, onChampionClick, activeChampion,
                 }`}
               >
                 <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden">
-                  <img src={`/champions/${matchup.name}.png`} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+                  <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>
@@ -722,7 +723,7 @@ function Matchups({ weakAgainst, strongAgainst, onChampionClick, activeChampion,
                 }`}
               >
                 <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden">
-                  <img src={`/champions/${matchup.name}.png`} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+                  <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>

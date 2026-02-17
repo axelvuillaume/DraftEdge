@@ -3,6 +3,7 @@ import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import { ChevronDown, ChevronUp } from "lucide-react"
+import { getChampionIcon } from "@/utils"
 
 export default function Stats() {
   const [stats, setStats] = useState([])
@@ -118,7 +119,7 @@ function ChampionCard({ champion }) {
       <button onClick={() => setExpanded(!expanded)} className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-700/25 transition-colors">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center text-xs font-bold text-slate-400 flex-shrink-0 overflow-hidden">
-            <img src={`/champions/${champion.champion}.png`} alt={champion.champion} className="w-full h-full object-cover" />
+            <img src={getChampionIcon(champion.champion)} alt={champion.champion} className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0">
             <p className="text-white font-semibold text-sm truncate">{champion.champion}</p>
@@ -164,7 +165,7 @@ function ChampionCard({ champion }) {
                 <div key={matchup.opponent} className={`rounded-xl px-4 py-3 border ${matchupBg} flex items-center justify-between`}>
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-md overflow-hidden flex-shrink-0">
-                      <img src={`/champions/${matchup.opponent}.png`} alt={matchup.opponent} className="w-full h-full object-cover" />
+                      <img src={getChampionIcon(matchup.opponent)} alt={matchup.opponent} className="w-full h-full object-cover" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-white text-sm font-medium truncate">{matchup.opponent}</p>

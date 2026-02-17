@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
+import { getChampionIcon } from "@/utils"
 import { ArrowLeft, Plus, X, Target, TrendingUp, ImagePlus, ChevronDown, Loader2, Upload, FileText, Check, Gamepad2, Search, Clock, AlertTriangle, FolderOpen } from "lucide-react"
 import Modal from "@/components/modal"
 import DebounceInput from "@/components/debounceInput"
@@ -1289,7 +1290,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
                             const champ = game.champions[game.team_side]?.[role]
                             return champ ? (
                               <div key={role} className="w-6 h-6 rounded overflow-hidden bg-slate-600 border border-slate-500/50" title={champ}>
-                                <img src={`/champions/${champ}.png`} alt={champ} className="w-full h-full object-cover" />
+                                <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" />
                               </div>
                             ) : (
                               <div key={role} className="w-6 h-6 rounded bg-slate-600 border border-slate-500/50" />

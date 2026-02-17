@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
+import { getChampionIcon } from "@/utils"
 import { Trophy, Swords, Target, TrendingUp, Clock, Shield, Crosshair, Zap, Gamepad2, TrendingDown, AlertTriangle, Info } from "lucide-react"
 import Sheet from "@/components/sheet"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
@@ -603,7 +604,7 @@ function BestChampions({ data }) {
           list.slice(0, 3).map((item, index) => (
             <div key={index} className="flex items-center gap-2 p-1.5 bg-slate-700/30 rounded-lg border border-slate-700/50 hover:bg-slate-700/50 transition-colors">
               <div className="w-8 h-8 rounded-md overflow-hidden bg-slate-800 shrink-0">
-                <img src={`/champions/${item.champion}.png`} alt={item.champion} className="w-full h-full object-cover" />
+                <img src={getChampionIcon(item.champion)} alt={item.champion} className="w-full h-full object-cover" />
               </div>
               <div className="min-w-0">
                 <p className={`text-[11px] font-bold ${colorClass}`}>{Math.round(item.win_rate * 100)}%</p>

@@ -4,6 +4,7 @@ import { toast } from "react-hot-toast"
 import { RotateCcw, Zap, X, Search, Star, Shuffle } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
+import { getChampionIcon } from "@/utils"
 
 // Champions par rôle (pour la modal)
 const CHAMPIONS_BY_ROLE = {
@@ -870,7 +871,7 @@ function PriorityPicksPanel({ title, data }) {
                 <div key={champ.name} className="flex items-center gap-1 p-1 rounded-lg">
                   <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-700 flex-shrink-0">
                     <img
-                      src={`/champions/${champ.name}.png`}
+                      src={getChampionIcon(champ.name)}
                       alt={champ.name}
                       className="w-full h-full object-cover"
                       onError={e => {
@@ -939,7 +940,7 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, sel
         {champion ? (
           <div className="w-full h-full relative">
             <img
-              src={`/champions/${champion.champion}.png`}
+              src={getChampionIcon(champion.champion)}
               alt={champion.champion}
               className={`w-full h-full object-cover ${type === "ban" ? "grayscale opacity-50" : ""}`}
               onError={e => {
@@ -973,7 +974,7 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, sel
                   {proChampions.map((champ, idx) => (
                     <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-slate-600">
                       <img
-                        src={`/champions/${champ}.png`}
+                        src={getChampionIcon(champ)}
                         alt={champ}
                         className="w-full h-full object-cover"
                         onError={e => {
@@ -993,7 +994,7 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, sel
                   {bestWith.slice(0, 3).map((champ, idx) => (
                     <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-emerald-500/30">
                       <img
-                        src={`/champions/${champ}.png`}
+                        src={getChampionIcon(champ)}
                         alt={champ}
                         className="w-full h-full object-cover"
                         onError={e => {
@@ -1013,7 +1014,7 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, sel
                   {bestAgainst.slice(0, 3).map((champ, idx) => (
                     <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-red-500/30">
                       <img
-                        src={`/champions/${champ}.png`}
+                        src={getChampionIcon(champ)}
                         alt={champ}
                         className="w-full h-full object-cover"
                         onError={e => {
@@ -1053,7 +1054,7 @@ function BestCombosPanel({ combos }) {
               <div className="flex items-center">
                 <div className="w-7 h-7 rounded-full bg-slate-600 overflow-hidden border-2 border-slate-500">
                   <img
-                    src={`/champions/${combo.champ1}.png`}
+                    src={getChampionIcon(combo.champ1)}
                     alt={combo.champ1}
                     className="w-full h-full object-cover"
                     onError={e => {
@@ -1063,7 +1064,7 @@ function BestCombosPanel({ combos }) {
                 </div>
                 <div className="w-7 h-7 rounded-full bg-slate-600 overflow-hidden border-2 border-slate-500 -ml-2">
                   <img
-                    src={`/champions/${combo.champ2}.png`}
+                    src={getChampionIcon(combo.champ2)}
                     alt={combo.champ2}
                     className="w-full h-full object-cover"
                     onError={e => {
@@ -1105,7 +1106,7 @@ function MostFlexedPanel({ title, champions }) {
           <div key={idx} className="flex items-center gap-1.5">
             <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-700 flex-shrink-0">
               <img
-                src={`/champions/${champ.name}.png`}
+                src={getChampionIcon(champ.name)}
                 alt={champ.name}
                 className="w-full h-full object-cover"
                 onError={e => {
@@ -1210,7 +1211,7 @@ function ChampionModal({ modalType, searchQuery, setSearchQuery, filteredChampio
                         >
                           <div className={`w-10 h-10 rounded-lg overflow-hidden bg-slate-700 ${isUsed ? "grayscale" : ""}`}>
                             <img
-                              src={`/champions/${champ}.png`}
+                              src={getChampionIcon(champ)}
                               alt={champ}
                               className="w-full h-full object-cover"
                               onError={e => {
@@ -1245,7 +1246,7 @@ function ChampionModal({ modalType, searchQuery, setSearchQuery, filteredChampio
                         >
                           <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-700">
                             <img
-                              src={`/champions/${champ}.png`}
+                              src={getChampionIcon(champ)}
                               alt={champ}
                               className="w-full h-full object-cover"
                               onError={e => {
@@ -1277,7 +1278,7 @@ function ChampionModal({ modalType, searchQuery, setSearchQuery, filteredChampio
                 >
                   <div className={`w-10 h-10 rounded-lg overflow-hidden bg-slate-700 ${isUsed ? "grayscale" : ""}`}>
                     <img
-                      src={`/champions/${champion}.png`}
+                      src={getChampionIcon(champion)}
                       alt={champion}
                       className="w-full h-full object-cover"
                       onError={e => {
