@@ -243,7 +243,7 @@ export default function List() {
 
   return (
     <div className="h-full overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8 flex flex-col">
-      <div className="max-w-5xl mx-auto w-full flex flex-col flex-1 min-h-0 space-y-6">
+      <div className="max-w-[1800px] mx-auto w-full flex flex-col flex-1 min-h-0 space-y-6">
         {/* Priority Picks & Flex Picks Section */}
         <div className="grid grid-cols-2 gap-4 flex-shrink-0">
           {/* Priority Picks */}

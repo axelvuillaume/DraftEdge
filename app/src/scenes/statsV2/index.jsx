@@ -123,7 +123,7 @@ export default function StatsV2() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
-      <div className="max-w-5xl mx-auto w-full">
+      <div className="max-w-[1800px] mx-auto w-full">
         <Breadcrumb
           teamName={teamData.name}
           players={teamData.players || []}
