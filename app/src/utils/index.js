@@ -16,5 +16,5 @@ export function formatDateToYYYYMMDD(isoDateString) {
 
 export function getChampionIcon(name) {
   if (!name) return ""
-  return `/champions/${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.png`
+  return `/icon/champions/${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.png`
 }
