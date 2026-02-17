@@ -9,6 +9,7 @@ const { capture: posthogCapture } = require('../services/posthog');
 const { client } = require('../services/gemini');
 const Folder = require('../models/folder');
 const EnemyTeam = require('../models/enemy-team');
+
 const { buildGameFilters, extractFilters } = require('../utils/gameFilters');
 
 const TIER_VALUE = { IRON: 0, BRONZE: 400, SILVER: 800, GOLD: 1200, PLATINUM: 1600, EMERALD: 2000, DIAMOND: 2400, MASTER: 2800, GRANDMASTER: 3300, CHALLENGER: 4000 };
