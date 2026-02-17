@@ -166,7 +166,8 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
   }
 });
 
-router.post('/stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+//home les card
+router.post('/header-stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const filters = extractFilters(req.body);
     const { gameIdFilter, gameQuery } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
