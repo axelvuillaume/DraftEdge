@@ -172,26 +172,6 @@ router.post('/stats', passport.authenticate(['admin', 'user'], { session: false,
     const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
     const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
 
-    const TIER_VALUE = {
-      IRON: 0,
-      BRONZE: 400,
-      SILVER: 800,
-      GOLD: 1200,
-      PLATINUM: 1600,
-      EMERALD: 2000,
-      DIAMOND: 2400,
-      MASTER: 2800,
-      GRANDMASTER: 3300,
-      CHALLENGER: 4000,
-    };
-
-    const RANK_VALUE = {
-      IV: 0,
-      III: 100,
-      II: 200,
-      I: 300,
-    };
-
     const elos = playerStats
       .map((p) => {
         if (!p.tier) return null;
