@@ -296,42 +296,18 @@ router.post('/search_nav', passport.authenticate(['admin', 'user'], { session: f
 
       if (!isOpponent) {
         // Aggregate player data (only allies)
-        if (!playersMap[playerName]) {
-          playersMap[playerName] = {
-            name: playerName,
-            role: stat.role,
-            games: 0,
-            wins: 0,
-          };
-        }
+        if (!playersMap[playerName]) playersMap[playerName] = { name: playerName, role: stat.role, games: 0, wins: 0 };
         playersMap[playerName].games++;
         if (stat.game_win) playersMap[playerName].wins++;
 
         // Aggregate ally champion data (per player)
         const champKey = `${playerName}-${champion}`;
-        if (!allyChampionsMap[champKey]) {
-          allyChampionsMap[champKey] = {
-            name: champion,
-            playerName: playerName,
-            role: stat.role,
-            games: 0,
-            wins: 0,
-            isAlly: true,
-          };
-        }
+        if (!allyChampionsMap[champKey]) allyChampionsMap[champKey] = { name: champion, playerName: playerName, role: stat.role, games: 0, wins: 0, isAlly: true };
         allyChampionsMap[champKey].games++;
         if (stat.game_win) allyChampionsMap[champKey].wins++;
       } else {
         // Aggregate enemy champion data
-        if (!enemyChampionsMap[champion]) {
-          enemyChampionsMap[champion] = {
-            name: champion,
-            role: stat.role,
-            games: 0,
-            wins: 0,
-            isAlly: false,
-          };
-        }
+        if (!enemyChampionsMap[champion]) enemyChampionsMap[champion] = { name: champion, role: stat.role, games: 0, wins: 0, isAlly: false };
         enemyChampionsMap[champion].games++;
         // For enemies, a win for them is a loss for us (game_win is from our perspective)
         if (!stat.game_win) enemyChampionsMap[champion].wins++;
@@ -450,16 +426,7 @@ router.post('/card_average', passport.authenticate(['admin', 'user'], { session:
       const roleStats = alliesStatsByRole[role];
       const nb_games = playerStats.filter((p) => p.role === role).length;
       const kda = roleStats.deaths > 0 ? (roleStats.kills + roleStats.assists) / roleStats.deaths : roleStats.kills + roleStats.assists;
-
-      acc[role] = {
-        kills: roleStats.kills,
-        deaths: roleStats.deaths,
-        assists: roleStats.assists,
-        kda: Math.round(kda * 100) / 100,
-        gold: roleStats.gold,
-        level: roleStats.level,
-        nb_games: nb_games,
-      };
+      acc[role] = { kills: roleStats.kills, deaths: roleStats.deaths, assists: roleStats.assists, kda: Math.round(kda * 100) / 100, gold: roleStats.gold, level: roleStats.level, nb_games: nb_games };
       return acc;
     }, {});
 
@@ -509,15 +476,7 @@ router.post('/card_average', passport.authenticate(['admin', 'user'], { session:
       ok: true,
       data: {
         allies: {
-          total: {
-            kills: alliesTotals.kills,
-            deaths: alliesTotals.deaths,
-            assists: alliesTotals.assists,
-            kda: Math.round(alliesKda * 100) / 100,
-            gold: alliesTotals.gold,
-            level: alliesTotals.level,
-            nb_games: alliesTotals.nb_games,
-          },
+          total: { kills: alliesTotals.kills, deaths: alliesTotals.deaths, assists: alliesTotals.assists, kda: Math.round(alliesKda * 100) / 100, gold: alliesTotals.gold, level: alliesTotals.level, nb_games: alliesTotals.nb_games },
           roles: alliesRoles,
         },
         enemies: {
@@ -734,9 +693,7 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
     const playersByName = {};
     playerStats.forEach((stat) => {
       const name = stat.summoner_name;
-      if (!playersByName[name]) {
-        playersByName[name] = { stats: [], role: stat.role };
-      }
+      if (!playersByName[name]) playersByName[name] = { stats: [], role: stat.role };
       playersByName[name].stats.push(stat);
       if (stat.role) playersByName[name].role = stat.role;
     });
@@ -744,7 +701,6 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
     const players = Object.entries(playersByName).map(([name, data]) => {
       const pStats = data.stats;
       const pGames = [...new Set(pStats.map((s) => s.game_id))];
-      const pGameDocs = games.filter((g) => pGames.includes(g.game_id));
 
       // Get opponent stats for this player's games
       const pOpponentStats = opponentStats.filter((o) => pGames.includes(o.game_id) && o.role === data.role);
@@ -760,9 +716,7 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
         const opponent = opponentMap[oppKey];
         if (!opponent) return;
         const oppChamp = opponent.champion;
-        if (!matchupMap[oppChamp]) {
-          matchupMap[oppChamp] = { teamStats: [], enemyStats: [] };
-        }
+        if (!matchupMap[oppChamp]) matchupMap[oppChamp] = { teamStats: [], enemyStats: [] };
         matchupMap[oppChamp].teamStats.push(stat);
         matchupMap[oppChamp].enemyStats.push(opponent);
       });
@@ -781,9 +735,7 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
         m.teamStats.forEach((stat) => {
           const playerChamp = stat.champion;
           if (!playerChamp) return;
-          if (!subMatchupMap[playerChamp]) {
-            subMatchupMap[playerChamp] = { wins: 0, games: 0 };
-          }
+          if (!subMatchupMap[playerChamp]) subMatchupMap[playerChamp] = { wins: 0, games: 0 };
           subMatchupMap[playerChamp].games++;
           if (stat.game_win) subMatchupMap[playerChamp].wins++;
         });
@@ -822,9 +774,7 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
       pStats.forEach((stat) => {
         const champ = stat.champion;
         if (!champ) return;
-        if (!playerChampionMap[champ]) {
-          playerChampionMap[champ] = { wins: 0, games: 0, stats: [] };
-        }
+        if (!playerChampionMap[champ]) playerChampionMap[champ] = { wins: 0, games: 0, stats: [] };
         playerChampionMap[champ].games++;
         if (stat.game_win) playerChampionMap[champ].wins++;
         playerChampionMap[champ].stats.push(stat);
@@ -844,9 +794,7 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
           const opponent = opponentMap[oppKey];
           if (!opponent) return;
           const oppChamp = opponent.champion;
-          if (!champMatchupMap[oppChamp]) {
-            champMatchupMap[oppChamp] = { wins: 0, games: 0, teamStats: [], enemyStats: [] };
-          }
+          if (!champMatchupMap[oppChamp]) champMatchupMap[oppChamp] = { wins: 0, games: 0, teamStats: [], enemyStats: [] };
           champMatchupMap[oppChamp].games++;
           if (stat.game_win) champMatchupMap[oppChamp].wins++;
           champMatchupMap[oppChamp].teamStats.push(stat);
@@ -872,10 +820,6 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
           };
         });
 
-        const sortedChampMatchups = champMatchups.sort((a, b) => a.winRate - b.winRate);
-        const champWeakAgainst = sortedChampMatchups.slice(0, 4);
-        const champStrongAgainst = [...champMatchups].sort((a, b) => b.winRate - a.winRate).slice(0, 4);
-
         return {
           name: champName,
           winRate: champWinRate,
@@ -886,16 +830,12 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
           metrics: getAllMetrics(champAgg, champEnemyAgg),
           winRateBySide: calculateWinRateBySide(champData.stats),
           winRateByDuration: calculateWinRateByDuration(champData.stats),
-          weakAgainst: champWeakAgainst,
-          strongAgainst: champStrongAgainst,
+          weakAgainst: champMatchups.sort((a, b) => a.winRate - b.winRate).slice(0, 4),
+          strongAgainst: [...champMatchups].sort((a, b) => b.winRate - a.winRate).slice(0, 4),
         };
       });
 
       // Sort player's champions by winrate for Best/Worst WR
-      const sortedPlayerChampions = [...playerChampions].sort((a, b) => a.winRate - b.winRate);
-      const worstChampions = sortedPlayerChampions.slice(0, 4);
-      const bestChampions = [...playerChampions].sort((a, b) => b.winRate - a.winRate).slice(0, 4);
-
       return {
         name,
         role: data.role || 'Unknown',
@@ -907,8 +847,8 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
         metrics: getAllMetrics(pAgg, pEnemyAgg),
         winRateBySide: calculateWinRateBySide(pStats),
         winRateByDuration: calculateWinRateByDuration(pStats),
-        weakAgainst: worstChampions,
-        strongAgainst: bestChampions,
+        weakAgainst: [...playerChampions].sort((a, b) => a.winRate - b.winRate).slice(0, 4),
+        strongAgainst: [...playerChampions].sort((a, b) => b.winRate - a.winRate).slice(0, 4),
       };
     });
 
@@ -988,9 +928,7 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
       if (stat.role !== enemyRole) return;
       const ourChamp = stat.champion;
       if (!ourChamp) return;
-      if (!ourChampMatchupMap[ourChamp]) {
-        ourChampMatchupMap[ourChamp] = { wins: 0, games: 0, teamStats: [], enemyStats: [] };
-      }
+      if (!ourChampMatchupMap[ourChamp]) ourChampMatchupMap[ourChamp] = { wins: 0, games: 0, teamStats: [], enemyStats: [] };
       ourChampMatchupMap[ourChamp].games++;
       if (stat.game_win) ourChampMatchupMap[ourChamp].wins++;
       ourChampMatchupMap[ourChamp].teamStats.push(stat);
@@ -1281,12 +1219,8 @@ router.post('/most-flexed', passport.authenticate(['admin', 'user'], { session: 
       if (!s.champion || !s.role) continue;
       const normalizedRole = ROLE_DISPLAY_FLEX[s.role] || s.role.toUpperCase();
 
-      if (!champStats[s.champion]) {
-        champStats[s.champion] = { roleStats: {}, totalGames: 0, totalWins: 0 };
-      }
-      if (!champStats[s.champion].roleStats[normalizedRole]) {
-        champStats[s.champion].roleStats[normalizedRole] = { games: 0, wins: 0 };
-      }
+      if (!champStats[s.champion]) champStats[s.champion] = { roleStats: {}, totalGames: 0, totalWins: 0 };
+      if (!champStats[s.champion].roleStats[normalizedRole]) champStats[s.champion].roleStats[normalizedRole] = { games: 0, wins: 0 };
       champStats[s.champion].roleStats[normalizedRole].games++;
       champStats[s.champion].totalGames++;
       if (s.game_win) {
@@ -1300,18 +1234,8 @@ router.post('/most-flexed', passport.authenticate(['admin', 'user'], { session: 
     const flexed = Object.entries(champStats)
       .filter(([, s]) => Object.keys(s.roleStats).length >= 2)
       .map(([name, s]) => {
-        const roles = Object.entries(s.roleStats).map(([role, stats]) => ({
-          role,
-          games: stats.games,
-          pr: Math.round((stats.games / totalGames) * 100),
-          wr: stats.games > 0 ? Math.round((stats.wins / stats.games) * 100) : 0,
-        }));
-        return {
-          name,
-          roles,
-          rolesCount: roles.length,
-          games: s.totalGames,
-        };
+        const roles = Object.entries(s.roleStats).map(([role, stats]) => ({ role, games: stats.games, pr: Math.round((stats.games / totalGames) * 100), wr: stats.games > 0 ? Math.round((stats.wins / stats.games) * 100) : 0 }));
+        return { name, roles, rolesCount: roles.length, games: s.totalGames };
       })
       .sort((a, b) => b.rolesCount - a.rolesCount || b.games - a.games)
       .slice(0, topN);
