@@ -11,6 +11,9 @@ const Folder = require('../models/folder');
 const EnemyTeam = require('../models/enemy-team');
 const { buildGameFilters, extractFilters } = require('../utils/gameFilters');
 
+const TIER_VALUE = { IRON: 0, BRONZE: 400, SILVER: 800, GOLD: 1200, PLATINUM: 1600, EMERALD: 2000, DIAMOND: 2400, MASTER: 2800, GRANDMASTER: 3300, CHALLENGER: 4000 };
+const RANK_VALUE = { IV: 0, III: 100, II: 200, I: 300 };
+
 // Get available filter options (patches, opponents, folders)
 router.post('/filter-options', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
@@ -36,6 +39,51 @@ router.put('/move', passport.authenticate(['admin', 'user'], { session: false, f
     await Game.updateMany({ _id: { $in: game_ids } }, { $set: { folder_id: folder_id || null } });
 
     return res.status(200).send({ ok: true });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.get('/:id/avg-elo', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const game = await Game.findById(req.params.id, { team_side: 1 }).lean();
+    if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+
+    const players = await PlayerStats.find({ game_id: game._id }, { side: 1, tier: 1, rank: 1, league_points: 1 }).lean();
+    const computeAvg = (list) => {
+      const elos = list
+        .map((p) => {
+          if (!p.tier) return null;
+          const t = TIER_VALUE[p.tier.toUpperCase()] ?? 0;
+          const r = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.tier.toUpperCase()) ? 0 : (RANK_VALUE[p.rank] ?? 0);
+          return t + r + (p.league_points ?? 0);
+        })
+        .filter((e) => e !== null);
+      return elos.length > 0 ? elos.reduce((a, b) => a + b, 0) / elos.length : null;
+    };
+
+    const getRankFromElo = (elo) => {
+      const tiers = Object.keys(TIER_VALUE).reverse();
+      for (const tier of tiers) {
+        if (elo >= TIER_VALUE[tier]) {
+          const remaining = elo - TIER_VALUE[tier];
+          if (['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tier)) return { tier, rank: '', lp: Math.round(remaining) };
+          const ranks = Object.keys(RANK_VALUE).reverse();
+          for (const rank of ranks) {
+            if (remaining >= RANK_VALUE[rank]) return { tier, rank, lp: Math.round(remaining - RANK_VALUE[rank]) };
+          }
+        }
+      }
+      return { tier: 'IRON', rank: 'IV', lp: Math.round(elo) };
+    };
+    return res.status(200).send({
+      ok: true,
+      data: {
+        team_avg_elo: computeAvg(players.filter((p) => p.side === game.team_side)) !== null ? getRankFromElo(computeAvg(players.filter((p) => p.side === game.team_side))) : null,
+        enemy_avg_elo: computeAvg(players.filter((p) => p.side === (game.team_side === 'blue' ? 'red' : 'blue'))) !== null ? getRankFromElo(computeAvg(players.filter((p) => p.side === (game.team_side === 'blue' ? 'red' : 'blue')))) : null,
+      },
+    });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });

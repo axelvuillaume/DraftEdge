@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
-import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target, Folder, Plus, Check, FolderInput, X } from "lucide-react"
+import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target, Folder, Plus, Check, FolderInput, X, Pencil, ChevronDown } from "lucide-react"
 import Modal from "@/components/modal"
 import useStore from "@/services/store"
 
@@ -29,6 +29,44 @@ const roleIconColors = {
   mid: "text-blue-400",
   bottom: "text-red-400",
   support: "text-cyan-400"
+}
+
+const TIER_SHORT = {
+  IRON: "Iron",
+  BRONZE: "Bronze",
+  SILVER: "Silver",
+  GOLD: "Gold",
+  PLATINUM: "Plat",
+  EMERALD: "Emerald",
+  DIAMOND: "Dia",
+  MASTER: "Master",
+  GRANDMASTER: "GM",
+  CHALLENGER: "Chall"
+}
+const TIER_COLOR = {
+  IRON: "text-slate-400",
+  BRONZE: "text-amber-700",
+  SILVER: "text-slate-300",
+  GOLD: "text-yellow-400",
+  PLATINUM: "text-cyan-300",
+  EMERALD: "text-emerald-400",
+  DIAMOND: "text-blue-400",
+  MASTER: "text-purple-400",
+  GRANDMASTER: "text-red-400",
+  CHALLENGER: "text-amber-300"
+}
+
+const formatRank = rank => {
+  if (!rank) return null
+  const label = TIER_SHORT[rank.tier?.toUpperCase()] || rank.tier
+  if (["MASTER", "GRANDMASTER", "CHALLENGER"].includes(rank.tier?.toUpperCase())) return `${label} ${rank.lp} LP`
+  return `${label} ${rank.rank}`
+}
+
+const RankBadge = ({ rank }) => {
+  if (!rank) return <span className="text-slate-600 text-xs">?</span>
+  const colorClass = TIER_COLOR[rank.tier?.toUpperCase()] || "text-slate-400"
+  return <span className={`text-xs font-semibold ${colorClass}`}>{formatRank(rank)}</span>
 }
 
 export default function Games() {
@@ -306,6 +344,49 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editForm, setEditForm] = useState({ name: game.name || "", opponent_name: game.opponent_name || "" })
+  const [saving, setSaving] = useState(false)
+  const [enemyTeams, setEnemyTeams] = useState([])
+  const [showOpponentDropdown, setShowOpponentDropdown] = useState(false)
+  const [newTeamName, setNewTeamName] = useState("")
+  const [avgElo, setAvgElo] = useState(null)
+
+  useEffect(() => {
+    const fetchAvgElo = async () => {
+      try {
+        const { ok, data, code } = await api.get(`/game/${game._id}/avg-elo`)
+        if (!ok) return toast.error(code)
+        setAvgElo(data)
+      } catch (error) {
+        toast.error(error.code || "An error occurred while fetching average elo")
+      }
+    }
+    fetchAvgElo()
+  }, [game._id])
+
+  const fetchEnemyTeams = async () => {
+    try {
+      const { ok, data, code } = await api.post("/enemy-team/search", { team_id: game.team_id })
+      if (!ok) return toast.error(code)
+      setEnemyTeams(data)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const createEnemyTeam = async name => {
+    try {
+      const { ok, data, code } = await api.post("/enemy-team", { name })
+      if (!ok) return toast.error(code)
+      setEnemyTeams(prev => [data, ...prev])
+      setEditForm(prev => ({ ...prev, opponent_name: data.name }))
+      setNewTeamName("")
+      setShowOpponentDropdown(false)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
 
   const fetchPlayerStats = async () => {
     if (playerStats.length > 0) return
@@ -340,15 +421,30 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
     }
   }
 
+  const handleEdit = async () => {
+    setSaving(true)
+    try {
+      const { ok, code } = await api.put(`/game/${game._id}`, { name: editForm.name, opponent_name: editForm.opponent_name })
+      if (!ok) return toast.error(code)
+      toast.success("Game updated")
+      setShowEditModal(false)
+      onDelete() // refresh list
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div
       className={`bg-slate-800/50 border rounded-xl overflow-visible transition-all duration-200 hover:border-slate-600/50 relative ${isSelected ? "border-amber-500" : "border-slate-700/50"}`}
     >
       <button
         onClick={e => (e.preventDefault(), selectionMode ? onToggleSelect(game._id) : handleToggle())}
-        className="w-full p-4 flex items-center justify-between hover:bg-slate-700/20 transition-colors"
+        className="w-full p-4 flex items-center justify-between hover:bg-slate-700/20 transition-colors relative"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 min-w-0 flex-1">
           {/* Selection Checkbox */}
           {selectionMode && (
             <div
@@ -358,26 +454,60 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
             </div>
           )}
           {/* Win/Loss Indicator */}
-          <div className={`w-1.5 h-12 rounded-full ${game.win ? "bg-emerald-500" : "bg-red-500"}`} />
+          <div className={`w-1.5 h-14 rounded-full flex-shrink-0 ${game.win ? "bg-emerald-500" : "bg-red-500"}`} />
 
-          <div className="text-left">
-            <div className="flex items-center gap-3">
-              <span className={`text-base font-bold uppercase tracking-wider ${game.win ? "text-emerald-400" : "text-red-400"}`}>{game.win ? "Victory" : "Defeat"}</span>
-              <span className="text-white text-base font-medium">{new Date(game.date).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "numeric" })} </span>
-              <span className="text-slate-500 text-sm">•</span>
-              <span className="text-slate-400 text-sm flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" />
-                {Math.floor(game.duration / 60)}m{game.duration % 60}
+          <div className="text-left min-w-0 flex-1">
+            {/* Row 1: Name + Opponent */}
+            <div className="flex items-center gap-2">
+              {game.name ? (
+                <span className="text-white text-sm font-semibold truncate">{game.name}</span>
+              ) : (
+                <span className={`text-sm font-bold uppercase tracking-wider ${game.win ? "text-emerald-400" : "text-red-400"}`}>{game.win ? "Victory" : "Defeat"}</span>
+              )}
+              {game.opponent_name && (
+                <span className="text-slate-500 text-sm">
+                  vs <span className="text-slate-300 font-medium">{game.opponent_name}</span>
+                </span>
+              )}
+            </div>
+
+            {/* Row 2: Metadata */}
+            <div className="flex items-center gap-1.5 mt-1">
+              {game.name && (
+                <>
+                  <span className={`text-[11px] font-bold uppercase tracking-wide ${game.win ? "text-emerald-400" : "text-red-400"}`}>{game.win ? "Victory" : "Defeat"}</span>
+                  <span className="text-slate-700 text-[11px]">·</span>
+                </>
+              )}
+              <span className="text-slate-500 text-[11px]">{new Date(game.date).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
+              <span className="text-slate-700 text-[11px]">·</span>
+              <span className="text-slate-500 text-[11px] flex items-center gap-0.5">
+                <Clock className="w-3 h-3" />
+                {Math.floor(game.duration / 60)}m{String(game.duration % 60).padStart(2, "0")}
               </span>
             </div>
-            {game.name && <p className="text-slate-600 text-xs mt-0.5">{game.name}</p>}
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Center: Avg Elo (absolute centered) */}
+        {avgElo && (avgElo.team_avg_elo || avgElo.enemy_avg_elo) && (
+          <div className="hidden md:flex items-center gap-3 absolute left-1/2 -translate-x-1/2">
+            <div className="flex flex-col items-end">
+              <span className="text-slate-500 text-[10px] uppercase tracking-wider leading-none mb-0.5">My team</span>
+              <RankBadge rank={avgElo.team_avg_elo} />
+            </div>
+            <span className="text-slate-600 text-xs font-medium">vs</span>
+            <div className="flex flex-col items-start">
+              <span className="text-slate-500 text-[10px] uppercase tracking-wider leading-none mb-0.5">Enemy</span>
+              <RankBadge rank={avgElo.enemy_avg_elo} />
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 flex-shrink-0">
           {/* Folder indicator */}
           {game.folder_id && (
-            <div className="hidden sm:flex items-center gap-1.5 text-slate-500 text-xs">
+            <div className="hidden lg:flex items-center gap-1.5 text-slate-500 text-xs">
               <Folder className="w-3 h-3" />
               <span>{folders?.find(f => f._id === game.folder_id)?.name || "Folder"}</span>
             </div>
@@ -409,6 +539,19 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
               <>
                 <div className="fixed inset-0 z-40" onClick={e => (e.stopPropagation(), setShowDropdown(false))} />
                 <div className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 py-1">
+                  <button
+                    onClick={e => {
+                      e.stopPropagation()
+                      setEditForm({ name: game.name || "", opponent_name: game.opponent_name || "" })
+                      setShowEditModal(true)
+                      setShowDropdown(false)
+                      fetchEnemyTeams()
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </button>
                   <button onClick={handleDelete} className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2">
                     <Trash2 className="w-4 h-4" />
                     Delete
@@ -499,6 +642,104 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
           )}
         </div>
       )}
+
+      {/* Edit Modal */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} className="w-full max-w-md !bg-slate-900 border border-slate-700/50 shadow-xl !overflow-visible">
+        <div className="p-6 space-y-4">
+          <h3 className="text-lg font-medium text-white">Edit Game</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">Game Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Scrim vs KC - Game 1"
+                value={editForm.name}
+                onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-all duration-200"
+                autoFocus
+              />
+            </div>
+            <div className="relative">
+              <label className="block text-sm font-medium text-slate-400 mb-2">Opponent Team</label>
+              <button
+                type="button"
+                onClick={() => setShowOpponentDropdown(!showOpponentDropdown)}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800 border border-slate-700 hover:border-slate-600 transition-all duration-200 text-left"
+              >
+                <span className={editForm.opponent_name ? "text-white" : "text-slate-500"}>{editForm.opponent_name || "Select opponent..."}</span>
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {showOpponentDropdown && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowOpponentDropdown(false)} />
+                  <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+                    <div className="p-2 border-b border-slate-700/50">
+                      <form
+                        onSubmit={e => {
+                          e.preventDefault()
+                          if (newTeamName.trim()) createEnemyTeam(newTeamName.trim())
+                        }}
+                        className="flex items-center gap-1.5"
+                      >
+                        <input
+                          type="text"
+                          placeholder="New team..."
+                          value={newTeamName}
+                          onChange={e => setNewTeamName(e.target.value)}
+                          className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          disabled={!newTeamName.trim()}
+                          className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </form>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditForm(prev => ({ ...prev, opponent_name: "" }))
+                          setShowOpponentDropdown(false)
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!editForm.opponent_name ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
+                      >
+                        No opponent
+                      </button>
+                      {enemyTeams.map(team => (
+                        <button
+                          key={team._id}
+                          type="button"
+                          onClick={() => {
+                            setEditForm(prev => ({ ...prev, opponent_name: team.name }))
+                            setShowOpponentDropdown(false)
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${editForm.opponent_name === team.name ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                        >
+                          {team.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-4">
+              <button
+                onClick={handleEdit}
+                disabled={saving}
+                className="bg-amber-500 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-amber-500/20"
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
