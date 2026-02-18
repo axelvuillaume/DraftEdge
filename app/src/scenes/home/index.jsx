@@ -181,6 +181,7 @@ export default function FutureHome() {
                       </div>
                     </div>
                     <span className="text-[10px] font-medium text-blue-400">Blue</span>
+                    <span className="text-[9px] text-slate-500">{sideStats.blue.total}g</span>
                   </div>
 
                   {/* Red Side Bar */}
@@ -196,6 +197,7 @@ export default function FutureHome() {
                       </div>
                     </div>
                     <span className="text-[10px] font-medium text-red-400">Red</span>
+                    <span className="text-[9px] text-slate-500">{sideStats.red.total}g</span>
                   </div>
                 </div>
               </div>

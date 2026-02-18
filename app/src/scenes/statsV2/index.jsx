@@ -412,10 +412,12 @@ function HeaderSection({ data, isTeam, isChampion, isEnemyChampion, winRateBySid
               <div className="flex items-center gap-1">
                 <div className="w-8 h-2 bg-blue-500 rounded" style={{ opacity: side.blue > 0 ? 1 : 0.3 }} />
                 <span className="text-blue-400 text-[10px] font-medium">{side.blue}%</span>
+                <span className="text-slate-500 text-[10px]">({side.blueGames || 0}g)</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-8 h-2 bg-red-400 rounded" style={{ opacity: side.red > 0 ? 1 : 0.3 }} />
                 <span className="text-red-400 text-[10px] font-medium">{side.red}%</span>
+                <span className="text-slate-500 text-[10px]">({side.redGames || 0}g)</span>
               </div>
             </div>
           )}
@@ -484,38 +486,28 @@ function SpiderChart({ metrics, isEnemyChampion }) {
   // This way: 75% vs 9.3% shows a HUGE visual gap, while 51% vs 49% shows minimal gap
   const basePosition = 50 // Center of the chart
   const maxSpread = 40 // Maximum deviation from center (so range is 10-90)
-  const invertedMetrics = ["Deaths / game", "Deaths"]
 
+  // diff from backend is already inverted for metrics like Deaths (lower = better),
+  // so diff > 0 always means "team is better" regardless of the metric.
   const teamValues = metrics.map(m => {
-    const isInverted = invertedMetrics.some(inv => m.name.includes(inv))
-    const diff = parseFloat(m.diff) || 0 // diff is already a percentage (-100 to +100)
-
-    // Clamp diff to reasonable range and apply slight curve for better visibility
-    const clampedDiff = Math.max(-100, Math.min(100, diff))
-    // Apply sqrt scaling to make small differences more visible while preserving large ones
-    const sign = clampedDiff >= 0 ? 1 : -1
-    const scaledDiff = sign * Math.pow(Math.abs(clampedDiff) / 100, 0.7) * 100
-
-    // For inverted metrics, flip the direction
-    const adjustedDiff = isInverted ? -scaledDiff : scaledDiff
-
-    // Team position: when diff > 0 (team better), team goes outward
-    const offset = (adjustedDiff / 100) * maxSpread
-    return Math.max(15, Math.min(95, basePosition + offset))
-  })
-
-  const enemyValues = metrics.map(m => {
-    const isInverted = invertedMetrics.some(inv => m.name.includes(inv))
     const diff = parseFloat(m.diff) || 0
 
     const clampedDiff = Math.max(-100, Math.min(100, diff))
     const sign = clampedDiff >= 0 ? 1 : -1
     const scaledDiff = sign * Math.pow(Math.abs(clampedDiff) / 100, 0.7) * 100
 
-    const adjustedDiff = isInverted ? -scaledDiff : scaledDiff
+    const offset = (scaledDiff / 100) * maxSpread
+    return Math.max(15, Math.min(95, basePosition + offset))
+  })
 
-    // Enemy position: opposite of team - when diff > 0 (team better), enemy goes inward
-    const offset = (adjustedDiff / 100) * maxSpread
+  const enemyValues = metrics.map(m => {
+    const diff = parseFloat(m.diff) || 0
+
+    const clampedDiff = Math.max(-100, Math.min(100, diff))
+    const sign = clampedDiff >= 0 ? 1 : -1
+    const scaledDiff = sign * Math.pow(Math.abs(clampedDiff) / 100, 0.7) * 100
+
+    const offset = (scaledDiff / 100) * maxSpread
     return Math.max(15, Math.min(95, basePosition - offset))
   })
 

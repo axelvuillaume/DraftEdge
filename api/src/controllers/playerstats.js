@@ -174,6 +174,8 @@ const calculateWinRateBySide = (statsList) => {
   return {
     blue: blueTotal > 0 ? Math.round((blueWins / blueTotal) * 100) : 0,
     red: redTotal > 0 ? Math.round((redWins / redTotal) * 100) : 0,
+    blueGames: blueTotal,
+    redGames: redTotal,
   };
 };
 
