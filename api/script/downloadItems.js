@@ -4,7 +4,9 @@ const fs = require("fs");
 const path = require("path");
 
 async function downloadAllItemIcons() {
-  const version = "14.24.1";
+  const { data: versions } = await axios.get("https://ddragon.leagueoflegends.com/api/versions.json");
+  const version = versions[0];
+  console.log(`Using DDragon version: ${version}`);
   const outputDir = path.join(__dirname, "../../app/public/items");
 
   // Créer le dossier s'il n'existe pas
