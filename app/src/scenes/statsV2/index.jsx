@@ -362,7 +362,20 @@ function HeaderSection({ data, isTeam, isChampion, isEnemyChampion, winRateBySid
         </div>
 
         <div>
-          <h1 className={`text-4xl font-bold tracking-wide ${isEnemyChampion ? "text-red-400" : "text-white"}`}>{(data.name || "").toUpperCase()}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className={`text-4xl font-bold tracking-wide ${isEnemyChampion ? "text-red-400" : "text-white"}`}>{(data.name || "").toUpperCase()}</h1>
+            {isPlayer && (
+              <a
+                href={`https://dpm.lol/${data.name}-${data.riot_tag}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+              >
+                <img src="/DPMLOLBG.png" alt="DPM" className="w-7 h-7 rounded-md" />
+              </a>
+            )}
+          </div>
           {isPlayer && data.role && <p className="text-slate-400 capitalize">{data.role}</p>}
           {isChampion && <p className="text-slate-400">Champion Matchup</p>}
           {isEnemyChampion && <p className="text-red-400/70">Enemy Champion • {data.role}</p>}

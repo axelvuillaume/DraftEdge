@@ -693,7 +693,7 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
     const playersByName = {};
     playerStats.forEach((stat) => {
       const name = stat.summoner_name;
-      if (!playersByName[name]) playersByName[name] = { stats: [], role: stat.role };
+      if (!playersByName[name]) playersByName[name] = { stats: [], role: stat.role, riot_tag: stat.riot_tag };
       playersByName[name].stats.push(stat);
       if (stat.role) playersByName[name].role = stat.role;
     });
@@ -838,6 +838,7 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
       // Sort player's champions by winrate for Best/Worst WR
       return {
         name,
+        riot_tag: data.riot_tag || '',
         role: data.role || 'Unknown',
         score: Math.round(Object.values(pCategoryScores).reduce((a, b) => a + b, 0) / Object.values(pCategoryScores).length),
         winRate: pAgg.games > 0 ? round1((pAgg.wins / pAgg.games) * 100) : 0,
