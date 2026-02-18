@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
-import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target, Folder, Plus, Check, FolderInput, X, Pencil, ChevronDown } from "lucide-react"
+import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target, Folder, Plus, Check, FolderInput, X, Pencil, ChevronDown, Shield } from "lucide-react"
 import Modal from "@/components/modal"
 import useStore from "@/services/store"
-import { getChampionIcon } from "@/utils"
+import { getChampionIcon, getItemIcon, getSummonerSpellIcon, getRuneIcon } from "@/utils"
 
 const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
 
@@ -486,6 +487,12 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
                 <Clock className="w-3 h-3" />
                 {Math.floor(game.duration / 60)}m{String(game.duration % 60).padStart(2, "0")}
               </span>
+              {game.patch && (
+                <>
+                  <span className="text-slate-700 text-[11px]">·</span>
+                  <span className="text-slate-500 text-[11px]">patch :{game.patch.split(".").slice(0, 2).join(".")}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -585,6 +592,15 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
                   Scoreboard
                 </button>
                 <button
+                  onClick={() => setActiveTab("advanced")}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "advanced" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
+                  }`}
+                >
+                  <Shield className="w-4 h-4" />
+                  Advanced
+                </button>
+                <button
                   onClick={() => setActiveTab("damage")}
                   className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
                     activeTab === "damage" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
@@ -620,7 +636,7 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
                   <div>
                     <div className="space-y-2">
                       {sortPlayersByRole(playerStats.filter(p => p.side === "blue")).map((player, idx) => (
-                        <PlayerRow key={player._id || idx} player={player} />
+                        <PlayerRow key={player._id || idx} player={player} teamSide={game.team_side} />
                       ))}
                     </div>
                   </div>
@@ -629,7 +645,7 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
                   <div>
                     <div className="space-y-2">
                       {sortPlayersByRole(playerStats.filter(p => p.side === "red")).map((player, idx) => (
-                        <PlayerRow key={player._id || idx} player={player} />
+                        <PlayerRow key={player._id || idx} player={player} teamSide={game.team_side} />
                       ))}
                     </div>
                   </div>
@@ -639,6 +655,7 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
               {activeTab === "damage" && <DamageTab playerStats={playerStats} />}
               {activeTab === "income" && <IncomeTab playerStats={playerStats} />}
               {activeTab === "vision" && <VisionTab playerStats={playerStats} />}
+              {activeTab === "advanced" && <AdvancedTab playerStats={playerStats} game={game} />}
             </div>
           )}
         </div>
@@ -745,8 +762,18 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
   )
 }
 
-function PlayerRow({ player }) {
+function PlayerRow({ player, teamSide }) {
+  const navigate = useNavigate()
+  const { setSearchNavigation } = useStore()
   const isRedSide = player.side === "red"
+  const isTeamPlayer = player.side === teamSide
+
+  const handlePlayerClick = e => {
+    e.stopPropagation()
+    setSearchNavigation({ type: "player", data: { name: player.summoner_name } })
+    navigate("/statsV2")
+  }
+
   return (
     <div className={`flex items-center justify-between p-2.5 rounded-lg ${isRedSide ? "bg-red-500/5" : "bg-blue-500/5"}`}>
       <div className="flex items-center gap-3 min-w-0">
@@ -759,13 +786,21 @@ function PlayerRow({ player }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 min-w-0">
+              {isTeamPlayer ? (
+                <button onClick={handlePlayerClick} className="text-white text-sm font-medium truncate hover:text-amber-400 transition-colors">
+                  {player.summoner_name}
+                </button>
+              ) : (
+                <span className="text-white text-sm font-medium truncate">{player.summoner_name}</span>
+              )}
               <a
                 href={`https://dpm.lol/${player.summoner_name}-${player.riot_tag}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-white text-sm font-medium truncate hover:text-amber-400 transition-colors"
+                onClick={e => e.stopPropagation()}
+                className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
               >
-                {player.summoner_name}
+                <img src="/DPMLOLBG.png" alt="DPM" className="w-4 h-4 rounded-sm" />
               </a>
               {player.tier && (
                 <span className="text-slate-400 text-[10px] font-medium uppercase bg-slate-700/50 px-1.5 py-0.5 rounded">
@@ -998,6 +1033,176 @@ function VisionTab({ playerStats }) {
 
         return <VisionRow key={idx} leftPlayer={bluePlayer} rightPlayer={redPlayer} maxVisionScore={maxVisionScore} />
       })}
+    </div>
+  )
+}
+
+function AdvancedTab({ playerStats, game }) {
+  const navigate = useNavigate()
+  const { setSearchNavigation } = useStore()
+  const blueTeam = sortPlayersByRole(playerStats.filter(p => p.side === "blue"))
+  const redTeam = sortPlayersByRole(playerStats.filter(p => p.side === "red"))
+  const blue = game.blue_team || {}
+  const red = game.red_team || {}
+  const teamSide = game.team_side
+
+  const objectives = [
+    { icon: "tower", blue: blue.towers || 0, red: red.towers || 0 },
+    { icon: "dragon", blue: blue.dragons || 0, red: red.dragons || 0 },
+    { icon: "baron", blue: blue.barons || 0, red: red.barons || 0 },
+    { icon: "herald", blue: blue.heralds || 0, red: red.heralds || 0 },
+    { icon: "grubs", blue: blue.grubs || 0, red: red.grubs || 0 },
+    ...(blue.atakhan > 0 || red.atakhan > 0 ? [{ icon: "atakhan", blue: blue.atakhan || 0, red: red.atakhan || 0 }] : []),
+    { icon: "inhibitor", blue: blue.inhibitors || 0, red: red.inhibitors || 0 }
+  ]
+
+  const handlePlayerClick = (e, player) => {
+    e.stopPropagation()
+    setSearchNavigation({ type: "player", data: { name: player.summoner_name } })
+    navigate("/statsV2")
+  }
+
+  const AdvancedCard = ({ player }) => {
+    const kda = player.deaths > 0 ? ((player.kills + player.assists) / player.deaths).toFixed(1) : (player.kills + player.assists).toFixed(1)
+    const items = player.items || []
+    const spells = player.summoner_spells || {}
+    const runes = player.runes || {}
+    const isRedSide = player.side === "red"
+    const isTeamPlayer = player.side === teamSide
+
+    return (
+      <div className={`flex-1 flex items-center gap-2.5 rounded-lg p-2.5 ${isRedSide ? "bg-red-500/5" : "bg-blue-500/5"}`}>
+        {/* Left: Champion + Spells + Runes + Name + KDA */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="w-8 h-8 rounded-md overflow-hidden bg-slate-700/50">
+              {player.champion && <img src={getChampionIcon(player.champion)} alt={player.champion} className="w-full h-full object-cover" />}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {spells.spell1 && (
+                <div className="w-4 h-4 rounded-sm overflow-hidden bg-slate-700/50">
+                  <img src={getSummonerSpellIcon(spells.spell1)} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+              {spells.spell2 && (
+                <div className="w-4 h-4 rounded-sm overflow-hidden bg-slate-700/50">
+                  <img src={getSummonerSpellIcon(spells.spell2)} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {runes.keystone && (
+                <div className="w-4 h-4 rounded-full overflow-hidden bg-slate-700/50">
+                  <img src={getRuneIcon(runes.keystone)} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+              {runes.secondary_tree && (
+                <div className="w-4 h-4 rounded-full overflow-hidden bg-slate-700/50">
+                  <img src={getRuneIcon(runes.secondary_tree)} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              {isTeamPlayer ? (
+                <button onClick={e => handlePlayerClick(e, player)} className="text-white text-xs font-medium truncate hover:text-amber-400 transition-colors">
+                  {player.summoner_name}
+                </button>
+              ) : (
+                <span className="text-white text-xs font-medium truncate">{player.summoner_name}</span>
+              )}
+              <span className={`text-[9px] px-1 py-px rounded ${roleIconColors[player.role]} bg-slate-700/50`}>{roleLabels[player.role]}</span>
+              <a
+                href={`https://dpm.lol/${player.summoner_name}-${player.riot_tag}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+              >
+                <img src="/DPMLOLBG.png" alt="DPM" className="w-4 h-4 rounded-sm" />
+              </a>
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-1">
+                <span className="text-emerald-400 text-xs font-semibold">{player.kills}</span>
+                <span className="text-slate-600 text-[10px]">/</span>
+                <span className="text-red-400 text-xs font-semibold">{player.deaths}</span>
+                <span className="text-slate-600 text-[10px]">/</span>
+                <span className="text-cyan-400 text-xs font-semibold">{player.assists}</span>
+                <span className="text-slate-500 text-[10px] ml-0.5">{kda}</span>
+              </div>
+              <span className="text-slate-600 text-[10px]">·</span>
+              <span className="text-amber-400/80 text-[10px] font-medium">{((player.gold || 0) / 1000).toFixed(1)}k</span>
+              <span className="text-slate-600 text-[10px]">·</span>
+              <span className="text-slate-400 text-[10px] font-medium">{player.cs || 0} CS</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Items in single row */}
+        <div className="flex-shrink-0 flex items-center gap-0.5">
+          {Array.from({ length: 7 }).map((_, i) => {
+            const itemId = items[i]
+            return (
+              <div key={i} className={`w-6 h-6 rounded-sm overflow-hidden ${itemId ? "bg-slate-700/50" : "bg-slate-800/30"}`}>
+                {itemId ? <img src={getItemIcon(itemId)} alt="" className="w-full h-full object-cover" /> : null}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Objectives Header */}
+      <div className="flex items-center gap-2">
+        {/* Blue side */}
+        <div className="flex-1 flex items-center justify-between py-2.5 px-4 rounded-lg bg-blue-500/5 border border-blue-500/10">
+          <span className="text-amber-400 text-xs font-semibold">{((blue.gold || 0) / 1000).toFixed(1)}k gold</span>
+          <div className="flex items-center gap-3">
+            {objectives.map(obj => (
+              <div key={obj.icon} className="flex items-center gap-1">
+                <img src={`/objectives/${obj.icon}.png`} alt={obj.icon} className="w-4 h-4 object-contain opacity-70" />
+                <span className="text-blue-400 text-xs font-semibold">{obj.blue}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <span className="text-slate-600 text-xs font-medium">vs</span>
+
+        {/* Red side */}
+        <div className="flex-1 flex items-center justify-between py-2.5 px-4 rounded-lg bg-red-500/5 border border-red-500/10">
+          <div className="flex items-center gap-3">
+            {objectives.map(obj => (
+              <div key={obj.icon} className="flex items-center gap-1">
+                <img src={`/objectives/${obj.icon}.png`} alt={obj.icon} className="w-4 h-4 object-contain opacity-70" />
+                <span className="text-red-400 text-xs font-semibold">{obj.red}</span>
+              </div>
+            ))}
+          </div>
+          <span className="text-amber-400 text-xs font-semibold">{((red.gold || 0) / 1000).toFixed(1)}k gold</span>
+        </div>
+      </div>
+
+      {/* Player Rows */}
+      <div className="space-y-2">
+        {blueTeam.map((bluePlayer, idx) => {
+          const redPlayer = redTeam[idx]
+          return (
+            <div key={idx} className="flex items-center gap-2">
+              <AdvancedCard player={bluePlayer} />
+              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex-shrink-0">
+                <Swords className="w-2.5 h-2.5 text-slate-400" />
+              </div>
+              <AdvancedCard player={redPlayer} />
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -18,3 +18,18 @@ export function getChampionIcon(name) {
   if (!name) return ""
   return `/icon/champions/${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.png`
 }
+
+export function getItemIcon(id) {
+  if (!id) return ""
+  return `/items/${id}.png`
+}
+
+export function getSummonerSpellIcon(id) {
+  if (!id) return ""
+  return `/summoner-spells/${id}.png`
+}
+
+export function getRuneIcon(id) {
+  if (!id) return ""
+  return `/runes/${id}.png`
+}
