@@ -101,6 +101,16 @@ const Schema = new mongoose.Schema(
       },
     },
 
+    // ==================== DRAFTER INFO ====================
+    bluePicks: [{ type: String }],
+    redPicks: [{ type: String }],
+    blueBans: [{ type: String }],
+    redBans: [{ type: String }],
+    fearless: { type: Boolean, default: false },
+    fearlessRestricted: { type: mongoose.Schema.Types.Mixed },
+    source: { type: String, enum: ['drafter', 'dawe'] },
+    source_url: { type: String },
+
     // ==================== GAME STATS SUMMARY ====================
     // Stats globales de la partie
     stats_summary: {

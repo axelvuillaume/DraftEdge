@@ -119,7 +119,9 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
   const [roflConfig, setRoflConfig] = useState({
     team_side: "",
     opponent_name: "",
-    name: ""
+    name: "",
+    draft_url: "",
+    date: new Date().toISOString().slice(0, 10)
   })
   const [roflPreview, setRoflPreview] = useState(null)
   const [parsing, setParsing] = useState(false)
@@ -188,7 +190,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
   const removeFile = () => {
     setFile(null)
     setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent_name: "", name: "" })
+    setRoflConfig({ team_side: "", opponent_name: "", name: "", draft_url: "", date: new Date().toISOString().slice(0, 10) })
   }
 
   const handleDrag = e => {
@@ -227,12 +229,14 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
       formData.append("team_name", user?.team_name || "")
       formData.append("opponent_name", roflConfig.opponent_name)
       formData.append("name", roflConfig.name)
+      if (roflConfig.date) formData.append("date", new Date(roflConfig.date).toISOString())
+      if (roflConfig.draft_url) formData.append("draft_url", roflConfig.draft_url)
 
       const response = await api.postFormData("/parser/import", formData)
 
       if (response.ok) {
         setUploadProgress("success")
-        toast.success("Game imported successfully!")
+        toast.success(roflConfig.draft_url ? "Game & draft imported!" : "Game imported successfully!")
         setTimeout(() => {
           handleClose()
           onSuccess?.()
@@ -254,7 +258,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
     setFile(null)
     setUploadProgress(null)
     setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent_name: "", name: "" })
+    setRoflConfig({ team_side: "", opponent_name: "", name: "", draft_url: "", date: new Date().toISOString().slice(0, 10) })
     setShowOpponentDropdown(false)
     setNewTeamName("")
     onClose()
@@ -286,25 +290,17 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* File info */}
-            <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-xl border border-slate-600">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-amber-500" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">{file.name}</p>
-                  <p className="text-slate-400 text-sm">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                </div>
-              </div>
-              {!uploading && !parsing && (
-                <button onClick={removeFile} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-              {parsing && <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />}
-              {uploadProgress === "uploading" && <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />}
-              {uploadProgress === "success" && <Check className="w-5 h-5 text-green-500" />}
+            {/* Draft URL */}
+            <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5">
+              <label className="block text-sm font-semibold text-amber-400 mb-2">Draft URL</label>
+              <input
+                type="text"
+                value={roflConfig.draft_url}
+                onChange={e => setRoflConfig(prev => ({ ...prev, draft_url: e.target.value }))}
+                placeholder="https://drafter.lol/draft/... or https://draftlol.dawe.gg/..."
+                className="w-full px-3 py-2.5 rounded-lg border border-amber-500/30 bg-slate-800 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all"
+              />
+              <p className="text-slate-400 text-xs mt-1.5">Paste a drafter.lol or dawe.gg link to import picks order & bans</p>
             </div>
 
             {/* ROFL parsed preview */}
@@ -478,7 +474,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
                 </div>
 
                 {/* Game name */}
-                <div className="col-span-2">
+                <div>
                   <label className="block text-sm font-medium text-slate-400 mb-1">Game Name (optional)</label>
                   <input
                     type="text"
@@ -486,6 +482,17 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
                     onChange={e => setRoflConfig(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Ex: Scrim Week 5 - Game 1"
                     className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none transition-all"
+                  />
+                </div>
+
+                {/* Date */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={roflConfig.date}
+                    onChange={e => setRoflConfig(prev => ({ ...prev, date: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none transition-all [color-scheme:dark]"
                   />
                 </div>
               </div>
@@ -513,7 +520,6 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
                 </>
               ) : (
                 <>
-                  <Upload className="w-4 h-4" />
                   <span>Import Game</span>
                 </>
               )}
@@ -527,11 +533,9 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
 
 function NewSessionModal({ isOpen, onClose, onSuccess }) {
   const [name, setName] = useState("")
-  const [loading, setLoading] = useState(false)
 
   const handleCreate = async () => {
     if (!name.trim()) return
-    setLoading(true)
     try {
       const { ok, data, code } = await api.post("/scrim-session", { name })
       if (!ok) return toast.error(code)
@@ -540,8 +544,6 @@ function NewSessionModal({ isOpen, onClose, onSuccess }) {
       onSuccess(data._id)
     } catch (error) {
       toast.error(error.message)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -576,20 +578,10 @@ function NewSessionModal({ isOpen, onClose, onSuccess }) {
         <div className="flex justify-end gap-2 pt-2">
           <button
             onClick={handleCreate}
-            disabled={!name.trim() || loading}
+            disabled={!name.trim()}
             className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed text-sm"
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Creating...</span>
-              </>
-            ) : (
-              <>
-                <Calendar className="w-4 h-4" />
-                <span>Create Session</span>
-              </>
-            )}
+            <span>Create Session</span>
           </button>
         </div>
       </div>

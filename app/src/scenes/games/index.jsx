@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, Fragment } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
@@ -347,7 +347,7 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
   const [showDropdown, setShowDropdown] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
   const [showEditModal, setShowEditModal] = useState(false)
-  const [editForm, setEditForm] = useState({ name: game.name || "", opponent_name: game.opponent_name || "" })
+  const [editForm, setEditForm] = useState({ name: game.name || "", opponent_name: game.opponent_name || "", date: game.date ? new Date(game.date).toISOString().slice(0, 10) : "", draft_url: game.source_url || "" })
   const [saving, setSaving] = useState(false)
   const [enemyTeams, setEnemyTeams] = useState([])
   const [showOpponentDropdown, setShowOpponentDropdown] = useState(false)
@@ -426,8 +426,17 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
   const handleEdit = async () => {
     setSaving(true)
     try {
-      const { ok, code } = await api.put(`/game/${game._id}`, { name: editForm.name, opponent_name: editForm.opponent_name })
+      const body = { name: editForm.name, opponent_name: editForm.opponent_name }
+      if (editForm.date) body.date = new Date(editForm.date).toISOString()
+      const { ok, code } = await api.put(`/game/${game._id}`, body)
       if (!ok) return toast.error(code)
+
+      const draftUrlChanged = editForm.draft_url.trim() !== (game.source_url || "")
+      if (draftUrlChanged && editForm.draft_url.trim()) {
+        const { ok: draftOk, error } = await api.put(`/game/${game._id}/draft`, { url: editForm.draft_url.trim() })
+        if (!draftOk) toast.error(error || "Erreur draft")
+      }
+
       toast.success("Game updated")
       setShowEditModal(false)
       onDelete() // refresh list
@@ -550,7 +559,7 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
                   <button
                     onClick={e => {
                       e.stopPropagation()
-                      setEditForm({ name: game.name || "", opponent_name: game.opponent_name || "" })
+                      setEditForm({ name: game.name || "", opponent_name: game.opponent_name || "", date: game.date ? new Date(game.date).toISOString().slice(0, 10) : "", draft_url: game.source_url || "" })
                       setShowEditModal(true)
                       setShowDropdown(false)
                       fetchEnemyTeams()
@@ -581,52 +590,27 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
           ) : (
             <div>
               {/* Tabs */}
-              <div className="flex items-center gap-4 mb-6 border-b border-slate-700/50">
-                <button
-                  onClick={() => setActiveTab("overview")}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === "overview" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
-                  }`}
-                >
-                  <Swords className="w-4 h-4" />
-                  Scoreboard
-                </button>
-                <button
-                  onClick={() => setActiveTab("advanced")}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === "advanced" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
-                  }`}
-                >
-                  <Shield className="w-4 h-4" />
-                  Advanced
-                </button>
-                <button
-                  onClick={() => setActiveTab("damage")}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === "damage" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
-                  }`}
-                >
-                  <Swords className="w-4 h-4" />
-                  Damage
-                </button>
-                <button
-                  onClick={() => setActiveTab("income")}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === "income" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
-                  }`}
-                >
-                  <DollarSign className="w-4 h-4" />
-                  Income
-                </button>
-                <button
-                  onClick={() => setActiveTab("vision")}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === "vision" ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
-                  }`}
-                >
-                  <Target className="w-4 h-4" />
-                  Vision
-                </button>
+              <div className="flex items-center gap-1 mb-6 border-b border-slate-700/50">
+                {[
+                  { key: "overview", label: "Scoreboard" },
+                  { key: "advanced", label: "Advanced" },
+                  { key: "damage", label: "Damage" },
+                  { key: "income", label: "Income" },
+                  { key: "vision", label: "Vision" },
+                  { key: "draft", label: "Draft" }
+                ].map((tab, i, arr) => (
+                  <Fragment key={tab.key}>
+                    <button
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`px-3 py-2 text-sm font-medium transition-colors border-b-2 ${
+                        activeTab === tab.key ? "text-white border-amber-500" : "text-slate-400 border-transparent hover:text-white"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                    {i < arr.length - 1 && <div className="h-4 w-px bg-slate-700/50" />}
+                  </Fragment>
+                ))}
               </div>
 
               {/* Tab Content */}
@@ -656,6 +640,7 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
               {activeTab === "income" && <IncomeTab playerStats={playerStats} />}
               {activeTab === "vision" && <VisionTab playerStats={playerStats} />}
               {activeTab === "advanced" && <AdvancedTab playerStats={playerStats} game={game} />}
+              {activeTab === "draft" && <DraftTab game={game} onDraftAdded={onDelete} />}
             </div>
           )}
         </div>
@@ -745,6 +730,25 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
                   </div>
                 </>
               )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">Date</label>
+              <input
+                type="date"
+                value={editForm.date}
+                onChange={e => setEditForm({ ...editForm, date: e.target.value })}
+                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-amber-500 transition-all duration-200 [color-scheme:dark]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">Draft URL</label>
+              <input
+                type="text"
+                placeholder="https://drafter.lol/... or https://draftlol.dawe.gg/..."
+                value={editForm.draft_url}
+                onChange={e => setEditForm({ ...editForm, draft_url: e.target.value })}
+                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-all duration-200"
+              />
             </div>
             <div className="flex items-center justify-end gap-3 pt-4">
               <button
@@ -1203,6 +1207,204 @@ function AdvancedTab({ playerStats, game }) {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+function DraftTab({ game, onDraftAdded }) {
+  const [draftUrl, setDraftUrl] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const handleAddDraft = async () => {
+    if (!draftUrl.trim()) return
+    setLoading(true)
+    try {
+      const { ok, error } = await api.put(`/game/${game._id}/draft`, { url: draftUrl.trim() })
+      if (!ok) return toast.error(error || "Erreur lors de l'ajout du draft")
+      toast.success("Draft ajouté")
+      setDraftUrl("")
+      onDraftAdded?.()
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!(game.bluePicks?.filter(Boolean).length > 0 || game.redPicks?.filter(Boolean).length > 0)) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 space-y-4">
+        <div className="text-slate-500 text-sm">Aucun draft disponible pour cette game</div>
+        <div className="flex items-center gap-2 w-full max-w-md">
+          <input
+            type="text"
+            value={draftUrl}
+            onChange={e => setDraftUrl(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleAddDraft()}
+            placeholder="Coller un lien drafter.lol ou dawe.gg"
+            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-colors"
+          />
+          <button
+            onClick={handleAddDraft}
+            disabled={loading || !draftUrl.trim()}
+            className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black text-sm font-medium transition-colors flex items-center gap-1.5"
+          >
+            {loading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+            Ajouter
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-1">
+      {/* Bans */}
+      <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center gap-1.5">
+          {game.blueBans.filter(Boolean).map((champ, i) => (
+            <Fragment key={i}>
+              {i === 3 && <div className="w-px h-5 bg-slate-700/60 mx-0.5" />}
+              <div className="relative group cursor-default">
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800/80 ring-1 ring-slate-700/50 grayscale opacity-40 group-hover:opacity-60 transition-opacity">
+                  <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover scale-110" />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <X className="w-3.5 h-3.5 text-red-500/80" />
+                </div>
+                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-slate-500 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  {champ}
+                </div>
+              </div>
+            </Fragment>
+          ))}
+        </div>
+
+        <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-[0.2em] px-1.5">bans</span>
+
+        <div className="flex items-center gap-1.5">
+          {game.redBans.filter(Boolean).map((champ, i) => (
+            <Fragment key={i}>
+              {i === 3 && <div className="w-px h-5 bg-slate-700/60 mx-0.5" />}
+              <div className="relative group cursor-default">
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800/80 ring-1 ring-slate-700/50 grayscale opacity-40 group-hover:opacity-60 transition-opacity">
+                  <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover scale-110" />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <X className="w-3.5 h-3.5 text-red-500/80" />
+                </div>
+                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-slate-500 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  {champ}
+                </div>
+              </div>
+            </Fragment>
+          ))}
+        </div>
+      </div>
+
+      {/* Picks */}
+      <div className="flex gap-2">
+        {/* Blue Side */}
+        <div className="flex-1">
+          <div className="flex items-center gap-1.5 mb-1.5 px-1">
+            <div className="h-px flex-1 bg-gradient-to-r from-blue-500/40 to-transparent" />
+            <span className="text-blue-400 text-[10px] font-bold uppercase tracking-wider">Blue</span>
+            <div className="h-px flex-1 bg-gradient-to-l from-blue-500/15 to-transparent" />
+          </div>
+          <div className="space-y-1">
+            {game.bluePicks.filter(Boolean).map((champ, i) => (
+              <div
+                key={i}
+                className="group relative flex items-center gap-2 py-1.5 px-2 rounded-lg overflow-hidden
+                  bg-gradient-to-r from-blue-500/8 to-transparent
+                  border border-blue-500/10 hover:border-blue-400/30
+                  transition-all duration-200"
+              >
+                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-blue-600 rounded-full" />
+                <span className="text-blue-500/30 text-[10px] font-bold w-4 text-center tabular-nums">{i + 1}</span>
+                <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 ring-1 ring-blue-500/20 group-hover:ring-blue-400/40 flex-shrink-0 transition-all">
+                  <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" />
+                </div>
+                <span className="text-white/90 text-sm font-medium">{champ}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* VS divider */}
+        <div className="flex flex-col items-center justify-end pb-1">
+          <div className="h-[calc(100%-20px)] w-px bg-gradient-to-b from-transparent via-slate-700/40 to-transparent relative flex flex-col justify-around items-center">
+            {game.bluePicks.filter(Boolean).map((_, i) => (
+              <div key={i} className="w-5 h-5 rounded-full bg-slate-800/90 border border-slate-700/50 flex items-center justify-center -ml-px">
+                <Swords className="w-2.5 h-2.5 text-slate-600" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Red Side */}
+        <div className="flex-1">
+          <div className="flex items-center gap-1.5 mb-1.5 px-1">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent to-red-500/15" />
+            <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">Red</span>
+            <div className="h-px flex-1 bg-gradient-to-l from-transparent to-red-500/40" />
+          </div>
+          <div className="space-y-1">
+            {game.redPicks.filter(Boolean).map((champ, i) => (
+              <div
+                key={i}
+                className="group relative flex items-center gap-2 py-1.5 px-2 rounded-lg overflow-hidden flex-row-reverse
+                  bg-gradient-to-l from-red-500/8 to-transparent
+                  border border-red-500/10 hover:border-red-400/30
+                  transition-all duration-200"
+              >
+                <div className="absolute right-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-red-400 to-red-600 rounded-full" />
+                <span className="text-red-500/30 text-[10px] font-bold w-4 text-center tabular-nums">{i + 1}</span>
+                <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 ring-1 ring-red-500/20 group-hover:ring-red-400/40 flex-shrink-0 transition-all">
+                  <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" />
+                </div>
+                <span className="text-white/90 text-sm font-medium">{champ}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Fearless */}
+      {game.fearless && game.fearlessRestricted && Object.values(game.fearlessRestricted).some(arr => arr?.length > 0) && (
+        <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/5 to-transparent border border-amber-500/10">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-amber-400/80 text-[11px] font-semibold uppercase tracking-[0.15em]">Fearless — Restricted</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {Object.entries(game.fearlessRestricted).map(([team, champs]) => {
+              if (!champs?.length) return null
+              return (
+                <div key={team}>
+                  <span className="text-slate-500 text-[10px] font-medium uppercase tracking-wider">{team}</span>
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    {champs.filter(Boolean).map((champ, i) => (
+                      <div key={i} className="w-7 h-7 rounded-full overflow-hidden bg-slate-800 ring-1 ring-slate-700/50 opacity-35 grayscale" title={champ}>
+                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Source link */}
+      {game.source_url && (
+        <div className="flex items-center justify-end pt-1">
+          <a href={game.source_url} target="_blank" rel="noreferrer" className="text-slate-600 hover:text-amber-400 text-[10px] transition-colors">
+            {game.source === "drafter" ? "drafter.lol" : "dawe.gg"}
+          </a>
+        </div>
+      )}
     </div>
   )
 }

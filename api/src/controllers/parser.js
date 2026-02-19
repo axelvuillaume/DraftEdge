@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const https = require('https');
+const WebSocket = require('ws');
 const Game = require('../models/game');
 const PlayerStats = require('../models/playerstats');
 const AIFeedBack = require('../models/AIFeedBack');
@@ -613,6 +615,154 @@ function processRoflData(metadata, filename, team_id) {
 }
 
 // ============================================
+// DRAFT FETCHING (drafter.lol / dawe.gg)
+// ============================================
+
+function fetchFromDrafter(draftUrl) {
+  const parsed = new URL(draftUrl);
+  const game = parseInt(parsed.searchParams.get('game')) || 1;
+  const url = draftUrl.includes('?') ? draftUrl : `${draftUrl}?game=1`;
+
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      let html = '';
+      res.on('data', (chunk) => (html += chunk));
+      res.on('end', () => {
+        const startMarker = '\\"drafts\\":[';
+        const endMarker = '],\\"fearless\\"';
+        const startIdx = html.indexOf(startMarker);
+        if (startIdx === -1) return reject('Données de draft introuvables dans la page');
+
+        const arrayStart = startIdx + startMarker.length;
+        const endIdx = html.indexOf(endMarker, arrayStart);
+        if (endIdx === -1) return reject('Impossible de trouver la fin du tableau de drafts');
+
+        const rawDrafts = html.substring(arrayStart, endIdx);
+        const cleaned = rawDrafts.replace(/\\"/g, '"');
+        const drafts = JSON.parse(`[${cleaned}]`);
+
+        const draft = drafts[game - 1];
+        if (!draft) return reject(`Game ${game} introuvable`);
+
+        const fearlessRestricted = {};
+        if (draft.fearless && game > 1) {
+          const prevDrafts = drafts.slice(0, game - 1);
+          const blue = draft.drafterBlue;
+          const red = draft.drafterRed;
+          fearlessRestricted[blue] = [];
+          fearlessRestricted[red] = [];
+
+          for (const prev of prevDrafts) {
+            const prevBlue = prev.drafterBlue;
+            const prevRed = prev.drafterRed;
+            const bluePicks = [prev.bluePick1, prev.bluePick2, prev.bluePick3, prev.bluePick4, prev.bluePick5];
+            const redPicks = [prev.redPick1, prev.redPick2, prev.redPick3, prev.redPick4, prev.redPick5];
+
+            if (prevBlue === blue) fearlessRestricted[blue].push(...bluePicks);
+            else if (prevBlue === red) fearlessRestricted[red].push(...bluePicks);
+
+            if (prevRed === blue) fearlessRestricted[blue].push(...redPicks);
+            else if (prevRed === red) fearlessRestricted[red].push(...redPicks);
+          }
+        }
+
+        resolve({
+          source: 'drafter',
+          fearless: draft.fearless || false,
+          blueBans: [draft.blueBan1, draft.blueBan2, draft.blueBan3, draft.blueBan4, draft.blueBan5],
+          redBans: [draft.redBan1, draft.redBan2, draft.redBan3, draft.redBan4, draft.redBan5],
+          bluePicks: [draft.bluePick1, draft.bluePick2, draft.bluePick3, draft.bluePick4, draft.bluePick5],
+          redPicks: [draft.redPick1, draft.redPick2, draft.redPick3, draft.redPick4, draft.redPick5],
+          fearlessRestricted,
+        });
+      });
+      res.on('error', reject);
+    });
+  });
+}
+
+function fetchFromDawe(roomId) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket('wss://draftlol.dawe.gg');
+
+    const timeout = setTimeout(() => {
+      ws.close();
+      reject('Timeout: pas de réponse du serveur');
+    }, 10000);
+
+    ws.on('open', () => {
+      ws.send(JSON.stringify({ type: 'joinroom', roomId }));
+    });
+
+    ws.on('message', (data) => {
+      const msg = JSON.parse(data.toString());
+
+      if (msg.type === 'statechange') {
+        clearTimeout(timeout);
+        ws.close();
+        const d = msg.newState;
+        const clean = (arr) => (Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : []);
+
+        resolve({
+          source: 'dawe',
+          bluePicks: clean(d.bluePicks),
+          redPicks: clean(d.redPicks),
+          blueBans: clean(d.blueBans),
+          redBans: clean(d.redBans),
+          fearless: false,
+          fearlessRestricted: {
+            [d.blueName]: clean(d.fearlessBlueChamps),
+            [d.redName]: clean(d.fearlessRedChamps),
+          },
+        });
+      }
+
+      if (msg.type === 'error') {
+        clearTimeout(timeout);
+        ws.close();
+        reject('Erreur serveur: ' + msg.reason);
+      }
+    });
+
+    ws.on('error', (err) => {
+      clearTimeout(timeout);
+      reject('WebSocket error: ' + err.message);
+    });
+  });
+}
+
+function detectDraftSource(url) {
+  if (url.includes('dawe.gg')) return 'dawe';
+  if (url.includes('drafter.lol')) return 'drafter';
+  return null;
+}
+
+function extractDraftId(url) {
+  const parts = url.split('/').filter(Boolean);
+  return parts[parts.length - 1].split('?')[0];
+}
+
+async function fetchAndSaveDraft(gameId, draftUrl) {
+  const source = detectDraftSource(draftUrl);
+  if (!source) throw new Error('URL non reconnue. Utilisez un lien drafter.lol ou dawe.gg');
+
+  const draft = source === 'drafter' ? await fetchFromDrafter(draftUrl) : await fetchFromDawe(extractDraftId(draftUrl));
+
+  const update = {
+    bluePicks: draft.bluePicks,
+    redPicks: draft.redPicks,
+    blueBans: draft.blueBans,
+    redBans: draft.redBans,
+    fearless: draft.fearless || false,
+    fearlessRestricted: draft.fearlessRestricted,
+    source,
+    source_url: draftUrl,
+  };
+
+  return Game.findByIdAndUpdate(gameId, update, { new: true });
+}
+
+// ============================================
 // ROUTES
 // ============================================
 
@@ -652,7 +802,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Le fichier doit être un .rofl' });
     }
 
-    const { team_id, team_name, team_side, opponent_name, name, session_id, session_name, folder_id, folder_name } = req.body;
+    const { team_id, team_name, team_side, opponent_name, name, session_id, session_name, folder_id, folder_name, draft_url, date } = req.body;
 
     if (!team_side || !['blue', 'red'].includes(team_side)) {
       return res.status(400).json({ ok: false, error: 'team_side requis (blue ou red)' });
@@ -662,7 +812,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     const data = processRoflData(metadata, req.file.originalname, team_id);
 
     const existingGame = await Game.findOne({ game_fingerprint: data.game.game_fingerprint });
-    if (existingGame) return res.status(409).json({ ok: false, error: 'This game already exists', existing_game_id: existingGame._id });
+    //if (existingGame) return res.status(409).json({ ok: false, error: 'This game already exists', existing_game_id: existingGame._id });
 
     // Enrichir les données Game
     data.game.team_id = team_id || null;
@@ -675,6 +825,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     data.game.folder_id = folder_id || null;
     data.game.folder_name = folder_name || null;
     data.game.win = team_side === 'blue' ? data.game.blue_team.win : data.game.red_team.win;
+    if (date) data.game.date = new Date(date);
 
     // Sauvegarder la Game
     const savedGame = await Game.create(data.game);
@@ -699,10 +850,18 @@ router.post('/import', upload.single('replay'), async (req, res) => {
 
     const savedPlayers = await PlayerStats.insertMany(playersToSave);
 
-    res.json({ ok: true, data: { game: savedGame, players: savedPlayers } });
+    let finalGame = savedGame;
+    if (draft_url) {
+      try {
+        console.log('[import] Fetching draft from:', draft_url);
+        finalGame = await fetchAndSaveDraft(savedGame._id, draft_url);
+        console.log('[import] Draft saved successfully');
+      } catch (draftError) {
+        console.error('[import] Draft fetch failed:', draftError);
+      }
+    }
 
-    // Générer et sauvegarder les feedbacks IA
-    // await generateAndSaveAIFeedback(team_id, team_name);
+    res.json({ ok: true, data: { game: finalGame, players: savedPlayers } });
   } catch (error) {
     console.error('Erreur import ROFL:', error);
 
