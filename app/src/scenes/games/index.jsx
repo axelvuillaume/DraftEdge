@@ -1259,8 +1259,16 @@ function DraftTab({ game, onDraftAdded }) {
 
   return (
     <div className="space-y-1">
-      {/* Bans */}
-      <div className="flex items-center justify-center gap-3">
+      {/* Bans + Side Labels */}
+      <div className="flex items-center gap-3">
+        {/* Blue label */}
+        <div className="flex-1 flex items-center gap-1.5 px-1">
+          <div className="h-px flex-1 bg-gradient-to-r from-blue-500/40 to-transparent" />
+          <span className="text-blue-400 text-[10px] font-bold uppercase tracking-wider">Blue</span>
+          <div className="h-px flex-1 bg-gradient-to-l from-blue-500/15 to-transparent" />
+        </div>
+
+        {/* Blue Bans */}
         <div className="flex items-center gap-1.5">
           {game.blueBans.filter(Boolean).map((champ, i) => (
             <Fragment key={i}>
@@ -1282,6 +1290,7 @@ function DraftTab({ game, onDraftAdded }) {
 
         <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-[0.2em] px-1.5">bans</span>
 
+        {/* Red Bans */}
         <div className="flex items-center gap-1.5">
           {game.redBans.filter(Boolean).map((champ, i) => (
             <Fragment key={i}>
@@ -1300,17 +1309,19 @@ function DraftTab({ game, onDraftAdded }) {
             </Fragment>
           ))}
         </div>
+
+        {/* Red label */}
+        <div className="flex-1 flex items-center gap-1.5 px-1">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent to-red-500/15" />
+          <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">Red</span>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent to-red-500/40" />
+        </div>
       </div>
 
       {/* Picks */}
       <div className="flex gap-2">
         {/* Blue Side */}
         <div className="flex-1">
-          <div className="flex items-center gap-1.5 mb-1.5 px-1">
-            <div className="h-px flex-1 bg-gradient-to-r from-blue-500/40 to-transparent" />
-            <span className="text-blue-400 text-[10px] font-bold uppercase tracking-wider">Blue</span>
-            <div className="h-px flex-1 bg-gradient-to-l from-blue-500/15 to-transparent" />
-          </div>
           <div className="space-y-1">
             {game.bluePicks.filter(Boolean).map((champ, i) => (
               <div
@@ -1344,11 +1355,6 @@ function DraftTab({ game, onDraftAdded }) {
 
         {/* Red Side */}
         <div className="flex-1">
-          <div className="flex items-center gap-1.5 mb-1.5 px-1">
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent to-red-500/15" />
-            <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">Red</span>
-            <div className="h-px flex-1 bg-gradient-to-l from-transparent to-red-500/40" />
-          </div>
           <div className="space-y-1">
             {game.redPicks.filter(Boolean).map((champ, i) => (
               <div
