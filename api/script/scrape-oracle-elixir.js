@@ -1,14 +1,14 @@
 const mongoose = require("mongoose");
 const https = require("https");
 const { parse } = require("csv-parse");
-const { MONGODB_ENDPOINT } = require("../config.js");
-const ProMatch = require("../models/pro-game.js");
+const { MONGODB_ENDPOINT } = require("../src/config.js");
+const ProMatch = require("../src/models/pro-game.js");
 
-// Google Sheets ID for 2026 LoL esports data (exports as CSV)
-const GOOGLE_SHEETS_ID = "1NPTrBsHpoPoqofVOIl8B6P5r-NlpGjSy1Ij5ysUyRR8";
+// Google Drive file ID for 2026 LoL esports data from Oracle's Elixir
+const GOOGLE_DRIVE_FILE_ID = "1hnpbrUpBMS1TZI7IovfpKeZfWJH1Aptm";
 
-// URL to download CSV from Google Sheets
-const CSV_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEETS_ID}/export?format=csv`;
+// URL to download CSV from Google Drive
+const CSV_URL = `https://drive.google.com/uc?export=download&id=${GOOGLE_DRIVE_FILE_ID}`;
 
 // Configuration
 const YEAR = 2026;
@@ -28,7 +28,7 @@ function downloadCSV(url) {
       https
         .get(urlToFetch, (response) => {
           // Handle redirects
-          if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 307) {
+          if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
             console.log(`Redirecting to: ${response.headers.location}`);
             request(response.headers.location);
             return;
@@ -177,7 +177,7 @@ async function scrapeAndImport() {
   try {
     await connectDB();
 
-    // Download CSV from Google Sheets
+    // Download CSV from Google Drive
     const csvData = await downloadCSV(CSV_URL);
 
     console.log("Parsing CSV data...");
@@ -210,10 +210,6 @@ async function scrapeAndImport() {
       console.log("No matches to import. Check if CSV has correct format.");
       return;
     }
-
-    // Show sample match
-    console.log("\nSample match:", JSON.stringify(matches[0], null, 2));
-
     // Import in batches
     let imported = 0;
     let updated = 0;

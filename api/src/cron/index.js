@@ -2,6 +2,7 @@ const cron = require('node-cron');
 
 const { ENVIRONMENT } = require('../config');
 const getElo = require('./getElo');
+const scrapeOracleElixir = require('./scrapeOracleElixir');
 
 let running = {};
 
@@ -23,3 +24,4 @@ if (ENVIRONMENT !== 'production') return;
 
 console.log('Cron jobs initialized');
 cron.schedule('*/15 * * * *', () => run(getElo, 'getElo'));
+cron.schedule('0 6 * * *', () => run(scrapeOracleElixir, 'scrapeOracleElixir'));
