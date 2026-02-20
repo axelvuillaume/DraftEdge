@@ -49,6 +49,7 @@ app.use('/scrim-objectif', require('./controllers/scrim-objectif'));
 app.use('/scrim-objectif-result', require('./controllers/scrim-objectif-result'));
 app.use('/scrim-session', require('./controllers/scrim-session'));
 app.use('/enemy-team', require('./controllers/enemy-team'));
+app.use('/player', require('./controllers/player'));
 setupErrorHandler(app);
 require('./services/passport')(app);
 

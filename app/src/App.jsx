@@ -18,6 +18,7 @@ import api from "@/services/api"
 import StatsV2 from "@/scenes/statsV2"
 import ScrimHub from "@/scenes/scrim-hub"
 import { environment, SENTRY_URL, POSTHOG_API_KEY, POSTHOG_HOST } from "./config"
+import SoloQ from "@/scenes/soloQ"
 
 if (environment === "production") {
   Sentry.init({ dsn: SENTRY_URL, environment: "app" })
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="/statsV2" element={<StatsV2 />} />
           <Route path="/draft/*" element={<Draft />} />
           <Route path="/scrim-hub/*" element={<ScrimHub />} />
+          <Route path="/soloq-training" element={<SoloQ />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

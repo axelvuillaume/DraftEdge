@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Gamepad2, Shield, ImagePlus, Loader2, Upload, X, BarChart, FileText, Check, ChevronDown, Calendar, Target, Plus } from "lucide-react"
+import { LayoutDashboard, Gamepad2, Shield, ImagePlus, Loader2, Upload, X, BarChart, FileText, Check, ChevronDown, Calendar, Target, Plus, Zap } from "lucide-react"
 import useStore from "@/services/store"
 import api from "@/services/api"
 import { toast } from "react-hot-toast"
@@ -9,8 +9,9 @@ import Modal from "@/components/modal"
 const MENU = [
   { title: "Dashboard", to: "/", icon: LayoutDashboard },
   { title: "Stats", to: "/statsV2", icon: BarChart },
-  { title: "Draft", to: "/draft", icon: Target },
   { title: "Objectives Scrims", to: "/scrim-hub", icon: Calendar },
+  { title: "Draft", to: "/draft", icon: Target },
+  { title: "SoloQ", to: "/soloq-training", icon: Zap },
   { title: "Games", to: "/games", icon: Gamepad2 },
   { title: "My Team", to: "/team", icon: Shield }
 ]
