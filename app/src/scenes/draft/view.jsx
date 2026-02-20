@@ -153,7 +153,8 @@ const CHAMPIONS_BY_ROLE = {
     "Varus",
     "Vayne",
     "Xayah",
-    "Zeri"
+    "Zeri",
+    "Yunara"
   ],
   SUP: [
     "Alistar",
@@ -349,6 +350,7 @@ const ALL_CHAMPIONS = [
   "Yasuo",
   "Yone",
   "Yorick",
+  "Yunara",
   "Yuumi",
   "Zac",
   "Zed",
