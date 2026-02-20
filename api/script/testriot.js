@@ -1,8 +1,8 @@
-const { getGamesByPuuid } = require("../src/services/riotgames");
+const { getRankByPuuid } = require("../src/services/riotgames");
 
-const PUUID = "P_2HJd_8FvTM7F2xas5Y-aCKzksH0_vQp8Yszr4QkDUBqU6GxOr3ZxM0sJ6aOqqKwPYr-EWmm-d-Xg'";
+const PUUID = "QzrDRfNlrctoDwF7Pl1ieQcubgg-Ay4PwwqeRZQtIlwCFK3qdbTY3fJNW5jsvh8y2CnSOP_BCk0JyA";
 
 (async () => {
-  const games = await getGamesByPuuid(PUUID, 1);
-  console.log(games);
+  const rank = await getRankByPuuid(PUUID);
+  console.log(rank);
 })();

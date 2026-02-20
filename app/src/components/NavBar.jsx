@@ -6,12 +6,12 @@ import api from "@/services/api"
 import { toast } from "react-hot-toast"
 import Modal from "@/components/modal"
 
-const MENU = [
+const getMenu = user => [
   { title: "Dashboard", to: "/", icon: LayoutDashboard },
   { title: "Stats", to: "/statsV2", icon: BarChart },
   { title: "Objectives Scrims", to: "/scrim-hub", icon: Calendar },
   { title: "Draft", to: "/draft", icon: Target },
-  { title: "SoloQ", to: "/soloq-training", icon: Zap },
+  ...(user?.email === "axel@selego.co" ? [{ title: "SoloQ", to: "/soloq-training", icon: Zap }] : []),
   { title: "Games", to: "/games", icon: Gamepad2 },
   { title: "My Team", to: "/team", icon: Shield }
 ]
@@ -24,13 +24,15 @@ const Navbar = () => {
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false)
   const { user } = useStore()
 
+  const MENU = getMenu(user)
+
   useEffect(() => {
     const index = MENU.findIndex(e => {
       if (e.to === "/") return location.pathname === "/"
       return location.pathname.includes(e.to)
     })
     setSelected(index >= 0 ? index : 0)
-  }, [location])
+  }, [location, MENU.length])
 
   return (
     <div className="h-screen w-64 bg-slate-900 border-r border-slate-700/50 flex flex-col relative z-40">

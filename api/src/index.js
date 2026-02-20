@@ -50,8 +50,10 @@ app.use('/scrim-objectif-result', require('./controllers/scrim-objectif-result')
 app.use('/scrim-session', require('./controllers/scrim-session'));
 app.use('/enemy-team', require('./controllers/enemy-team'));
 app.use('/player', require('./controllers/player'));
+app.use('/soloq-snapshot', require('./controllers/soloQ-snapshot'));
 setupErrorHandler(app);
 require('./services/passport')(app);
+require('./cron');
 
 app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
