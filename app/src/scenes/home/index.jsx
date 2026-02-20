@@ -557,8 +557,8 @@ function WinRateByDuration({ games }) {
         <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
           {[100, 75, 50, 25, 0].map(val => (
             <div key={val} className="flex items-center gap-2 w-full">
-              <span className="text-[10px] text-slate-500 w-6 text-right">{val}%</span>
-              <div className="flex-1 border-t border-slate-700/30 border-dashed" />
+              <span className={`text-[10px] w-6 text-right ${val === 50 ? "text-slate-400 font-medium" : "text-slate-500"}`}>{val}%</span>
+              <div className={`flex-1 border-t border-dashed ${val === 50 ? "border-slate-500/60" : "border-slate-700/30"}`} />
             </div>
           ))}
         </div>
