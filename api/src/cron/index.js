@@ -1,0 +1,25 @@
+const cron = require('node-cron');
+
+const { ENVIRONMENT } = require('../config');
+const getElo = require('./getElo');
+
+let running = {};
+
+const run = async (fn, id) => {
+  try {
+    if (running[id]) return;
+    running[id] = true;
+    console.log(`Running cron job: ${id}`);
+    await fn();
+    console.log(`Completed cron job: ${id}`);
+  } catch (error) {
+    console.error(`Error in cron job ${id}:`, error);
+  } finally {
+    running[id] = false;
+  }
+};
+
+if (ENVIRONMENT !== 'production') return;
+
+console.log('Cron jobs initialized');
+cron.schedule('*/15 * * * *', () => run(getElo, 'getElo'));
