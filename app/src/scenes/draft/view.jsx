@@ -653,8 +653,8 @@ export default function View() {
   }, [blueBans, redBans, bluePicks, redPicks, scenarioName, autoSave])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
-      <div className="max-w-[1600px] mx-auto">
+    <div className="min-h-[calc(100vh-65px)] flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
+      <div className="max-w-[1600px] w-full mx-auto flex-1 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <input
@@ -714,16 +714,16 @@ export default function View() {
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-4">
+        <div className="flex-1 grid grid-cols-12 gap-4">
           {/* Left Panel - My Team Priority Picks */}
-          <div className="col-span-3 space-y-4">
+          <div className="col-span-3 flex flex-col gap-4">
             <PriorityPicksPanel title={`Most played - ${user?.team_name || "My Team"}`} data={myTeamMostPlayed} />
             <BestCombosPanel combos={myTeamCombos || []} />
           </div>
 
           {/* Center - Draft Board */}
-          <div className="col-span-6">
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
+          <div className="col-span-6 flex flex-col gap-4">
+            <div className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
               {/* Bans Row */}
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -816,14 +816,14 @@ export default function View() {
             </div>
 
             {/* Most Flexed Section - Outside the draft board */}
-            <div className="flex items-start gap-4 mt-4">
+            <div className="flex items-start gap-4">
               <MostFlexedPanel title={`My Team`} champions={myTeamFlexed} />
               <MostFlexedPanel title={`Pro`} champions={proFlexed} />
             </div>
           </div>
 
           {/* Right Panel - Enemy Team Priority Picks */}
-          <div className="col-span-3 space-y-4">
+          <div className="col-span-3 flex flex-col gap-4">
             <PriorityPicksPanel title={`Most played - Pro League`} data={enemyTeamMostPlayed} />
             <BestCombosPanel combos={enemyTeamCombos || []} />
           </div>
@@ -1041,7 +1041,7 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, sel
 
 function BestCombosPanel({ combos }) {
   return (
-    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
+    <div className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-4">
         <Zap className="w-4 h-4 text-emerald-500" />
         <h3 className="text-emerald-500 font-semibold text-sm">Most Played Combos</h3>

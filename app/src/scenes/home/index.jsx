@@ -83,12 +83,12 @@ export default function FutureHome() {
   const sideStats = winRateBySide()
 
   return (
-    <div className="min-h-[calc(100vh-65px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+    <div className="min-h-[calc(100vh-65px)] flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
       <Sheet isOpen={!!selectedBubble} onClose={() => setSelectedBubble(null)} title={selectedBubble?.title || "Details"} modal={false}>
         {selectedBubble && <BubbleDetailView bubble={selectedBubble} />}
       </Sheet>
 
-      <div className="max-w-[1800px] mx-auto space-y-4">
+      <div className="max-w-[1800px] w-full mx-auto flex-1 flex flex-col gap-4">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Games Played Card */}
@@ -139,11 +139,11 @@ export default function FutureHome() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4">
           <div className="lg:col-span-7">
             <PerformanceMindMap onNodeClick={setSelectedBubble} />
           </div>
-          <div className="lg:col-span-5 space-y-4">
+          <div className="lg:col-span-5 flex flex-col gap-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Elo Enemi Moyen Card */}
               <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 flex flex-col items-center">
@@ -547,12 +547,12 @@ function WinRateByDuration({ games }) {
   const stats = calculateStats()
 
   return (
-    <div className="bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4">
+    <div className="flex-1 bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-white uppercase tracking-wider opacity-70">Win Rate / Duration</h3>
       </div>
 
-      <div className="relative h-40 w-full mt-2">
+      <div className="relative flex-1 min-h-[10rem] w-full mt-2">
         {/* Y-axis labels & Grid lines */}
         <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
           {[100, 75, 50, 25, 0].map(val => (
