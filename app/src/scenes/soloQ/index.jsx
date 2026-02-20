@@ -9,6 +9,7 @@ const TIER_ORDER = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "
 const DIVISION_ORDER = { IV: 0, III: 1, II: 2, I: 3 }
 const PLAYER_COLORS = ["#f59e0b", "#3b82f6", "#10b981", "#ef4444", "#a855f7"]
 const ROLE_LABELS = { top: "Top", jungle: "Jungle", mid: "Mid", bottom: "ADC", support: "Support" }
+const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
 
 const RANK_ICONS = new Set(["challenger", "grandmaster", "master", "diamond", "platinum"])
 
@@ -88,7 +89,7 @@ export default function SoloQ() {
     fetchData()
   }, [])
 
-  const connectedPlayers = players.filter(p => p.puuid)
+  const connectedPlayers = players.filter(p => p.puuid).sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
 
   const chartData = (() => {
     if (!snapshots.length) return []
