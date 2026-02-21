@@ -265,7 +265,7 @@ function SoloQOverviewTab({ player, soloqOverall, mostPlayed }) {
           </h2>
 
           <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl overflow-hidden">
-            <div className="grid grid-cols-[1fr_70px_70px_70px_80px_80px] items-center px-4 py-2 border-b border-slate-700/30 text-xs text-slate-500 uppercase tracking-wider">
+            <div className="grid grid-cols-[1fr_70px_70px_70px_80px_80px] items-center px-4 py-2 border-b border-slate-700/30 text-xs text-slate-500 uppercase tracking-wider sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10">
               <span>Champion</span>
               <span className="text-center">Games</span>
               <span className="text-center">WR%</span>
@@ -273,6 +273,7 @@ function SoloQOverviewTab({ player, soloqOverall, mostPlayed }) {
               <span className="text-center">CS/m</span>
               <span className="text-center">DMG/m</span>
             </div>
+            <div className="max-h-[400px] overflow-y-auto">
 
             {mostPlayed.map(champ => {
               const wrColor = champ.winRate >= 60 ? "text-emerald-400" : champ.winRate >= 50 ? "text-amber-300" : "text-red-400"
@@ -293,6 +294,7 @@ function SoloQOverviewTab({ player, soloqOverall, mostPlayed }) {
                 </div>
               )
             })}
+            </div>
           </div>
         </div>
       )}

@@ -39,7 +39,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
 
     if (req.body.team_id) query.team_id = req.body.team_id;
     if (req.body.player_id) query.player_id = req.body.player_id;
-    const limit = req.body.limit || 50;
+    const limit = req.body.limit || 5000;
     const skip = req.body.offset || 0;
     const total = await SoloQMatch.countDocuments(query);
     const data = await SoloQMatch.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
@@ -265,11 +265,10 @@ router.post('/compare', passport.authenticate(['admin', 'user'], { session: fals
     // Overall SoloQ aggregate
     const soloqOverall = aggregateSoloQ(soloqMatches);
 
-    // Most played champions (sorted by games desc, top 8)
+    // Most played champions (sorted by games desc)
     const mostPlayed = Object.entries(soloqByChamp)
       .map(([name, matches]) => ({ name, ...aggregateSoloQ(matches) }))
-      .sort((a, b) => b.games - a.games)
-      .slice(0, 8);
+      .sort((a, b) => b.games - a.games);
 
     return res.status(200).send({
       ok: true,
