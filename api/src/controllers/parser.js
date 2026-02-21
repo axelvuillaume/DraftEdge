@@ -4,6 +4,7 @@ const multer = require('multer');
 const https = require('https');
 const WebSocket = require('ws');
 const Game = require('../models/game');
+const Team = require('../models/team');
 const PlayerStats = require('../models/playerstats');
 const AIFeedBack = require('../models/AIFeedBack');
 const CONFIG = require('../config');
@@ -71,11 +72,11 @@ async function fetchRiotRank(puuid, platform = 'euw1') {
   }
 }
 
-async function enrichPlayerWithRiotData(player, index) {
+async function enrichPlayerWithRiotData(player, index, platform = 'euw1') {
   // Délai pour éviter rate limit (100ms entre chaque joueur)
   await new Promise((resolve) => setTimeout(resolve, index * 100));
 
-  const puuid = await fetchRiotPuuid(player.summoner_name, player.riot_tag);
+  const puuid = await fetchRiotPuuid(player.summoner_name, player.riot_tag, platform);
 
   if (!puuid) {
     return { ...player, PUUID: null };
@@ -83,7 +84,7 @@ async function enrichPlayerWithRiotData(player, index) {
 
   await new Promise((resolve) => setTimeout(resolve, 50));
 
-  const rankData = await fetchRiotRank(puuid);
+  const rankData = await fetchRiotRank(puuid, platform);
 
   return { ...player, PUUID: puuid, ...(rankData || {}) };
 }
@@ -830,10 +831,17 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     // Sauvegarder la Game
     const savedGame = await Game.create(data.game);
 
-    // Enrichir les joueurs avec l'API Riot (PUUID + Rank)
-    console.log('Fetching Riot data for', data.players.length, 'players...');
+    // Récupérer la région de la team pour les appels Riot API
+    let platform = 'euw1';
+    if (team_id) {
+      const teamDoc = await Team.findById(team_id);
+      if (teamDoc?.region) platform = teamDoc.region;
+    }
 
-    const enrichedPlayers = await Promise.all(data.players.map((player, index) => enrichPlayerWithRiotData(player, index)));
+    // Enrichir les joueurs avec l'API Riot (PUUID + Rank)
+    console.log('Fetching Riot data for', data.players.length, 'players on', platform, '...');
+
+    const enrichedPlayers = await Promise.all(data.players.map((player, index) => enrichPlayerWithRiotData(player, index, platform)));
 
     // Ajouter les infos team/game
     const playersToSave = enrichedPlayers.map((p) => {

@@ -30,8 +30,18 @@ const SERVERS = [
 export default function Team() {
   const { user } = useStore()
   const [team, setTeam] = useState([])
+  const [teamData, setTeamData] = useState(null)
   const [roster, setRoster] = useState({})
   const [saving, setSaving] = useState(null)
+
+  const fetchTeamData = async () => {
+    try {
+      const { ok, data } = await api.get(`/team/${user?.team_id}`)
+      if (ok) setTeamData(data)
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
   const fetchTeam = async () => {
     try {
@@ -51,8 +61,8 @@ export default function Team() {
       ROLES.forEach(role => {
         const existing = data.find(p => p.role === role)
         initial[role] = existing
-          ? { _id: existing._id, game_name: existing.game_name || "", tag_line: existing.tag_line || "", region: existing.region || "euw1", connected_at: existing.connected_at }
-          : { game_name: "", tag_line: "", region: "euw1" }
+          ? { _id: existing._id, game_name: existing.game_name || "", tag_line: existing.tag_line || "", connected_at: existing.connected_at }
+          : { game_name: "", tag_line: "" }
       })
       setRoster(initial)
     } catch (error) {
@@ -61,21 +71,39 @@ export default function Team() {
   }
 
   useEffect(() => {
+    fetchTeamData()
     fetchTeam()
     fetchPlayers()
   }, [])
 
+  const handleRegionChange = async (newRegion) => {
+    try {
+      const { ok } = await api.put(`/team/${user?.team_id}`, { region: newRegion })
+      if (!ok) return toast.error("Failed to update region")
+      setTeamData(prev => ({ ...prev, region: newRegion }))
+
+      // Mettre à jour tous les players existants du roster
+      const playerIds = ROLES.map(role => roster[role]?._id).filter(Boolean)
+      await Promise.all(playerIds.map(id => api.put(`/player/${id}`, { region: newRegion })))
+
+      toast.success("Region updated")
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
   const handleSaveRole = async role => {
-    const { game_name, tag_line, region, _id } = roster[role] || {}
+    const { game_name, tag_line, _id } = roster[role] || {}
     if (!game_name?.trim() || !tag_line?.trim()) return toast.error("Summoner name and tag are required")
+    const region = teamData?.region || "euw1"
     setSaving(role)
     try {
       if (_id) {
-        const { ok, data, code } = await api.put(`/player/${_id}`, { game_name: game_name.trim(), tag_line: tag_line.trim(), region: region || "euw1", role })
+        const { ok, data, code } = await api.put(`/player/${_id}`, { game_name: game_name.trim(), tag_line: tag_line.trim(), region, role })
         if (!ok) return toast.error(code)
         setRoster(prev => ({ ...prev, [role]: { ...prev[role], _id: data._id, connected_at: data.connected_at } }))
       } else {
-        const { ok, data, code } = await api.post("/player", { game_name: game_name.trim(), tag_line: tag_line.trim(), region: region || "euw1", role })
+        const { ok, data, code } = await api.post("/player", { game_name: game_name.trim(), tag_line: tag_line.trim(), region, role })
         if (!ok) return toast.error(code)
         setRoster(prev => ({ ...prev, [role]: { ...prev[role], _id: data._id, connected_at: data.connected_at } }))
       }
@@ -90,13 +118,13 @@ export default function Team() {
   const handleDeleteRole = async role => {
     const { _id } = roster[role] || {}
     if (!_id) {
-      setRoster(prev => ({ ...prev, [role]: { game_name: "", tag_line: "", region: "euw1" } }))
+      setRoster(prev => ({ ...prev, [role]: { game_name: "", tag_line: "" } }))
       return
     }
     try {
       const { ok, code } = await api.delete(`/player/${_id}`)
       if (!ok) return toast.error(code)
-      setRoster(prev => ({ ...prev, [role]: { game_name: "", tag_line: "", region: "euw1" } }))
+      setRoster(prev => ({ ...prev, [role]: { game_name: "", tag_line: "" } }))
       toast.success(`${ROLE_LABELS[role]} removed`)
     } catch (error) {
       toast.error(error.message)
@@ -116,23 +144,28 @@ export default function Team() {
 
         {/* Active Roster */}
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-700/50">
-            <h2 className="text-white font-semibold">Active Roster</h2>
-            <p className="text-slate-400 text-sm mt-0.5">Set up your players Riot IDs to track their SoloQ.</p>
+          <div className="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
+            <div>
+              <h2 className="text-white font-semibold">Active Roster</h2>
+              <p className="text-slate-400 text-sm mt-0.5">Set up your players Riot IDs to track their SoloQ.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm">Region</span>
+              <select
+                value={teamData?.region || "euw1"}
+                onChange={e => handleRegionChange(e.target.value)}
+                className="w-24 px-2 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none transition-all text-sm appearance-none cursor-pointer"
+              >
+                {SERVERS.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="divide-y divide-slate-700/30">
             {ROLES.map(role => (
               <div key={role} className="flex items-center gap-4 px-6 py-3">
                 <span className="text-amber-400 font-semibold text-sm uppercase tracking-wider w-20">{ROLE_LABELS[role]}</span>
-                <select
-                  value={roster[role]?.region || "euw1"}
-                  onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], region: e.target.value } }))}
-                  className="w-24 px-2 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none transition-all text-sm appearance-none cursor-pointer"
-                >
-                  {SERVERS.map(s => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
                 <input
                   type="text"
                   value={roster[role]?.game_name || ""}

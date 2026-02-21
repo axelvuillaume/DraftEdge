@@ -5,6 +5,7 @@ const MODELNAME = 'team';
 const Schema = new mongoose.Schema(
   {
     name: { type: String, required: true },
+    region: { type: String, default: 'euw1' },
     prio_pick: [{ type: String }],
     prio_ban: [{ type: String }],
     prio_flex: [{ type: String }],
