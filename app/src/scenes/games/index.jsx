@@ -5,57 +5,14 @@ import api from "@/services/api"
 import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target, Folder, Plus, Check, FolderInput, X, Pencil, ChevronDown, Shield } from "lucide-react"
 import Modal from "@/components/modal"
 import useStore from "@/services/store"
-import { getChampionIcon, getItemIcon, getSummonerSpellIcon, getRuneIcon } from "@/utils"
-
-const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
+import { getChampionIcon, getItemIcon, getSummonerSpellIcon, getRuneIcon, ROLES, ROLE_LABELS, ROLE_ICON_COLORS, TIER_SHORT, TIER_COLOR } from "@/utils"
 
 const sortPlayersByRole = players => {
   return [...players].sort((a, b) => {
-    const aIndex = ROLE_ORDER.indexOf(a.role?.toLowerCase())
-    const bIndex = ROLE_ORDER.indexOf(b.role?.toLowerCase())
+    const aIndex = ROLES.indexOf(a.role?.toLowerCase())
+    const bIndex = ROLES.indexOf(b.role?.toLowerCase())
     return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex)
   })
-}
-
-const roleLabels = {
-  top: "Top",
-  jungle: "Jungle",
-  mid: "Mid",
-  bottom: "ADC",
-  support: "Support"
-}
-
-const roleIconColors = {
-  top: "text-orange-400",
-  jungle: "text-emerald-400",
-  mid: "text-blue-400",
-  bottom: "text-red-400",
-  support: "text-cyan-400"
-}
-
-const TIER_SHORT = {
-  IRON: "Iron",
-  BRONZE: "Bronze",
-  SILVER: "Silver",
-  GOLD: "Gold",
-  PLATINUM: "Plat",
-  EMERALD: "Emerald",
-  DIAMOND: "Dia",
-  MASTER: "Master",
-  GRANDMASTER: "GM",
-  CHALLENGER: "Chall"
-}
-const TIER_COLOR = {
-  IRON: "text-slate-400",
-  BRONZE: "text-amber-700",
-  SILVER: "text-slate-300",
-  GOLD: "text-yellow-400",
-  PLATINUM: "text-cyan-300",
-  EMERALD: "text-emerald-400",
-  DIAMOND: "text-blue-400",
-  MASTER: "text-purple-400",
-  GRANDMASTER: "text-red-400",
-  CHALLENGER: "text-amber-300"
 }
 
 const formatRank = rank => {
@@ -533,7 +490,7 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
           {/* Team Champions */}
           {game.champions && game.champions[game.team_side] && (
             <div className="hidden sm:flex items-center gap-1">
-              {ROLE_ORDER.map(role => {
+              {ROLES.map(role => {
                 const champion = game.champions[game.team_side]?.[role]
                 return champion ? (
                   <div key={role} className="w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 border border-slate-600/50">
@@ -812,7 +769,7 @@ function PlayerRow({ player, teamSide }) {
                 </span>
               )}
             </div>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${roleIconColors[player.role]} bg-slate-700/50 flex-shrink-0`}>{roleLabels[player.role]}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded ${ROLE_ICON_COLORS[player.role]} bg-slate-700/50 flex-shrink-0`}>{ROLE_LABELS[player.role]}</span>
           </div>
         </div>
       </div>
@@ -1116,7 +1073,7 @@ function AdvancedTab({ playerStats, game }) {
               ) : (
                 <span className="text-white text-xs font-medium truncate">{player.summoner_name}</span>
               )}
-              <span className={`text-[9px] px-1 py-px rounded ${roleIconColors[player.role]} bg-slate-700/50`}>{roleLabels[player.role]}</span>
+              <span className={`text-[9px] px-1 py-px rounded ${ROLE_ICON_COLORS[player.role]} bg-slate-700/50`}>{ROLE_LABELS[player.role]}</span>
               <a
                 href={`https://dpm.lol/${player.summoner_name}-${player.riot_tag}`}
                 target="_blank"

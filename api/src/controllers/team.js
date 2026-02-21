@@ -4,6 +4,7 @@ const passport = require('passport');
 const Team = require('../models/team');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
+const Player = require('../models/player');
 
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
@@ -61,6 +62,18 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
     const team = await Team.findByIdAndDelete(req.params.id);
     if (!team) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
 
+    return res.status(200).send({ ok: true });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.put('/:id/region', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team = await Team.findByIdAndUpdate(req.params.id, { region: req.body.region }, { new: true });
+    if (!team) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+    await Player.updateMany({ team_id: req.params.id }, { region: req.body.region });
     return res.status(200).send({ ok: true });
   } catch (error) {
     capture(error);

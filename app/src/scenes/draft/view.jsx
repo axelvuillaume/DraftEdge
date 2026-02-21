@@ -4,7 +4,7 @@ import { toast } from "react-hot-toast"
 import { RotateCcw, Zap, X, Search, Star, Shuffle } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
-import { getChampionIcon } from "@/utils"
+import { getChampionIcon, DRAFT_ROLES, ROLE_ICONS, POSITION_LABELS } from "@/utils"
 
 // Champions par rôle (pour la modal)
 const CHAMPIONS_BY_ROLE = {
@@ -361,16 +361,6 @@ const ALL_CHAMPIONS = [
   "Zyra",
   "Zaahen"
 ]
-
-const ROLE_ICONS = {
-  TOP: "/roles/top.png",
-  JGL: "/roles/jungle.png",
-  MID: "/roles/mid.png",
-  ADC: "/roles/bottom.png",
-  SUP: "/roles/support.png"
-}
-
-const POSITION_LABELS = ["First", "Second", "Third", "Fourth", "Fifth"]
 
 export default function View() {
   const { id } = useParams()
@@ -1139,7 +1129,6 @@ function ChampionModal({ modalType, searchQuery, setSearchQuery, filteredChampio
 
   const displayedChampions = getFilteredChampions()
 
-  const roles = ["TOP", "JGL", "MID", "ADC", "SUP"]
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={closeModal}>
@@ -1170,7 +1159,7 @@ function ChampionModal({ modalType, searchQuery, setSearchQuery, filteredChampio
               />
             </div>
             <div className="flex items-center gap-1">
-              {roles.map(role => (
+              {DRAFT_ROLES.map(role => (
                 <button
                   key={role}
                   onClick={() => {

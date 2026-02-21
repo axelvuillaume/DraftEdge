@@ -243,16 +243,20 @@ router.put('/:id/draft', passport.authenticate(['admin', 'user'], { session: fal
 
     const draft = source === 'drafter' ? await fetchFromDrafter(url) : await fetchFromDawe(extractDraftId(url));
 
-    const game = await Game.findByIdAndUpdate(req.params.id, {
-      bluePicks: draft.bluePicks,
-      redPicks: draft.redPicks,
-      blueBans: draft.blueBans,
-      redBans: draft.redBans,
-      fearless: draft.fearless || false,
-      fearlessRestricted: draft.fearlessRestricted,
-      source: source,
-      source_url: url,
-    }, { new: true });
+    const game = await Game.findByIdAndUpdate(
+      req.params.id,
+      {
+        bluePicks: draft.bluePicks,
+        redPicks: draft.redPicks,
+        blueBans: draft.blueBans,
+        redBans: draft.redBans,
+        fearless: draft.fearless || false,
+        fearlessRestricted: draft.fearlessRestricted,
+        source: source,
+        source_url: url,
+      },
+      { new: true },
+    );
 
     if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
     return res.status(200).send({ ok: true, data: game });

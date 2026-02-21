@@ -3,29 +3,7 @@ import { toast } from "react-hot-toast"
 import { UserPlus, Save, Trash2, Loader2, Check } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
-
-const ROLES = ["top", "jungle", "mid", "bottom", "support"]
-const ROLE_LABELS = { top: "Top", jungle: "Jungle", mid: "Mid", bottom: "ADC", support: "Support" }
-
-const SERVERS = [
-  { value: "euw1", label: "EUW" },
-  { value: "eun1", label: "EUNE" },
-  { value: "na1", label: "NA" },
-  { value: "kr", label: "KR" },
-  { value: "br1", label: "BR" },
-  { value: "jp1", label: "JP" },
-  { value: "la1", label: "LAN" },
-  { value: "la2", label: "LAS" },
-  { value: "oc1", label: "OCE" },
-  { value: "tr1", label: "TR" },
-  { value: "ru", label: "RU" },
-  { value: "ph2", label: "PH" },
-  { value: "sg2", label: "SG" },
-  { value: "th2", label: "TH" },
-  { value: "tw2", label: "TW" },
-  { value: "vn2", label: "VN" },
-  { value: "me1", label: "ME" },
-]
+import { ROLES, ROLE_LABELS, SERVERS } from "@/utils"
 
 export default function Team() {
   const { user } = useStore()
@@ -36,37 +14,38 @@ export default function Team() {
 
   const fetchTeamData = async () => {
     try {
-      const { ok, data } = await api.get(`/team/${user?.team_id}`)
-      if (ok) setTeamData(data)
+      const { ok, data, code } = await api.get(`/team/${user?.team_id}`)
+      if (!ok) return toast.error(code || "Failed to fetch team data")
+      setTeamData(data)
     } catch (error) {
-      console.error(error)
+      toast.error(error.message || "Failed to fetch team data")
     }
   }
 
   const fetchTeam = async () => {
     try {
       const { ok, data, code } = await api.post("/user/search", { team_id: user?.team_id })
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to fetch team members")
       setTeam(data)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.message || "Failed to fetch team members")
     }
   }
 
   const fetchPlayers = async () => {
     try {
-      const { ok, data } = await api.post("/player/search", { team_id: user?.team_id })
-      if (!ok) return
+      const { ok, data, code } = await api.post("/player/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code || "Failed to fetch players")
       const initial = {}
       ROLES.forEach(role => {
         const existing = data.find(p => p.role === role)
         initial[role] = existing
-          ? { _id: existing._id, game_name: existing.game_name || "", tag_line: existing.tag_line || "", connected_at: existing.connected_at }
-          : { game_name: "", tag_line: "" }
+          ? { _id: existing._id, game_name: existing.game_name || "", tag_line: existing.tag_line || "", connected_at: existing.connected_at, region: existing.region }
+          : { game_name: "", tag_line: "", region: "" }
       })
       setRoster(initial)
     } catch (error) {
-      console.error(error)
+      toast.error(error.message || "Failed to fetch players")
     }
   }
 
@@ -76,19 +55,14 @@ export default function Team() {
     fetchPlayers()
   }, [])
 
-  const handleRegionChange = async (newRegion) => {
+  const handleRegionChange = async newRegion => {
     try {
-      const { ok } = await api.put(`/team/${user?.team_id}`, { region: newRegion })
-      if (!ok) return toast.error("Failed to update region")
+      const { ok, code } = await api.put(`/team/${user?.team_id}/region`, { region: newRegion })
+      if (!ok) return toast.error(code || "Failed to update region")
       setTeamData(prev => ({ ...prev, region: newRegion }))
-
-      // Mettre à jour tous les players existants du roster
-      const playerIds = ROLES.map(role => roster[role]?._id).filter(Boolean)
-      await Promise.all(playerIds.map(id => api.put(`/player/${id}`, { region: newRegion })))
-
       toast.success("Region updated")
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.message || "Failed to update region")
     }
   }
 
@@ -116,18 +90,13 @@ export default function Team() {
   }
 
   const handleDeleteRole = async role => {
-    const { _id } = roster[role] || {}
-    if (!_id) {
-      setRoster(prev => ({ ...prev, [role]: { game_name: "", tag_line: "" } }))
-      return
-    }
     try {
-      const { ok, code } = await api.delete(`/player/${_id}`)
-      if (!ok) return toast.error(code)
+      const { ok, code } = await api.delete(`/player/${roster[role]?._id}`)
+      if (!ok) return toast.error(code || "Failed to delete player")
       setRoster(prev => ({ ...prev, [role]: { game_name: "", tag_line: "" } }))
       toast.success(`${ROLE_LABELS[role]} removed`)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.message || "Failed to delete player")
     }
   }
 
@@ -157,7 +126,9 @@ export default function Team() {
                 className="w-24 px-2 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none transition-all text-sm appearance-none cursor-pointer"
               >
                 {SERVERS.map(s => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
                 ))}
               </select>
             </div>

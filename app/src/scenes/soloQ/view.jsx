@@ -3,37 +3,14 @@ import { useParams, Link } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import { Loader2, ArrowLeft, Swords, TrendingUp, TrendingDown, Minus, Sparkles, Check, ChevronDown, ChevronUp, X, Plus, Info, BarChart3, Trophy } from "lucide-react"
 import api from "@/services/api"
-import { getChampionIcon } from "@/utils"
+import { getChampionIcon, TIER_COLORS, RANK_ICON_TIERS, ROLE_LABELS, CHAMPION_TIERS, TIER_STYLES, TIER_ORDER } from "@/utils"
 
 // ==================== CONSTANTS ====================
 
-const TIER_COLORS = {
-  IRON: "#6b7280",
-  BRONZE: "#b45309",
-  SILVER: "#9ca3af",
-  GOLD: "#eab308",
-  PLATINUM: "#06b6d4",
-  EMERALD: "#10b981",
-  DIAMOND: "#6366f1",
-  MASTER: "#a855f7",
-  GRANDMASTER: "#ef4444",
-  CHALLENGER: "#f59e0b"
-}
-
-const RANK_ICONS = new Set(["challenger", "grandmaster", "master", "diamond", "platinum"])
 function getRankIcon(tier) {
   if (!tier) return null
   const key = tier.toLowerCase()
-  return RANK_ICONS.has(key) ? `/rank/${key}.png` : null
-}
-
-const ROLE_LABELS = { top: "Top", jungle: "Jungle", mid: "Mid", bottom: "ADC", support: "Support" }
-
-const TIERS = ["S", "A", "B"]
-const TIER_STYLES = {
-  S: { bg: "bg-amber-500/15", border: "border-amber-500/40", text: "text-amber-400" },
-  A: { bg: "bg-violet-500/15", border: "border-violet-500/40", text: "text-violet-400" },
-  B: { bg: "bg-slate-500/15", border: "border-slate-500/40", text: "text-slate-400" }
+  return RANK_ICON_TIERS.has(tier.toUpperCase()) ? `/rank/${key}.png` : null
 }
 
 const METRICS = [
@@ -45,8 +22,6 @@ const METRICS = [
   { key: "goldPerMin", label: "Gold/m", format: v => v.toLocaleString(), higherBetter: true },
   { key: "visionScorePerMin", label: "VS/m", format: v => v.toFixed(2), higherBetter: true }
 ]
-
-const TIER_ORDER = { S: 3, A: 2, B: 1 }
 
 // ==================== SMALL COMPONENTS ====================
 
@@ -150,7 +125,7 @@ function TierListSection({ title, icon, tooltip, champions, allChampions, isManu
       </div>
 
       <div className="p-3 space-y-2">
-        {TIERS.map(tier => {
+        {CHAMPION_TIERS.map(tier => {
           const style = TIER_STYLES[tier]
           const champsInTier = grouped[tier] || []
 
