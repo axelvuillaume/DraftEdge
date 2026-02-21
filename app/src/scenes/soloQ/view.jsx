@@ -619,14 +619,19 @@ export default function View() {
             {/* Champion Stats Table */}
             {champions.length > 0 && (
               <div className="space-y-3">
-                <h2 className="text-white font-semibold text-sm flex items-center gap-2">
-                  <Swords className="w-4 h-4 text-slate-400" />
-                  Champion Details
-                  <span className="text-slate-500 font-normal">({champions.length})</span>
-                </h2>
+                <div>
+                  <h2 className="text-white font-semibold text-sm flex items-center gap-2">
+                    <Swords className="w-4 h-4 text-slate-400" />
+                    Champion Details
+                    <span className="text-slate-500 font-normal">({champions.length})</span>
+                  </h2>
+                  <p className="text-slate-500 text-xs mt-1 ml-6">
+                    Comparing <span className="text-violet-400">SoloQ</span> vs <span className="text-amber-400">Team</span> stats per champion — arrows indicate whether the player performs better or worse in team games.
+                  </p>
+                </div>
 
                 <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-[180px_50px_60px_repeat(6,1fr)_30px] items-center px-4 py-2 border-b border-slate-700/30 text-xs text-slate-500 uppercase tracking-wider">
+                  <div className="grid grid-cols-[180px_50px_60px_repeat(6,1fr)_50px] items-center px-4 py-2 border-b border-slate-700/30 text-xs text-slate-500 uppercase tracking-wider">
                     <span>Champion</span>
                     <span className="text-center">Tier</span>
                     {METRICS.map(m => (
@@ -634,14 +639,14 @@ export default function View() {
                         {m.label}
                       </span>
                     ))}
-                    <span />
+                    <span className="text-center">Source</span>
                   </div>
 
                   {champions.map(champ => {
                     const manualTier = poolMap[champ.name]
                     return (
                       <div key={champ.name} className="border-b border-slate-700/20 last:border-b-0 hover:bg-slate-700/10 transition-colors">
-                        <div className="grid grid-cols-[180px_50px_60px_repeat(6,1fr)_30px] items-center px-4 py-2">
+                        <div className="grid grid-cols-[180px_50px_60px_repeat(6,1fr)_50px] items-center px-4 py-2">
                           <div className="flex items-center gap-2">
                             <img src={getChampionIcon(champ.name)} alt={champ.name} className="w-8 h-8 rounded-lg border border-slate-700/50" />
                             <span className="text-white text-sm font-medium">{champ.name}</span>
@@ -662,11 +667,11 @@ export default function View() {
                             </div>
                           ))}
                           <div className="flex items-center justify-center">
-                            <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                            <span className="text-violet-400 text-[10px] font-semibold uppercase tracking-wide">SoloQ</span>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-[180px_50px_60px_repeat(6,1fr)_30px] items-center px-4 pb-2">
+                        <div className="grid grid-cols-[180px_50px_60px_repeat(6,1fr)_50px] items-center px-4 pb-2">
                           <div />
                           <div className="flex items-center justify-center">{manualTier && <TierBadge tier={manualTier} small />}</div>
 
@@ -683,7 +688,7 @@ export default function View() {
                             </div>
                           ))}
                           <div className="flex items-center justify-center">
-                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            <span className="text-amber-400 text-[10px] font-semibold uppercase tracking-wide">Team</span>
                           </div>
                         </div>
                       </div>
