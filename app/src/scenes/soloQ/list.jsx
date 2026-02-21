@@ -105,11 +105,17 @@ export default function SoloQ() {
   })()
 
   const getPlayerLPChange = player => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const playerSnaps = snapshots.filter(s => s.player_id === player._id).sort((a, b) => new Date(a.fetched_at || a.createdAt) - new Date(b.fetched_at || b.createdAt))
     if (playerSnaps.length < 2) return 0
-    const first = rankToLP(playerSnaps[0].tier, playerSnaps[0].rank, playerSnaps[0].league_points)
-    const last = rankToLP(playerSnaps[playerSnaps.length - 1].tier, playerSnaps[playerSnaps.length - 1].rank, playerSnaps[playerSnaps.length - 1].league_points)
-    return last - first
+    // Find the last snapshot before today (or the first of today) as baseline
+    const todaySnaps = playerSnaps.filter(s => new Date(s.fetched_at || s.createdAt) >= today)
+    const baseline = todaySnaps.length > 0 ? todaySnaps[0] : playerSnaps[playerSnaps.length - 1]
+    const last = playerSnaps[playerSnaps.length - 1]
+    const baselineLP = rankToLP(baseline.tier, baseline.rank, baseline.league_points)
+    const lastLP = rankToLP(last.tier, last.rank, last.league_points)
+    return lastLP - baselineLP
   }
 
   if (loading) {
@@ -230,12 +236,15 @@ export default function SoloQ() {
                   )}
                   {/* LP Change */}
                   {lpChange !== 0 && (
-                    <div className={`flex items-center gap-1 text-xs font-medium ${lpChange > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                      {lpChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                      <span>
-                        {lpChange > 0 ? "+" : ""}
-                        {lpChange} LP
-                      </span>
+                    <div className="flex flex-col items-center">
+                      <div className={`flex items-center gap-1 text-xs font-medium ${lpChange > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {lpChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        <span>
+                          {lpChange > 0 ? "+" : ""}
+                          {lpChange} LP
+                        </span>
+                      </div>
+                      <span className="text-slate-600 text-[10px]">aujourd'hui</span>
                     </div>
                   )}
                   {/* Last Updated */}
