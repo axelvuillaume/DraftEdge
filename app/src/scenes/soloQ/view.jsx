@@ -17,7 +17,7 @@ const TIER_COLORS = {
   DIAMOND: "#6366f1",
   MASTER: "#a855f7",
   GRANDMASTER: "#ef4444",
-  CHALLENGER: "#f59e0b",
+  CHALLENGER: "#f59e0b"
 }
 
 const RANK_ICONS = new Set(["challenger", "grandmaster", "master", "diamond", "platinum"])
@@ -33,17 +33,17 @@ const TIERS = ["S", "A", "B"]
 const TIER_STYLES = {
   S: { bg: "bg-amber-500/15", border: "border-amber-500/40", text: "text-amber-400" },
   A: { bg: "bg-violet-500/15", border: "border-violet-500/40", text: "text-violet-400" },
-  B: { bg: "bg-slate-500/15", border: "border-slate-500/40", text: "text-slate-400" },
+  B: { bg: "bg-slate-500/15", border: "border-slate-500/40", text: "text-slate-400" }
 }
 
 const METRICS = [
-  { key: "games", label: "Games", format: (v) => v, noCompare: true },
-  { key: "winRate", label: "WR%", format: (v) => `${v}%`, higherBetter: true },
-  { key: "kda", label: "KDA", format: (v) => v.toFixed(1), higherBetter: true },
-  { key: "csPerMin", label: "CS/m", format: (v) => v.toFixed(1), higherBetter: true },
-  { key: "dmgPerMin", label: "DMG/m", format: (v) => v.toLocaleString(), higherBetter: true },
-  { key: "goldPerMin", label: "Gold/m", format: (v) => v.toLocaleString(), higherBetter: true },
-  { key: "visionScorePerMin", label: "VS/m", format: (v) => v.toFixed(2), higherBetter: true },
+  { key: "games", label: "Games", format: v => v, noCompare: true },
+  { key: "winRate", label: "WR%", format: v => `${v}%`, higherBetter: true },
+  { key: "kda", label: "KDA", format: v => v.toFixed(1), higherBetter: true },
+  { key: "csPerMin", label: "CS/m", format: v => v.toFixed(1), higherBetter: true },
+  { key: "dmgPerMin", label: "DMG/m", format: v => v.toLocaleString(), higherBetter: true },
+  { key: "goldPerMin", label: "Gold/m", format: v => v.toLocaleString(), higherBetter: true },
+  { key: "visionScorePerMin", label: "VS/m", format: v => v.toFixed(2), higherBetter: true }
 ]
 
 const TIER_ORDER = { S: 3, A: 2, B: 1 }
@@ -62,11 +62,7 @@ function TierBadge({ tier, small }) {
   if (!tier) return null
   const style = TIER_STYLES[tier]
   if (!style) return null
-  return (
-    <span className={`${style.bg} ${style.border} ${style.text} border font-bold rounded ${small ? "text-[10px] px-1 py-0.5" : "text-xs px-1.5 py-0.5"}`}>
-      {tier}
-    </span>
-  )
+  return <span className={`${style.bg} ${style.border} ${style.text} border font-bold rounded ${small ? "text-[10px] px-1 py-0.5" : "text-xs px-1.5 py-0.5"}`}>{tier}</span>
 }
 
 function MatchIndicator({ manual, auto }) {
@@ -97,10 +93,7 @@ function ChampionChip({ name, matchClass, matchLabel, matchIndicator, isManual, 
         <img src={getChampionIcon(name)} alt={name} className="w-9 h-9 rounded-lg border border-slate-600/50" />
         {matchIndicator}
         {isManual && (
-          <button
-            onClick={() => onRemove(name)}
-            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500/80 rounded-full items-center justify-center hidden group-hover:flex"
-          >
+          <button onClick={() => onRemove(name)} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500/80 rounded-full items-center justify-center hidden group-hover:flex">
             <X className="w-2.5 h-2.5 text-white" />
           </button>
         )}
@@ -121,8 +114,8 @@ function TierListSection({ title, icon, tooltip, champions, allChampions, isManu
     if (grouped[champ.tier]) grouped[champ.tier].push(champ)
   }
 
-  const assignedNames = new Set(champions.map((c) => c.name))
-  const unassigned = allChampions.filter((c) => !assignedNames.has(c))
+  const assignedNames = new Set(champions.map(c => c.name))
+  const unassigned = allChampions.filter(c => !assignedNames.has(c))
 
   return (
     <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl">
@@ -139,23 +132,25 @@ function TierListSection({ title, icon, tooltip, champions, allChampions, isManu
             >
               <Info className="w-3.5 h-3.5 text-slate-500" />
             </button>
-            {showTooltip && tooltipBtnRef.current && (() => {
-              const rect = tooltipBtnRef.current.getBoundingClientRect()
-              return (
-                <div
-                  className="fixed z-50 w-72 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-xl text-xs text-slate-300 leading-relaxed"
-                  style={{ top: rect.bottom + 6, right: window.innerWidth - rect.right }}
-                >
-                  {tooltip}
-                </div>
-              )
-            })()}
+            {showTooltip &&
+              tooltipBtnRef.current &&
+              (() => {
+                const rect = tooltipBtnRef.current.getBoundingClientRect()
+                return (
+                  <div
+                    className="fixed z-50 w-72 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-xl text-xs text-slate-300 leading-relaxed"
+                    style={{ top: rect.bottom + 6, right: window.innerWidth - rect.right }}
+                  >
+                    {tooltip}
+                  </div>
+                )
+              })()}
           </div>
         )}
       </div>
 
       <div className="p-3 space-y-2">
-        {TIERS.map((tier) => {
+        {TIERS.map(tier => {
           const style = TIER_STYLES[tier]
           const champsInTier = grouped[tier] || []
 
@@ -164,7 +159,7 @@ function TierListSection({ title, icon, tooltip, champions, allChampions, isManu
               <div className="flex items-center gap-2">
                 <span className={`${style.text} font-bold text-sm w-5 text-center shrink-0`}>{tier}</span>
                 <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                  {champsInTier.map((champ) => (
+                  {champsInTier.map(champ => (
                     <ChampionChip key={champ.name} {...champ} isManual={isManual} onRemove={onRemove} />
                   ))}
                   {isManual && (
@@ -180,7 +175,7 @@ function TierListSection({ title, icon, tooltip, champions, allChampions, isManu
 
               {isManual && addingTier === tier && unassigned.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5 pt-2 border-t border-slate-700/30">
-                  {unassigned.map((name) => (
+                  {unassigned.map(name => (
                     <button
                       key={name}
                       onClick={() => {
@@ -207,7 +202,7 @@ function TierListSection({ title, icon, tooltip, champions, allChampions, isManu
 
 function SoloQOverviewTab({ player, soloqOverall, mostPlayed }) {
   const totalRanked = (player.current_wins || 0) + (player.current_losses || 0)
-  const rankedWR = totalRanked > 0 ? ((player.current_wins || 0) / totalRanked * 100).toFixed(1) : null
+  const rankedWR = totalRanked > 0 ? (((player.current_wins || 0) / totalRanked) * 100).toFixed(1) : null
 
   return (
     <div className="space-y-6">
@@ -246,12 +241,7 @@ function SoloQOverviewTab({ player, soloqOverall, mostPlayed }) {
               sub={`${soloqOverall.avgKills} / ${soloqOverall.avgDeaths} / ${soloqOverall.avgAssists}`}
               color={soloqOverall.kda >= 3 ? "text-emerald-400" : soloqOverall.kda >= 2 ? "text-amber-400" : "text-red-400"}
             />
-            <StatCard
-              label="Games analysees"
-              value={soloqOverall.games}
-              sub={`${soloqOverall.winRate}% WR`}
-              color="text-violet-400"
-            />
+            <StatCard label="Games analysees" value={soloqOverall.games} sub={`${soloqOverall.winRate}% WR`} color="text-violet-400" />
           </>
         )}
       </div>
@@ -284,10 +274,13 @@ function SoloQOverviewTab({ player, soloqOverall, mostPlayed }) {
               <span className="text-center">DMG/m</span>
             </div>
 
-            {mostPlayed.map((champ) => {
+            {mostPlayed.map(champ => {
               const wrColor = champ.winRate >= 60 ? "text-emerald-400" : champ.winRate >= 50 ? "text-amber-300" : "text-red-400"
               return (
-                <div key={champ.name} className="grid grid-cols-[1fr_70px_70px_70px_80px_80px] items-center px-4 py-2.5 border-b border-slate-700/20 last:border-b-0 hover:bg-slate-700/10 transition-colors">
+                <div
+                  key={champ.name}
+                  className="grid grid-cols-[1fr_70px_70px_70px_80px_80px] items-center px-4 py-2.5 border-b border-slate-700/20 last:border-b-0 hover:bg-slate-700/10 transition-colors"
+                >
                   <div className="flex items-center gap-2.5">
                     <img src={getChampionIcon(champ.name)} alt={champ.name} className="w-8 h-8 rounded-lg border border-slate-700/50" />
                     <span className="text-white text-sm font-medium">{champ.name}</span>
@@ -340,7 +333,7 @@ export default function View() {
   }, [id])
 
   const savePool = useCallback(
-    async (newPool) => {
+    async newPool => {
       setSaving(true)
       try {
         const { ok, code } = await api.put(`/player/${id}`, { champion_pool: newPool })
@@ -351,26 +344,26 @@ export default function View() {
         setSaving(false)
       }
     },
-    [id],
+    [id]
   )
 
   const setTier = useCallback(
     (champion, tier) => {
-      const newPool = pool.filter((c) => c.champion !== champion)
+      const newPool = pool.filter(c => c.champion !== champion)
       newPool.push({ champion, tier })
       setPool(newPool)
       savePool(newPool)
     },
-    [pool, savePool],
+    [pool, savePool]
   )
 
   const removeTier = useCallback(
-    (champion) => {
-      const newPool = pool.filter((c) => c.champion !== champion)
+    champion => {
+      const newPool = pool.filter(c => c.champion !== champion)
       setPool(newPool)
       savePool(newPool)
     },
-    [pool, savePool],
+    [pool, savePool]
   )
 
   if (loading) {
@@ -392,7 +385,7 @@ export default function View() {
   const { player, champions, pocketPicks, soloqOverall, mostPlayed } = data
 
   // All champion names from data
-  const allChampionNames = [...new Set([...champions.map((c) => c.name), ...pocketPicks.map((c) => c.name)])]
+  const allChampionNames = [...new Set([...champions.map(c => c.name), ...pocketPicks.map(c => c.name)])]
 
   // Maps for cross-referencing
   const poolMap = {}
@@ -416,7 +409,7 @@ export default function View() {
           <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-slate-900 rounded-full flex items-center justify-center">
             <Check className="w-2.5 h-2.5 text-emerald-400" />
           </span>
-        ),
+        )
       }
     if (m > a)
       return {
@@ -426,7 +419,7 @@ export default function View() {
           <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-slate-900 rounded-full flex items-center justify-center">
             <ChevronDown className="w-2.5 h-2.5 text-orange-400" />
           </span>
-        ),
+        )
       }
     return {
       matchClass: "ring-1 ring-sky-500/50 rounded-lg",
@@ -435,21 +428,21 @@ export default function View() {
         <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-slate-900 rounded-full flex items-center justify-center">
           <ChevronUp className="w-2.5 h-2.5 text-sky-400" />
         </span>
-      ),
+      )
     }
   }
 
   // Build manual tier list entries
-  const manualChampions = pool.map((entry) => ({
+  const manualChampions = pool.map(entry => ({
     name: entry.champion,
     tier: entry.tier,
-    ...buildMatchInfo(entry.tier, autoTierMap[entry.champion]),
+    ...buildMatchInfo(entry.tier, autoTierMap[entry.champion])
   }))
 
   // Build auto tier list entries
   const autoChampions = [...champions, ...pocketPicks]
-    .filter((c) => c.autoTier)
-    .map((c) => {
+    .filter(c => c.autoTier)
+    .map(c => {
       const manual = poolMap[c.name]
       return {
         name: c.name,
@@ -462,15 +455,15 @@ export default function View() {
                 <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-slate-900 rounded-full flex items-center justify-center">
                   <Check className="w-2.5 h-2.5 text-emerald-400" />
                 </span>
-              ),
+              )
             }
-          : {}),
+          : {})
       }
     })
 
   const TABS = [
     { key: "comparative", label: "Comparative", icon: <Swords className="w-3.5 h-3.5" /> },
-    { key: "overview", label: "SoloQ", icon: <BarChart3 className="w-3.5 h-3.5" /> },
+    { key: "overview", label: "SoloQ", icon: <BarChart3 className="w-3.5 h-3.5" /> }
   ]
 
   return (
@@ -509,20 +502,26 @@ export default function View() {
                 style={{ filter: `drop-shadow(0 0 8px ${TIER_COLORS[player.current_tier] || "#64748b"}40)` }}
               />
             )}
+            <a
+              href={`https://dpm.lol/${encodeURIComponent(player.game_name)}-${encodeURIComponent(player.tag_line)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/80 transition-all"
+            >
+              <img src="/dpm_full_logo.png" alt="DPM.lol" className="h-6 object-contain" />
+            </a>
           </div>
           {saving && <Loader2 className="w-4 h-4 text-amber-400 animate-spin ml-auto" />}
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-800/50 border border-slate-700/50 rounded-lg p-1 w-fit">
-          {TABS.map((t) => (
+          {TABS.map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                tab === t.key
-                  ? "bg-slate-700 text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-300 hover:bg-slate-700/30"
+                tab === t.key ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-300 hover:bg-slate-700/30"
               }`}
             >
               {t.icon}
@@ -532,9 +531,7 @@ export default function View() {
         </div>
 
         {/* Tab Content */}
-        {tab === "overview" && (
-          <SoloQOverviewTab player={player} soloqOverall={soloqOverall} mostPlayed={mostPlayed} />
-        )}
+        {tab === "overview" && <SoloQOverviewTab player={player} soloqOverall={soloqOverall} mostPlayed={mostPlayed} />}
 
         {tab === "comparative" && (
           <>
@@ -557,14 +554,26 @@ export default function View() {
                     <p className="font-semibold text-white mb-1.5">Calcul du score (0-100)</p>
                     <p className="text-slate-400 mb-1.5">Minimum 15 games (team x2) pour etre classe. Les games team comptent double.</p>
                     <ul className="space-y-1 list-disc list-inside">
-                      <li><span className="text-slate-400">Games</span> : nombre de parties (max 30 pts, plafond a 30 games).</li>
-                      <li><span className="text-slate-400">Win Rate</span> : taux de victoire combine (max 50 pts).</li>
-                      <li><span className="text-slate-400">KDA</span> : ratio kills+assists/deaths (max 20 pts, plafond a 5.0).</li>
+                      <li>
+                        <span className="text-slate-400">Games</span> : nombre de parties (max 30 pts, plafond a 30 games).
+                      </li>
+                      <li>
+                        <span className="text-slate-400">Win Rate</span> : taux de victoire combine (max 50 pts).
+                      </li>
+                      <li>
+                        <span className="text-slate-400">KDA</span> : ratio kills+assists/deaths (max 20 pts, plafond a 5.0).
+                      </li>
                     </ul>
                     <div className="mt-2 pt-2 border-t border-slate-700/50 space-y-0.5">
-                      <p><span className="text-amber-400 font-bold">S</span> : score &ge; 70</p>
-                      <p><span className="text-violet-400 font-bold">A</span> : score &ge; 60</p>
-                      <p><span className="text-slate-400 font-bold">B</span> : score &ge; 45</p>
+                      <p>
+                        <span className="text-amber-400 font-bold">S</span> : score &ge; 70
+                      </p>
+                      <p>
+                        <span className="text-violet-400 font-bold">A</span> : score &ge; 60
+                      </p>
+                      <p>
+                        <span className="text-slate-400 font-bold">B</span> : score &ge; 45
+                      </p>
                     </div>
                   </>
                 }
@@ -620,7 +629,7 @@ export default function View() {
                   <div className="grid grid-cols-[180px_50px_60px_repeat(6,1fr)_30px] items-center px-4 py-2 border-b border-slate-700/30 text-xs text-slate-500 uppercase tracking-wider">
                     <span>Champion</span>
                     <span className="text-center">Tier</span>
-                    {METRICS.map((m) => (
+                    {METRICS.map(m => (
                       <span key={m.key} className="text-center">
                         {m.label}
                       </span>
@@ -628,7 +637,7 @@ export default function View() {
                     <span />
                   </div>
 
-                  {champions.map((champ) => {
+                  {champions.map(champ => {
                     const manualTier = poolMap[champ.name]
                     return (
                       <div key={champ.name} className="border-b border-slate-700/20 last:border-b-0 hover:bg-slate-700/10 transition-colors">
@@ -643,7 +652,7 @@ export default function View() {
                             {manualTier && <MatchIndicator manual={manualTier} auto={champ.autoTier} />}
                           </div>
 
-                          {METRICS.map((m) => (
+                          {METRICS.map(m => (
                             <div key={m.key} className="text-center">
                               {champ.soloq ? (
                                 <span className="text-violet-300 text-xs tabular-nums">{m.format(champ.soloq[m.key])}</span>
@@ -659,18 +668,14 @@ export default function View() {
 
                         <div className="grid grid-cols-[180px_50px_60px_repeat(6,1fr)_30px] items-center px-4 pb-2">
                           <div />
-                          <div className="flex items-center justify-center">
-                            {manualTier && <TierBadge tier={manualTier} small />}
-                          </div>
+                          <div className="flex items-center justify-center">{manualTier && <TierBadge tier={manualTier} small />}</div>
 
-                          {METRICS.map((m) => (
+                          {METRICS.map(m => (
                             <div key={m.key} className="text-center flex items-center justify-center gap-1">
                               {champ.team ? (
                                 <>
                                   <span className="text-amber-300 text-xs tabular-nums">{m.format(champ.team[m.key])}</span>
-                                  {!m.noCompare && champ.soloq && (
-                                    <DiffIndicator soloq={champ.soloq[m.key]} team={champ.team[m.key]} higherBetter={m.higherBetter} />
-                                  )}
+                                  {!m.noCompare && champ.soloq && <DiffIndicator soloq={champ.soloq[m.key]} team={champ.team[m.key]} higherBetter={m.higherBetter} />}
                                 </>
                               ) : (
                                 <span className="text-slate-600 text-xs">-</span>
