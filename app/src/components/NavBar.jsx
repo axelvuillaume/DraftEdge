@@ -11,7 +11,7 @@ const getMenu = user => [
   { title: "Stats", to: "/statsV2", icon: BarChart },
   { title: "Objectives Scrims", to: "/scrim-hub", icon: Calendar },
   { title: "Draft", to: "/draft", icon: Target },
-  ...(user?.email === "axel@selego.co" ? [{ title: "SoloQ", to: "/soloq-training", icon: Zap }] : []),
+  { title: "SoloQ", to: "/soloq", icon: Zap },
   { title: "Games", to: "/games", icon: Gamepad2 },
   { title: "My Team", to: "/team", icon: Shield }
 ]

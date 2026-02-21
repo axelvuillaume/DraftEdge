@@ -23,6 +23,14 @@ const Schema = new mongoose.Schema(
     current_wins: { type: Number },
     current_losses: { type: Number },
 
+    // Champion pool (tier list manuelle du joueur)
+    champion_pool: [
+      {
+        champion: { type: String, trim: true },
+        tier: { type: String, enum: ['S', 'A', 'B'] },
+      },
+    ],
+
     active: { type: Boolean },
     last_fetched_at: { type: Date },
     connected_at: { type: Date },

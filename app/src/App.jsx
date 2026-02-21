@@ -71,7 +71,7 @@ export default function App() {
           <Route path="/statsV2" element={<StatsV2 />} />
           <Route path="/draft/*" element={<Draft />} />
           <Route path="/scrim-hub/*" element={<ScrimHub />} />
-          <Route path="/soloq-training" element={<SoloQ />} />
+          <Route path="/soloq/*" element={<SoloQ />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
