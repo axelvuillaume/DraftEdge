@@ -1,9 +1,9 @@
 const Player = require('../models/player');
 const SoloqMatch = require('../models/soloq-match');
 const { RIOT_API_KEY } = require('../config');
+const { PLATFORM_TO_REGIONAL } = require('../services/riotgames');
 
 const QUEUE_ID = 420;
-const MATCH_V5_BASE = 'https://europe.api.riotgames.com/lol/match/v5/matches';
 const DELAY_MS = 1300;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -82,7 +82,7 @@ function mapMatch(data, puuid, player) {
 }
 
 async function fetchSoloQ() {
-  const players = await Player.find({ puuid: { $exists: true, $ne: null }, active: true }).lean();
+  const players = await Player.find({ puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null } }).lean();
   const validPlayers = players.filter((p) => p.puuid && p.puuid.trim() !== '');
 
   if (validPlayers.length === 0) return;
@@ -91,6 +91,9 @@ async function fetchSoloQ() {
 
   for (const player of validPlayers) {
     try {
+      const regional = PLATFORM_TO_REGIONAL[player.region] || PLATFORM_TO_REGIONAL['euw1'];
+      const MATCH_V5_BASE = `https://${regional}.api.riotgames.com/lol/match/v5/matches`;
+
       // Fetch last 50 match IDs
       const url = `${MATCH_V5_BASE}/by-puuid/${player.puuid}/ids?queue=${QUEUE_ID}&start=0&count=50`;
       const matchIds = await apiFetch(url);

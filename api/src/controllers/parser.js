@@ -12,15 +12,15 @@ const { client: geminiClient } = require('../services/gemini');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 const RIOT_API_KEY = CONFIG.RIOT_API_KEY;
-const RIOT_ACCOUNT_API = 'https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id';
-const RIOT_LEAGUE_API = 'https://euw1.api.riotgames.com/lol/league/v4/entries/by-puuid';
+const { PLATFORM_TO_REGIONAL } = require('../services/riotgames');
 
-async function fetchRiotPuuid(gameName, tagLine) {
+async function fetchRiotPuuid(gameName, tagLine, platform = 'euw1') {
   if (!RIOT_API_KEY) return null;
   if (!gameName || !tagLine) return null;
 
   try {
-    const url = `${RIOT_ACCOUNT_API}/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${RIOT_API_KEY}`;
+    const regional = PLATFORM_TO_REGIONAL[platform] || 'europe';
+    const url = `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${RIOT_API_KEY}`;
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -36,12 +36,12 @@ async function fetchRiotPuuid(gameName, tagLine) {
   }
 }
 
-async function fetchRiotRank(puuid) {
+async function fetchRiotRank(puuid, platform = 'euw1') {
   if (!RIOT_API_KEY) return null;
   if (!puuid) return null;
 
   try {
-    const url = `${RIOT_LEAGUE_API}/${puuid}?api_key=${RIOT_API_KEY}`;
+    const url = `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}?api_key=${RIOT_API_KEY}`;
     const response = await fetch(url);
 
     if (!response.ok) {

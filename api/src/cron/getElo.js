@@ -5,12 +5,12 @@ const { getRankByPuuid } = require('../services/riotgames');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function getElo() {
-  const players = await Player.find({ puuid: { $exists: true, $ne: null } });
+  const players = await Player.find({ puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null } });
 
   for (const player of players) {
     console.log(`Fetching elo for ${player.game_name}#${player.tag_line}`);
     try {
-      const rank = await getRankByPuuid(player.puuid);
+      const rank = await getRankByPuuid(player.puuid, player.region || 'euw1');
       if (!rank) continue;
 
       const wins = rank.wins || 0;

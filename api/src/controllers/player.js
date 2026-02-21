@@ -4,7 +4,11 @@ const passport = require('passport');
 const Player = require('../models/player');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
-const { getPuuidByRiotId, getRankByPuuid } = require('../services/riotgames');
+const { getPuuidByRiotId, getRankByPuuid, SERVERS } = require('../services/riotgames');
+
+router.get('/servers', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), (req, res) => {
+  return res.status(200).send({ ok: true, data: SERVERS });
+});
 
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
@@ -24,14 +28,16 @@ router.put('/:id', passport.authenticate(['admin', 'user'], { session: false, fa
     if (!player) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
 
     const riotIdChanged = req.body.game_name !== player.game_name || req.body.tag_line !== player.tag_line;
+    const regionChanged = req.body.region && req.body.region !== player.region;
+    const region = req.body.region || player.region || 'euw1';
 
     Object.assign(player, req.body);
 
-    if (riotIdChanged && req.body.game_name && req.body.tag_line) {
-      const puuid = await getPuuidByRiotId(req.body.game_name, req.body.tag_line);
+    if ((riotIdChanged || regionChanged) && req.body.game_name && req.body.tag_line) {
+      const puuid = await getPuuidByRiotId(req.body.game_name, req.body.tag_line, region);
       if (!puuid) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
       player.puuid = puuid;
-      const rank = await getRankByPuuid(puuid);
+      const rank = await getRankByPuuid(puuid, region);
       if (rank) {
         player.current_tier = rank.tier;
         player.current_rank = rank.rank;
@@ -39,8 +45,8 @@ router.put('/:id', passport.authenticate(['admin', 'user'], { session: false, fa
         player.current_wins = rank.wins;
         player.current_losses = rank.losses;
         player.last_fetched_at = new Date();
-        player.region = 'euw1';
       }
+      player.region = region;
       player.connected_at = new Date();
     }
 
@@ -70,11 +76,12 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
 
 router.post('/', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const player = await Player.create({ ...req.body, team_id: req.user.team_id, team_name: req.user.team_name });
+    const region = req.body.region || 'euw1';
+    const player = await Player.create({ ...req.body, region, team_id: req.user.team_id, team_name: req.user.team_name });
 
-    const puuid = await getPuuidByRiotId(player.game_name, player.tag_line);
+    const puuid = await getPuuidByRiotId(player.game_name, player.tag_line, region);
     if (!puuid) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
-    const rank = await getRankByPuuid(puuid);
+    const rank = await getRankByPuuid(puuid, region);
     if (rank) {
       player.current_tier = rank.tier;
       player.current_rank = rank.rank;
@@ -83,7 +90,6 @@ router.post('/', passport.authenticate(['admin', 'user'], { session: false, fail
       player.current_losses = rank.losses;
       player.last_fetched_at = new Date();
       player.connected_at = new Date();
-      player.region = 'euw1';
     }
     player.puuid = puuid;
 

@@ -3,14 +3,19 @@ const mongoose = require("mongoose");
 const { MONGODB_ENDPOINT, RIOT_API_KEY } = require("../src/config");
 const SoloqMatch = require("../src/models/soloq-match");
 const Player = require("../src/models/player");
+const { PLATFORM_TO_REGIONAL } = require("../src/services/riotgames");
 
 // =====================================================================
 // CONFIGURATION
 // =====================================================================
 const SEASON_START = new Date("2026-01-08T00:00:00Z");
 const QUEUE_ID = 420; // Ranked Solo/Duo
-const MATCH_V5_BASE = "https://europe.api.riotgames.com/lol/match/v5/matches";
 const DELAY_MS = 1300; // ~46 req/min — safe under 100 req/2 min
+
+function getMatchV5Base(region) {
+  const regional = PLATFORM_TO_REGIONAL[region] || "europe";
+  return `https://${regional}.api.riotgames.com/lol/match/v5/matches`;
+}
 
 // =====================================================================
 
@@ -127,13 +132,14 @@ async function apiFetch(url) {
   return res.json();
 }
 
-async function fetchAllMatchIds(puuid) {
+async function fetchAllMatchIds(puuid, region) {
+  const base = getMatchV5Base(region);
   const startTime = Math.floor(SEASON_START.getTime() / 1000);
   const all = [];
   let start = 0;
 
   while (true) {
-    const url = `${MATCH_V5_BASE}/by-puuid/${puuid}/ids?startTime=${startTime}&queue=${QUEUE_ID}&start=${start}&count=100`;
+    const url = `${base}/by-puuid/${puuid}/ids?startTime=${startTime}&queue=${QUEUE_ID}&start=${start}&count=100`;
     const ids = await apiFetch(url);
     console.log(`    Fetched ${ids.length} match IDs (offset ${start})`);
     all.push(...ids);
@@ -150,10 +156,12 @@ async function fetchAllMatchIds(puuid) {
 // =====================================================================
 
 async function processPlayer(player) {
-  const label = `${player.game_name}#${player.tag_line}`;
+  const region = player.region || "euw1";
+  const base = getMatchV5Base(region);
+  const label = `${player.game_name}#${player.tag_line} (${region})`;
   console.log(`\n========== ${label} ==========`);
 
-  const matchIds = await fetchAllMatchIds(player.puuid);
+  const matchIds = await fetchAllMatchIds(player.puuid, region);
   console.log(`  Found ${matchIds.length} ranked solo/duo matches`);
 
   if (matchIds.length === 0) return { saved: 0, skipped: 0, errors: 0 };
@@ -170,7 +178,7 @@ async function processPlayer(player) {
   for (let i = 0; i < newIds.length; i++) {
     const matchId = newIds[i];
     try {
-      const data = await apiFetch(`${MATCH_V5_BASE}/${matchId}`);
+      const data = await apiFetch(`${base}/${matchId}`);
 
       if (data.info.queueId !== QUEUE_ID) {
         console.log(`  [${i + 1}/${newIds.length}] ⏭️  ${matchId} skipped (queue ${data.info.queueId})`);
@@ -212,14 +220,24 @@ async function processPlayer(player) {
 // =====================================================================
 
 (async () => {
+  // ⬇️ Mettre un team_id ici pour filtrer sur une seule équipe, ou null pour tout récupérer
+  const TEAM_ID = "696f52f8c5081905e1e477ed";
+
   console.log("Connecting to MongoDB…");
   await mongoose.connect(MONGODB_ENDPOINT);
   console.log("✅ Connected\n");
 
   try {
-    const players = await Player.find({ puuid: { $exists: true, $ne: null }, active: true }).lean();
+    const query = { puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null } };
+    if (TEAM_ID) query.team_id = TEAM_ID;
+
+    const players = await Player.find(query).lean();
     // Filter out empty strings (lean doesn't apply $ne to empty string well)
     const validPlayers = players.filter((p) => p.puuid && p.puuid.trim() !== "");
+
+    if (TEAM_ID) {
+      console.log(`Filtering on team_id: ${TEAM_ID}`);
+    }
     console.log(`Found ${validPlayers.length} players with a puuid\n`);
 
     if (validPlayers.length === 0) {
