@@ -61,9 +61,9 @@ function StatCard({ label, value, sub, color }) {
 
 // ==================== CHAMPION CHIP ====================
 
-function ChampionChip({ name, matchClass, matchLabel, matchIndicator, isManual, onRemove }) {
+function ChampionChip({ name, matchClass, matchLabel, matchIndicator, isManual, onRemove, autoScore, gamesScore, wrScore, kdaScore }) {
   return (
-    <div className="relative group" title={`${name}${matchLabel ? ` - ${matchLabel}` : ""}`}>
+    <div className="relative group" title={!autoScore ? `${name}${matchLabel ? ` - ${matchLabel}` : ""}` : undefined}>
       <div className={`relative ${matchClass || ""}`}>
         <img src={getChampionIcon(name)} alt={name} className="w-9 h-9 rounded-lg border border-slate-600/50" />
         {matchIndicator}
@@ -73,6 +73,31 @@ function ChampionChip({ name, matchClass, matchLabel, matchIndicator, isManual, 
           </button>
         )}
       </div>
+      {autoScore != null && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 pointer-events-none">
+          <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2.5 w-40">
+            <p className="text-white text-xs font-semibold mb-1.5">{name}</p>
+            <div className="space-y-1 text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Games</span>
+                <span className="text-slate-200 tabular-nums">{gamesScore}<span className="text-slate-500">/30</span></span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Win Rate</span>
+                <span className="text-slate-200 tabular-nums">{wrScore}<span className="text-slate-500">/50</span></span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">KDA</span>
+                <span className="text-slate-200 tabular-nums">{kdaScore}<span className="text-slate-500">/20</span></span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-slate-700/50">
+                <span className="text-white font-semibold">Total</span>
+                <span className="text-white font-semibold tabular-nums">{autoScore}<span className="text-slate-500">/100</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -422,6 +447,10 @@ export default function View() {
       return {
         name: c.name,
         tier: c.autoTier,
+        autoScore: c.autoScore,
+        gamesScore: c.gamesScore,
+        wrScore: c.wrScore,
+        kdaScore: c.kdaScore,
         ...(manual && manual === c.autoTier
           ? {
               matchClass: "ring-1 ring-emerald-500/50 rounded-lg",
@@ -601,7 +630,8 @@ export default function View() {
                     <span className="text-slate-500 font-normal">({champions.length})</span>
                   </h2>
                   <p className="text-slate-500 text-xs mt-1 ml-6">
-                    Comparing <span className="text-violet-400">SoloQ</span> vs <span className="text-amber-400">Team</span> stats per champion — arrows indicate whether the player performs better or worse in team games.
+                    Comparing <span className="text-violet-400">SoloQ</span> vs <span className="text-amber-400">Team</span> stats per champion — arrows indicate whether the player
+                    performs better or worse in team games.
                   </p>
                 </div>
 
@@ -676,7 +706,7 @@ export default function View() {
             {/* Empty state */}
             {champions.length === 0 && (
               <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-12 text-center">
-                <p className="text-slate-500">No champion data found for this player.</p>
+                <p className="text-slate-500">No team data found for this player.</p>
               </div>
             )}
           </>

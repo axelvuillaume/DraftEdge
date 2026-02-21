@@ -80,10 +80,10 @@ function calculateAutoTier(soloq, team) {
   const tmGames = team?.games || 0;
   const totalWeightedGames = sqGames + tmGames * 2;
 
-  if (totalWeightedGames === 0) return null;
+  if (totalWeightedGames === 0) return { tier: null };
 
   // Minimum 15 games (weighted) to be rated
-  if (totalWeightedGames < 15) return null;
+  if (totalWeightedGames < 15) return { tier: null };
 
   // Combined win rate (team weighted 2x)
   const sqWins = soloq?.wins || 0;
@@ -101,10 +101,12 @@ function calculateAutoTier(soloq, team) {
   const kdaScore = Math.min(combinedKDA / 5, 1) * 20;
   const score = gameScore + wrScore + kdaScore;
 
-  if (score >= 70) return 'S';
-  if (score >= 60) return 'A';
-  if (score >= 45) return 'B';
-  return null;
+  let tier = null;
+  if (score >= 70) tier = 'S';
+  else if (score >= 60) tier = 'A';
+  else if (score >= 45) tier = 'B';
+
+  return { tier, autoScore: Math.round(score * 10) / 10, gamesScore: Math.round(gameScore * 10) / 10, wrScore: Math.round(wrScore * 10) / 10, kdaScore: Math.round(kdaScore * 10) / 10 };
 }
 
 // ==================== COMPARE SoloQ vs Team ====================
@@ -227,11 +229,11 @@ router.post('/compare', passport.authenticate(['admin', 'user'], { session: fals
       const sqAgg = soloqByChamp[champ] ? aggregateSoloQ(soloqByChamp[champ]) : null;
       const tmAgg = teamByChamp[champ] ? aggregateTeam(teamByChamp[champ]) : null;
 
-      const autoTier = calculateAutoTier(sqAgg, tmAgg);
+      const { tier: autoTier, ...autoScoreDetails } = calculateAutoTier(sqAgg, tmAgg);
 
       // Pocket picks: enough SoloQ games, no team games
       if (sqAgg && sqAgg.games >= min_soloq_games && !tmAgg) {
-        pocketPicks.push({ name: champ, soloq: sqAgg, team: null, onlyIn: 'soloq', autoTier });
+        pocketPicks.push({ name: champ, soloq: sqAgg, team: null, onlyIn: 'soloq', autoTier, ...autoScoreDetails });
         continue;
       }
 
@@ -245,6 +247,7 @@ router.post('/compare', passport.authenticate(['admin', 'user'], { session: fals
         team: tmAgg,
         onlyIn: !sqAgg ? 'team' : !tmAgg ? 'soloq' : null,
         autoTier,
+        ...autoScoreDetails,
       });
     }
 
