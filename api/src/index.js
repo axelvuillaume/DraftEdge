@@ -51,7 +51,7 @@ app.use('/scrim-session', require('./controllers/scrim-session'));
 app.use('/enemy-team', require('./controllers/enemy-team'));
 app.use('/player', require('./controllers/player'));
 app.use('/soloq-snapshot', require('./controllers/soloQ-snapshot'));
-app.use('/soloq-match', require('./controllers/soloq-match'));
+app.use('/soloq-match', require('./controllers/soloQ-match'));
 setupErrorHandler(app);
 require('./services/passport')(app);
 require('./cron');
