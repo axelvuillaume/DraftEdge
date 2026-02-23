@@ -106,7 +106,7 @@ export default function SoloQ() {
                 <div className="w-px h-5 bg-slate-700" />
                 <div className="flex items-center gap-2">
                   {change >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
-                  <span className="text-slate-400 text-xs uppercase tracking-wider">LP Change</span>
+                  <span className="text-slate-400 text-xs uppercase tracking-wider">LP Change today</span>
                   <span className={`font-bold text-lg tabular-nums ${change > 0 ? "text-emerald-400" : change < 0 ? "text-red-400" : "text-slate-400"}`}>
                     {change > 0 ? "+" : ""}
                     {change}
