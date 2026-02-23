@@ -182,7 +182,7 @@ export default function SoloQ() {
                           {lp} LP
                         </span>
                       </div>
-                      <span className="text-slate-600 text-[10px]">aujourd'hui</span>
+                      <span className="text-slate-600 text-[10px]">today</span>
                     </div>
                   )}
                   {p.last_fetched_at && (
