@@ -459,6 +459,14 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
                   <span className="text-slate-500 text-[11px]">patch :{game.patch.split(".").slice(0, 2).join(".")}</span>
                 </>
               )}
+              {game.team_side && (
+                <>
+                  <span className="text-slate-700 text-[11px]">·</span>
+                  <span className={`text-[11px] font-semibold ${game.team_side === "blue" ? "text-blue-400" : "text-red-400"}`}>
+                    {game.team_side === "blue" ? "Blue" : "Red"} side
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>

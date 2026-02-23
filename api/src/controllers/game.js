@@ -58,8 +58,10 @@ router.get('/:id/avg-elo', passport.authenticate(['admin', 'user'], { session: f
       const elos = list
         .map((p) => {
           if (!p.tier) return null;
-          const t = TIER_VALUE[p.tier.toUpperCase()] ?? 0;
-          const r = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.tier.toUpperCase()) ? 0 : (RANK_VALUE[p.rank] ?? 0);
+          const tierUpper = p.tier.toUpperCase();
+          const isMasterPlus = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tierUpper);
+          const t = isMasterPlus ? TIER_VALUE['MASTER'] : (TIER_VALUE[tierUpper] ?? 0);
+          const r = isMasterPlus ? 0 : (RANK_VALUE[p.rank] ?? 0);
           return t + r + (p.league_points ?? 0);
         })
         .filter((e) => e !== null);
@@ -67,11 +69,18 @@ router.get('/:id/avg-elo', passport.authenticate(['admin', 'user'], { session: f
     };
 
     const getRankFromElo = (elo) => {
+      if (elo >= TIER_VALUE['MASTER']) {
+        const cumulativeLp = Math.round(elo - TIER_VALUE['MASTER']);
+        const tiers = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
+        for (const tier of tiers) {
+          if (elo >= TIER_VALUE[tier]) return { tier, rank: '', lp: cumulativeLp };
+        }
+      }
       const tiers = Object.keys(TIER_VALUE).reverse();
       for (const tier of tiers) {
+        if (['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tier)) continue;
         if (elo >= TIER_VALUE[tier]) {
           const remaining = elo - TIER_VALUE[tier];
-          if (['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tier)) return { tier, rank: '', lp: Math.round(remaining) };
           const ranks = Object.keys(RANK_VALUE).reverse();
           for (const rank of ranks) {
             if (remaining >= RANK_VALUE[rank]) return { tier, rank, lp: Math.round(remaining - RANK_VALUE[rank]) };
@@ -340,8 +349,10 @@ router.post('/header-stats', passport.authenticate(['admin', 'user'], { session:
     const elos = playerStats
       .map((p) => {
         if (!p.tier) return null;
-        const t = TIER_VALUE[p.tier.toUpperCase()] ?? 0;
-        const r = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.tier.toUpperCase()) ? 0 : (RANK_VALUE[p.rank] ?? 0);
+        const tierUpper = p.tier.toUpperCase();
+        const isMasterPlus = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tierUpper);
+        const t = isMasterPlus ? TIER_VALUE['MASTER'] : (TIER_VALUE[tierUpper] ?? 0);
+        const r = isMasterPlus ? 0 : (RANK_VALUE[p.rank] ?? 0);
         return t + r + (p.league_points ?? 0);
       })
       .filter((e) => e !== null);
@@ -349,13 +360,19 @@ router.post('/header-stats', passport.authenticate(['admin', 'user'], { session:
     const avgElo = elos.length > 0 ? elos.reduce((a, b) => a + b, 0) / elos.length : 0;
 
     const getRankFromElo = (elo) => {
+      // Master+ : LP are cumulative from MASTER base, determine tier by thresholds but always show cumulative LP
+      if (elo >= TIER_VALUE['MASTER']) {
+        const cumulativeLp = Math.round(elo - TIER_VALUE['MASTER']);
+        const tiers = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
+        for (const tier of tiers) {
+          if (elo >= TIER_VALUE[tier]) return { tier, rank: '', lp: cumulativeLp };
+        }
+      }
       const tiers = Object.keys(TIER_VALUE).reverse();
       for (const tier of tiers) {
+        if (['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tier)) continue;
         if (elo >= TIER_VALUE[tier]) {
           const remaining = elo - TIER_VALUE[tier];
-          if (['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tier)) {
-            return { tier, rank: '', lp: Math.round(remaining) };
-          }
           const ranks = Object.keys(RANK_VALUE).reverse();
           for (const rank of ranks) {
             if (remaining >= RANK_VALUE[rank]) {
