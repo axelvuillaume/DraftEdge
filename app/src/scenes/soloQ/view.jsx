@@ -638,25 +638,28 @@ export default function View() {
                 </div>
 
                 <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-[180px_50px_60px_repeat(6,1fr)_50px] items-center px-4 py-2 border-b border-slate-700/30 text-xs text-slate-500 uppercase tracking-wider">
+                  <div className="grid grid-cols-[180px_60px_50px_60px_repeat(6,1fr)] items-center px-4 py-2 border-b border-slate-700/30 text-xs text-slate-500 uppercase tracking-wider">
                     <span>Champion</span>
+                    <span className="text-center">Source</span>
                     <span className="text-center">Tier</span>
                     {METRICS.map(m => (
                       <span key={m.key} className="text-center">
                         {m.label}
                       </span>
                     ))}
-                    <span className="text-center">Source</span>
                   </div>
 
-                  {champions.map(champ => {
+                  {champions.map((champ, index) => {
                     const manualTier = poolMap[champ.name]
                     return (
-                      <div key={champ.name} className="border-b border-slate-700/20 last:border-b-0 hover:bg-slate-700/10 transition-colors">
-                        <div className="grid grid-cols-[180px_50px_60px_repeat(6,1fr)_50px] items-center px-4 py-2">
+                      <div key={champ.name} className={`border-b border-slate-700/30 last:border-b-0 transition-colors ${index % 2 === 1 ? "bg-slate-700/30" : ""}`}>
+                        <div className="grid grid-cols-[180px_60px_50px_60px_repeat(6,1fr)] items-center px-4 py-2">
                           <div className="flex items-center gap-2">
                             <img src={getChampionIcon(champ.name)} alt={champ.name} className="w-8 h-8 rounded-lg border border-slate-700/50" />
                             <span className="text-white text-sm font-medium">{champ.name}</span>
+                          </div>
+                          <div className="flex items-center justify-center">
+                            <span className="text-violet-400 text-[10px] font-semibold uppercase tracking-wide">SoloQ</span>
                           </div>
 
                           <div className="flex items-center justify-center gap-1">
@@ -673,13 +676,13 @@ export default function View() {
                               )}
                             </div>
                           ))}
-                          <div className="flex items-center justify-center">
-                            <span className="text-violet-400 text-[10px] font-semibold uppercase tracking-wide">SoloQ</span>
-                          </div>
                         </div>
 
-                        <div className="grid grid-cols-[180px_50px_60px_repeat(6,1fr)_50px] items-center px-4 pb-2">
+                        <div className="grid grid-cols-[180px_60px_50px_60px_repeat(6,1fr)] items-center px-4 pb-2">
                           <div />
+                          <div className="flex items-center justify-center">
+                            <span className="text-amber-400 text-[10px] font-semibold uppercase tracking-wide">Team</span>
+                          </div>
                           <div className="flex items-center justify-center">{manualTier && <TierBadge tier={manualTier} small />}</div>
 
                           {METRICS.map(m => (
@@ -694,9 +697,6 @@ export default function View() {
                               )}
                             </div>
                           ))}
-                          <div className="flex items-center justify-center">
-                            <span className="text-amber-400 text-[10px] font-semibold uppercase tracking-wide">Team</span>
-                          </div>
                         </div>
                       </div>
                     )
