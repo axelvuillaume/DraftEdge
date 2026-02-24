@@ -241,7 +241,7 @@ function SoloQOverviewTab({ player, soloqOverall, mostPlayed }) {
               sub={`${soloqOverall.avgKills} / ${soloqOverall.avgDeaths} / ${soloqOverall.avgAssists}`}
               color={soloqOverall.kda >= 3 ? "text-emerald-400" : soloqOverall.kda >= 2 ? "text-amber-400" : "text-red-400"}
             />
-            <StatCard label="Games analysees" value={soloqOverall.games} sub={`${soloqOverall.winRate}% WR`} color="text-violet-400" />
+            <StatCard label="Games analyzed" value={soloqOverall.games} sub={`${soloqOverall.winRate}% WR`} color="text-violet-400" />
           </>
         )}
       </div>
@@ -301,7 +301,7 @@ function SoloQOverviewTab({ player, soloqOverall, mostPlayed }) {
 
       {!soloqOverall && (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-12 text-center">
-          <p className="text-slate-500">Aucune game SoloQ trouvee pour ce joueur.</p>
+          <p className="text-slate-500">No SoloQ games found for this player.</p>
         </div>
       )}
     </div>
@@ -544,7 +544,7 @@ export default function View() {
             {/* Tier List Comparison */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <TierListSection
-                title="Ma Tier List"
+                title="My Tier List"
                 icon={<Swords className="w-4 h-4 text-amber-400" />}
                 champions={manualChampions}
                 allChampions={allChampionNames}
@@ -557,17 +557,17 @@ export default function View() {
                 icon={<Sparkles className="w-4 h-4 text-violet-400" />}
                 tooltip={
                   <>
-                    <p className="font-semibold text-white mb-1.5">Calcul du score (0-100)</p>
-                    <p className="text-slate-400 mb-1.5">Minimum 15 games (team x2) pour etre classe. Les games team comptent double.</p>
+                    <p className="font-semibold text-white mb-1.5">Score calculation (0-100)</p>
+                    <p className="text-slate-400 mb-1.5">Minimum 15 games (official x3) to be ranked. Official games count triple.</p>
                     <ul className="space-y-1 list-disc list-inside">
                       <li>
-                        <span className="text-slate-400">Games</span> : nombre de parties (max 30 pts, plafond a 30 games).
+                        <span className="text-slate-400">Games</span>: number of games (max 30 pts, capped at 30 games).
                       </li>
                       <li>
-                        <span className="text-slate-400">Win Rate</span> : taux de victoire combine (max 50 pts).
+                        <span className="text-slate-400">Win Rate</span>: combined win rate (max 50 pts).
                       </li>
                       <li>
-                        <span className="text-slate-400">KDA</span> : ratio kills+assists/deaths (max 20 pts, plafond a 5.0).
+                        <span className="text-slate-400">KDA</span>: kills+assists/deaths ratio (max 20 pts, capped at 5.0).
                       </li>
                     </ul>
                     <div className="mt-2 pt-2 border-t border-slate-700/50 space-y-0.5">
@@ -597,19 +597,19 @@ export default function View() {
                 <span className="w-4 h-4 rounded border border-emerald-500/50 flex items-center justify-center">
                   <Check className="w-2.5 h-2.5 text-emerald-400" />
                 </span>
-                <span className="text-slate-400">Manuel = Auto</span>
+                <span className="text-slate-400">Manual = Auto</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded border border-orange-500/50 flex items-center justify-center">
                   <ChevronDown className="w-2.5 h-2.5 text-orange-400" />
                 </span>
-                <span className="text-slate-400">Sureval (Manuel &gt; Auto)</span>
+                <span className="text-slate-400">Overrated (Manual &gt; Auto)</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded border border-sky-500/50 flex items-center justify-center">
                   <ChevronUp className="w-2.5 h-2.5 text-sky-400" />
                 </span>
-                <span className="text-slate-400">Sous-eval (Manuel &lt; Auto)</span>
+                <span className="text-slate-400">Underrated (Manual &lt; Auto)</span>
               </div>
               <div className="w-px h-4 bg-slate-700" />
               <div className="flex items-center gap-2">

@@ -75,25 +75,25 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
 // ==================== AUTO TIER CALCULATION ====================
 
 function calculateAutoTier(soloq, team) {
-  // Combine stats from both contexts (team games weighted 2x)
+  // Combine stats from both contexts (official games weighted 3x)
   const sqGames = soloq?.games || 0;
   const tmGames = team?.games || 0;
-  const totalWeightedGames = sqGames + tmGames * 2;
+  const totalWeightedGames = sqGames + tmGames * 3;
 
   if (totalWeightedGames === 0) return { tier: null };
 
   // Minimum 15 games (weighted) to be rated
   if (totalWeightedGames < 15) return { tier: null };
 
-  // Combined win rate (team weighted 2x)
+  // Combined win rate (official weighted 3x)
   const sqWins = soloq?.wins || 0;
   const tmWins = team?.wins || 0;
-  const combinedWR = ((sqWins + tmWins * 2) / (sqGames + tmGames * 2)) * 100;
+  const combinedWR = ((sqWins + tmWins * 3) / (sqGames + tmGames * 3)) * 100;
 
-  // Combined KDA (team weighted 2x)
+  // Combined KDA (official weighted 3x)
   const sqKDA = soloq?.kda || 0;
   const tmKDA = team?.kda || 0;
-  const combinedKDA = tmGames > 0 && sqGames > 0 ? (sqKDA * sqGames + tmKDA * tmGames * 2) / (sqGames + tmGames * 2) : sqGames > 0 ? sqKDA : tmKDA;
+  const combinedKDA = tmGames > 0 && sqGames > 0 ? (sqKDA * sqGames + tmKDA * tmGames * 3) / (sqGames + tmGames * 3) : sqGames > 0 ? sqKDA : tmKDA;
 
   // Score calculation (0-100), capped at 30 games weighted
   const gameScore = Math.min(totalWeightedGames / 30, 1) * 30;
