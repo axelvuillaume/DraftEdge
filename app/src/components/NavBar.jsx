@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Gamepad2, Shield, ImagePlus, Loader2, Upload, X, BarChart, FileText, Check, ChevronDown, Calendar, Target, Plus, Zap } from "lucide-react"
+import { LayoutDashboard, Gamepad2, Shield, ImagePlus, Loader2, Upload, X, BarChart, FileText, Check, ChevronDown, Calendar, Target, Plus, Zap, FolderOpen } from "lucide-react"
 import useStore from "@/services/store"
 import api from "@/services/api"
 import { toast } from "react-hot-toast"
@@ -124,7 +124,9 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
     opponent_name: "",
     name: "",
     draft_url: "",
-    date: new Date().toISOString().slice(0, 10)
+    date: new Date().toISOString().slice(0, 10),
+    folder_id: "",
+    folder_name: ""
   })
   const [roflPreview, setRoflPreview] = useState(null)
   const [parsing, setParsing] = useState(false)
@@ -134,10 +136,17 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
   const [showOpponentDropdown, setShowOpponentDropdown] = useState(false)
   const [newTeamName, setNewTeamName] = useState("")
 
+  const [folders, setFolders] = useState([])
+  const [showFolderDropdown, setShowFolderDropdown] = useState(false)
+  const [newFolderName, setNewFolderName] = useState("")
+
   useEffect(() => {
     if (isOpen && user?.team_id) {
       api.post("/enemy-team/search", { team_id: user.team_id }).then(({ ok, data }) => {
         if (ok) setEnemyTeams(data)
+      })
+      api.post("/folder/search", { team_id: user.team_id }).then(({ ok, data }) => {
+        if (ok) setFolders(data)
       })
     }
   }, [isOpen, user?.team_id])
@@ -150,6 +159,19 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
       setRoflConfig(prev => ({ ...prev, opponent_name: data.name }))
       setNewTeamName("")
       setShowOpponentDropdown(false)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const createFolder = async name => {
+    try {
+      const { ok, data, code } = await api.post("/folder", { name })
+      if (!ok) return toast.error(code)
+      setFolders(prev => [data, ...prev])
+      setRoflConfig(prev => ({ ...prev, folder_id: data._id, folder_name: data.name }))
+      setNewFolderName("")
+      setShowFolderDropdown(false)
     } catch (error) {
       toast.error(error.message)
     }
@@ -193,7 +215,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
   const removeFile = () => {
     setFile(null)
     setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent_name: "", name: "", draft_url: "", date: new Date().toISOString().slice(0, 10) })
+    setRoflConfig({ team_side: "", opponent_name: "", name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "" })
   }
 
   const handleDrag = e => {
@@ -234,6 +256,8 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
       formData.append("name", roflConfig.name)
       if (roflConfig.date) formData.append("date", new Date(roflConfig.date).toISOString())
       if (roflConfig.draft_url) formData.append("draft_url", roflConfig.draft_url)
+      if (roflConfig.folder_id) formData.append("folder_id", roflConfig.folder_id)
+      if (roflConfig.folder_name) formData.append("folder_name", roflConfig.folder_name)
 
       const response = await api.postFormData("/parser/import", formData)
 
@@ -261,9 +285,11 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
     setFile(null)
     setUploadProgress(null)
     setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent_name: "", name: "", draft_url: "", date: new Date().toISOString().slice(0, 10) })
+    setRoflConfig({ team_side: "", opponent_name: "", name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "" })
     setShowOpponentDropdown(false)
     setNewTeamName("")
+    setShowFolderDropdown(false)
+    setNewFolderName("")
     onClose()
   }
 
@@ -468,6 +494,80 @@ function UploadModal({ isOpen, onClose, user, onSuccess }) {
                               className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${roflConfig.opponent_name === team.name ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
                             >
                               {team.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Folder */}
+                <div className="relative">
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Folder</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowFolderDropdown(!showFolderDropdown)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
+                      <span className={roflConfig.folder_name ? "text-white" : "text-slate-400"}>{roflConfig.folder_name || "Select folder..."}</span>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  </button>
+
+                  {showFolderDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowFolderDropdown(false)} />
+                      <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+                        <div className="p-2 border-b border-slate-700/50">
+                          <form
+                            onSubmit={e => {
+                              e.preventDefault()
+                              if (newFolderName.trim()) createFolder(newFolderName.trim())
+                            }}
+                            className="flex items-center gap-1.5"
+                          >
+                            <input
+                              type="text"
+                              placeholder="New folder..."
+                              value={newFolderName}
+                              onChange={e => setNewFolderName(e.target.value)}
+                              className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
+                              autoFocus
+                            />
+                            <button
+                              type="submit"
+                              disabled={!newFolderName.trim()}
+                              className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </form>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto p-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRoflConfig(prev => ({ ...prev, folder_id: "", folder_name: "" }))
+                              setShowFolderDropdown(false)
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!roflConfig.folder_id ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
+                          >
+                            No folder
+                          </button>
+                          {folders.map(folder => (
+                            <button
+                              key={folder._id}
+                              type="button"
+                              onClick={() => {
+                                setRoflConfig(prev => ({ ...prev, folder_id: folder._id, folder_name: folder.name }))
+                                setShowFolderDropdown(false)
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${roflConfig.folder_id === folder._id ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                            >
+                              {folder.name}
                             </button>
                           ))}
                         </div>

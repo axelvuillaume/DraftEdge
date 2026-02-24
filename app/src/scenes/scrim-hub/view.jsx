@@ -732,7 +732,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
   const [dragActive, setDragActive] = useState(false)
   const inputRef = useRef(null)
 
-  const [roflConfig, setRoflConfig] = useState({ team_side: "", opponent_name: "", name: "" })
+  const [roflConfig, setRoflConfig] = useState({ team_side: "", opponent_name: "", name: "", folder_id: "", folder_name: "", draft_url: "" })
   const [roflPreview, setRoflPreview] = useState(null)
   const [parsing, setParsing] = useState(false)
 
@@ -747,6 +747,10 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
   const [selectedHistoryIds, setSelectedHistoryIds] = useState([])
   const [addingGames, setAddingGames] = useState(false)
 
+  const [folders, setFolders] = useState([])
+  const [showFolderDropdown, setShowFolderDropdown] = useState(false)
+  const [newFolderName, setNewFolderName] = useState("")
+
   const fetchEnemyTeams = async () => {
     try {
       const { ok, data, code } = await api.post("/enemy-team/search", { team_id: user?.team_id })
@@ -756,13 +760,31 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
       toast.error(error.code)
     }
   }
+
+  const fetchFolders = async () => {
+    try {
+      const { ok, data, code } = await api.post("/folder/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code)
+      setFolders(data)
+    } catch (error) {
+      toast.error(error.code)
+    }
+  }
+
   useEffect(() => {
-    if (isOpen && user?.team_id) fetchEnemyTeams()
+    if (isOpen && user?.team_id) {
+      fetchEnemyTeams()
+      fetchFolders()
+    }
   }, [isOpen, user?.team_id])
 
   useEffect(() => {
     if (isOpen && opponentName) setRoflConfig(prev => ({ ...prev, opponent_name: opponentName }))
   }, [isOpen, opponentName])
+
+  useEffect(() => {
+    if (isOpen && sessionFolderId) setRoflConfig(prev => ({ ...prev, folder_id: sessionFolderId, folder_name: sessionFolderName }))
+  }, [isOpen, sessionFolderId])
 
   useEffect(() => {
     if (isOpen && activeTab === "history" && user?.team_id) fetchHistoryGames()
@@ -793,7 +815,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
         const { ok, code } = await api.put(`/game/${gameId}`, {
           session_id: sessionId,
           session_name: sessionName,
-          ...(sessionFolderId && { folder_id: sessionFolderId, folder_name: sessionFolderName })
+          ...(roflConfig.folder_id && { folder_id: roflConfig.folder_id, folder_name: roflConfig.folder_name })
         })
         if (!ok) return toast.error(code)
       }
@@ -819,6 +841,19 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
       setShowOpponentDropdown(false)
     } catch (error) {
       toast.error(error.code)
+    }
+  }
+
+  const createFolder = async name => {
+    try {
+      const { ok, data, code } = await api.post("/folder", { name })
+      if (!ok) return toast.error(code)
+      setFolders(prev => [data, ...prev])
+      setRoflConfig(prev => ({ ...prev, folder_id: data._id, folder_name: data.name }))
+      setNewFolderName("")
+      setShowFolderDropdown(false)
+    } catch (error) {
+      toast.error(error.message)
     }
   }
 
@@ -850,7 +885,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
   const removeFile = () => {
     setFile(null)
     setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent_name: "", name: "" })
+    setRoflConfig({ team_side: "", opponent_name: "", name: "", folder_id: "", folder_name: "", draft_url: "" })
   }
 
   const handleDrag = e => {
@@ -882,12 +917,13 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
       formData.append("name", roflConfig.name)
       if (sessionId) formData.append("session_id", sessionId)
       if (sessionName) formData.append("session_name", sessionName)
-      if (sessionFolderId) formData.append("folder_id", sessionFolderId)
-      if (sessionFolderName) formData.append("folder_name", sessionFolderName)
+      if (roflConfig.folder_id) formData.append("folder_id", roflConfig.folder_id)
+      if (roflConfig.folder_name) formData.append("folder_name", roflConfig.folder_name)
+      if (roflConfig.draft_url) formData.append("draft_url", roflConfig.draft_url)
       const response = await api.postFormData("/parser/import", formData)
       if (response.ok) {
         setUploadProgress("success")
-        toast.success("Game imported successfully!")
+        toast.success(roflConfig.draft_url ? "Game & draft imported!" : "Game imported successfully!")
         setTimeout(() => {
           handleClose()
           onSuccess?.(roflPreview?.game?.patch)
@@ -909,9 +945,11 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
     setFile(null)
     setUploadProgress(null)
     setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent_name: "", name: "" })
+    setRoflConfig({ team_side: "", opponent_name: "", name: "", folder_id: "", folder_name: "", draft_url: "" })
     setShowOpponentDropdown(false)
     setNewTeamName("")
+    setShowFolderDropdown(false)
+    setNewFolderName("")
     setActiveTab("import")
     setSelectedHistoryIds([])
     setSearchQuery("")
@@ -990,24 +1028,17 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-xl border border-slate-600">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-amber-500" />
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">{file.name}</p>
-                      <p className="text-slate-400 text-sm">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                    </div>
-                  </div>
-                  {!uploading && !parsing && (
-                    <button onClick={removeFile} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
-                      <X className="w-5 h-5" />
-                    </button>
-                  )}
-                  {parsing && <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />}
-                  {uploadProgress === "uploading" && <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />}
-                  {uploadProgress === "success" && <Check className="w-5 h-5 text-green-500" />}
+                {/* Draft URL */}
+                <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5">
+                  <label className="block text-sm font-semibold text-amber-400 mb-2">Draft URL</label>
+                  <input
+                    type="text"
+                    value={roflConfig.draft_url}
+                    onChange={e => setRoflConfig(prev => ({ ...prev, draft_url: e.target.value }))}
+                    placeholder="https://drafter.lol/draft/... or https://draftlol.dawe.gg/..."
+                    className="w-full px-3 py-2.5 rounded-lg border border-amber-500/30 bg-slate-800 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all"
+                  />
+                  <p className="text-slate-400 text-xs mt-1.5">Paste a drafter.lol or dawe.gg link to import picks order & bans</p>
                 </div>
 
                 {roflPreview && (
@@ -1181,7 +1212,80 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
                       )}
                     </div>
 
-                    <div className="col-span-2">
+                    <div className="relative">
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Folder</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowFolderDropdown(!showFolderDropdown)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
+                          <span className={roflConfig.folder_name ? "text-white" : "text-slate-400"}>{roflConfig.folder_name || "Select folder..."}</span>
+                        </div>
+                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                      </button>
+
+                      {showFolderDropdown && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setShowFolderDropdown(false)} />
+                          <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+                            <div className="p-2 border-b border-slate-700/50">
+                              <form
+                                onSubmit={e => {
+                                  e.preventDefault()
+                                  if (newFolderName.trim()) createFolder(newFolderName.trim())
+                                }}
+                                className="flex items-center gap-1.5"
+                              >
+                                <input
+                                  type="text"
+                                  placeholder="New folder..."
+                                  value={newFolderName}
+                                  onChange={e => setNewFolderName(e.target.value)}
+                                  className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
+                                  autoFocus
+                                />
+                                <button
+                                  type="submit"
+                                  disabled={!newFolderName.trim()}
+                                  className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </form>
+                            </div>
+                            <div className="max-h-48 overflow-y-auto p-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRoflConfig(prev => ({ ...prev, folder_id: "", folder_name: "" }))
+                                  setShowFolderDropdown(false)
+                                }}
+                                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!roflConfig.folder_id ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
+                              >
+                                No folder
+                              </button>
+                              {folders.map(folder => (
+                                <button
+                                  key={folder._id}
+                                  type="button"
+                                  onClick={() => {
+                                    setRoflConfig(prev => ({ ...prev, folder_id: folder._id, folder_name: folder.name }))
+                                    setShowFolderDropdown(false)
+                                  }}
+                                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${roflConfig.folder_id === folder._id ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                                >
+                                  {folder.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div>
                       <label className="block text-sm font-medium text-slate-400 mb-1">Game Name (optional)</label>
                       <input
                         type="text"
