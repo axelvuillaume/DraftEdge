@@ -1,7 +1,28 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useParams, Link } from "react-router-dom"
 import { toast } from "react-hot-toast"
-import { Loader2, ArrowLeft, Swords, TrendingUp, TrendingDown, Minus, Sparkles, Check, ChevronDown, ChevronUp, X, Plus, Info, BarChart3, Trophy } from "lucide-react"
+import {
+  Loader2,
+  ArrowLeft,
+  Swords,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Sparkles,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Plus,
+  Info,
+  BarChart3,
+  Trophy,
+  History,
+  Target,
+  Trash2,
+  CheckCircle2,
+  Circle
+} from "lucide-react"
 import api from "@/services/api"
 import { getChampionIcon, TIER_COLORS, RANK_ICON_TIERS, ROLE_LABELS, CHAMPION_TIERS, TIER_STYLES, TIER_ORDER } from "@/utils"
 
@@ -80,19 +101,31 @@ function ChampionChip({ name, matchClass, matchLabel, matchIndicator, isManual, 
             <div className="space-y-1 text-[11px]">
               <div className="flex justify-between">
                 <span className="text-slate-400">Games</span>
-                <span className="text-slate-200 tabular-nums">{gamesScore}<span className="text-slate-500">/30</span></span>
+                <span className="text-slate-200 tabular-nums">
+                  {gamesScore}
+                  <span className="text-slate-500">/30</span>
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Win Rate</span>
-                <span className="text-slate-200 tabular-nums">{wrScore}<span className="text-slate-500">/50</span></span>
+                <span className="text-slate-200 tabular-nums">
+                  {wrScore}
+                  <span className="text-slate-500">/50</span>
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">KDA</span>
-                <span className="text-slate-200 tabular-nums">{kdaScore}<span className="text-slate-500">/20</span></span>
+                <span className="text-slate-200 tabular-nums">
+                  {kdaScore}
+                  <span className="text-slate-500">/20</span>
+                </span>
               </div>
               <div className="flex justify-between pt-1 border-t border-slate-700/50">
                 <span className="text-white font-semibold">Total</span>
-                <span className="text-white font-semibold tabular-nums">{autoScore}<span className="text-slate-500">/100</span></span>
+                <span className="text-white font-semibold tabular-nums">
+                  {autoScore}
+                  <span className="text-slate-500">/100</span>
+                </span>
               </div>
             </div>
           </div>
@@ -274,26 +307,25 @@ function SoloQOverviewTab({ player, soloqOverall, mostPlayed }) {
               <span className="text-center">DMG/m</span>
             </div>
             <div className="max-h-[400px] overflow-y-auto">
-
-            {mostPlayed.map(champ => {
-              const wrColor = champ.winRate >= 60 ? "text-emerald-400" : champ.winRate >= 50 ? "text-amber-300" : "text-red-400"
-              return (
-                <div
-                  key={champ.name}
-                  className="grid grid-cols-[1fr_70px_70px_70px_80px_80px] items-center px-4 py-2.5 border-b border-slate-700/20 last:border-b-0 hover:bg-slate-700/10 transition-colors"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <img src={getChampionIcon(champ.name)} alt={champ.name} className="w-8 h-8 rounded-lg border border-slate-700/50" />
-                    <span className="text-white text-sm font-medium">{champ.name}</span>
+              {mostPlayed.map(champ => {
+                const wrColor = champ.winRate >= 60 ? "text-emerald-400" : champ.winRate >= 50 ? "text-amber-300" : "text-red-400"
+                return (
+                  <div
+                    key={champ.name}
+                    className="grid grid-cols-[1fr_70px_70px_70px_80px_80px] items-center px-4 py-2.5 border-b border-slate-700/20 last:border-b-0 hover:bg-slate-700/10 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <img src={getChampionIcon(champ.name)} alt={champ.name} className="w-8 h-8 rounded-lg border border-slate-700/50" />
+                      <span className="text-white text-sm font-medium">{champ.name}</span>
+                    </div>
+                    <span className="text-center text-slate-300 text-sm tabular-nums">{champ.games}</span>
+                    <span className={`text-center text-sm font-medium tabular-nums ${wrColor}`}>{champ.winRate}%</span>
+                    <span className="text-center text-slate-300 text-sm tabular-nums">{champ.kda.toFixed(1)}</span>
+                    <span className="text-center text-slate-400 text-sm tabular-nums">{champ.csPerMin.toFixed(1)}</span>
+                    <span className="text-center text-slate-400 text-sm tabular-nums">{champ.dmgPerMin.toLocaleString()}</span>
                   </div>
-                  <span className="text-center text-slate-300 text-sm tabular-nums">{champ.games}</span>
-                  <span className={`text-center text-sm font-medium tabular-nums ${wrColor}`}>{champ.winRate}%</span>
-                  <span className="text-center text-slate-300 text-sm tabular-nums">{champ.kda.toFixed(1)}</span>
-                  <span className="text-center text-slate-400 text-sm tabular-nums">{champ.csPerMin.toFixed(1)}</span>
-                  <span className="text-center text-slate-400 text-sm tabular-nums">{champ.dmgPerMin.toLocaleString()}</span>
-                </div>
-              )
-            })}
+                )
+              })}
             </div>
           </div>
         </div>
@@ -308,8 +340,117 @@ function SoloQOverviewTab({ player, soloqOverall, mostPlayed }) {
   )
 }
 
-// ==================== MAIN VIEW ====================
+// ==================== OBJECTIVES TAB ====================
+function ObjectivesTab({ playerId, playerName }) {
+  const [objectives, setObjectives] = useState([])
+  const [newName, setNewName] = useState("")
+  const [newRequest, setNewRequest] = useState("")
 
+  const fetchObjectives = async () => {
+    try {
+      const { ok, data, code } = await api.post("/solo-objectif/search", { player_id: playerId })
+      if (!ok) return toast.error(code || "Failed to fetch objectives")
+      setObjectives(data)
+    } catch (error) {
+      toast.error(error.message || "Failed to fetch objectives")
+    }
+  }
+
+  useEffect(() => {
+    fetchObjectives()
+  }, [playerId])
+
+  const addObjective = async () => {
+    if (!newName.trim()) return
+    try {
+      const { ok, data, code } = await api.post("/solo-objectif", { name: newName.trim(), request: newRequest.trim(), player_id: playerId, player_name: playerName })
+      if (!ok) return toast.error(code || "Failed to add objective")
+      setObjectives(prev => [data, ...prev])
+      setNewName("")
+      setNewRequest("")
+    } catch (error) {
+      toast.error(error.message || "Failed to add objective")
+    }
+  }
+
+  const deleteObjective = async id => {
+    try {
+      const { ok, code } = await api.delete(`/solo-objectif/${id}`)
+      if (!ok) return toast.error(code || "Failed to delete objective")
+      setObjectives(prev => prev.filter(o => o._id !== id))
+    } catch (error) {
+      toast.error(error.message || "Failed to delete objective")
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      <div className="grid grid-cols-1 gap-3">
+        <StatCard label="Objectives" value={objectives.length} color="text-violet-400" />
+      </div>
+
+      {/* Add Objective */}
+      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 space-y-3">
+        <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+          <Plus className="w-4 h-4 text-emerald-400" />
+          New Objective
+        </h3>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addObjective()}
+            placeholder="Objective name..."
+            className="flex-1 bg-slate-900/50 border border-slate-700/50 rounded-lg px-3 py-2 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-slate-600"
+          />
+          <input
+            type="text"
+            value={newRequest}
+            onChange={e => setNewRequest(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addObjective()}
+            placeholder="Description (optional)..."
+            className="flex-1 bg-slate-900/50 border border-slate-700/50 rounded-lg px-3 py-2 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-slate-600"
+          />
+          <button
+            onClick={addObjective}
+            disabled={!newName.trim()}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium transition-colors"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+
+      {/* Objectives List */}
+      {objectives.length === 0 ? (
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-12 text-center">
+          <Target className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+          <p className="text-slate-500">No objectives yet. Add one above.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {objectives.map(obj => (
+            <div key={obj._id} className="bg-slate-800/50 border border-slate-700/50 rounded-xl transition-colors">
+              <div className="flex items-center gap-3 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white">{obj.name}</p>
+                  {obj.request && <p className="text-xs text-slate-500 mt-0.5 truncate">{obj.request}</p>}
+                </div>
+                <button onClick={() => deleteObjective(obj._id)} className="p-1 rounded hover:bg-red-500/20 transition-colors">
+                  <Trash2 className="w-4 h-4 text-slate-600 hover:text-red-400 transition-colors" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ==================== MAIN VIEW ====================
 export default function View() {
   const { id } = useParams()
   const [data, setData] = useState(null)
@@ -468,8 +609,9 @@ export default function View() {
     })
 
   const TABS = [
-    { key: "comparative", label: "Comparative", icon: <Swords className="w-3.5 h-3.5" /> },
-    { key: "overview", label: "SoloQ", icon: <BarChart3 className="w-3.5 h-3.5" /> }
+    { key: "comparative", label: "Comparative" },
+    { key: "overview", label: "SoloQ" },
+    { key: "Objectives", label: "Objectives" }
   ]
 
   return (
@@ -538,6 +680,8 @@ export default function View() {
 
         {/* Tab Content */}
         {tab === "overview" && <SoloQOverviewTab player={player} soloqOverall={soloqOverall} mostPlayed={mostPlayed} />}
+
+        {tab === "Objectives" && <ObjectivesTab playerId={id} playerName={player.game_name} />}
 
         {tab === "comparative" && (
           <>
