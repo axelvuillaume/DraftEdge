@@ -7,7 +7,7 @@ import { TIER_COLORS, RANK_ICON_TIERS, ROLE_LABELS } from "@/utils"
 
 import ComparativeTab from "./comparative"
 import SoloQOverviewTab from "./soloQ"
-import ObjectivesTab from "./Objectives"
+import ObjectivesTab from "./objectives"
 
 function getRankIcon(tier) {
   if (!tier) return null
