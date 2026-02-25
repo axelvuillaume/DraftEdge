@@ -24,14 +24,6 @@ function getRatingBgSolid(value) {
   return "bg-emerald-500"
 }
 
-function getRatingBg(value) {
-  if (!value) return "bg-slate-700/40"
-  if (value <= 3) return "bg-red-500/20"
-  if (value <= 5) return "bg-amber-500/15"
-  if (value <= 7) return "bg-amber-400/15"
-  return "bg-emerald-500/20"
-}
-
 export default function List() {
   const navigate = useNavigate()
   const [objectifs, setObjectifs] = useState([])
