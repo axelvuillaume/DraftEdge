@@ -683,13 +683,14 @@ export default function View() {
                             })}
                           </div>
 
-                          <textarea
+                          <DebounceInput
+                            key={`${selectedCell.objectiveId}-${selectedCell.gameId}`}
+                            isTextArea
                             placeholder="Add a note..."
                             value={r.comment || ""}
                             onChange={e => saveResult(selectedCell.objectiveId, selectedCell.gameId, { comment: e.target.value })}
                             rows={2}
                             className="w-full px-3 py-2 rounded-lg border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 bg-slate-700/30 text-white placeholder-slate-600 text-sm resize-none"
-                            autoFocus
                           />
                         </div>
                       )
