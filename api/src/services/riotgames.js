@@ -81,6 +81,17 @@ async function getMatchById(matchId, platform = 'euw1') {
   }
 }
 
+async function getTimelineById(matchId, platform = 'euw1') {
+  try {
+    const regional = PLATFORM_TO_REGIONAL[platform] || 'europe';
+    const url = `https://${regional}.api.riotgames.com/lol/match/v5/matches/${matchId}/timeline`;
+    return await apiFetch(url);
+  } catch (error) {
+    console.error(`Error fetching timeline ${matchId}:`, error.message);
+    return null;
+  }
+}
+
 async function getGamesByPuuid(puuid, number = 20, platform = 'euw1') {
   try {
     const matchIds = await getMatchIdsByPuuid(puuid, { count: number, platform });
@@ -118,4 +129,4 @@ async function getPuuidByRiotId(gameName, tagLine, platform = 'euw1') {
   }
 }
 
-module.exports = { apiFetch, getMatchIdsByPuuid, getMatchById, getGamesByPuuid, getRankByPuuid, getPuuidByRiotId, PLATFORM_TO_REGIONAL, SERVERS };
+module.exports = { apiFetch, getMatchIdsByPuuid, getMatchById, getTimelineById, getGamesByPuuid, getRankByPuuid, getPuuidByRiotId, PLATFORM_TO_REGIONAL, SERVERS };

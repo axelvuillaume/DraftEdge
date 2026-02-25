@@ -47,30 +47,34 @@ router.post('/', passport.authenticate(['admin', 'user'], { session: false, fail
     const { name, request, player_id, player_name } = req.body;
 
     const prompt = `Tu es un parser d'objectifs League of Legends. Transforme la demande du coach en règle structurée JSON.
+Les noms de metrics doivent correspondre EXACTEMENT aux champs de l'API Riot Games. Pour les champs nestés, utilise la dot notation (ex: "damageStats.totalDamageDoneToChampions").
+On ne gère que les stats du joueur lui-même, pas celles des adversaires ou coéquipiers.
 
-METRICS DISPONIBLES (endgame - fin de partie):
-- kills, deaths, assists (KDA)
-- totalMinionsKilled (CS minions lane), neutralMinionsKilled (CS jungle)
-- cs_per_min (CS total par minute, calculé: (totalMinionsKilled + neutralMinionsKilled) / (gameDuration / 60))
+METRICS ENDGAME (source: "endgame", timing: null) — champs du match:
+- kills, deaths, assists
+- totalMinionsKilled (CS lane), neutralMinionsKilled (CS jungle)
 - goldEarned, goldSpent
-- totalDamageDealtToChampions, physicalDamageDealtToChampions, magicDamageDealtToChampions
+- totalDamageDealtToChampions, physicalDamageDealtToChampions, magicDamageDealtToChampions, trueDamageDealtToChampions
 - totalDamageTaken, damageSelfMitigated
 - visionScore, wardsPlaced, wardsKilled, detectorWardsPlaced, visionWardsBoughtInGame
 - turretKills, dragonKills, baronKills
 - firstBloodKill, firstBloodAssist, firstTowerKill
 - doubleKills, tripleKills, pentaKills
 - totalHealsOnTeammates, totalDamageShieldedOnTeammates
-- kda (calculé: (kills + assists) / max(deaths, 1))
-- kill_participation (calculé)
-- damage_per_min (calculé: totalDamageDealtToChampions / (gameDuration / 60))
-- gold_per_min (calculé: goldEarned / (gameDuration / 60))
-- vision_per_min (calculé: visionScore / (gameDuration / 60))
+- damageDealtToTurrets, damageDealtToObjectives
 
-METRICS DISPONIBLES (timeline - à un timing précis):
-- totalMinionsKilled (CS à X min)
-- totalGold (gold à X min)
+METRICS TIMELINE (source: "timeline", timing: N minutes) — champs participantFrames Riot:
+- minionsKilled (CS lane à X min)
+- jungleMinionsKilled (CS jungle à X min)
+- totalGold (gold total à X min)
+- currentGold (gold actuel à X min)
 - xp (XP à X min)
 - level (niveau à X min)
+- damageStats.totalDamageDoneToChampions (dégâts aux champions à X min)
+- damageStats.magicDamageDoneToChampions (dégâts magiques aux champions à X min)
+- damageStats.physicalDamageDoneToChampions (dégâts physiques aux champions à X min)
+- damageStats.totalDamageDone (dégâts totaux à X min)
+- damageStats.totalDamageTaken (dégâts subis à X min)
 
 RÈGLES:
 - operator: ">", ">=", "<", "<=", "=="
@@ -79,15 +83,15 @@ RÈGLES:
 - Réponds UNIQUEMENT avec le JSON, rien d'autre
 
 EXEMPLES:
-"CS supérieur à 100 à 10min" → {"metric":"totalMinionsKilled","operator":">=","value":100,"timing":10,"source":"timeline"}
+"CS supérieur à 100 à 10min" → {"metric":"minionsKilled","operator":">=","value":100,"timing":10,"source":"timeline"}
 "Moins de 3 deaths" → {"metric":"deaths","operator":"<=","value":3,"timing":null,"source":"endgame"}
-"Plus de 7 CS/min" → {"metric":"cs_per_min","operator":">=","value":7,"timing":null,"source":"endgame"}
 "Vision score au dessus de 40" → {"metric":"visionScore","operator":">=","value":40,"timing":null,"source":"endgame"}
 "Plus de 8k gold à 15 min" → {"metric":"totalGold","operator":">=","value":8000,"timing":15,"source":"timeline"}
+"Plus de 3k dégâts aux champions à 10min" → {"metric":"damageStats.totalDamageDoneToChampions","operator":">=","value":3000,"timing":10,"source":"timeline"}
 
 DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
 
-    const response = await geminiClient.models.generateContent({ model: 'gemini-3-pro-preview', contents: prompt });
+    const response = await geminiClient.models.generateContent({ model: 'gemini-2.0-flash', contents: prompt });
     const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const rule = JSON.parse(
       text
@@ -104,7 +108,6 @@ DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
       player_name,
       team_id: req.user.team_id,
       team_name: req.user.team_name,
-      request,
     });
 
     return res.status(200).send({ ok: true, data: soloObjectif });

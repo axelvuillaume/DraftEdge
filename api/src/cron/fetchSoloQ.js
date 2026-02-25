@@ -1,10 +1,22 @@
 const Player = require('../models/player');
 const SoloqMatch = require('../models/soloq-match');
-const { getMatchIdsByPuuid, getMatchById } = require('../services/riotgames');
+const SoloObjectif = require('../models/solo-objectif');
+const SoloObjectifResult = require('../models/solo-objectif-result');
+const { getMatchIdsByPuuid, getMatchById, getTimelineById } = require('../services/riotgames');
 
 const QUEUE_ID = 420;
 const DELAY_MS = 1300;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function evaluate(operator, actual, target) {
+  if (actual == null) return false;
+  if (operator === '>') return actual > target;
+  if (operator === '>=') return actual >= target;
+  if (operator === '<') return actual < target;
+  if (operator === '<=') return actual <= target;
+  if (operator === '==') return actual === target;
+  return false;
+}
 
 async function fetchSoloQ() {
   const players = await Player.find({ puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null } });
@@ -17,19 +29,19 @@ async function fetchSoloQ() {
   for (const player of validPlayers) {
     try {
       const platform = player.region || 'euw1';
-      // Fetch last 50 match IDs
       const matchIds = await getMatchIdsByPuuid(player.puuid, { queue: QUEUE_ID, count: 10, platform });
 
       if (!matchIds || matchIds.length === 0) continue;
 
-      // Check which ones are already in DB
       const existing = await SoloqMatch.find({ matchId: { $in: matchIds }, puuid: player.puuid }, { matchId: 1 }).lean();
       const existingSet = new Set(existing.map((d) => d.matchId));
       const newIds = matchIds.filter((id) => !existingSet.has(id));
 
       if (newIds.length === 0) continue;
 
-      // console.log(`  [soloq-cron] ${player.game_name}: ${newIds.length} new matches`);
+      // Charger les objectifs du joueur une seule fois
+      const objectives = await SoloObjectif.find({ player_id: player._id.toString(), 'rule.metric': { $exists: true } }).lean();
+      const needsTimeline = objectives.some((o) => o.rule.source === 'timeline');
 
       for (let i = 0; i < newIds.length; i++) {
         try {
@@ -58,6 +70,57 @@ async function fetchSoloQ() {
 
           await SoloqMatch.updateOne({ matchId: doc.matchId, puuid: doc.puuid }, { $set: doc }, { upsert: true });
           totalSaved++;
+
+          // Évaluer les objectifs pour ce match
+          if (objectives.length > 0) {
+            let timeline = null;
+            let participantId = null;
+
+            if (needsTimeline) {
+              await sleep(DELAY_MS);
+              timeline = await getTimelineById(newIds[i], platform);
+              if (timeline?.info?.participants) {
+                const tlP = timeline.info.participants.find((x) => x.puuid === player.puuid);
+                participantId = tlP?.participantId;
+              }
+            }
+
+            const results = [];
+
+            for (const obj of objectives) {
+              const { metric, operator, value, timing, source } = obj.rule;
+              let actual_value = undefined;
+
+              if (source === 'endgame') actual_value = metric.split('.').reduce((o, key) => o?.[key], doc);
+
+              if (source === 'timeline' && timeline && participantId != null) {
+                const targetMs = timing * 60 * 1000;
+                const frame = timeline.info.frames.find((f) => f.timestamp >= targetMs);
+                if (frame) {
+                  const pFrame = frame.participantFrames[String(participantId)];
+                  if (pFrame) actual_value = metric.split('.').reduce((o, key) => o?.[key], pFrame);
+                }
+              }
+
+              if (actual_value === undefined) continue;
+
+              results.push({
+                solo_objectif_id: obj._id.toString(),
+                solo_objectif_name: obj.name,
+                matchId: newIds[i],
+                actual_value: Math.round(actual_value * 100) / 100,
+                success: evaluate(operator, actual_value, value),
+                game_date: doc.gameDate,
+                champion: doc.championName,
+                player_id: player._id.toString(),
+                player_name: player.game_name,
+                team_id: player.team_id,
+                team_name: player.team_name,
+              });
+            }
+
+            if (results.length > 0) await SoloObjectifResult.insertMany(results);
+          }
         } catch (err) {
           console.error(`  [soloq-cron] ${player.game_name} ${newIds[i]}: ${err.message}`);
         }
