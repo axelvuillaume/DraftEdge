@@ -63,8 +63,7 @@ export default function StatsV2() {
         if (player) {
           setActivePlayer(player)
           setActiveEnemyChampion(null)
-          // Find the champion in weakAgainst or strongAgainst (these are the player's own champions)
-          const champion = [...(player.weakAgainst || []), ...(player.strongAgainst || [])].find(c => c.name === championName)
+          const champion = (player.champions || []).find(c => c.name === championName)
           if (champion) {
             setActiveChampion(champion)
           }
@@ -180,19 +179,19 @@ export default function StatsV2() {
 
           {isPlayer && (
             <SectionCard title="Champions">
-              <Matchups weakAgainst={activePlayer.weakAgainst || []} strongAgainst={activePlayer.strongAgainst || []} onChampionClick={setActiveChampion} />
+              <Matchups champions={activePlayer.champions} onChampionClick={setActiveChampion} />
             </SectionCard>
           )}
 
           {isChampion && (
             <SectionCard title="Matchup Details">
-              <Matchups weakAgainst={activeChampion.weakAgainst || []} strongAgainst={activeChampion.strongAgainst || []} readOnly />
+              <Matchups champions={activeChampion.champions} readOnly />
             </SectionCard>
           )}
 
           {isEnemyChampion && (
             <SectionCard title="Our champions vs this champion">
-              <Matchups weakAgainst={activeEnemyChampion.weakAgainst || []} strongAgainst={activeEnemyChampion.strongAgainst || []} readOnly isEnemyContext />
+              <Matchups champions={activeEnemyChampion.champions} readOnly />
             </SectionCard>
           )}
         </div>
@@ -245,9 +244,7 @@ function CategoryTabs({ categories, activeCategory, onCategoryChange, categorySc
 }
 
 function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEnemyChampion, onTeamClick, onPlayerChange, onChampionChange, onBack }) {
-  const allChampions = activePlayer
-    ? [...(activePlayer.weakAgainst || []), ...(activePlayer.strongAgainst || [])].filter((champ, idx, arr) => arr.findIndex(c => c.name === champ.name) === idx)
-    : []
+  const allChampions = activePlayer ? (activePlayer.champions || []) : []
 
   const showBackButton = activePlayer || activeChampion || activeEnemyChampion
 
@@ -663,83 +660,40 @@ function PlayersList({ players, onPlayerClick }) {
   )
 }
 
-function Matchups({ weakAgainst, strongAgainst, onChampionClick, activeChampion, readOnly, isEnemyContext }) {
-  const filteredWeak = weakAgainst.filter(m => m.winRate <= 50)
-  const filteredStrong = strongAgainst.filter(m => m.winRate > 50)
+function Matchups({ champions, onChampionClick, activeChampion, readOnly }) {
+  const allChampions = (champions || [])
+    .filter((champ, idx, arr) => arr.findIndex(c => c.name === champ.name) === idx)
+    .sort((a, b) => (b.games || 0) - (a.games || 0))
 
-  // For enemy context: labels are inverted - our weak champions against enemy = we lose more
-  const weakLabel = isEnemyContext ? "Our worst picks" : readOnly ? "Worst matchups" : "Worst WR"
-  const strongLabel = isEnemyContext ? "Our best picks" : readOnly ? "Best matchups" : "Best WR"
+  if (allChampions.length === 0) {
+    return <div className="text-slate-500 text-center py-8">No data</div>
+  }
 
   return (
-    <div className="grid grid-cols-2 gap-6">
-      {/* Worst WR */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-2 h-2 rounded-full bg-red-500 shadow-lg shadow-red-500/50" />
-          <span className="text-slate-400 text-xs font-medium tracking-wider uppercase">{weakLabel}</span>
-        </div>
-        <div className="space-y-2">
-          {filteredWeak.length === 0 ? (
-            <div className="text-slate-500 text-sm text-center py-6 bg-slate-900/30 rounded-lg">No data</div>
-          ) : (
-            filteredWeak.map((matchup, idx) => (
-              <div
-                key={idx}
-                onClick={readOnly ? undefined : () => onChampionClick(matchup)}
-                className={`bg-slate-900/40 border rounded-lg p-3 flex items-center gap-3 transition-all ${
-                  readOnly
-                    ? "border-slate-700/40"
-                    : `cursor-pointer hover:bg-slate-700/40 ${activeChampion === matchup.name ? "border-emerald-500" : "border-slate-700/40 hover:border-red-500/50"}`
-                }`}
-              >
-                <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden">
-                  <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>
-                  <span className="text-slate-500 text-xs">{matchup.games} games</span>
-                </div>
-                <span className="text-red-400 font-bold text-sm">{matchup.winRate}%</span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Best WR */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
-          <span className="text-slate-400 text-xs font-medium tracking-wider uppercase">{strongLabel}</span>
-        </div>
-        <div className="space-y-2">
-          {filteredStrong.length === 0 ? (
-            <div className="text-slate-500 text-sm text-center py-6 bg-slate-900/30 rounded-lg">No data</div>
-          ) : (
-            filteredStrong.map((matchup, idx) => (
-              <div
-                key={idx}
-                onClick={readOnly ? undefined : () => onChampionClick(matchup)}
-                className={`bg-slate-900/40 border rounded-lg p-3 flex items-center gap-3 transition-all ${
-                  readOnly
-                    ? "border-slate-700/40"
-                    : `cursor-pointer hover:bg-slate-700/40 ${activeChampion === matchup.name ? "border-emerald-500" : "border-slate-700/40 hover:border-emerald-500/50"}`
-                }`}
-              >
-                <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden">
-                  <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>
-                  <span className="text-slate-500 text-xs">{matchup.games} games</span>
-                </div>
-                <span className="text-emerald-400 font-bold text-sm">{matchup.winRate}%</span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+    <div className="max-h-[400px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+      {allChampions.map((matchup, idx) => {
+        const isWinning = matchup.winRate > 50
+        return (
+          <div
+            key={idx}
+            onClick={readOnly ? undefined : () => onChampionClick(matchup)}
+            className={`bg-slate-900/40 border rounded-lg p-3 flex items-center gap-3 transition-all ${
+              readOnly
+                ? "border-slate-700/40"
+                : `cursor-pointer hover:bg-slate-700/40 ${activeChampion === matchup.name ? "border-emerald-500" : "border-slate-700/40 hover:border-slate-500/50"}`
+            }`}
+          >
+            <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>
+              <span className="text-slate-500 text-xs">{matchup.games} games</span>
+            </div>
+            <span className={`font-bold text-sm ${isWinning ? "text-emerald-400" : "text-red-400"}`}>{matchup.winRate}%</span>
+          </div>
+        )
+      })}
     </div>
   )
 }

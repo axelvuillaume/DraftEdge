@@ -708,67 +708,7 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
       const pEnemyAgg = aggregateStats(pOpponentStats);
       const pCategoryScores = getCategoryScores(pAgg, pEnemyAgg);
 
-      // Build matchups
-      const matchupMap = {};
-      pStats.forEach((stat) => {
-        const oppKey = `${stat.game_id}_${stat.role}`;
-        const opponent = opponentMap[oppKey];
-        if (!opponent) return;
-        const oppChamp = opponent.champion;
-        if (!matchupMap[oppChamp]) matchupMap[oppChamp] = { teamStats: [], enemyStats: [] };
-        matchupMap[oppChamp].teamStats.push(stat);
-        matchupMap[oppChamp].enemyStats.push(opponent);
-      });
-
-      const matchups = Object.entries(matchupMap).map(([champName, m]) => {
-        const mTeamAgg = aggregateStats(m.teamStats);
-        const mEnemyAgg = aggregateStats(m.enemyStats);
-        const mCategoryScores = getCategoryScores(mTeamAgg, mEnemyAgg);
-        const mScore = Math.round(Object.values(mCategoryScores).reduce((a, b) => a + b, 0) / Object.values(mCategoryScores).length);
-        const mWinRate = mTeamAgg.games > 0 ? round1((mTeamAgg.wins / mTeamAgg.games) * 100) : 0;
-        const avgWinRate = pAgg.games > 0 ? (pAgg.wins / pAgg.games) * 100 : 50;
-        const diff = round1(mWinRate - avgWinRate);
-
-        // Build sub-matchups: player's champion performance when facing this opponent champion
-        const subMatchupMap = {};
-        m.teamStats.forEach((stat) => {
-          const playerChamp = stat.champion;
-          if (!playerChamp) return;
-          if (!subMatchupMap[playerChamp]) subMatchupMap[playerChamp] = { wins: 0, games: 0 };
-          subMatchupMap[playerChamp].games++;
-          if (stat.game_win) subMatchupMap[playerChamp].wins++;
-        });
-
-        const subMatchups = Object.entries(subMatchupMap).map(([playerChamp, stats]) => {
-          const subWinRate = stats.games > 0 ? round1((stats.wins / stats.games) * 100) : 0;
-          const subDiff = round1(subWinRate - mWinRate);
-          return { name: playerChamp, winRate: subWinRate, games: stats.games, diff: subDiff };
-        });
-
-        const sortedSubMatchups = subMatchups.sort((a, b) => a.diff - b.diff);
-        const mWeakAgainst = sortedSubMatchups.filter((s) => s.diff < 0).slice(0, 4);
-        const mStrongAgainst = sortedSubMatchups
-          .filter((s) => s.diff >= 0)
-          .sort((a, b) => b.diff - a.diff)
-          .slice(0, 4);
-
-        return {
-          name: champName,
-          score: mScore,
-          winRate: mWinRate,
-          games: mTeamAgg.games,
-          kda: round1(mTeamAgg.deaths > 0 ? (mTeamAgg.kills + mTeamAgg.assists) / mTeamAgg.deaths : mTeamAgg.kills + mTeamAgg.assists),
-          diff,
-          categoryScores: mCategoryScores,
-          metrics: getAllMetrics(mTeamAgg, mEnemyAgg),
-          winRateBySide: calculateWinRateBySide(m.teamStats),
-          winRateByDuration: calculateWinRateByDuration(m.teamStats),
-          weakAgainst: mWeakAgainst,
-          strongAgainst: mStrongAgainst,
-        };
-      });
-
-      // Build player's champions stats (for Best/Worst WR display)
+      // Build player's champions stats
       const playerChampionMap = {};
       pStats.forEach((stat) => {
         const champ = stat.champion;
@@ -829,12 +769,10 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
           metrics: getAllMetrics(champAgg, champEnemyAgg),
           winRateBySide: calculateWinRateBySide(champData.stats),
           winRateByDuration: calculateWinRateByDuration(champData.stats),
-          weakAgainst: champMatchups.sort((a, b) => a.winRate - b.winRate).slice(0, 4),
-          strongAgainst: [...champMatchups].sort((a, b) => b.winRate - a.winRate).slice(0, 4),
+          champions: champMatchups,
         };
       });
 
-      // Sort player's champions by winrate for Best/Worst WR
       return {
         puuid: _key,
         name,
@@ -848,8 +786,7 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
         metrics: getAllMetrics(pAgg, pEnemyAgg),
         winRateBySide: calculateWinRateBySide(pStats),
         winRateByDuration: calculateWinRateByDuration(pStats),
-        weakAgainst: [...playerChampions].sort((a, b) => a.winRate - b.winRate).slice(0, 4),
-        strongAgainst: [...playerChampions].sort((a, b) => b.winRate - a.winRate).slice(0, 4),
+        champions: playerChampions,
       };
     });
 
@@ -945,12 +882,7 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
       return { name: ourChamp, winRate: mWinRate, games: data.games, diff: mDiff };
     });
 
-    const sortedMatchups = matchups.sort((a, b) => a.winRate - b.winRate);
-    const weakAgainst = sortedMatchups.filter((m) => m.winRate <= 50).slice(0, 4);
-    const strongAgainst = [...matchups]
-      .sort((a, b) => b.winRate - a.winRate)
-      .filter((m) => m.winRate > 50)
-      .slice(0, 4);
+    
 
     // Calculate enemy champion's win rate (inverse of ours) and KDA
     const enemyWinRate = uniqueGames.length > 0 ? round1(100 - winRateVsChamp) : 0;
@@ -972,8 +904,7 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
       metrics: getAllMetrics(ourAgg, enemyAgg),
       winRateBySide: calculateWinRateBySide(ourStatsVsChamp),
       winRateByDuration: calculateWinRateByDuration(ourStatsVsChamp),
-      weakAgainst,
-      strongAgainst,
+      champions: matchups,
     };
 
     return res.status(200).send({ ok: true, data: result });
