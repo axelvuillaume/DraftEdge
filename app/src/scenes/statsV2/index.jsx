@@ -287,45 +287,46 @@ export default function StatsV2() {
               const proCategory = proStats?.[activeCategory]
               const round1 = v => Math.round(v * 10) / 10
 
-              // Build display metrics based on compareMode
-              const displayMetrics =
-                compareMode === "pro" && proCategory
-                  ? scrimMetrics.map(m => {
-                      const proVal = proCategory[m.name]
-                      if (proVal == null) return m
-                      const diff = proVal > 0 ? ((m.team - proVal) / proVal) * 100 : m.team > 0 ? 100 : 0
-                      return { ...m, enemies: proVal, diff: round1(diff) }
-                    })
-                  : scrimMetrics
+              if (viewMode === "spider") {
+                const displayMetrics =
+                  compareMode === "pro" && proCategory
+                    ? scrimMetrics.map(m => {
+                        const proVal = proCategory[m.name]
+                        if (proVal == null) return m
+                        const diff = proVal > 0 ? ((m.team - proVal) / proVal) * 100 : m.team > 0 ? 100 : 0
+                        return { ...m, enemies: proVal, diff: round1(diff) }
+                      })
+                    : scrimMetrics
 
-              return viewMode === "spider" ? (
-                <SpiderChart metrics={displayMetrics} isEnemyChampion={isEnemyChampion} compareMode={compareMode} />
-              ) : (
-                <MetricsTable metrics={displayMetrics} isEnemyChampion={isEnemyChampion} compareMode={compareMode} />
-              )
+                return (
+                  <>
+                    <SpiderChart metrics={displayMetrics} isEnemyChampion={isEnemyChampion} compareMode={compareMode} />
+                    <div className="flex justify-end mt-4">
+                      <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
+                        <button
+                          onClick={() => setCompareMode("scrim")}
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                            compareMode === "scrim" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          vs Scrim
+                        </button>
+                        <button
+                          onClick={() => setCompareMode("pro")}
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                            compareMode === "pro" ? "bg-amber-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          vs Pro
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )
+              }
+
+              return <MetricsTable metrics={scrimMetrics} isEnemyChampion={isEnemyChampion} proStats={proCategory} />
             })()}
-
-            {/* Compare mode radio */}
-            <div className="flex justify-end mt-4">
-              <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
-                <button
-                  onClick={() => setCompareMode("scrim")}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    compareMode === "scrim" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  vs Scrim
-                </button>
-                <button
-                  onClick={() => setCompareMode("pro")}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    compareMode === "pro" ? "bg-amber-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  vs Pro
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Colonne droite - Listes */}
@@ -597,32 +598,33 @@ function ScoreCircle({ score, isEnemy }) {
   )
 }
 
-function MetricsTable({ metrics, isEnemyChampion, compareMode }) {
+function MetricsTable({ metrics, isEnemyChampion, proStats }) {
   if (!metrics || metrics.length === 0) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
 
-  const isPro = compareMode === "pro"
-  const enemyLabel = isEnemyChampion ? "This champ" : isPro ? "Pro Avg" : "Enemies"
-  const enemyColor = isPro ? "text-amber-400" : "text-red-400"
+  const hasProStats = proStats && Object.keys(proStats).length > 0
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-4 gap-4 px-4 py-2 border-b border-slate-700/50 text-xs font-medium text-slate-400 uppercase tracking-wider">
+      <div className={`grid ${hasProStats ? "grid-cols-5" : "grid-cols-4"} gap-4 px-4 py-2 border-b border-slate-700/50 text-xs font-medium text-slate-400 uppercase tracking-wider`}>
         <div>Metric</div>
         <div className="text-center">{isEnemyChampion ? "Us" : "Team"}</div>
-        <div className="text-center">{enemyLabel}</div>
+        <div className="text-center">{isEnemyChampion ? "This champ" : "Enemies"}</div>
+        {hasProStats && <div className="text-center">Pro Avg</div>}
         <div className="text-right">Diff</div>
       </div>
 
       <div className="divide-y divide-slate-700/30">
         {metrics.map((row, i) => {
           const diff = parseFloat(row.diff) || 0
+          const proVal = hasProStats ? proStats[row.name] : null
           return (
-            <div key={i} className="grid grid-cols-4 gap-4 px-4 py-3 hover:bg-slate-700/20 transition-colors items-center text-sm">
+            <div key={i} className={`grid ${hasProStats ? "grid-cols-5" : "grid-cols-4"} gap-4 px-4 py-3 hover:bg-slate-700/20 transition-colors items-center text-sm`}>
               <div className="text-slate-200 font-medium">{row.name}</div>
               <div className="text-center text-emerald-400 font-mono font-medium">{row.team}</div>
-              <div className={`text-center ${enemyColor} font-mono`}>{row.enemies}</div>
+              <div className="text-center text-red-400 font-mono">{row.enemies}</div>
+              {hasProStats && <div className="text-center text-amber-400 font-mono">{proVal ?? "-"}</div>}
               <div className={`text-right font-bold font-mono ${diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                 {diff >= 0 ? "+" : ""}
                 {row.diff}%
