@@ -39,6 +39,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
 
     if (req.body.team_id) query.team_id = req.body.team_id;
     if (req.body.player_id) query.player_id = req.body.player_id;
+    if (req.body.from_date) query.gameDate = { $gte: new Date(req.body.from_date) };
     const limit = req.body.limit || 5000;
     const skip = req.body.offset || 0;
     const total = await SoloQMatch.countDocuments(query);

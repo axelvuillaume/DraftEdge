@@ -1,11 +1,37 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts"
-import { Loader2, TrendingUp, TrendingDown, Trophy, Zap } from "lucide-react"
+import { Loader2, TrendingUp, TrendingDown, Trophy, Zap, Gamepad2 } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import { Link, useNavigate } from "react-router-dom"
 import { RANKED_TIERS, DIVS, CHART_COLORS, ROLES, TIER_COLORS, RANK_ICON_TIERS } from "@/utils"
+
+const PERIODS = [
+  { value: "today", label: "Today" },
+  { value: "week", label: "Last Week" },
+  { value: "month", label: "Last Month" },
+  { value: "all", label: "All Time" }
+]
+
+function getPeriodStart(period) {
+  const d = new Date()
+  if (period === "today") {
+    d.setHours(0, 0, 0, 0)
+    return d
+  }
+  if (period === "week") {
+    d.setDate(d.getDate() - 7)
+    d.setHours(0, 0, 0, 0)
+    return d
+  }
+  if (period === "month") {
+    d.setMonth(d.getMonth() - 1)
+    d.setHours(0, 0, 0, 0)
+    return d
+  }
+  return new Date(0)
+}
 
 function toLP(tier, rank, lp = 0) {
   const i = RANKED_TIERS.indexOf(tier)
@@ -21,7 +47,9 @@ export default function SoloQ() {
   const { user } = useStore()
   const [players, setPlayers] = useState([])
   const [snapshots, setSnapshots] = useState([])
+  const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
+  const [period, setPeriod] = useState("all")
   const navigate = useNavigate()
 
   const fetchPlayers = async () => {
@@ -29,9 +57,6 @@ export default function SoloQ() {
       const { ok, data, code } = await api.post("/player/search", { team_id: user?.team_id })
       if (!ok) return toast.error(code || "Failed to fetch players")
       setPlayers(data)
-      const conn = data.filter(p => p.puuid)
-      if (!conn.length) return toast.error("No connected players")
-      setSnapshots((await Promise.all(conn.map(p => api.post("/soloq-snapshot/search", { player_id: p._id, limit: 0 })))).flatMap(r => (r.ok ? r.data : [])))
     } catch (error) {
       toast.error(error.message || "Failed to fetch players")
     } finally {
@@ -43,7 +68,33 @@ export default function SoloQ() {
     fetchPlayers()
   }, [])
 
+  useEffect(() => {
+    const conn = players.filter(p => p.puuid)
+    if (!conn.length) return
+    const fromDate = period === "all" ? undefined : getPeriodStart(period).toISOString()
+    ;(async () => {
+      try {
+        const [snapshotResults, matchResults] = await Promise.all([
+          Promise.all(conn.map(p => api.post("/soloq-snapshot/search", { player_id: p._id, limit: 0, from_date: fromDate }))),
+          Promise.all(conn.map(p => api.post("/soloq-match/search", { player_id: p._id, limit: 0, from_date: fromDate }))),
+        ])
+        setSnapshots(snapshotResults.flatMap(r => (r.ok ? r.data : [])))
+        setMatches(matchResults.flatMap(r => (r.ok ? r.data : [])))
+      } catch (error) {
+        console.error(error)
+      }
+    })()
+  }, [players, period])
+
   const connected = players.filter(p => p.puuid).sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role))
+
+  const periodLabel = { today: "today", week: "this week", month: "this month", all: "all time" }[period]
+
+  const getMatchStats = playerId => {
+    const filtered = matches.filter(m => m.player_id === playerId)
+    const w = filtered.filter(m => m.win).length
+    return { w, l: filtered.length - w, total: filtered.length }
+  }
 
   const chartData = (() => {
     if (!snapshots.length) return []
@@ -57,13 +108,9 @@ export default function SoloQ() {
   })()
 
   const getLPChange = player => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
     const snaps = snapshots.filter(s => s.player_id === player._id).sort((a, b) => new Date(a.fetched_at || a.createdAt) - new Date(b.fetched_at || b.createdAt))
     if (snaps.length < 2) return 0
-    const todaySnaps = snaps.filter(s => new Date(s.fetched_at || s.createdAt) >= today)
-    const base = todaySnaps.length ? todaySnaps[0] : snaps.at(-1)
-    return toLP(snaps.at(-1).tier, snaps.at(-1).rank, snaps.at(-1).league_points) - toLP(base.tier, base.rank, base.league_points)
+    return toLP(snaps.at(-1).tier, snaps.at(-1).rank, snaps.at(-1).league_points) - toLP(snaps[0].tier, snaps[0].rank, snaps[0].league_points)
   }
 
   if (loading)
@@ -78,40 +125,65 @@ export default function SoloQ() {
       <div className="max-w-[1800px] mx-auto space-y-6">
         {connected.length > 0 &&
           (() => {
-            const w = connected.reduce((s, p) => s + (p.current_wins || 0), 0)
-            const l = connected.reduce((s, p) => s + (p.current_losses || 0), 0)
+            const teamStats = connected.reduce(
+              (acc, p) => {
+                const s = getMatchStats(p._id)
+                return { w: acc.w + s.w, l: acc.l + s.l }
+              },
+              { w: 0, l: 0 }
+            )
+            const { w, l } = teamStats
             const wr = w + l > 0 ? Math.round((w / (w + l)) * 100) : 0
             const change = connected.reduce((s, p) => s + getLPChange(p), 0)
             return (
-              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl px-6 py-3 flex items-center justify-center gap-10">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="text-slate-400 text-xs uppercase tracking-wider">Team LP</span>
-                  <span className="text-white font-bold text-lg tabular-nums">
-                    {connected
-                      .filter(p => ["MASTER", "GRANDMASTER", "CHALLENGER"].includes(p.current_tier))
-                      .reduce((s, p) => s + (p.current_lp ?? 0), 0)
-                      .toLocaleString()}
-                  </span>
+              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl px-6 py-3 flex items-center gap-10">
+                <div className="flex items-center gap-10 flex-1 justify-center">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-slate-400 text-xs uppercase tracking-wider">Team LP</span>
+                    <span className="text-white font-bold text-lg tabular-nums">
+                      {connected
+                        .filter(p => ["MASTER", "GRANDMASTER", "CHALLENGER"].includes(p.current_tier))
+                        .reduce((s, p) => s + (p.current_lp ?? 0), 0)
+                        .toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="w-px h-5 bg-slate-700" />
+                  <div className="flex items-center gap-2">
+                    <Gamepad2 className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="text-slate-400 text-xs uppercase tracking-wider">Total Games</span>
+                    <span className="text-white font-bold text-lg tabular-nums">{w + l}</span>
+                  </div>
+                  <div className="w-px h-5 bg-slate-700" />
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-slate-400 text-xs uppercase tracking-wider">Win Rate</span>
+                    <span className={`font-bold text-lg tabular-nums ${wr >= 50 ? "text-emerald-400" : "text-red-400"}`}>{wr}%</span>
+                    <span className="text-slate-500 text-xs">
+                      {w}W {l}L
+                    </span>
+                  </div>
+                  <div className="w-px h-5 bg-slate-700" />
+                  <div className="flex items-center gap-2">
+                    {change >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
+                    <span className="text-slate-400 text-xs uppercase tracking-wider">LP Change {periodLabel}</span>
+                    <span className={`font-bold text-lg tabular-nums ${change > 0 ? "text-emerald-400" : change < 0 ? "text-red-400" : "text-slate-400"}`}>
+                      {change > 0 ? "+" : ""}
+                      {change}
+                    </span>
+                  </div>
                 </div>
-                <div className="w-px h-5 bg-slate-700" />
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-slate-400 text-xs uppercase tracking-wider">Win Rate</span>
-                  <span className={`font-bold text-lg tabular-nums ${wr >= 50 ? "text-emerald-400" : "text-red-400"}`}>{wr}%</span>
-                  <span className="text-slate-500 text-xs">
-                    {w}W {l}L
-                  </span>
-                </div>
-                <div className="w-px h-5 bg-slate-700" />
-                <div className="flex items-center gap-2">
-                  {change >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
-                  <span className="text-slate-400 text-xs uppercase tracking-wider">LP Change today</span>
-                  <span className={`font-bold text-lg tabular-nums ${change > 0 ? "text-emerald-400" : change < 0 ? "text-red-400" : "text-slate-400"}`}>
-                    {change > 0 ? "+" : ""}
-                    {change}
-                  </span>
-                </div>
+                <select
+                  value={period}
+                  onChange={e => setPeriod(e.target.value)}
+                  className="bg-slate-700/50 border border-slate-600 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-400/50 cursor-pointer"
+                >
+                  {PERIODS.map(p => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             )
           })()}
@@ -130,6 +202,7 @@ export default function SoloQ() {
           ) : (
             connected.map((p, i) => {
               const lp = getLPChange(p)
+              const ms = getMatchStats(p._id)
               const glow = TIER_COLORS[p.current_tier] || "#64748b"
               return (
                 <div
@@ -163,13 +236,13 @@ export default function SoloQ() {
                     <p className="text-white font-bold text-sm tracking-wide">{p.current_tier ? `${p.current_tier} ${p.current_rank || ""}` : "Unranked"}</p>
                     <p className="text-slate-400 text-xs">{p.current_lp ?? 0} LP</p>
                   </div>
-                  {p.current_wins + p.current_losses > 0 && (
+                  {ms.total > 0 && (
                     <div className="flex items-center gap-3 text-xs">
-                      <span className={Math.round((p.current_wins / (p.current_wins + p.current_losses)) * 100) >= 50 ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
-                        {Math.round((p.current_wins / (p.current_wins + p.current_losses)) * 100)}%
+                      <span className={Math.round((ms.w / ms.total) * 100) >= 50 ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
+                        {Math.round((ms.w / ms.total) * 100)}%
                       </span>
                       <span className="text-slate-500">
-                        {p.current_wins}W {p.current_losses}L
+                        {ms.w}W {ms.l}L
                       </span>
                     </div>
                   )}
@@ -182,7 +255,7 @@ export default function SoloQ() {
                           {lp} LP
                         </span>
                       </div>
-                      <span className="text-slate-600 text-[10px]">today</span>
+                      <span className="text-slate-600 text-[10px]">{periodLabel}</span>
                     </div>
                   )}
                 </div>
