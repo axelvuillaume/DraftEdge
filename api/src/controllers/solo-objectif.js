@@ -91,14 +91,25 @@ EXEMPLES:
 
 DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
 
-    const response = await geminiClient.models.generateContent({ model: 'gemini-2.0-flash', contents: prompt });
-    const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const rule = JSON.parse(
-      text
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim(),
-    );
+    let rule;
+    try {
+      const response = await geminiClient.models.generateContent({ model: 'gemini-3-pro-preview', contents: prompt });
+      const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      rule = JSON.parse(
+        text
+          .replace(/```json\n?/g, '')
+          .replace(/```\n?/g, '')
+          .trim(),
+      );
+    } catch (e) {
+      capture(e);
+      return res.status(422).send({ ok: false, code: ERROR_CODES.RULE_GENERATION_FAILED });
+    }
+
+    const VALID_OPERATORS = ['>', '>=', '<', '<=', '=='];
+    if (!rule || !rule.metric || !VALID_OPERATORS.includes(rule.operator) || rule.value == null || !rule.source) {
+      return res.status(422).send({ ok: false, code: ERROR_CODES.RULE_GENERATION_FAILED });
+    }
 
     const soloObjectif = await SoloObjectif.create({
       name,

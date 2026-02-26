@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
-import { Plus, Target, Trash2 } from "lucide-react"
+import { Plus, Target, Trash2, Loader2 } from "lucide-react"
 import api from "@/services/api"
 
 // ==================== OBJECTIVES TAB ====================
@@ -8,6 +8,7 @@ export default function ObjectivesTab({ playerId, playerName }) {
   const [objectives, setObjectives] = useState([])
   const [newName, setNewName] = useState("")
   const [newRequest, setNewRequest] = useState("")
+  const [loadingObjectives, setLoadingObjectives] = useState(false)
 
   const fetchObjectives = async () => {
     try {
@@ -26,6 +27,7 @@ export default function ObjectivesTab({ playerId, playerName }) {
   const addObjective = async () => {
     if (!newName.trim()) return
     try {
+      setLoadingObjectives(true)
       const { ok, data, code } = await api.post("/solo-objectif", { name: newName.trim(), request: newRequest.trim(), player_id: playerId, player_name: playerName })
       if (!ok) return toast.error(code || "Failed to add objective")
       setObjectives(prev => [data, ...prev])
@@ -33,6 +35,8 @@ export default function ObjectivesTab({ playerId, playerName }) {
       setNewRequest("")
     } catch (error) {
       toast.error(error.message || "Failed to add objective")
+    } finally {
+      setLoadingObjectives(false)
     }
   }
 
@@ -94,6 +98,11 @@ export default function ObjectivesTab({ playerId, playerName }) {
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-12 text-center">
           <Target className="w-8 h-8 text-slate-600 mx-auto mb-2" />
           <p className="text-slate-500">No objectives yet. Add one above.</p>
+        </div>
+      ) : loadingObjectives ? (
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-12 text-center">
+          <Loader2 className="w-8 h-8 text-slate-600 mx-auto mb-2 animate-spin" />
+          <p className="text-slate-500">Loading objectives...</p>
         </div>
       ) : (
         <div className="space-y-3">
