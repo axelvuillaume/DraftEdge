@@ -85,10 +85,10 @@ export default function ObjectivesTab({ playerId, playerName }) {
           />
           <button
             onClick={addObjective}
-            disabled={!newName.trim()}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium transition-colors"
+            disabled={!newName.trim() || loadingObjectives}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2"
           >
-            Add
+            {loadingObjectives ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
           </button>
         </div>
       </div>
@@ -98,11 +98,6 @@ export default function ObjectivesTab({ playerId, playerName }) {
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-12 text-center">
           <Target className="w-8 h-8 text-slate-600 mx-auto mb-2" />
           <p className="text-slate-500">No objectives yet. Add one above.</p>
-        </div>
-      ) : loadingObjectives ? (
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-12 text-center">
-          <Loader2 className="w-8 h-8 text-slate-600 mx-auto mb-2 animate-spin" />
-          <p className="text-slate-500">Loading objectives...</p>
         </div>
       ) : (
         <div className="space-y-3">
