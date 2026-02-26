@@ -42,158 +42,15 @@ function MatchIndicator({ manual, auto }) {
   return <ChevronUp className="w-3.5 h-3.5 text-sky-400" />
 }
 
-// ==================== TIER LIST SECTION ====================
-
-function TierListSection({ title, icon, tooltip, champions, allChampions, isManual, onSetTier, onRemove }) {
-  const [addingTier, setAddingTier] = useState(null)
-  const [showTooltip, setShowTooltip] = useState(false)
-  const tooltipBtnRef = useRef(null)
-
-  const grouped = { S: [], A: [], B: [] }
-  for (const champ of champions) {
-    if (grouped[champ.tier]) grouped[champ.tier].push(champ)
-  }
-
-  const assignedNames = new Set(champions.map(c => c.name))
-  const unassigned = allChampions.filter(c => !assignedNames.has(c))
-
-  return (
-    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl">
-      <div className="px-4 py-3 border-b border-slate-700/30 flex items-center gap-2">
-        {icon}
-        <h3 className="text-white font-semibold text-sm">{title}</h3>
-        {tooltip && (
-          <div className="ml-auto">
-            <button
-              ref={tooltipBtnRef}
-              onMouseEnter={() => setShowTooltip(true)}
-              onMouseLeave={() => setShowTooltip(false)}
-              className="p-1 rounded hover:bg-slate-700/50 transition-colors"
-            >
-              <Info className="w-3.5 h-3.5 text-slate-500" />
-            </button>
-            {showTooltip &&
-              tooltipBtnRef.current &&
-              (() => {
-                const rect = tooltipBtnRef.current.getBoundingClientRect()
-                return (
-                  <div
-                    className="fixed z-50 w-72 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-xl text-xs text-slate-300 leading-relaxed"
-                    style={{ top: rect.bottom + 6, right: window.innerWidth - rect.right }}
-                  >
-                    {tooltip}
-                  </div>
-                )
-              })()}
-          </div>
-        )}
-      </div>
-
-      <div className="p-3 space-y-2">
-        {CHAMPION_TIERS.map(tier => {
-          const style = TIER_STYLES[tier]
-          const champsInTier = grouped[tier] || []
-
-          return (
-            <div key={tier} className={`${style.bg} border ${style.border} rounded-lg p-2 min-h-[52px]`}>
-              <div className="flex items-center gap-2">
-                <span className={`${style.text} font-bold text-sm w-5 text-center shrink-0`}>{tier}</span>
-                <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                  {champsInTier.map(champ => (
-                    <div key={champ.name} className="relative group" title={!champ.autoScore ? `${champ.name}${champ.matchLabel ? ` - ${champ.matchLabel}` : ""}` : undefined}>
-                      <div className={`relative ${champ.matchClass || ""}`}>
-                        <img src={getChampionIcon(champ.name)} alt={champ.name} className="w-9 h-9 rounded-lg border border-slate-600/50" />
-                        {champ.matchIndicator}
-                        {isManual && (
-                          <button
-                            onClick={() => onRemove(champ.name)}
-                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500/80 rounded-full items-center justify-center hidden group-hover:flex"
-                          >
-                            <X className="w-2.5 h-2.5 text-white" />
-                          </button>
-                        )}
-                      </div>
-                      {champ.autoScore != null && (
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 pointer-events-none">
-                          <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2.5 w-40">
-                            <p className="text-white text-xs font-semibold mb-1.5">{champ.name}</p>
-                            <div className="space-y-1 text-[11px]">
-                              <div className="flex justify-between">
-                                <span className="text-slate-400">Games</span>
-                                <span className="text-slate-200 tabular-nums">
-                                  {champ.gamesScore}
-                                  <span className="text-slate-500">/30</span>
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-slate-400">Win Rate</span>
-                                <span className="text-slate-200 tabular-nums">
-                                  {champ.wrScore}
-                                  <span className="text-slate-500">/50</span>
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-slate-400">KDA</span>
-                                <span className="text-slate-200 tabular-nums">
-                                  {champ.kdaScore}
-                                  <span className="text-slate-500">/20</span>
-                                </span>
-                              </div>
-                              <div className="flex justify-between pt-1 border-t border-slate-700/50">
-                                <span className="text-white font-semibold">Total</span>
-                                <span className="text-white font-semibold tabular-nums">
-                                  {champ.autoScore}
-                                  <span className="text-slate-500">/100</span>
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {isManual && (
-                    <button
-                      onClick={() => setAddingTier(addingTier === tier ? null : tier)}
-                      className="w-9 h-9 rounded-lg border border-dashed border-slate-600/50 flex items-center justify-center hover:border-slate-500 transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-slate-500" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {isManual && addingTier === tier && unassigned.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5 pt-2 border-t border-slate-700/30">
-                  {unassigned.map(name => (
-                    <button
-                      key={name}
-                      onClick={() => {
-                        onSetTier(name, tier)
-                        setAddingTier(null)
-                      }}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-colors"
-                    >
-                      <img src={getChampionIcon(name)} alt={name} className="w-5 h-5 rounded" />
-                      <span className="text-slate-300 text-xs">{name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 // ==================== COMPARATIVE TAB ====================
 
 export default function ComparativeTab({ data, playerId }) {
   const { champions, pocketPicks, player } = data
   const [pool, setPool] = useState(player.champion_pool || [])
   const [saving, setSaving] = useState(false)
+  const [addingTierManual, setAddingTierManual] = useState(null)
+  const [showTooltipAuto, setShowTooltipAuto] = useState(false)
+  const tooltipBtnRefAuto = useRef(null)
 
   const savePool = async newPool => {
     setSaving(true)
@@ -296,56 +153,195 @@ export default function ComparativeTab({ data, playerId }) {
       }
     })
 
+  const manualGrouped = { S: [], A: [], B: [] }
+  for (const champ of manualChampions) {
+    if (manualGrouped[champ.tier]) manualGrouped[champ.tier].push(champ)
+  }
+  const manualAssignedNames = new Set(manualChampions.map(c => c.name))
+  const manualUnassigned = allChampionNames.filter(c => !manualAssignedNames.has(c))
+
+  const autoGrouped = { S: [], A: [], B: [] }
+  for (const champ of autoChampions) {
+    if (autoGrouped[champ.tier]) autoGrouped[champ.tier].push(champ)
+  }
+
   return (
     <>
       {/* Tier List Comparison */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <TierListSection
-          title="My Tier List"
-          icon={saving ? <Loader2 className="w-4 h-4 text-amber-400 animate-spin" /> : <Swords className="w-4 h-4 text-amber-400" />}
-          champions={manualChampions}
-          allChampions={allChampionNames}
-          isManual={true}
-          onSetTier={setTier}
-          onRemove={removeTier}
-        />
-        <TierListSection
-          title="Tier List Auto"
-          icon={<Sparkles className="w-4 h-4 text-violet-400" />}
-          tooltip={
-            <>
-              <p className="font-semibold text-white mb-1.5">Score calculation (0-100)</p>
-              <p className="text-slate-400 mb-1.5">Minimum 15 games (official x3) to be ranked. Official games count triple.</p>
-              <ul className="space-y-1 list-disc list-inside">
-                <li>
-                  <span className="text-slate-400">Games</span>: number of games (max 30 pts, capped at 30 games).
-                </li>
-                <li>
-                  <span className="text-slate-400">Win Rate</span>: combined win rate (max 50 pts).
-                </li>
-                <li>
-                  <span className="text-slate-400">KDA</span>: kills+assists/deaths ratio (max 20 pts, capped at 5.0).
-                </li>
-              </ul>
-              <div className="mt-2 pt-2 border-t border-slate-700/50 space-y-0.5">
-                <p>
-                  <span className="text-amber-400 font-bold">S</span> : score &ge; 70
-                </p>
-                <p>
-                  <span className="text-violet-400 font-bold">A</span> : score &ge; 60
-                </p>
-                <p>
-                  <span className="text-slate-400 font-bold">B</span> : score &ge; 45
-                </p>
-              </div>
-            </>
-          }
-          champions={autoChampions}
-          allChampions={allChampionNames}
-          isManual={false}
-          onSetTier={() => {}}
-          onRemove={() => {}}
-        />
+        {/* My Tier List */}
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl">
+          <div className="px-4 py-3 border-b border-slate-700/30 flex items-center gap-2">
+            {saving ? <Loader2 className="w-4 h-4 text-amber-400 animate-spin" /> : <Swords className="w-4 h-4 text-amber-400" />}
+            <h3 className="text-white font-semibold text-sm">My Tier List</h3>
+          </div>
+          <div className="p-3 space-y-2">
+            {CHAMPION_TIERS.map(tier => {
+              const style = TIER_STYLES[tier]
+              const champsInTier = manualGrouped[tier] || []
+              return (
+                <div key={tier} className={`${style.bg} border ${style.border} rounded-lg p-2 min-h-[52px]`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`${style.text} font-bold text-sm w-5 text-center shrink-0`}>{tier}</span>
+                    <div className="flex flex-wrap items-center gap-1.5 flex-1">
+                      {champsInTier.map(champ => (
+                        <div key={champ.name} className="relative group" title={`${champ.name}${champ.matchLabel ? ` - ${champ.matchLabel}` : ""}`}>
+                          <div className={`relative ${champ.matchClass || ""}`}>
+                            <img src={getChampionIcon(champ.name)} alt={champ.name} className="w-9 h-9 rounded-lg border border-slate-600/50" />
+                            {champ.matchIndicator}
+                            <button
+                              onClick={() => removeTier(champ.name)}
+                              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500/80 rounded-full items-center justify-center hidden group-hover:flex"
+                            >
+                              <X className="w-2.5 h-2.5 text-white" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => setAddingTierManual(addingTierManual === tier ? null : tier)}
+                        className="w-9 h-9 rounded-lg border border-dashed border-slate-600/50 flex items-center justify-center hover:border-slate-500 transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-slate-500" />
+                      </button>
+                    </div>
+                  </div>
+                  {addingTierManual === tier && manualUnassigned.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5 pt-2 border-t border-slate-700/30">
+                      {manualUnassigned.map(name => (
+                        <button
+                          key={name}
+                          onClick={() => {
+                            setTier(name, tier)
+                            setAddingTierManual(null)
+                          }}
+                          className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-colors"
+                        >
+                          <img src={getChampionIcon(name)} alt={name} className="w-5 h-5 rounded" />
+                          <span className="text-slate-300 text-xs">{name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Tier List Auto */}
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl">
+          <div className="px-4 py-3 border-b border-slate-700/30 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-violet-400" />
+            <h3 className="text-white font-semibold text-sm">Tier List Auto</h3>
+            <div className="ml-auto">
+              <button
+                ref={tooltipBtnRefAuto}
+                onMouseEnter={() => setShowTooltipAuto(true)}
+                onMouseLeave={() => setShowTooltipAuto(false)}
+                className="p-1 rounded hover:bg-slate-700/50 transition-colors"
+              >
+                <Info className="w-3.5 h-3.5 text-slate-500" />
+              </button>
+              {showTooltipAuto &&
+                tooltipBtnRefAuto.current &&
+                (() => {
+                  const rect = tooltipBtnRefAuto.current.getBoundingClientRect()
+                  return (
+                    <div
+                      className="fixed z-50 w-72 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-xl text-xs text-slate-300 leading-relaxed"
+                      style={{ top: rect.bottom + 6, right: window.innerWidth - rect.right }}
+                    >
+                      <p className="font-semibold text-white mb-1.5">Score calculation (0-100)</p>
+                      <p className="text-slate-400 mb-1.5">Minimum 15 games (official x3) to be ranked. Official games count triple.</p>
+                      <ul className="space-y-1 list-disc list-inside">
+                        <li>
+                          <span className="text-slate-400">Games</span>: number of games (max 30 pts, capped at 30 games).
+                        </li>
+                        <li>
+                          <span className="text-slate-400">Win Rate</span>: combined win rate (max 50 pts).
+                        </li>
+                        <li>
+                          <span className="text-slate-400">KDA</span>: kills+assists/deaths ratio (max 20 pts, capped at 5.0).
+                        </li>
+                      </ul>
+                      <div className="mt-2 pt-2 border-t border-slate-700/50 space-y-0.5">
+                        <p>
+                          <span className="text-amber-400 font-bold">S</span> : score &ge; 70
+                        </p>
+                        <p>
+                          <span className="text-violet-400 font-bold">A</span> : score &ge; 60
+                        </p>
+                        <p>
+                          <span className="text-slate-400 font-bold">B</span> : score &ge; 45
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })()}
+            </div>
+          </div>
+          <div className="p-3 space-y-2">
+            {CHAMPION_TIERS.map(tier => {
+              const style = TIER_STYLES[tier]
+              const champsInTier = autoGrouped[tier] || []
+              return (
+                <div key={tier} className={`${style.bg} border ${style.border} rounded-lg p-2 min-h-[52px]`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`${style.text} font-bold text-sm w-5 text-center shrink-0`}>{tier}</span>
+                    <div className="flex flex-wrap items-center gap-1.5 flex-1">
+                      {champsInTier.map(champ => (
+                        <div key={champ.name} className="relative group">
+                          <div className={`relative ${champ.matchClass || ""}`}>
+                            <img src={getChampionIcon(champ.name)} alt={champ.name} className="w-9 h-9 rounded-lg border border-slate-600/50" />
+                            {champ.matchIndicator}
+                          </div>
+                          {champ.autoScore != null && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 pointer-events-none">
+                              <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2.5 w-40">
+                                <p className="text-white text-xs font-semibold mb-1.5">{champ.name}</p>
+                                <div className="space-y-1 text-[11px]">
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-400">Games</span>
+                                    <span className="text-slate-200 tabular-nums">
+                                      {champ.gamesScore}
+                                      <span className="text-slate-500">/30</span>
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-400">Win Rate</span>
+                                    <span className="text-slate-200 tabular-nums">
+                                      {champ.wrScore}
+                                      <span className="text-slate-500">/50</span>
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-400">KDA</span>
+                                    <span className="text-slate-200 tabular-nums">
+                                      {champ.kdaScore}
+                                      <span className="text-slate-500">/20</span>
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between pt-1 border-t border-slate-700/50">
+                                    <span className="text-white font-semibold">Total</span>
+                                    <span className="text-white font-semibold tabular-nums">
+                                      {champ.autoScore}
+                                      <span className="text-slate-500">/100</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Legend */}
