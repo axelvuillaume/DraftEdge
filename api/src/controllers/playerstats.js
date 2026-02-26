@@ -292,28 +292,21 @@ router.post('/search_nav', passport.authenticate(['admin', 'user'], { session: f
     const enemyChampionsMap = {};
 
     allStats.forEach((stat) => {
-      const playerKey = stat.puuid || stat.summoner_name;
-      const playerName = stat.summoner_name;
-      const champion = stat.champion;
-      const isOpponent = stat.opponent;
+      if (!stat.opponent) {
+        if (!stat.puuid) return;
+        if (!playersMap[stat.puuid]) playersMap[stat.puuid] = { puuid: stat.puuid, name: stat.summoner_name, role: stat.role, games: 0, wins: 0 };
+        playersMap[stat.puuid].name = stat.summoner_name;
+        playersMap[stat.puuid].games++;
+        if (stat.game_win) playersMap[stat.puuid].wins++;
 
-      if (!isOpponent) {
-        if (!playersMap[playerKey]) playersMap[playerKey] = { puuid: stat.puuid || null, name: playerName, role: stat.role, games: 0, wins: 0 };
-        if (stat.summoner_name) playersMap[playerKey].name = playerName;
-        if (stat.puuid) playersMap[playerKey].puuid = stat.puuid;
-        playersMap[playerKey].games++;
-        if (stat.game_win) playersMap[playerKey].wins++;
-
-        const champKey = `${playerKey}-${champion}`;
-        if (!allyChampionsMap[champKey]) allyChampionsMap[champKey] = { name: champion, puuid: playersMap[playerKey].puuid || null, playerName: playersMap[playerKey].name, role: stat.role, games: 0, wins: 0, isAlly: true };
+        const champKey = `${stat.puuid}-${stat.champion}`;
+        if (!allyChampionsMap[champKey]) allyChampionsMap[champKey] = { name: stat.champion, puuid: stat.puuid, playerName: playersMap[stat.puuid].name, role: stat.role, games: 0, wins: 0, isAlly: true };
         allyChampionsMap[champKey].games++;
         if (stat.game_win) allyChampionsMap[champKey].wins++;
       } else {
-        // Aggregate enemy champion data
-        if (!enemyChampionsMap[champion]) enemyChampionsMap[champion] = { name: champion, role: stat.role, games: 0, wins: 0, isAlly: false };
-        enemyChampionsMap[champion].games++;
-        // For enemies, a win for them is a loss for us (game_win is from our perspective)
-        if (!stat.game_win) enemyChampionsMap[champion].wins++;
+        if (!enemyChampionsMap[stat.champion]) enemyChampionsMap[stat.champion] = { name: stat.champion, role: stat.role, games: 0, wins: 0, isAlly: false };
+        enemyChampionsMap[stat.champion].games++;
+        if (!stat.game_win) enemyChampionsMap[stat.champion].wins++;
       }
     });
 
@@ -692,15 +685,15 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
       winRateByDuration: calculateWinRateByDuration(playerStats),
     };
 
-    // --- Build Players Data (grouped by puuid, fallback to summoner_name for legacy data) ---
+    // --- Build Players Data (grouped by puuid) ---
     const playersById = {};
     playerStats.forEach((stat) => {
-      const key = stat.puuid || stat.summoner_name;
-      if (!playersById[key]) playersById[key] = { stats: [], name: stat.summoner_name, role: stat.role, riot_tag: stat.riot_tag };
-      playersById[key].stats.push(stat);
-      if (stat.summoner_name) playersById[key].name = stat.summoner_name;
-      if (stat.role) playersById[key].role = stat.role;
-      if (stat.riot_tag) playersById[key].riot_tag = stat.riot_tag;
+      if (!stat.puuid) return;
+      if (!playersById[stat.puuid]) playersById[stat.puuid] = { stats: [], name: stat.summoner_name, role: stat.role, riot_tag: stat.riot_tag };
+      playersById[stat.puuid].stats.push(stat);
+      playersById[stat.puuid].name = stat.summoner_name;
+      if (stat.role) playersById[stat.puuid].role = stat.role;
+      if (stat.riot_tag) playersById[stat.puuid].riot_tag = stat.riot_tag;
     });
 
     const players = Object.entries(playersById).map(([_key, data]) => {
@@ -842,9 +835,8 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
       });
 
       // Sort player's champions by winrate for Best/Worst WR
-      const playerPuuid = pStats.find((s) => s.puuid)?.puuid || null;
       return {
-        puuid: playerPuuid,
+        puuid: _key,
         name,
         riot_tag: data.riot_tag || '',
         role: data.role || 'Unknown',

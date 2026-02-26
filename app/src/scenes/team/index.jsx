@@ -181,8 +181,6 @@ export default function Team() {
               <tr className="border-b border-slate-700/50">
                 <th className="text-left px-6 py-4 text-sm font-semibold text-slate-400">Name</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-slate-400">Email</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-slate-400">Role</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-slate-400">Last Login</th>
               </tr>
             </thead>
             <tbody>
@@ -194,10 +192,6 @@ export default function Team() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-slate-400">{member.email}</td>
-                  <td className="px-6 py-4 text-slate-400">{member.role}</td>
-                  <td className="px-6 py-4 text-slate-400 text-sm">
-                    {new Date(member.last_login_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </td>
                 </tr>
               ))}
               <tr className="bg-slate-800/30 hover:bg-slate-700/40 transition-colors cursor-pointer" onClick={copyInvitationLink}>

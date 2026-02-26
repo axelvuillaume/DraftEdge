@@ -50,7 +50,7 @@ export default function StatsV2() {
     const applyNavigation = async () => {
       if (searchNavigation.type === "player") {
         const d = searchNavigation.data
-        const player = teamData.players?.find(p => (d.puuid && p.puuid === d.puuid) || p.name === d.name)
+        const player = teamData.players?.find(p => p.puuid === d.puuid)
         if (player) {
           setActivePlayer(player)
           setActiveChampion(null)
@@ -59,7 +59,7 @@ export default function StatsV2() {
       } else if (searchNavigation.type === "allyChampion") {
         const d = searchNavigation.data
         const championName = d.name
-        const player = teamData.players?.find(p => (d.puuid && p.puuid === d.puuid) || p.name === d.playerName)
+        const player = teamData.players?.find(p => p.puuid === d.puuid)
         if (player) {
           setActivePlayer(player)
           setActiveEnemyChampion(null)
@@ -281,9 +281,9 @@ function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEne
         <>
           <span className="text-slate-600">/</span>
           <select
-            value={activePlayer.puuid || activePlayer.name}
+            value={activePlayer.puuid}
             onChange={e => {
-              const player = players.find(p => (p.puuid || p.name) === e.target.value)
+              const player = players.find(p => p.puuid === e.target.value)
               if (player) onPlayerChange(player)
             }}
             className={`bg-transparent font-medium px-1 py-1 outline-none border-none cursor-pointer transition-colors appearance-none pr-6 ${activeChampion ? "text-slate-400 hover:text-white" : "text-emerald-400"}`}
@@ -298,7 +298,7 @@ function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEne
             }}
           >
             {players.map(player => (
-              <option key={player.puuid || player.name} value={player.puuid || player.name} className="bg-slate-800 text-white">
+              <option key={player.puuid} value={player.puuid} className="bg-slate-800 text-white">
                 {player.name}
               </option>
             ))}
