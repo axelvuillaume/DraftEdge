@@ -292,19 +292,20 @@ router.post('/search_nav', passport.authenticate(['admin', 'user'], { session: f
     const enemyChampionsMap = {};
 
     allStats.forEach((stat) => {
+      const playerKey = stat.puuid || stat.summoner_name;
       const playerName = stat.summoner_name;
       const champion = stat.champion;
       const isOpponent = stat.opponent;
 
       if (!isOpponent) {
-        // Aggregate player data (only allies)
-        if (!playersMap[playerName]) playersMap[playerName] = { name: playerName, role: stat.role, games: 0, wins: 0 };
-        playersMap[playerName].games++;
-        if (stat.game_win) playersMap[playerName].wins++;
+        if (!playersMap[playerKey]) playersMap[playerKey] = { puuid: stat.puuid || null, name: playerName, role: stat.role, games: 0, wins: 0 };
+        if (stat.summoner_name) playersMap[playerKey].name = playerName;
+        if (stat.puuid) playersMap[playerKey].puuid = stat.puuid;
+        playersMap[playerKey].games++;
+        if (stat.game_win) playersMap[playerKey].wins++;
 
-        // Aggregate ally champion data (per player)
-        const champKey = `${playerName}-${champion}`;
-        if (!allyChampionsMap[champKey]) allyChampionsMap[champKey] = { name: champion, playerName: playerName, role: stat.role, games: 0, wins: 0, isAlly: true };
+        const champKey = `${playerKey}-${champion}`;
+        if (!allyChampionsMap[champKey]) allyChampionsMap[champKey] = { name: champion, puuid: playersMap[playerKey].puuid || null, playerName: playersMap[playerKey].name, role: stat.role, games: 0, wins: 0, isAlly: true };
         allyChampionsMap[champKey].games++;
         if (stat.game_win) allyChampionsMap[champKey].wins++;
       } else {
@@ -691,16 +692,19 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
       winRateByDuration: calculateWinRateByDuration(playerStats),
     };
 
-    // --- Build Players Data ---
-    const playersByName = {};
+    // --- Build Players Data (grouped by puuid, fallback to summoner_name for legacy data) ---
+    const playersById = {};
     playerStats.forEach((stat) => {
-      const name = stat.summoner_name;
-      if (!playersByName[name]) playersByName[name] = { stats: [], role: stat.role, riot_tag: stat.riot_tag };
-      playersByName[name].stats.push(stat);
-      if (stat.role) playersByName[name].role = stat.role;
+      const key = stat.puuid || stat.summoner_name;
+      if (!playersById[key]) playersById[key] = { stats: [], name: stat.summoner_name, role: stat.role, riot_tag: stat.riot_tag };
+      playersById[key].stats.push(stat);
+      if (stat.summoner_name) playersById[key].name = stat.summoner_name;
+      if (stat.role) playersById[key].role = stat.role;
+      if (stat.riot_tag) playersById[key].riot_tag = stat.riot_tag;
     });
 
-    const players = Object.entries(playersByName).map(([name, data]) => {
+    const players = Object.entries(playersById).map(([_key, data]) => {
+      const name = data.name;
       const pStats = data.stats;
       const pGames = [...new Set(pStats.map((s) => s.game_id))];
 
@@ -838,7 +842,9 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
       });
 
       // Sort player's champions by winrate for Best/Worst WR
+      const playerPuuid = pStats.find((s) => s.puuid)?.puuid || null;
       return {
+        puuid: playerPuuid,
         name,
         riot_tag: data.riot_tag || '',
         role: data.role || 'Unknown',

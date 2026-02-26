@@ -79,14 +79,14 @@ async function enrichPlayerWithRiotData(player, index, platform = 'euw1') {
   const puuid = await fetchRiotPuuid(player.summoner_name, player.riot_tag, platform);
 
   if (!puuid) {
-    return { ...player, PUUID: null };
+    return { ...player, puuid: null };
   }
 
   await new Promise((resolve) => setTimeout(resolve, 50));
 
   const rankData = await fetchRiotRank(puuid, platform);
 
-  return { ...player, PUUID: puuid, ...(rankData || {}) };
+  return { ...player, puuid, ...(rankData || {}) };
 }
 
 function parseRoflBuffer(buffer) {
@@ -194,7 +194,7 @@ function parsePlayerStats(p, gameData) {
     // ==================== PLAYER INFO ====================
     summoner_name: p.RIOT_ID_GAME_NAME || p.NAME,
     riot_tag: p.RIOT_ID_TAG_LINE || '',
-    PUUID: p.PUUID || null,
+    puuid: p.PUUID || null,
 
     // Ranked info (enrichi via API Riot)
     tier: null,

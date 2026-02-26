@@ -304,7 +304,12 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
   const [showDropdown, setShowDropdown] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
   const [showEditModal, setShowEditModal] = useState(false)
-  const [editForm, setEditForm] = useState({ name: game.name || "", opponent_name: game.opponent_name || "", date: game.date ? new Date(game.date).toISOString().slice(0, 10) : "", draft_url: game.source_url || "" })
+  const [editForm, setEditForm] = useState({
+    name: game.name || "",
+    opponent_name: game.opponent_name || "",
+    date: game.date ? new Date(game.date).toISOString().slice(0, 10) : "",
+    draft_url: game.source_url || ""
+  })
   const [saving, setSaving] = useState(false)
   const [enemyTeams, setEnemyTeams] = useState([])
   const [showOpponentDropdown, setShowOpponentDropdown] = useState(false)
@@ -524,7 +529,12 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
                   <button
                     onClick={e => {
                       e.stopPropagation()
-                      setEditForm({ name: game.name || "", opponent_name: game.opponent_name || "", date: game.date ? new Date(game.date).toISOString().slice(0, 10) : "", draft_url: game.source_url || "" })
+                      setEditForm({
+                        name: game.name || "",
+                        opponent_name: game.opponent_name || "",
+                        date: game.date ? new Date(game.date).toISOString().slice(0, 10) : "",
+                        draft_url: game.source_url || ""
+                      })
                       setShowEditModal(true)
                       setShowDropdown(false)
                       fetchEnemyTeams()
@@ -739,7 +749,7 @@ function PlayerRow({ player, teamSide }) {
 
   const handlePlayerClick = e => {
     e.stopPropagation()
-    setSearchNavigation({ type: "player", data: { name: player.summoner_name } })
+    setSearchNavigation({ type: "player", data: { puuid: player.puuid, name: player.summoner_name } })
     navigate("/statsV2")
   }
 
@@ -1027,7 +1037,7 @@ function AdvancedTab({ playerStats, game }) {
 
   const handlePlayerClick = (e, player) => {
     e.stopPropagation()
-    setSearchNavigation({ type: "player", data: { name: player.summoner_name } })
+    setSearchNavigation({ type: "player", data: { puuid: player.puuid, name: player.summoner_name } })
     navigate("/statsV2")
   }
 

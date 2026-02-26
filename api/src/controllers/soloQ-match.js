@@ -196,12 +196,14 @@ router.post('/compare', passport.authenticate(['admin', 'user'], { session: fals
       gameDuration: { $gte: 300 },
     }).lean();
 
-    // Fetch team game stats by summoner_name (playerstats uses summoner_name)
-    const teamStats = await PlayerStats.find({
-      team_id: player.team_id,
-      summoner_name: { $regex: new RegExp(`^${player.game_name}$`, 'i') },
-      opponent: false,
-    }).lean();
+    // Fetch team game stats by puuid (preferred) with fallback to summoner_name for legacy data
+    const teamStatsQuery = { team_id: player.team_id, opponent: false };
+    if (player.puuid) {
+      teamStatsQuery.$or = [{ puuid: player.puuid }, { puuid: { $exists: false }, summoner_name: { $regex: new RegExp(`^${player.game_name}$`, 'i') } }];
+    } else {
+      teamStatsQuery.summoner_name = { $regex: new RegExp(`^${player.game_name}$`, 'i') };
+    }
+    const teamStats = await PlayerStats.find(teamStatsQuery).lean();
 
     // Group by champion
     const soloqByChamp = {};

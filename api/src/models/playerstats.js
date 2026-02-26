@@ -11,6 +11,7 @@ const Schema = new mongoose.Schema(
     game_duration: { type: Number }, // en secondes
 
     // ==================== PLAYER INFO ====================
+    puuid: { type: String, trim: true },
     summoner_name: { type: String, trim: true },
     riot_tag: { type: String, trim: true },
 
@@ -258,6 +259,7 @@ const Schema = new mongoose.Schema(
   { timestamps: true },
 );
 Schema.index({ team_id: 1, createdAt: -1 });
+Schema.index({ team_id: 1, puuid: 1 });
 Schema.index({ champion: 1, role: 1 });
 
 const OBJ = mongoose.model(MODELNAME, Schema);
