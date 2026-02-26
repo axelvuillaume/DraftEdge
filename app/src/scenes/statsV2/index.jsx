@@ -4,7 +4,7 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import { getChampionIcon } from "@/utils"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
-import { Shield, ChevronLeft } from "lucide-react"
+import { Shield, ChevronLeft, Radar, Table2 } from "lucide-react"
 
 export default function StatsV2() {
   const { searchNavigation, setSearchNavigation, globalFilters } = useStore()
@@ -14,6 +14,7 @@ export default function StatsV2() {
   const [activeChampion, setActiveChampion] = useState(null)
   const [activeEnemyChampion, setActiveEnemyChampion] = useState(null)
   const [activeCategory, setActiveCategory] = useState("Combat")
+  const [viewMode, setViewMode] = useState("spider")
 
   const categories = [
     { id: "Combat", icon: CombatIcon, color: "#3b82f6" },
@@ -165,10 +166,38 @@ export default function StatsV2() {
 
         <div className="grid lg:grid-cols-2 gap-6 items-start">
           {/* Colonne gauche - Métriques */}
-          <SectionCard title="Performance by Category">
+          <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white font-semibold text-sm uppercase tracking-wider">Performance by Category</h2>
+              <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
+                <button
+                  onClick={() => setViewMode("spider")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    viewMode === "spider" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <Radar className="w-3.5 h-3.5" />
+                  Spider
+                </button>
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    viewMode === "table" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <Table2 className="w-3.5 h-3.5" />
+                  Table
+                </button>
+              </div>
+            </div>
+            <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
             <CategoryTabs categories={categories} activeCategory={activeCategory} onCategoryChange={setActiveCategory} categoryScores={currentData.categoryScores} />
-            <SpiderChart metrics={currentData.metrics?.[activeCategory] || []} isEnemyChampion={isEnemyChampion} />
-          </SectionCard>
+            {viewMode === "spider" ? (
+              <SpiderChart metrics={currentData.metrics?.[activeCategory] || []} isEnemyChampion={isEnemyChampion} />
+            ) : (
+              <MetricsTable metrics={currentData.metrics?.[activeCategory] || []} isEnemyChampion={isEnemyChampion} />
+            )}
+          </div>
 
           {/* Colonne droite - Listes */}
           {isTeam && (
@@ -434,6 +463,39 @@ function ScoreCircle({ score, isEnemy }) {
       <div className="absolute inset-0 flex items-center justify-center">
         <span className="text-2xl font-bold text-white">{score}</span>
         <span className="text-slate-500 text-[10px] font-medium">/100</span>
+      </div>
+    </div>
+  )
+}
+
+function MetricsTable({ metrics, isEnemyChampion }) {
+  if (!metrics || metrics.length === 0) {
+    return <div className="text-slate-500 text-center py-8">No metrics available</div>
+  }
+
+  return (
+    <div className="w-full">
+      <div className="grid grid-cols-4 gap-4 px-4 py-2 border-b border-slate-700/50 text-xs font-medium text-slate-400 uppercase tracking-wider">
+        <div>Metric</div>
+        <div className="text-center">{isEnemyChampion ? "Us" : "Team"}</div>
+        <div className="text-center">{isEnemyChampion ? "This champ" : "Enemies"}</div>
+        <div className="text-right">Diff</div>
+      </div>
+
+      <div className="divide-y divide-slate-700/30">
+        {metrics.map((row, i) => {
+          const diff = parseFloat(row.diff) || 0
+          return (
+            <div key={i} className="grid grid-cols-4 gap-4 px-4 py-3 hover:bg-slate-700/20 transition-colors items-center text-sm">
+              <div className="text-slate-200 font-medium">{row.name}</div>
+              <div className="text-center text-emerald-400 font-mono font-medium">{row.team}</div>
+              <div className="text-center text-red-400 font-mono">{row.enemies}</div>
+              <div className={`text-right font-bold font-mono ${diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                {diff >= 0 ? "+" : ""}{row.diff}%
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
