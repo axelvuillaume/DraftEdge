@@ -1,9 +1,9 @@
 require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
 const mongoose = require("mongoose");
-const { MONGODB_ENDPOINT, RIOT_API_KEY } = require("../src/config");
+const { MONGODB_ENDPOINT } = require("../src/config");
 const SoloqMatch = require("../src/models/soloq-match");
 const Player = require("../src/models/player");
-const { PLATFORM_TO_REGIONAL } = require("../src/services/riotgames");
+const { apiFetch, PLATFORM_TO_REGIONAL } = require("../src/services/riotgames");
 
 // =====================================================================
 // CONFIGURATION
@@ -112,24 +112,6 @@ function mapMatch(data, puuid, player) {
     teamObjectives: team?.objectives,
     teamBans: team?.bans,
   };
-}
-
-// =====================================================================
-// API helpers with retry on 429
-// =====================================================================
-
-async function apiFetch(url) {
-  const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}api_key=${RIOT_API_KEY}`);
-
-  if (res.status === 429) {
-    const wait = (parseInt(res.headers.get("Retry-After"), 10) || 120) * 1000;
-    console.log(`  ⏳ Rate limited — waiting ${wait / 1000}s`);
-    await sleep(wait);
-    return apiFetch(url);
-  }
-
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${url}`);
-  return res.json();
 }
 
 async function fetchAllMatchIds(puuid, region) {

@@ -8,7 +8,7 @@ export default function Index() {
   return (
     <Routes>
       <Route path="/" element={<List />} />
-      <Route path="/:id" element={<View />} />
+      <Route path="/:id/*" element={<View />} />
     </Routes>
   )
 }
