@@ -42,14 +42,17 @@ const SERVERS = [
   { value: 'me1', label: 'ME' },
 ];
 
-async function apiFetch(url) {
+const MAX_RETRIES = 3;
+
+async function apiFetch(url, retries = 0) {
   const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}api_key=${RIOT_API_KEY}`);
 
   if (res.status === 429) {
+    if (retries >= MAX_RETRIES) throw new Error('Rate limit: max retries exceeded');
     const wait = (parseInt(res.headers.get('Retry-After'), 10) || 120) * 1000;
-    console.log(`  [riot] Rate limited — waiting ${wait / 1000}s`);
+    console.log(`  [riot] Rate limited — waiting ${wait / 1000}s (retry ${retries + 1}/${MAX_RETRIES})`);
     await new Promise((r) => setTimeout(r, wait));
-    return apiFetch(url);
+    return apiFetch(url, retries + 1);
   }
 
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
