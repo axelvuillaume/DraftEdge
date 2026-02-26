@@ -185,11 +185,6 @@ export default function SoloQ() {
                       <span className="text-slate-600 text-[10px]">today</span>
                     </div>
                   )}
-                  {p.last_fetched_at && (
-                    <p className="text-slate-600 text-[10px]">
-                      {new Date(p.last_fetched_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  )}
                 </div>
               )
             })
