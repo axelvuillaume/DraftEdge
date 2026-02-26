@@ -45,20 +45,22 @@ async function fetchSoloQ() {
 
       for (let i = 0; i < newIds.length; i++) {
         try {
-          const { metadata, info } = await getMatchById(newIds[i], platform);
-          if (info.queueId !== QUEUE_ID) continue;
+          const matchData = await getMatchById(newIds[i], platform);
+          if (!matchData) continue;
 
-          const p = info.participants.find((x) => x.puuid === player.puuid);
+          if (matchData.info.queueId !== QUEUE_ID) continue;
+
+          const p = matchData.info.participants.find((x) => x.puuid === player.puuid);
           if (!p) continue;
 
-          const { participants, teams, ...infoRest } = info;
+          const { participants, teams, ...infoRest } = matchData.info;
           const team = teams.find((t) => t.teamId === p.teamId);
 
           const doc = {
-            ...metadata,
+            ...matchData.metadata,
             ...infoRest,
             ...p,
-            gameDate: info.gameStartTimestamp ? new Date(info.gameStartTimestamp) : undefined,
+            gameDate: matchData.info.gameStartTimestamp ? new Date(matchData.info.gameStartTimestamp) : undefined,
             player_id: player._id.toString(),
             player_name: player.game_name,
             team_id: player.team_id,
