@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import { getChampionIcon } from "@/utils"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
-import { Shield, ChevronLeft, Radar, Table2 } from "lucide-react"
+import { Shield, ChevronLeft, ChevronDown, Radar, Table2 } from "lucide-react"
 
 export default function StatsV2() {
   const { searchNavigation, setSearchNavigation, globalFilters } = useStore()
@@ -15,6 +15,12 @@ export default function StatsV2() {
   const [activeEnemyChampion, setActiveEnemyChampion] = useState(null)
   const [activeCategory, setActiveCategory] = useState("Combat")
   const [viewMode, setViewMode] = useState("spider")
+  const [compareMode, setCompareMode] = useState("scrim") // "scrim" | "pro"
+  const [proStats, setProStats] = useState(null)
+  const [selectedLeagues, setSelectedLeagues] = useState([])
+  const [availableLeagues, setAvailableLeagues] = useState([])
+  const [leagueDropdownOpen, setLeagueDropdownOpen] = useState(false)
+  const leagueDropdownRef = useRef(null)
 
   const categories = [
     { id: "Combat", icon: CombatIcon, color: "#3b82f6" },
@@ -40,9 +46,49 @@ export default function StatsV2() {
     }
   }
 
+  const fetchProStats = async position => {
+    try {
+      const body = {}
+      if (position) body.position = position
+      if (globalFilters.patch) body.patch = globalFilters.patch
+      if (selectedLeagues.length) body.leagues = selectedLeagues
+      const { ok, data, code } = await api.post("/pro-game-playerstats/aggregate", body)
+      if (!ok) return toast.error(code)
+      setProStats(data)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const fetchLeagues = async () => {
+    try {
+      const { ok, data, code } = await api.get("/pro-game/leagues/list")
+      if (!ok) return toast.error(code)
+      setAvailableLeagues(data)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+  useEffect(() => {
+    fetchLeagues()
+  }, [])
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (leagueDropdownRef.current && !leagueDropdownRef.current.contains(event.target)) setLeagueDropdownOpen(false)
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
   useEffect(() => {
     fetchStats()
+    fetchProStats()
   }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
+
+  useEffect(() => {
+    fetchProStats(activePlayer?.role || null)
+  }, [activePlayer?.role, selectedLeagues])
 
   // Handle search navigation changes (works even when already on statsV2 page)
   useEffect(() => {
@@ -169,34 +215,117 @@ export default function StatsV2() {
           <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white font-semibold text-sm uppercase tracking-wider">Performance by Category</h2>
-              <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
-                <button
-                  onClick={() => setViewMode("spider")}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    viewMode === "spider" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  <Radar className="w-3.5 h-3.5" />
-                  Spider
-                </button>
-                <button
-                  onClick={() => setViewMode("table")}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    viewMode === "table" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  <Table2 className="w-3.5 h-3.5" />
-                  Table
-                </button>
+              <div className="flex items-center gap-2">
+                {/* League selector for Pro Avg */}
+                <div className="relative" ref={leagueDropdownRef}>
+                  <button
+                    onClick={() => setLeagueDropdownOpen(!leagueDropdownOpen)}
+                    className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-700/50 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+                  >
+                    <span className="text-amber-400">Pro:</span>
+                    <span className="truncate max-w-[100px]">
+                      {selectedLeagues.length === 0 ? "All Leagues" : selectedLeagues.length === 1 ? selectedLeagues[0] : `${selectedLeagues.length} leagues`}
+                    </span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${leagueDropdownOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {leagueDropdownOpen && (
+                    <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 min-w-[160px] max-h-56 overflow-y-auto">
+                      <button
+                        onClick={() => setSelectedLeagues([])}
+                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-700 transition-colors ${selectedLeagues.length === 0 ? "text-amber-400" : "text-white"}`}
+                      >
+                        All Leagues
+                      </button>
+                      <div className="border-t border-slate-700" />
+                      {availableLeagues.map(league => (
+                        <button
+                          key={league}
+                          onClick={() => setSelectedLeagues(prev => (prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]))}
+                          className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-700 transition-colors flex items-center gap-2"
+                        >
+                          <div
+                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${selectedLeagues.includes(league) ? "bg-amber-500 border-amber-500" : "border-slate-500"}`}
+                          >
+                            {selectedLeagues.includes(league) && (
+                              <svg className="w-2.5 h-2.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                          <span className="text-white">{league}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
+                  <button
+                    onClick={() => setViewMode("spider")}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      viewMode === "spider" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <Radar className="w-3.5 h-3.5" />
+                    Spider
+                  </button>
+                  <button
+                    onClick={() => setViewMode("table")}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      viewMode === "table" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <Table2 className="w-3.5 h-3.5" />
+                    Table
+                  </button>
+                </div>
               </div>
             </div>
             <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
             <CategoryTabs categories={categories} activeCategory={activeCategory} onCategoryChange={setActiveCategory} categoryScores={currentData.categoryScores} />
-            {viewMode === "spider" ? (
-              <SpiderChart metrics={currentData.metrics?.[activeCategory] || []} isEnemyChampion={isEnemyChampion} />
-            ) : (
-              <MetricsTable metrics={currentData.metrics?.[activeCategory] || []} isEnemyChampion={isEnemyChampion} />
-            )}
+            {(() => {
+              const scrimMetrics = currentData.metrics?.[activeCategory] || []
+              const proCategory = proStats?.[activeCategory]
+              const round1 = v => Math.round(v * 10) / 10
+
+              // Build display metrics based on compareMode
+              const displayMetrics =
+                compareMode === "pro" && proCategory
+                  ? scrimMetrics.map(m => {
+                      const proVal = proCategory[m.name]
+                      if (proVal == null) return m
+                      const diff = proVal > 0 ? ((m.team - proVal) / proVal) * 100 : m.team > 0 ? 100 : 0
+                      return { ...m, enemies: proVal, diff: round1(diff) }
+                    })
+                  : scrimMetrics
+
+              return viewMode === "spider" ? (
+                <SpiderChart metrics={displayMetrics} isEnemyChampion={isEnemyChampion} compareMode={compareMode} />
+              ) : (
+                <MetricsTable metrics={displayMetrics} isEnemyChampion={isEnemyChampion} compareMode={compareMode} />
+              )
+            })()}
+
+            {/* Compare mode radio */}
+            <div className="flex justify-end mt-4">
+              <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
+                <button
+                  onClick={() => setCompareMode("scrim")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    compareMode === "scrim" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  vs Scrim
+                </button>
+                <button
+                  onClick={() => setCompareMode("pro")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    compareMode === "pro" ? "bg-amber-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  vs Pro
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Colonne droite - Listes */}
@@ -273,7 +402,7 @@ function CategoryTabs({ categories, activeCategory, onCategoryChange, categorySc
 }
 
 function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEnemyChampion, onTeamClick, onPlayerChange, onChampionChange, onBack }) {
-  const allChampions = activePlayer ? (activePlayer.champions || []) : []
+  const allChampions = activePlayer ? activePlayer.champions || [] : []
 
   const showBackButton = activePlayer || activeChampion || activeEnemyChampion
 
@@ -468,17 +597,21 @@ function ScoreCircle({ score, isEnemy }) {
   )
 }
 
-function MetricsTable({ metrics, isEnemyChampion }) {
+function MetricsTable({ metrics, isEnemyChampion, compareMode }) {
   if (!metrics || metrics.length === 0) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
+
+  const isPro = compareMode === "pro"
+  const enemyLabel = isEnemyChampion ? "This champ" : isPro ? "Pro Avg" : "Enemies"
+  const enemyColor = isPro ? "text-amber-400" : "text-red-400"
 
   return (
     <div className="w-full">
       <div className="grid grid-cols-4 gap-4 px-4 py-2 border-b border-slate-700/50 text-xs font-medium text-slate-400 uppercase tracking-wider">
         <div>Metric</div>
         <div className="text-center">{isEnemyChampion ? "Us" : "Team"}</div>
-        <div className="text-center">{isEnemyChampion ? "This champ" : "Enemies"}</div>
+        <div className="text-center">{enemyLabel}</div>
         <div className="text-right">Diff</div>
       </div>
 
@@ -489,9 +622,10 @@ function MetricsTable({ metrics, isEnemyChampion }) {
             <div key={i} className="grid grid-cols-4 gap-4 px-4 py-3 hover:bg-slate-700/20 transition-colors items-center text-sm">
               <div className="text-slate-200 font-medium">{row.name}</div>
               <div className="text-center text-emerald-400 font-mono font-medium">{row.team}</div>
-              <div className="text-center text-red-400 font-mono">{row.enemies}</div>
+              <div className={`text-center ${enemyColor} font-mono`}>{row.enemies}</div>
               <div className={`text-right font-bold font-mono ${diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                {diff >= 0 ? "+" : ""}{row.diff}%
+                {diff >= 0 ? "+" : ""}
+                {row.diff}%
               </div>
             </div>
           )
@@ -501,12 +635,18 @@ function MetricsTable({ metrics, isEnemyChampion }) {
   )
 }
 
-function SpiderChart({ metrics, isEnemyChampion }) {
+function SpiderChart({ metrics, isEnemyChampion, compareMode }) {
   const [hoveredIndex, setHoveredIndex] = useState(null)
+  const isPro = compareMode === "pro"
 
   if (!metrics || metrics.length === 0) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
+
+  const enemyFill = isPro ? "rgba(245, 158, 11, 0.1)" : "rgba(239, 68, 68, 0.1)"
+  const enemyStroke = isPro ? "rgba(245, 158, 11, 0.5)" : "rgba(239, 68, 68, 0.5)"
+  const enemyDot = isPro ? "rgb(245, 158, 11)" : "rgb(239, 68, 68)"
+  const enemyLabel = isEnemyChampion ? "This champ" : isPro ? "Pro Avg" : "Enemies"
 
   const size = 280
   const center = size / 2
@@ -587,7 +727,7 @@ function SpiderChart({ metrics, isEnemyChampion }) {
         })}
 
         {/* Enemy polygon (baseline) */}
-        <polygon points={getPolygonPoints(enemyValues)} fill="rgba(239, 68, 68, 0.1)" stroke="rgba(239, 68, 68, 0.5)" strokeWidth="2" pointerEvents="none" />
+        <polygon points={getPolygonPoints(enemyValues)} fill={enemyFill} stroke={enemyStroke} strokeWidth="2" pointerEvents="none" />
 
         {/* Team polygon */}
         <polygon points={getPolygonPoints(teamValues)} fill="rgba(16, 185, 129, 0.15)" stroke="rgb(16, 185, 129)" strokeWidth="2" pointerEvents="none" />
@@ -595,7 +735,7 @@ function SpiderChart({ metrics, isEnemyChampion }) {
         {/* Data points for enemies (rendered after polygons so they're visible) */}
         {enemyValues.map((val, i) => {
           const point = getPoint(val, i)
-          return <circle key={`enemy-${i}`} cx={point.x} cy={point.y} r="4" fill="rgb(239, 68, 68)" stroke="rgb(30, 41, 59)" strokeWidth="2" pointerEvents="none" />
+          return <circle key={`enemy-${i}`} cx={point.x} cy={point.y} r="4" fill={enemyDot} stroke="rgb(30, 41, 59)" strokeWidth="2" pointerEvents="none" />
         })}
 
         {/* Data points for team */}
@@ -667,9 +807,9 @@ function SpiderChart({ metrics, isEnemyChampion }) {
               {metrics[hoveredIndex].team}
             </text>
             <text x={center - 48} y={center + 20} textAnchor="start" className="fill-slate-400 text-[10px]">
-              Enemies
+              {enemyLabel}
             </text>
-            <text x={center + 48} y={center + 20} textAnchor="end" className="fill-red-400 text-[11px] font-medium">
+            <text x={center + 48} y={center + 20} textAnchor="end" className={`text-[11px] font-medium ${isPro ? "fill-amber-400" : "fill-red-400"}`}>
               {metrics[hoveredIndex].enemies}
             </text>
             <line x1={center - 48} y1={center + 30} x2={center + 48} y2={center + 30} stroke="rgb(71, 85, 105)" strokeWidth="1" />
@@ -688,8 +828,8 @@ function SpiderChart({ metrics, isEnemyChampion }) {
           <span className="text-slate-400 text-xs">{isEnemyChampion ? "Us" : "Team"}</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500" />
-          <span className="text-slate-400 text-xs">{isEnemyChampion ? "This champ" : "Enemies"}</span>
+          <div className={`w-3 h-3 rounded-full ${isPro ? "bg-amber-500" : "bg-red-500"}`} />
+          <span className="text-slate-400 text-xs">{enemyLabel}</span>
         </div>
       </div>
     </div>
@@ -723,9 +863,7 @@ function PlayersList({ players, onPlayerClick }) {
 }
 
 function Matchups({ champions, onChampionClick, activeChampion, readOnly }) {
-  const allChampions = (champions || [])
-    .filter((champ, idx, arr) => arr.findIndex(c => c.name === champ.name) === idx)
-    .sort((a, b) => (b.games || 0) - (a.games || 0))
+  const allChampions = (champions || []).filter((champ, idx, arr) => arr.findIndex(c => c.name === champ.name) === idx).sort((a, b) => (b.games || 0) - (a.games || 0))
 
   if (allChampions.length === 0) {
     return <div className="text-slate-500 text-center py-8">No data</div>

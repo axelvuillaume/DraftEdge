@@ -44,6 +44,7 @@ app.use('/folder', require('./controllers/folder'));
 app.use('/playerstats', require('./controllers/playerstats'));
 app.use('/draft-scenario', require('./controllers/draft-scenario'));
 app.use('/pro-game', require('./controllers/pro-game'));
+app.use('/pro-game-playerstats', require('./controllers/pro-game-playerstats'));
 app.use('/team', require('./controllers/team'));
 app.use('/scrim-objectif', require('./controllers/scrim-objectif'));
 app.use('/scrim-objectif-result', require('./controllers/scrim-objectif-result'));
