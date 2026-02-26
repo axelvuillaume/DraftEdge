@@ -34,7 +34,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
 
     if (req.body.team_id) query.team_id = req.body.team_id;
     if (req.body.player_id) query.player_id = req.body.player_id;
-    const limit = req.body.limit || 50;
+    const limit = req.body.limit != null ? req.body.limit : 50;
     const skip = req.body.offset || 0;
     const total = await SoloQSnapshot.countDocuments(query);
     const data = await SoloQSnapshot.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);

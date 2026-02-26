@@ -31,7 +31,7 @@ export default function SoloQ() {
       setPlayers(data)
       const conn = data.filter(p => p.puuid)
       if (!conn.length) return toast.error("No connected players")
-      setSnapshots((await Promise.all(conn.map(p => api.post("/soloq-snapshot/search", { player_id: p._id, limit: 5000 })))).flatMap(r => (r.ok ? r.data : [])))
+      setSnapshots((await Promise.all(conn.map(p => api.post("/soloq-snapshot/search", { player_id: p._id, limit: 0 })))).flatMap(r => (r.ok ? r.data : [])))
     } catch (error) {
       toast.error(error.message || "Failed to fetch players")
     } finally {
