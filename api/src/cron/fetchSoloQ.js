@@ -8,6 +8,24 @@ const QUEUE_ID = 420;
 const DELAY_MS = 1300;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Metrics basées sur les events timeline (pas dispo dans participantFrames)
+const EVENT_METRICS = new Set(['kills', 'deaths', 'assists']);
+
+function getEventBasedMetric(timeline, participantId, metric, maxTimestamp) {
+  let count = 0;
+  for (const frame of timeline.info.frames) {
+    if (frame.timestamp > maxTimestamp) break;
+    for (const event of frame.events) {
+      if (event.type !== 'CHAMPION_KILL') continue;
+      if (event.timestamp > maxTimestamp) continue;
+      if (metric === 'deaths' && event.victimId === participantId) count++;
+      if (metric === 'kills' && event.killerId === participantId) count++;
+      if (metric === 'assists' && event.assistingParticipantIds?.includes(participantId)) count++;
+    }
+  }
+  return count;
+}
+
 function evaluate(operator, actual, target) {
   if (actual == null) return false;
   if (operator === '>') return actual > target;
@@ -93,14 +111,24 @@ async function fetchSoloQ() {
               const { metric, operator, value, timing, source } = obj.rule;
               let actual_value = undefined;
 
-              if (source === 'endgame') actual_value = metric.split('.').reduce((o, key) => o?.[key], doc);
+              if (source === 'endgame') {
+                actual_value = metric.split('.').reduce((o, key) => o?.[key], doc);
+              }
 
               if (source === 'timeline' && timeline && participantId != null) {
                 const targetMs = timing * 60 * 1000;
-                const frame = timeline.info.frames.find((f) => f.timestamp >= targetMs);
-                if (frame) {
-                  const pFrame = frame.participantFrames[String(participantId)];
-                  if (pFrame) actual_value = metric.split('.').reduce((o, key) => o?.[key], pFrame);
+                const baseMetric = metric.split('.')[0];
+
+                if (EVENT_METRICS.has(baseMetric)) {
+                  actual_value = getEventBasedMetric(timeline, participantId, baseMetric, targetMs);
+                } else {
+                  const frame = timeline.info.frames.find((f) => f.timestamp >= targetMs);
+                  if (frame) {
+                    const pFrame = frame.participantFrames[String(participantId)];
+                    if (pFrame) {
+                      actual_value = metric.split('.').reduce((o, key) => o?.[key], pFrame);
+                    }
+                  }
                 }
               }
 

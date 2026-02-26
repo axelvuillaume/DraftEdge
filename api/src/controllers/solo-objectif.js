@@ -63,7 +63,8 @@ METRICS ENDGAME (source: "endgame", timing: null) — champs du match:
 - totalHealsOnTeammates, totalDamageShieldedOnTeammates
 - damageDealtToTurrets, damageDealtToObjectives
 
-METRICS TIMELINE (source: "timeline", timing: N minutes) — champs participantFrames Riot:
+METRICS TIMELINE (source: "timeline", timing: N minutes):
+Champs participantFrames:
 - minionsKilled (CS lane à X min)
 - jungleMinionsKilled (CS jungle à X min)
 - totalGold (gold total à X min)
@@ -75,6 +76,10 @@ METRICS TIMELINE (source: "timeline", timing: N minutes) — champs participantF
 - damageStats.physicalDamageDoneToChampions (dégâts physiques aux champions à X min)
 - damageStats.totalDamageDone (dégâts totaux à X min)
 - damageStats.totalDamageTaken (dégâts subis à X min)
+Comptés via events (aussi disponibles en timeline):
+- kills (kills à X min)
+- deaths (morts à X min)
+- assists (assists à X min)
 
 RÈGLES:
 - operator: ">", ">=", "<", "<=", "=="
@@ -88,6 +93,8 @@ EXEMPLES:
 "Vision score au dessus de 40" → {"metric":"visionScore","operator":">=","value":40,"timing":null,"source":"endgame"}
 "Plus de 8k gold à 15 min" → {"metric":"totalGold","operator":">=","value":8000,"timing":15,"source":"timeline"}
 "Plus de 3k dégâts aux champions à 10min" → {"metric":"damageStats.totalDamageDoneToChampions","operator":">=","value":3000,"timing":10,"source":"timeline"}
+"Moins de 3 morts à 10min" → {"metric":"deaths","operator":"<=","value":3,"timing":10,"source":"timeline"}
+"Plus de 2 kills à 15min" → {"metric":"kills","operator":">=","value":2,"timing":15,"source":"timeline"}
 
 DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
 
