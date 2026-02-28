@@ -26,4 +26,4 @@ if (ENVIRONMENT !== 'production') return;
 console.log('Cron jobs initialized');
 cron.schedule('*/15 * * * *', () => run(getElo, 'getElo'));
 cron.schedule('*/15 * * * *', () => run(fetchSoloQ, 'fetchSoloQ'));
-cron.schedule('0 6 * * *', () => run(scrapeOracleElixir, 'scrapeOracleElixir'));
+// cron.schedule('0 6 * * *', () => run(scrapeOracleElixir, 'scrapeOracleElixir'));
