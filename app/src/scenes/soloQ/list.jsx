@@ -49,7 +49,7 @@ export default function SoloQ() {
   const [snapshots, setSnapshots] = useState([])
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState("all")
+  const [period, setPeriod] = useState("week")
   const navigate = useNavigate()
 
   const fetchPlayers = async () => {
@@ -76,7 +76,7 @@ export default function SoloQ() {
       try {
         const [snapshotResults, matchResults] = await Promise.all([
           Promise.all(conn.map(p => api.post("/soloq-snapshot/search", { player_id: p._id, limit: 0, from_date: fromDate }))),
-          Promise.all(conn.map(p => api.post("/soloq-match/search", { player_id: p._id, limit: 0, from_date: fromDate }))),
+          Promise.all(conn.map(p => api.post("/soloq-match/search", { player_id: p._id, limit: 0, from_date: fromDate })))
         ])
         setSnapshots(snapshotResults.flatMap(r => (r.ok ? r.data : [])))
         setMatches(matchResults.flatMap(r => (r.ok ? r.data : [])))

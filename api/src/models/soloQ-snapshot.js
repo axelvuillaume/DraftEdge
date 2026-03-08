@@ -20,5 +20,8 @@ const Schema = new mongoose.Schema(
   { timestamps: true },
 );
 
+Schema.index({ player_id: 1, fetched_at: -1 });
+Schema.index({ team_id: 1, fetched_at: -1 });
+
 const OBJ = mongoose.model(MODELNAME, Schema);
 module.exports = OBJ;
