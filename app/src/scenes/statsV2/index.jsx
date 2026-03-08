@@ -714,114 +714,113 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode }) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg width={size} height={size} className="overflow-visible">
-        {/* Background grid circles */}
-        {gridLevels.map((level, i) => {
-          const points = metrics.map((_, idx) => getPoint(level, idx))
-          const pathData = points.map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ") + " Z"
-          return <path key={i} d={pathData} fill="none" stroke="rgb(51 65 85 / 0.3)" strokeWidth="1" pointerEvents="none" />
-        })}
+      <div className="flex items-center gap-4">
+        <svg width={size} height={size} className="overflow-visible">
+          {/* Background grid circles */}
+          {gridLevels.map((level, i) => {
+            const points = metrics.map((_, idx) => getPoint(level, idx))
+            const pathData = points.map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ") + " Z"
+            return <path key={i} d={pathData} fill="none" stroke="rgb(51 65 85 / 0.3)" strokeWidth="1" pointerEvents="none" />
+          })}
 
-        {/* Axis lines */}
-        {metrics.map((_, i) => {
-          const endPoint = getPoint(100, i)
-          return <line key={i} x1={center} y1={center} x2={endPoint.x} y2={endPoint.y} stroke="rgb(51 65 85 / 0.4)" strokeWidth="1" pointerEvents="none" />
-        })}
+          {/* Axis lines */}
+          {metrics.map((_, i) => {
+            const endPoint = getPoint(100, i)
+            return <line key={i} x1={center} y1={center} x2={endPoint.x} y2={endPoint.y} stroke="rgb(51 65 85 / 0.4)" strokeWidth="1" pointerEvents="none" />
+          })}
 
-        {/* Enemy polygon (baseline) */}
-        <polygon points={getPolygonPoints(enemyValues)} fill={enemyFill} stroke={enemyStroke} strokeWidth="2" pointerEvents="none" />
+          {/* Enemy polygon (baseline) */}
+          <polygon points={getPolygonPoints(enemyValues)} fill={enemyFill} stroke={enemyStroke} strokeWidth="2" pointerEvents="none" />
 
-        {/* Team polygon */}
-        <polygon points={getPolygonPoints(teamValues)} fill="rgba(16, 185, 129, 0.15)" stroke="rgb(16, 185, 129)" strokeWidth="2" pointerEvents="none" />
+          {/* Team polygon */}
+          <polygon points={getPolygonPoints(teamValues)} fill="rgba(16, 185, 129, 0.15)" stroke="rgb(16, 185, 129)" strokeWidth="2" pointerEvents="none" />
 
-        {/* Data points for enemies (rendered after polygons so they're visible) */}
-        {enemyValues.map((val, i) => {
-          const point = getPoint(val, i)
-          return <circle key={`enemy-${i}`} cx={point.x} cy={point.y} r="4" fill={enemyDot} stroke="rgb(30, 41, 59)" strokeWidth="2" pointerEvents="none" />
-        })}
+          {/* Data points for enemies (rendered after polygons so they're visible) */}
+          {enemyValues.map((val, i) => {
+            const point = getPoint(val, i)
+            return <circle key={`enemy-${i}`} cx={point.x} cy={point.y} r="4" fill={enemyDot} stroke="rgb(30, 41, 59)" strokeWidth="2" pointerEvents="none" />
+          })}
 
-        {/* Data points for team */}
-        {teamValues.map((val, i) => {
-          const point = getPoint(val, i)
-          return <circle key={`team-${i}`} cx={point.x} cy={point.y} r="4" fill="rgb(16, 185, 129)" stroke="rgb(30, 41, 59)" strokeWidth="2" pointerEvents="none" />
-        })}
+          {/* Data points for team */}
+          {teamValues.map((val, i) => {
+            const point = getPoint(val, i)
+            return <circle key={`team-${i}`} cx={point.x} cy={point.y} r="4" fill="rgb(16, 185, 129)" stroke="rgb(30, 41, 59)" strokeWidth="2" pointerEvents="none" />
+          })}
 
-        {/* Invisible hover sectors (pie slices) for better hitbox */}
-        {metrics.map((_, i) => {
-          const angle1 = startAngle + (i - 0.5) * angleStep
-          const angle2 = startAngle + (i + 0.5) * angleStep
-          const r = maxRadius + 30
+          {/* Invisible hover sectors (pie slices) for better hitbox */}
+          {metrics.map((_, i) => {
+            const angle1 = startAngle + (i - 0.5) * angleStep
+            const angle2 = startAngle + (i + 0.5) * angleStep
+            const r = maxRadius + 30
 
-          const x1 = center + r * Math.cos(angle1)
-          const y1 = center + r * Math.sin(angle1)
-          const x2 = center + r * Math.cos(angle2)
-          const y2 = center + r * Math.sin(angle2)
+            const x1 = center + r * Math.cos(angle1)
+            const y1 = center + r * Math.sin(angle1)
+            const x2 = center + r * Math.cos(angle2)
+            const y2 = center + r * Math.sin(angle2)
 
-          const pathData = `M ${center} ${center} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`
+            const pathData = `M ${center} ${center} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`
 
-          return (
-            <path
-              key={`hover-${i}`}
-              d={pathData}
-              fill="transparent"
-              className="cursor-pointer"
-              onMouseEnter={() => setHoveredIndex(i)}
-              onMouseLeave={() => setHoveredIndex(null)}
-            />
-          )
-        })}
+            return (
+              <path
+                key={`hover-${i}`}
+                d={pathData}
+                fill="transparent"
+                className="cursor-pointer"
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              />
+            )
+          })}
 
-        {/* Metric labels */}
-        {metrics.map((metric, i) => {
-          const labelPoint = getPoint(115, i)
-          const angle = startAngle + i * angleStep
-          const isRight = Math.cos(angle) > 0.1
-          const isLeft = Math.cos(angle) < -0.1
-          const textAnchor = isRight ? "start" : isLeft ? "end" : "middle"
+          {/* Metric labels */}
+          {metrics.map((metric, i) => {
+            const labelPoint = getPoint(115, i)
+            const angle = startAngle + i * angleStep
+            const isRight = Math.cos(angle) > 0.1
+            const isLeft = Math.cos(angle) < -0.1
+            const textAnchor = isRight ? "start" : isLeft ? "end" : "middle"
 
-          return (
-            <text
-              key={i}
-              x={labelPoint.x}
-              y={labelPoint.y}
-              textAnchor={textAnchor}
-              dominantBaseline="middle"
-              className="fill-slate-300 text-[10px] font-medium"
-              pointerEvents="none"
-            >
-              {metric.name}
-            </text>
-          )
-        })}
+            return (
+              <text
+                key={i}
+                x={labelPoint.x}
+                y={labelPoint.y}
+                textAnchor={textAnchor}
+                dominantBaseline="middle"
+                className="fill-slate-300 text-[10px] font-medium"
+                pointerEvents="none"
+              >
+                {metric.name}
+              </text>
+            )
+          })}
+        </svg>
 
-        {/* Tooltip on hover */}
-        {hoveredIndex !== null && (
-          <g pointerEvents="none">
-            <rect x={center - 60} y={center - 45} width="120" height="90" rx="8" fill="rgb(30, 41, 59)" stroke="rgb(71, 85, 105)" strokeWidth="1" />
-            <text x={center} y={center - 26} textAnchor="middle" className="fill-white text-[12px] font-semibold">
-              {metrics[hoveredIndex].name}
-            </text>
-            <line x1={center - 48} y1={center - 14} x2={center + 48} y2={center - 14} stroke="rgb(71, 85, 105)" strokeWidth="1" />
-            <text x={center - 48} y={center + 2} textAnchor="start" className="fill-slate-400 text-[10px]">
-              Team
-            </text>
-            <text x={center + 48} y={center + 2} textAnchor="end" className="fill-emerald-400 text-[11px] font-medium">
-              {metrics[hoveredIndex].team}
-            </text>
-            <text x={center - 48} y={center + 20} textAnchor="start" className="fill-slate-400 text-[10px]">
-              {enemyLabel}
-            </text>
-            <text x={center + 48} y={center + 20} textAnchor="end" className={`text-[11px] font-medium ${isPro ? "fill-amber-400" : "fill-red-400"}`}>
-              {metrics[hoveredIndex].enemies}
-            </text>
-            <line x1={center - 48} y1={center + 30} x2={center + 48} y2={center + 30} stroke="rgb(71, 85, 105)" strokeWidth="1" />
-            <text x={center} y={center + 42} textAnchor="middle" className={`text-[12px] font-bold ${metrics[hoveredIndex].diff >= 0 ? "fill-emerald-400" : "fill-red-400"}`}>
-              {metrics[hoveredIndex].diff >= 0 ? "+" : ""}
-              {metrics[hoveredIndex].diff}%
-            </text>
-          </g>
-        )}
-      </svg>
+        {/* Tooltip panel next to spider */}
+        <div className="w-[140px] flex-shrink-0">
+          {hoveredIndex !== null ? (
+            <div className="bg-slate-900/80 border border-slate-600/50 rounded-lg p-3">
+              <p className="text-white text-xs font-semibold mb-2 truncate">{metrics[hoveredIndex].name}</p>
+              <div className="h-px bg-slate-700/50 mb-2" />
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-slate-400 text-[10px]">Team</span>
+                <span className="text-emerald-400 text-xs font-medium">{metrics[hoveredIndex].team}</span>
+              </div>
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-slate-400 text-[10px]">{enemyLabel}</span>
+                <span className={`text-xs font-medium ${isPro ? "text-amber-400" : "text-red-400"}`}>{metrics[hoveredIndex].enemies}</span>
+              </div>
+              <div className="h-px bg-slate-700/50 mb-2" />
+              <p className={`text-center text-sm font-bold ${metrics[hoveredIndex].diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                {metrics[hoveredIndex].diff >= 0 ? "+" : ""}
+                {metrics[hoveredIndex].diff}%
+              </p>
+            </div>
+          ) : (
+            <div className="text-slate-600 text-[10px] text-center">Hover a metric</div>
+          )}
+        </div>
+      </div>
 
       {/* Legend */}
       <div className="flex items-center gap-6 mt-4">
