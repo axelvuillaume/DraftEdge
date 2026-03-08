@@ -285,6 +285,7 @@ export default function SoloQ() {
                     labelStyle={{ color: "#94a3b8" }}
                     labelFormatter={v => new Date(v).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     formatter={(value, name) => [lpLabel(value), connected.find(p => p._id === name)?.game_name || name]}
+                    itemSorter={(a) => -a.value}
                   />
                   <Legend formatter={v => connected.find(p => p._id === v)?.game_name || v} />
                   {connected.map((p, i) => (
