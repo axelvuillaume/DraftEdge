@@ -73,6 +73,7 @@ export default function SoloQ() {
     if (!conn.length) return
     const fromDate = period === "all" ? undefined : getPeriodStart(period).toISOString()
     ;(async () => {
+      setLoading(true)
       try {
         const [snapshotResults, matchResults] = await Promise.all([
           Promise.all(conn.map(p => api.post("/soloq-snapshot/search", { player_id: p._id, limit: 0, from_date: fromDate }))),
@@ -82,6 +83,8 @@ export default function SoloQ() {
         setMatches(matchResults.flatMap(r => (r.ok ? r.data : [])))
       } catch (error) {
         console.error(error)
+      } finally {
+        setLoading(false)
       }
     })()
   }, [players, period])
@@ -285,7 +288,7 @@ export default function SoloQ() {
                     labelStyle={{ color: "#94a3b8" }}
                     labelFormatter={v => new Date(v).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     formatter={(value, name) => [lpLabel(value), connected.find(p => p._id === name)?.game_name || name]}
-                    itemSorter={(a) => -a.value}
+                    itemSorter={a => -a.value}
                   />
                   <Legend formatter={v => connected.find(p => p._id === v)?.game_name || v} />
                   {connected.map((p, i) => (
