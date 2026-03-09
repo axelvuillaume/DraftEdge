@@ -144,6 +144,19 @@ export default function View() {
     }
   }
 
+  // My team draft averages
+  const [myDraftAverages, setMyDraftAverages] = useState(null)
+
+  async function fetchMyDraftAverages() {
+    try {
+      const { ok, data, code } = await api.post("/game/draft-averages", { ...globalFilters })
+      if (!ok) return toast.error(code || "Failed to fetch my team draft averages")
+      setMyDraftAverages(data)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
   // Most flexed champions from API
   const [myTeamFlexed, setMyTeamFlexed] = useState([])
   const [proFlexed, setProFlexed] = useState([])
@@ -175,6 +188,7 @@ export default function View() {
     fetchMyTeam()
     fetchMyTeamCombos()
     fetchMyTeamFlexed()
+    fetchMyDraftAverages()
   }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
 
   // Fetch pro data (depends on selected leagues)
@@ -374,6 +388,7 @@ export default function View() {
                         index={idx}
                         onClick={() => openModal("ban", "blue", idx)}
                         draftAverages={draftAverages}
+                        myDraftAverages={myDraftAverages}
                         selectedLeagues={selectedLeagues}
                       />
                     ))}
@@ -391,6 +406,7 @@ export default function View() {
                         index={idx}
                         onClick={() => openModal("ban", "red", idx)}
                         draftAverages={draftAverages}
+                        myDraftAverages={myDraftAverages}
                         selectedLeagues={selectedLeagues}
                       />
                     ))}
@@ -413,6 +429,7 @@ export default function View() {
                           index={idx}
                           onClick={() => openModal("pick", "blue", idx)}
                           draftAverages={draftAverages}
+                          myDraftAverages={myDraftAverages}
                           selectedLeagues={selectedLeagues}
                         />
                         <span className="text-slate-500 text-xs uppercase">{role}</span>
@@ -442,6 +459,7 @@ export default function View() {
                           index={idx}
                           onClick={() => openModal("pick", "red", idx)}
                           draftAverages={draftAverages}
+                          myDraftAverages={myDraftAverages}
                           selectedLeagues={selectedLeagues}
                         />
                       </div>
@@ -531,22 +549,28 @@ function PriorityPicksPanel({ title, data }) {
   )
 }
 
-function ChampionSlot({ champion, type, side, onClick, index, draftAverages, selectedLeagues }) {
+function ChampionSlot({ champion, type, side, onClick, index, draftAverages, myDraftAverages, selectedLeagues }) {
   const [showTooltip, setShowTooltip] = useState(false)
   const [synergies, setSynergies] = useState(null)
+  const [myTeamSynergies, setMyTeamSynergies] = useState(null)
 
   // Use API draft averages or fallback to hardcoded
   const proChampions = draftAverages ? (type === "ban" ? draftAverages.bans?.[side]?.[index] : draftAverages.picks?.[side]?.[index]) : []
+  // My team draft averages: blue = my team side, red = enemy side
+  const myTeamChampions = myDraftAverages ? (type === "ban" ? myDraftAverages.bans?.[side]?.[index] : myDraftAverages.picks?.[side]?.[index]) : []
 
   async function fetchSynergies() {
     try {
       const body = { champion: champion.champion }
       if (selectedLeagues?.length) body.leagues = selectedLeagues
-      const { ok, data, code } = await api.post("/pro-game/synergies", body)
-      if (!ok) return toast.error(code || "Failed to fetch synergies")
-      setSynergies(data)
+      const [proRes, myRes] = await Promise.all([
+        api.post("/pro-game/synergies", body),
+        api.post("/playerstats/synergies", { champion: champion.champion })
+      ])
+      if (proRes.ok) setSynergies(proRes.data)
+      if (myRes.ok) setMyTeamSynergies(myRes.data)
     } catch (e) {
-      toast.error(error.message)
+      console.error("Failed to fetch synergies:", e)
     }
   }
 
@@ -555,8 +579,10 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, sel
     fetchSynergies()
   }, [showTooltip, champion?.champion, selectedLeagues])
 
-  const bestWith = synergies?.bestWith?.map(s => s.name) || []
-  const bestAgainst = synergies?.bestAgainst?.map(s => s.name) || []
+  const bestWith = synergies?.mostPlayedWith?.map(s => s.name) || []
+  const bestAgainst = synergies?.mostPlayedAgainst?.map(s => s.name) || []
+  const myBestWith = myTeamSynergies?.mostPlayedWith?.map(s => s.name) || []
+  const myBestAgainst = myTeamSynergies?.mostPlayedAgainst?.map(s => s.name) || []
 
   return (
     <div className={`relative ${showTooltip ? "z-[100]" : ""}`} onMouseEnter={() => setShowTooltip(true)} onMouseLeave={() => setShowTooltip(false)}>
@@ -594,74 +620,104 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, sel
         )}
       </button>
 
-      {/* Tooltip - Show pro average + Best With/Against when champion selected */}
-      {showTooltip && (champion || proChampions) && (
+      {/* Tooltip - Two columns: My Team | Pro */}
+      {showTooltip && (champion || proChampions?.length || myTeamChampions?.length) && (
         <div
           className={`absolute z-[100] left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 rounded-lg p-3 shadow-xl whitespace-nowrap ${type === "ban" ? "top-full mt-2" : "bottom-full mb-2"}`}
         >
-          <div className="space-y-3">
-            {/* Always show pro average */}
-            {proChampions && (
-              <div>
-                <p className="text-white text-[10px] font-semibold uppercase mb-1.5">
-                  {POSITION_LABELS[index]} {type === "ban" ? "ban" : "pick"} average Pro:
-                </p>
-                <div className="flex items-center gap-2">
-                  {proChampions.map((champ, idx) => (
-                    <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-slate-600">
-                      <img
-                        src={getChampionIcon(champ)}
-                        alt={champ}
-                        className="w-full h-full object-cover"
-                        onError={e => {
-                          e.target.style.display = "none"
-                        }}
-                      />
-                    </div>
-                  ))}
+          <div className="flex gap-4">
+            {/* My Team Column */}
+            <div className="space-y-3">
+              <p className="text-amber-400 text-[10px] font-bold uppercase tracking-wider border-b border-amber-400/20 pb-1">My Team</p>
+              {myTeamChampions && myTeamChampions.length > 0 ? (
+                <div>
+                  <p className="text-slate-400 text-[10px] font-semibold uppercase mb-1.5">
+                    {POSITION_LABELS[index]} {type === "ban" ? "ban" : "pick"} avg
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {myTeamChampions.map((champ, idx) => (
+                      <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-amber-500/30">
+                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            {/* Show Best With when champion selected and data available */}
-            {champion && bestWith.length > 0 && (
-              <div>
-                <p className="text-emerald-400 text-[10px] font-semibold uppercase mb-1.5">Best With (Pro)</p>
-                <div className="flex items-center gap-2">
-                  {bestWith.slice(0, 3).map((champ, idx) => (
-                    <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-emerald-500/30">
-                      <img
-                        src={getChampionIcon(champ)}
-                        alt={champ}
-                        className="w-full h-full object-cover"
-                        onError={e => {
-                          e.target.style.display = "none"
-                        }}
-                      />
-                    </div>
-                  ))}
+              ) : (
+                <p className="text-slate-500 text-[10px]">No data</p>
+              )}
+              {champion && myBestWith.length > 0 && (
+                <div>
+                  <p className="text-emerald-400 text-[10px] font-semibold uppercase mb-1.5">Most Played With</p>
+                  <div className="flex items-center gap-2">
+                    {myBestWith.slice(0, 3).map((champ, idx) => (
+                      <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-emerald-500/30">
+                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            {/* Show Best Against when champion selected and data available */}
-            {champion && bestAgainst.length > 0 && (
-              <div>
-                <p className="text-red-400 text-[10px] font-semibold uppercase mb-1.5">Best Against (Pro)</p>
-                <div className="flex items-center gap-2">
-                  {bestAgainst.slice(0, 3).map((champ, idx) => (
-                    <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-red-500/30">
-                      <img
-                        src={getChampionIcon(champ)}
-                        alt={champ}
-                        className="w-full h-full object-cover"
-                        onError={e => {
-                          e.target.style.display = "none"
-                        }}
-                      />
-                    </div>
-                  ))}
+              )}
+              {champion && myBestAgainst.length > 0 && (
+                <div>
+                  <p className="text-red-400 text-[10px] font-semibold uppercase mb-1.5">Most Played Against</p>
+                  <div className="flex items-center gap-2">
+                    {myBestAgainst.slice(0, 3).map((champ, idx) => (
+                      <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-red-500/30">
+                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* Separator */}
+            <div className="w-px bg-slate-700" />
+
+            {/* Pro Column */}
+            <div className="space-y-3">
+              <p className="text-white text-[10px] font-bold uppercase tracking-wider border-b border-slate-600 pb-1">Pro</p>
+              {proChampions && proChampions.length > 0 ? (
+                <div>
+                  <p className="text-slate-400 text-[10px] font-semibold uppercase mb-1.5">
+                    {POSITION_LABELS[index]} {type === "ban" ? "ban" : "pick"} avg
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {proChampions.map((champ, idx) => (
+                      <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-slate-600">
+                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-slate-500 text-[10px]">No data</p>
+              )}
+              {champion && bestWith.length > 0 && (
+                <div>
+                  <p className="text-emerald-400 text-[10px] font-semibold uppercase mb-1.5">Most Played With</p>
+                  <div className="flex items-center gap-2">
+                    {bestWith.slice(0, 3).map((champ, idx) => (
+                      <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-emerald-500/30">
+                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {champion && bestAgainst.length > 0 && (
+                <div>
+                  <p className="text-red-400 text-[10px] font-semibold uppercase mb-1.5">Most Played Against</p>
+                  <div className="flex items-center gap-2">
+                    {bestAgainst.slice(0, 3).map((champ, idx) => (
+                      <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-red-500/30">
+                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           {/* Arrow */}
           {type === "ban" ? (

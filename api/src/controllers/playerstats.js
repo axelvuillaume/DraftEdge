@@ -1227,4 +1227,65 @@ router.post('/best-combos', passport.authenticate(['admin', 'user'], { session: 
   }
 });
 
+// Most played with / most played against for a specific champion (from scrims)
+router.post('/synergies', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const { champion } = req.body;
+    if (!champion) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const team_id = req.body.team_id || req.user.team_id;
+    if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const filters = extractFilters(req.body);
+    const { gameIdFilter } = await buildGameFilters({ team_id, ...filters });
+
+    // Get all stats for games where this champion was played by my team
+    const champStats = await PlayerStats.find({ team_id, opponent: false, champion, ...gameIdFilter }, { game_id: 1, game_win: 1 }).lean();
+    if (champStats.length === 0) return res.status(200).send({ ok: true, data: { mostPlayedWith: [], mostPlayedAgainst: [] } });
+
+    const gameIds = [...new Set(champStats.map((s) => s.game_id))];
+    const winByGame = {};
+    for (const s of champStats) {
+      winByGame[s.game_id] = s.game_win;
+    }
+
+    // Get all player stats in those games
+    const allStatsInGames = await PlayerStats.find({ team_id, game_id: { $in: gameIds } }, { game_id: 1, champion: 1, opponent: 1, game_win: 1 }).lean();
+
+    const withStats = {};
+    const againstStats = {};
+
+    for (const s of allStatsInGames) {
+      if (!s.champion || s.champion === champion) continue;
+
+      if (!s.opponent) {
+        // Teammate
+        if (!withStats[s.champion]) withStats[s.champion] = { games: 0, wins: 0 };
+        withStats[s.champion].games++;
+        if (winByGame[s.game_id]) withStats[s.champion].wins++;
+      } else {
+        // Enemy
+        if (!againstStats[s.champion]) againstStats[s.champion] = { games: 0, wins: 0 };
+        againstStats[s.champion].games++;
+        if (winByGame[s.game_id]) againstStats[s.champion].wins++;
+      }
+    }
+
+    const mostPlayedWith = Object.entries(withStats)
+      .map(([name, s]) => ({ name, games: s.games, wr: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0 }))
+      .sort((a, b) => b.games - a.games)
+      .slice(0, 3);
+
+    const mostPlayedAgainst = Object.entries(againstStats)
+      .map(([name, s]) => ({ name, games: s.games, wr: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0 }))
+      .sort((a, b) => b.games - a.games)
+      .slice(0, 3);
+
+    return res.status(200).send({ ok: true, data: { mostPlayedWith, mostPlayedAgainst } });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 module.exports = router;

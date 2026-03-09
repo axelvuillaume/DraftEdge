@@ -402,4 +402,96 @@ router.post('/header-stats', passport.authenticate(['admin', 'user'], { session:
   }
 });
 
+// Draft averages for my team (pick/ban position stats)
+router.post('/draft-averages', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team_id = req.body.team_id || req.user.team_id;
+    if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const filters = extractFilters(req.body);
+    const { gameQuery } = await buildGameFilters({ team_id, ...filters });
+
+    const games = await Game.find({ team_id, ...gameQuery }, { bluePicks: 1, redPicks: 1, blueBans: 1, redBans: 1 }).lean();
+    if (games.length === 0) return res.status(200).send({ ok: true, data: { bans: { blue: [], red: [] }, picks: { blue: [], red: [] } }, totalGames: 0 });
+
+    // Aggregate directly by blue/red side
+    const banStats = { blue: {}, red: {} };
+    const pickStats = { blue: {}, red: {} };
+    let gamesWithBluePicks = 0;
+    let gamesWithRedPicks = 0;
+
+    for (const game of games) {
+      // Blue bans
+      if (game.blueBans) {
+        for (let i = 0; i < game.blueBans.length; i++) {
+          if (!banStats.blue[i]) banStats.blue[i] = {};
+          const champ = game.blueBans[i];
+          if (!champ) continue;
+          banStats.blue[i][champ] = (banStats.blue[i][champ] || 0) + 1;
+        }
+      }
+
+      // Red bans
+      if (game.redBans) {
+        for (let i = 0; i < game.redBans.length; i++) {
+          if (!banStats.red[i]) banStats.red[i] = {};
+          const champ = game.redBans[i];
+          if (!champ) continue;
+          banStats.red[i][champ] = (banStats.red[i][champ] || 0) + 1;
+        }
+      }
+
+      // Blue picks (draft order)
+      if (game.bluePicks && game.bluePicks.length > 0) {
+        gamesWithBluePicks++;
+        for (let i = 0; i < game.bluePicks.length; i++) {
+          if (!pickStats.blue[i]) pickStats.blue[i] = {};
+          const champ = game.bluePicks[i];
+          if (!champ) continue;
+          pickStats.blue[i][champ] = (pickStats.blue[i][champ] || 0) + 1;
+        }
+      }
+
+      // Red picks (draft order)
+      if (game.redPicks && game.redPicks.length > 0) {
+        gamesWithRedPicks++;
+        for (let i = 0; i < game.redPicks.length; i++) {
+          if (!pickStats.red[i]) pickStats.red[i] = {};
+          const champ = game.redPicks[i];
+          if (!champ) continue;
+          pickStats.red[i][champ] = (pickStats.red[i][champ] || 0) + 1;
+        }
+      }
+    }
+
+    const toTop3 = (slotObj) => {
+      const result = [];
+      const indices = Object.keys(slotObj).map(Number).sort((a, b) => a - b);
+      for (const idx of indices) {
+        result.push(
+          Object.entries(slotObj[idx])
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([name]) => name),
+        );
+      }
+      return result;
+    };
+
+    const responseData = {
+      bans: { blue: toTop3(banStats.blue), red: toTop3(banStats.red) },
+      picks: { blue: toTop3(pickStats.blue), red: toTop3(pickStats.red) },
+    };
+
+    return res.status(200).send({
+      ok: true,
+      data: responseData,
+      totalGames: games.length,
+    });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 module.exports = router;

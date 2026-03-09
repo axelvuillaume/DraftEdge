@@ -143,7 +143,7 @@ router.post('/draft-averages', passport.authenticate(['admin', 'user'], { sessio
   }
 });
 
-// Get best-with and best-against synergies for a champion from pro data
+// Get most-played-with and most-played-against synergies for a champion from pro data
 router.post('/synergies', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const { champion, league, leagues, year, split } = req.body;
@@ -157,7 +157,7 @@ router.post('/synergies', passport.authenticate(['admin', 'user'], { session: fa
 
     // Games where this champion was picked
     const games = await ProGame.find(query, { picks: 1, winner: 1, matchId: 1, side: 1 }).lean();
-    if (games.length === 0) return res.status(200).send({ ok: true, data: { bestWith: [], bestAgainst: [] } });
+    if (games.length === 0) return res.status(200).send({ ok: true, data: { mostPlayedWith: [], mostPlayedAgainst: [] } });
 
     // Collect matchIds to find opponent games
     const matchIds = games.map((g) => g.matchId);
@@ -198,19 +198,19 @@ router.post('/synergies', passport.authenticate(['admin', 'user'], { session: fa
     }
 
     const minGames = 2;
-    const bestWith = Object.entries(withStats)
+    const mostPlayedWith = Object.entries(withStats)
       .filter(([, s]) => s.games >= minGames)
       .map(([name, s]) => ({ name, games: s.games, wr: Math.round((s.wins / s.games) * 100) }))
-      .sort((a, b) => b.wr - a.wr)
+      .sort((a, b) => b.games - a.games)
       .slice(0, 3);
 
-    const bestAgainst = Object.entries(againstStats)
+    const mostPlayedAgainst = Object.entries(againstStats)
       .filter(([, s]) => s.games >= minGames)
       .map(([name, s]) => ({ name, games: s.games, wr: Math.round((s.wins / s.games) * 100) }))
-      .sort((a, b) => b.wr - a.wr)
+      .sort((a, b) => b.games - a.games)
       .slice(0, 3);
 
-    return res.status(200).send({ ok: true, data: { bestWith, bestAgainst } });
+    return res.status(200).send({ ok: true, data: { mostPlayedWith, mostPlayedAgainst } });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
