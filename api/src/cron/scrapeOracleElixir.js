@@ -8,7 +8,7 @@ const CSV_URL = `https://drive.google.com/uc?export=download&id=${GOOGLE_DRIVE_F
 const YEAR = 2026;
 const BATCH_SIZE = 100;
 
-function downloadCSV(url) {
+function downloadCSVStream(url) {
   return new Promise((resolve, reject) => {
     const request = (urlToFetch) => {
       https
@@ -21,26 +21,11 @@ function downloadCSV(url) {
             reject(new Error(`Failed to download: HTTP ${response.statusCode}`));
             return;
           }
-          let data = '';
-          response.on('data', (chunk) => {
-            data += chunk;
-          });
-          response.on('end', () => resolve(data));
-          response.on('error', reject);
+          resolve(response);
         })
         .on('error', reject);
     };
     request(url);
-  });
-}
-
-function parseCSV(csvData) {
-  return new Promise((resolve, reject) => {
-    const records = [];
-    parse(csvData, { columns: true, skip_empty_lines: true, trim: true, relax_column_count: true })
-      .on('data', (row) => records.push(row))
-      .on('end', () => resolve(records))
-      .on('error', reject);
   });
 }
 
@@ -55,21 +40,6 @@ function parseDuration(gamelength) {
 function normalizeChampionName(name) {
   if (!name) return name;
   return name.replace(/[\s']+/g, '');
-}
-
-function buildChampionRoleMap(rows) {
-  const map = {};
-  for (const row of rows) {
-    const participantId = parseInt(row.participantid, 10);
-    if (participantId >= 1 && participantId <= 10) {
-      const key = `${row.gameid}-${row.teamname}`;
-      if (!map[key]) map[key] = {};
-      if (row.champion && row.position) {
-        map[key][normalizeChampionName(row.champion)] = row.position;
-      }
-    }
-  }
-  return map;
 }
 
 // CSV columns with spaces/special chars → model field names
@@ -137,85 +107,127 @@ function transformRowToMatch(row, championRoleMap) {
   };
 }
 
+async function flushBatch(model, operations) {
+  if (operations.length === 0) return { upsertedCount: 0, modifiedCount: 0 };
+  return model.bulkWrite(operations);
+}
+
 async function scrapeOracleElixir() {
-  const csvData = await downloadCSV(CSV_URL);
-  const rows = await parseCSV(csvData);
-  console.log(`[OracleElixir] Total rows in CSV: ${rows.length}`);
+  const response = await downloadCSVStream(CSV_URL);
 
-  const championRoleMap = buildChampionRoleMap(rows);
+  // Single-pass streaming: build championRoleMap + flush playerStats in batches + collect matchRows
+  const championRoleMap = {};
+  const matchRows = [];
+  let playerStatsBatch = [];
+  let totalRows = 0;
+  let psImported = 0;
+  let psUpdated = 0;
 
-  const matches = [];
+  await new Promise((resolve, reject) => {
+    const parser = parse({ columns: true, skip_empty_lines: true, trim: true, relax_column_count: true });
+
+    parser.on('data', async (row) => {
+      totalRows++;
+      const participantId = parseInt(row.participantid, 10);
+
+      // Player rows (1-10): build role map + batch insert stats
+      if (participantId >= 1 && participantId <= 10) {
+        // Build championRoleMap inline
+        if (row.champion && row.position) {
+          const key = `${row.gameid}-${row.teamname}`;
+          if (!championRoleMap[key]) championRoleMap[key] = {};
+          championRoleMap[key][normalizeChampionName(row.champion)] = row.position;
+        }
+
+        // Accumulate player stat
+        const stat = transformRowToPlayerStats(row);
+        if (stat && stat.gameid && stat.playername) {
+          playerStatsBatch.push({
+            updateOne: {
+              filter: { gameid: stat.gameid, participantid: stat.participantid },
+              update: { $set: stat },
+              upsert: true,
+            },
+          });
+
+          // Flush when batch is full
+          if (playerStatsBatch.length >= BATCH_SIZE) {
+            parser.pause();
+            const batch = playerStatsBatch;
+            playerStatsBatch = [];
+            try {
+              const result = await flushBatch(ProGamePlayerStats, batch);
+              psImported += result.upsertedCount;
+              psUpdated += result.modifiedCount;
+            } catch (err) {
+              console.error('[OracleElixir] Error flushing player stats batch:', err.message);
+            }
+            parser.resume();
+          }
+        }
+      }
+
+      // Team rows (100/200): store raw row for later (small — 2 per game)
+      if (participantId === 100 || participantId === 200) {
+        matchRows.push(row);
+      }
+    });
+
+    parser.on('end', resolve);
+    parser.on('error', reject);
+
+    response.pipe(parser);
+  });
+
+  // Flush remaining player stats
+  if (playerStatsBatch.length > 0) {
+    const result = await flushBatch(ProGamePlayerStats, playerStatsBatch);
+    psImported += result.upsertedCount;
+    psUpdated += result.modifiedCount;
+    playerStatsBatch = [];
+  }
+
+  console.log(`[OracleElixir] Total rows streamed: ${totalRows}`);
+  console.log(`[OracleElixir] Player stats: ${psImported} inserted, ${psUpdated} updated`);
+
+  // Transform and import matches using the complete championRoleMap
   const processedGameIds = new Set();
+  let imported = 0;
+  let updated = 0;
+  let matchBatch = [];
 
-  for (const row of rows) {
+  for (const row of matchRows) {
     const match = transformRowToMatch(row, championRoleMap);
     if (match && match.matchId && match.team_name) {
       const key = `${match.matchId}-${match.team_name}`;
       if (!processedGameIds.has(key)) {
         processedGameIds.add(key);
-        matches.push(match);
+        matchBatch.push({
+          updateOne: {
+            filter: { matchId: match.matchId, team_name: match.team_name },
+            update: { $set: match },
+            upsert: true,
+          },
+        });
+
+        if (matchBatch.length >= BATCH_SIZE) {
+          const result = await flushBatch(ProMatch, matchBatch);
+          imported += result.upsertedCount;
+          updated += result.modifiedCount;
+          matchBatch = [];
+        }
       }
     }
   }
 
-  console.log(`[OracleElixir] Team rows to import: ${matches.length}`);
-
-  // Process player stats (participantid 1-10)
-  const playerStats = [];
-  for (const row of rows) {
-    const stat = transformRowToPlayerStats(row);
-    if (stat && stat.gameid && stat.playername) {
-      playerStats.push(stat);
-    }
-  }
-
-  console.log(`[OracleElixir] Player stats to import: ${playerStats.length}`);
-
-  // Import team matches
-  let imported = 0;
-  let updated = 0;
-
-  if (matches.length > 0) {
-    for (let i = 0; i < matches.length; i += BATCH_SIZE) {
-      const batch = matches.slice(i, i + BATCH_SIZE);
-      const operations = batch.map((match) => ({
-        updateOne: {
-          filter: { matchId: match.matchId, team_name: match.team_name },
-          update: { $set: match },
-          upsert: true,
-        },
-      }));
-
-      const result = await ProMatch.bulkWrite(operations);
-      imported += result.upsertedCount;
-      updated += result.modifiedCount;
-    }
+  // Flush remaining matches
+  if (matchBatch.length > 0) {
+    const result = await flushBatch(ProMatch, matchBatch);
+    imported += result.upsertedCount;
+    updated += result.modifiedCount;
   }
 
   console.log(`[OracleElixir] Matches: ${imported} inserted, ${updated} updated`);
-
-  // Import player stats
-  let psImported = 0;
-  let psUpdated = 0;
-
-  if (playerStats.length > 0) {
-    for (let i = 0; i < playerStats.length; i += BATCH_SIZE) {
-      const batch = playerStats.slice(i, i + BATCH_SIZE);
-      const operations = batch.map((stat) => ({
-        updateOne: {
-          filter: { gameid: stat.gameid, participantid: stat.participantid },
-          update: { $set: stat },
-          upsert: true,
-        },
-      }));
-
-      const result = await ProGamePlayerStats.bulkWrite(operations);
-      psImported += result.upsertedCount;
-      psUpdated += result.modifiedCount;
-    }
-  }
-
-  console.log(`[OracleElixir] Player stats: ${psImported} inserted, ${psUpdated} updated`);
 }
 
 module.exports = scrapeOracleElixir;
