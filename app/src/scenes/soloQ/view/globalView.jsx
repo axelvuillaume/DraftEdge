@@ -84,7 +84,7 @@ export default function GlobalView({ data }) {
     setSavingNotes(true)
     try {
       const { ok, code } = await api.put(`/player/${player._id}`, { notes })
-      if (!ok) toast.error(code || "Failed to save notes")
+      if (!ok) return toast.error(code || "Failed to save notes")
       toast.success("Notes saved")
     } catch (error) {
       toast.error(error.code || "Failed to save notes")

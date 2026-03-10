@@ -33,7 +33,7 @@ const Schema = new mongoose.Schema(
 
     notes: { type: String, default: '' },
 
-    active: { type: Boolean },
+    active: { type: Boolean, default: true },
     last_fetched_at: { type: Date },
     connected_at: { type: Date },
   },
