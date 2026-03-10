@@ -156,6 +156,15 @@ async function processPlayer(player) {
   let saved = 0;
   let skipped = 0;
   let errors = 0;
+  const BULK_SIZE = 25;
+  let bulkOps = [];
+
+  async function flushBulk() {
+    if (bulkOps.length === 0) return;
+    await SoloqMatch.bulkWrite(bulkOps, { ordered: false });
+    saved += bulkOps.length;
+    bulkOps = [];
+  }
 
   for (let i = 0; i < newIds.length; i++) {
     const matchId = newIds[i];
@@ -180,11 +189,19 @@ async function processPlayer(player) {
         continue;
       }
 
-      await SoloqMatch.updateOne({ matchId: doc.matchId, puuid: doc.puuid }, { $set: doc }, { upsert: true });
-      saved++;
+      bulkOps.push({
+        updateOne: {
+          filter: { matchId: doc.matchId, puuid: doc.puuid },
+          update: { $set: doc },
+          upsert: true,
+        },
+      });
+
       const date = doc.gameDate ? doc.gameDate.toISOString().slice(0, 10) : "?";
       const duration = doc.gameDuration ? `${Math.floor(doc.gameDuration / 60)}m${doc.gameDuration % 60}s` : "?";
       console.log(`  [${i + 1}/${newIds.length}] ✅ ${matchId} — ${date} ${duration} — ${doc.championName} ${doc.win ? "W" : "L"} (${doc.kills}/${doc.deaths}/${doc.assists})`);
+
+      if (bulkOps.length >= BULK_SIZE) await flushBulk();
     } catch (err) {
       errors++;
       console.error(`  [${i + 1}/${newIds.length}] ❌ ${matchId}: ${err.message}`);
@@ -193,6 +210,7 @@ async function processPlayer(player) {
     if (i < newIds.length - 1) await sleep(DELAY_MS);
   }
 
+  await flushBulk();
   console.log(`  => ${saved} saved, ${skipped} skipped, ${errors} errors`);
   return { saved, skipped, errors };
 }
@@ -246,21 +264,23 @@ async function processPlayer(player) {
     console.log(`Total errors: ${totalErrors}`);
     console.log("");
 
-    for (const player of validPlayers) {
-      const stats = await SoloqMatch.aggregate([
-        { $match: { puuid: player.puuid, queueId: QUEUE_ID } },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: 1 },
-            wins: { $sum: { $cond: ["$win", 1, 0] } },
-            losses: { $sum: { $cond: ["$win", 0, 1] } },
-          },
+    const puuids = validPlayers.map((p) => p.puuid);
+    const allStats = await SoloqMatch.aggregate([
+      { $match: { puuid: { $in: puuids }, queueId: QUEUE_ID } },
+      {
+        $group: {
+          _id: "$puuid",
+          total: { $sum: 1 },
+          wins: { $sum: { $cond: ["$win", 1, 0] } },
+          losses: { $sum: { $cond: ["$win", 0, 1] } },
         },
-      ]);
+      },
+    ]);
+    const statsMap = new Map(allStats.map((s) => [s._id, s]));
 
-      if (stats.length) {
-        const s = stats[0];
+    for (const player of validPlayers) {
+      const s = statsMap.get(player.puuid);
+      if (s) {
         const wr = s.wins + s.losses > 0 ? Math.round((s.wins / (s.wins + s.losses)) * 100) : 0;
         console.log(`  ${player.game_name}#${player.tag_line}: ${s.total} games — ${s.wins}W ${s.losses}L (${wr}% WR)`);
       } else {

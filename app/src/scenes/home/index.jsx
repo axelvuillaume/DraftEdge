@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import { RANKED_TIERS, DIVS, TIER_SHORT, RANK_ICON_TIERS } from "@/utils"
-import { Trophy, Gamepad2, Calendar, BarChart, Users, Swords, Plus, X, ChevronRight, ChevronDown, StickyNote, Clock, Flame, Crown, Target, Zap } from "lucide-react"
+import { Trophy, Gamepad2, Calendar, BarChart, Swords, Plus, X, ChevronRight, ChevronDown, StickyNote, Flame, Crown, Target, Zap } from "lucide-react"
 
 function toLP(tier, rank, lp = 0) {
   const i = RANKED_TIERS.indexOf(tier)
@@ -17,6 +17,7 @@ export default function Home() {
   const [recentGames, setRecentGames] = useState([])
   const [gameStats, setGameStats] = useState(null)
   const [soloqData, setSoloqData] = useState([])
+  const [objectivesAvg, setObjectivesAvg] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -25,11 +26,31 @@ export default function Home() {
     Promise.all([
       api.post("/player/search", { team_id: user.team_id }).then(r => (r.ok ? r.data : [])),
       api.post("/game/search", { limit: 5, team_id: user.team_id }).then(r => (r.ok ? r.data : [])),
-      api.post("/game/header-stats", {}).then(r => (r.ok ? r.data : null))
+      api.post("/game/header-stats", {}).then(r => (r.ok ? r.data : null)),
+      api.post("/scrim-objectif/search", { team_id: user.team_id }).then(r => (r.ok ? r.data : [])),
+      api.post("/scrim-objectif-result/search", { team_id: user.team_id }).then(r => (r.ok ? r.data : []))
     ])
-      .then(async ([playersData, games, stats]) => {
+      .then(async ([playersData, games, stats, objectives, objResults]) => {
         setRecentGames(games)
         setGameStats(stats)
+
+        // Calculate objectives average /10
+        if (objectives.length > 0 && objResults.length > 0) {
+          const objMap = Object.fromEntries(objectives.map(o => [o._id, o]))
+          let totalScore = 0
+          let count = 0
+          for (const r of objResults) {
+            const obj = objMap[r.objectif_id]
+            if (!obj) continue
+            if (obj.rating_type === "toggle") {
+              totalScore += r.result ? 10 : 0
+            } else {
+              totalScore += r.result || 0
+            }
+            count++
+          }
+          setObjectivesAvg(count > 0 ? totalScore / count : null)
+        }
 
         const connected = playersData.filter(p => p.puuid && p.active !== false)
         if (connected.length > 0) {
@@ -78,14 +99,15 @@ export default function Home() {
   return (
     <div className="min-h-[calc(100vh-65px)] bg-slate-900 p-5 lg:p-6 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto space-y-5">
-        {/* ── Header ── */}
-        <div className="flex items-end justify-between gap-4">
+        {/* ── Header + Mini Stats ── */}
+        <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-slate-500 text-xs mb-1">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
             <h1 className="text-4xl font-extrabold bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 bg-clip-text text-transparent leading-tight tracking-tight">
               {user?.team_name || "DraftEdge"}
             </h1>
           </div>
+          {gameStats && <MiniStats stats={gameStats} lastGame={recentGames[0]} />}
         </div>
 
         {/* ── Quick Actions ── */}
@@ -119,48 +141,20 @@ export default function Home() {
           </button>
         </div>
 
-        {/* ── Stats Strip ── */}
-        {gameStats && (
-          <div className="flex items-center gap-6 bg-slate-800/40 rounded-xl px-5 py-3">
-            <Stat icon={Gamepad2} iconColor="text-teal-400" label="Games" value={gameStats.total_games || 0} />
-            <div className="w-px h-6 bg-slate-700/50" />
-            <Stat
-              icon={Trophy}
-              iconColor="text-emerald-400"
-              label="Win Rate"
-              value={`${((gameStats.win_rate || 0) * 100).toFixed(0)}%`}
-              valueColor={gameStats.win_rate >= 0.5 ? "text-emerald-400" : "text-red-400"}
-            />
-            <div className="w-px h-6 bg-slate-700/50" />
-            <Stat
-              icon={Swords}
-              iconColor="text-blue-400"
-              label="Avg Enemy"
-              value={gameStats?.avg_enemy_rank?.tier ? TIER_SHORT[gameStats.avg_enemy_rank.tier] || gameStats.avg_enemy_rank.tier : "N/A"}
-            />
-            <div className="w-px h-6 bg-slate-700/50" />
-            <Stat
-              icon={Clock}
-              iconColor="text-orange-400"
-              label="Last Game"
-              value={recentGames[0] ? new Date(recentGames[0].date || recentGames[0].createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "N/A"}
-            />
-          </div>
-        )}
-
-        {/* ── Main Grid ── */}
+        {/* ── Main Grid: 3 columns ── */}
         <div className="grid grid-cols-12 gap-4">
-          {/* SoloQ Today */}
-          <div className="col-span-5">
-            <SoloQHighlights data={soloqData} bestPlayer={bestLPPlayer} onNavigate={navigate} />
+          {/* Left column: SoloQ Today + Objectives */}
+          <div className="col-span-4 space-y-4">
+            <SoloQToday bestPlayer={bestLPPlayer} onNavigate={navigate} />
+            <ObjectivesScore avg={objectivesAvg} onNavigate={navigate} />
           </div>
 
-          {/* Recent Games */}
-          <div className="col-span-4">
+          {/* Center column: Recent Games */}
+          <div className="col-span-5">
             <RecentGames games={recentGames} onNavigate={navigate} />
           </div>
 
-          {/* Right sidebar: Scrims + Notes stacked */}
+          {/* Right column: Upcoming Scrims + Notes */}
           <div className="col-span-3 space-y-4">
             <ScrimPlanner />
             <TeamNotes teamId={user?.team_id} />
@@ -171,96 +165,124 @@ export default function Home() {
   )
 }
 
-// ─── Stat ───────────────────────────────────────────────────
-function Stat({ icon: Icon, iconColor, label, value, valueColor }) {
+// ─── Mini Stats (top right) ─────────────────────────────────
+function MiniStats({ stats, lastGame }) {
+  const wr = ((stats.win_rate || 0) * 100).toFixed(0)
   return (
-    <div className="flex items-center gap-2.5">
-      <Icon className={`w-4 h-4 ${iconColor}`} />
-      <div>
-        <p className="text-[10px] text-slate-500 uppercase tracking-wider leading-none">{label}</p>
-        <p className={`text-sm font-bold leading-tight ${valueColor || "text-white"}`}>{value}</p>
+    <div className="flex items-center gap-4 bg-slate-800/50 rounded-xl px-4 py-2.5 border border-slate-700/30">
+      <div className="text-center">
+        <p className="text-[9px] text-slate-500 uppercase tracking-wider">Games</p>
+        <p className="text-sm font-bold text-white tabular-nums">{stats.total_games || 0}</p>
+      </div>
+      <div className="w-px h-6 bg-slate-700/40" />
+      <div className="text-center">
+        <p className="text-[9px] text-slate-500 uppercase tracking-wider">Win Rate</p>
+        <p className={`text-sm font-bold tabular-nums ${stats.win_rate >= 0.5 ? "text-emerald-400" : "text-red-400"}`}>{wr}%</p>
+      </div>
+      <div className="w-px h-6 bg-slate-700/40" />
+      <div className="text-center">
+        <p className="text-[9px] text-slate-500 uppercase tracking-wider">Avg Enemy</p>
+        <p className="text-sm font-bold text-white">{stats?.avg_enemy_rank?.tier ? TIER_SHORT[stats.avg_enemy_rank.tier] || stats.avg_enemy_rank.tier : "N/A"}</p>
+      </div>
+      <div className="w-px h-6 bg-slate-700/40" />
+      <div className="text-center">
+        <p className="text-[9px] text-slate-500 uppercase tracking-wider">Last Game</p>
+        <p className="text-sm font-bold text-white">
+          {lastGame ? new Date(lastGame.date || lastGame.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "N/A"}
+        </p>
       </div>
     </div>
   )
 }
 
-// ─── SoloQ Highlights ───────────────────────────────────────
-function SoloQHighlights({ data, bestPlayer, onNavigate }) {
+// ─── SoloQ Today (MVP only) ─────────────────────────────────
+function SoloQToday({ bestPlayer, onNavigate }) {
   return (
     <div className="rounded-xl overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60">
         <div className="flex items-center gap-2">
           <Flame className="w-4 h-4 text-amber-400" />
           <h3 className="text-xs font-semibold text-white uppercase tracking-wider">SoloQ Today</h3>
         </div>
-        <button onClick={() => onNavigate("/soloq")} className="text-[10px] text-slate-500 hover:text-amber-400 transition-colors flex items-center gap-0.5">
-          View all <ChevronRight className="w-3 h-3" />
-        </button>
       </div>
 
       <div className="bg-slate-800/30">
-        {!data.length ? (
-          <p className="text-slate-600 text-sm text-center py-10">No SoloQ data for today yet</p>
-        ) : (
-          <>
-            {/* MVP Banner */}
-            {bestPlayer && bestPlayer.lpChange > 0 && (
-              <div className="px-4 py-3 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-amber-500/10 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0">
-                  <Crown className="w-4 h-4 text-amber-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] text-amber-400/60 font-semibold uppercase tracking-widest">Best Grinder</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-white font-bold text-sm">{bestPlayer.game_name}</span>
-                    <span className="text-emerald-400 text-xs font-bold">+{bestPlayer.lpChange} LP</span>
-                    <span className="text-slate-600 text-[10px]">
-                      {bestPlayer.wins}W {bestPlayer.losses}L
-                    </span>
-                  </div>
-                </div>
-                {RANK_ICON_TIERS.has(bestPlayer.current_tier) && (
-                  <img src={`/rank/${bestPlayer.current_tier.toLowerCase()}.png`} alt="" className="w-9 h-9 object-contain shrink-0 opacity-80" />
-                )}
+        {bestPlayer && bestPlayer.lpChange > 0 ? (
+          <div className="px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0">
+                <Crown className="w-5 h-5 text-amber-400" />
               </div>
-            )}
-
-            {/* Player rows */}
-            <div className="divide-y divide-slate-700/20">
-              {[...data]
-                .sort((a, b) => b.lpChange - a.lpChange)
-                .map(player => (
-                  <div
-                    key={player._id}
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-700/20 transition-colors cursor-pointer"
-                    onClick={() => onNavigate(`/soloq/${player._id}`)}
-                  >
-                    <img src={`/roles/${player.role}.png`} alt={player.role} className="w-4 h-4 opacity-50 shrink-0" />
-                    <span className="text-white text-sm font-medium flex-1 truncate">{player.game_name}</span>
-                    <span className="text-slate-600 text-[10px] tabular-nums shrink-0 w-12 text-right">
-                      {player.current_tier ? TIER_SHORT[player.current_tier] || player.current_tier : ""}
-                    </span>
-                    {player.gamesPlayed > 0 ? (
-                      <>
-                        <span className="text-slate-600 text-[10px] tabular-nums shrink-0 w-10 text-right">
-                          {player.wins}W{player.losses}L
-                        </span>
-                        <span
-                          className={`text-xs font-bold tabular-nums shrink-0 w-10 text-right ${player.lpChange > 0 ? "text-emerald-400" : player.lpChange < 0 ? "text-red-400" : "text-slate-600"}`}
-                        >
-                          {player.lpChange > 0 ? "+" : ""}
-                          {player.lpChange}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-slate-700 text-[10px] shrink-0 w-20 text-right">No games</span>
-                    )}
-                  </div>
-                ))}
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] text-amber-400/60 font-semibold uppercase tracking-widest">Best Grinder</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-bold text-sm">{bestPlayer.game_name}</span>
+                  <span className="text-emerald-400 text-xs font-bold">+{bestPlayer.lpChange} LP</span>
+                </div>
+                <span className="text-slate-600 text-[10px]">
+                  {bestPlayer.wins}W {bestPlayer.losses}L
+                </span>
+              </div>
+              {RANK_ICON_TIERS.has(bestPlayer.current_tier) && (
+                <img src={`/rank/${bestPlayer.current_tier.toLowerCase()}.png`} alt="" className="w-10 h-10 object-contain shrink-0 opacity-80" />
+              )}
             </div>
-          </>
+            <button
+              onClick={() => onNavigate("/soloq")}
+              className="mt-3 w-full py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:border-amber-400/40 text-amber-400 text-xs font-semibold transition-all hover:bg-amber-500/15 flex items-center justify-center gap-1"
+            >
+              View all players <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+        ) : (
+          <div className="px-4 py-6 text-center">
+            <p className="text-slate-600 text-sm">No SoloQ grind today yet</p>
+            <button
+              onClick={() => onNavigate("/soloq")}
+              className="mt-3 px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:border-amber-400/40 text-amber-400 text-xs font-semibold transition-all hover:bg-amber-500/15 inline-flex items-center gap-1"
+            >
+              View SoloQ <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Objectives Score ────────────────────────────────────────
+function ObjectivesScore({ avg, onNavigate }) {
+  const score = avg !== null ? avg.toFixed(1) : null
+  const pct = avg !== null ? (avg / 10) * 100 : 0
+  const color = avg === null ? "text-slate-600" : avg >= 7 ? "text-emerald-400" : avg >= 5 ? "text-amber-400" : "text-red-400"
+  const barColor = avg === null ? "bg-slate-700" : avg >= 7 ? "bg-emerald-500" : avg >= 5 ? "bg-amber-500" : "bg-red-500"
+
+  return (
+    <div className="rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60">
+        <div className="flex items-center gap-2">
+          <Target className="w-4 h-4 text-purple-400" />
+          <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Objectives Scrims</h3>
+        </div>
+        <button onClick={() => onNavigate("/scrim-hub/objectives")} className="text-[10px] text-slate-500 hover:text-purple-400 transition-colors flex items-center gap-0.5">
+          Details <ChevronRight className="w-3 h-3" />
+        </button>
+      </div>
+
+      <div className="bg-slate-800/30 px-4 py-5">
+        <div className="flex items-center justify-center gap-4">
+          <div className="text-center">
+            <p className="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Avg Score</p>
+            <div className="flex items-baseline justify-center gap-0.5">
+              <span className={`text-3xl font-extrabold tabular-nums ${color}`}>{score ?? "—"}</span>
+              <span className="text-slate-600 text-sm font-medium">/10</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 h-2 bg-slate-700/50 rounded-full overflow-hidden">
+          <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
+        </div>
+        {avg === null && <p className="text-slate-700 text-[10px] text-center mt-2">No objectives rated yet</p>}
       </div>
     </div>
   )
@@ -557,7 +579,7 @@ function TeamNotes({ teamId }) {
           onFocus={() => setIsEditing(true)}
           onBlur={() => setIsEditing(false)}
           placeholder="Strats, reminders..."
-          rows={5}
+          rows={4}
           className={`w-full bg-slate-900/60 border rounded-lg p-3 text-sm text-slate-300 placeholder-slate-700 resize-none focus:outline-none transition-colors ${isEditing ? "border-amber-500/30" : "border-slate-700/30"}`}
         />
       </div>
