@@ -153,12 +153,7 @@ const TopBar = () => {
                           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700/50 transition-colors text-left"
                         >
                           <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden border border-emerald-500/30">
-                            <img
-                              src={getChampionIcon(champion.name)}
-                              alt={champion.name}
-                              className="w-full h-full object-cover"
-                              onError={e => (e.target.style.display = "none")}
-                            />
+                            <img src={getChampionIcon(champion.name)} alt={champion.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
                           </div>
                           <div className="flex-1">
                             <span className="text-white font-medium text-sm">{champion.name}</span>
@@ -183,12 +178,7 @@ const TopBar = () => {
                           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700/50 transition-colors text-left"
                         >
                           <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden border border-red-500/30">
-                            <img
-                              src={getChampionIcon(champion.name)}
-                              alt={champion.name}
-                              className="w-full h-full object-cover"
-                              onError={e => (e.target.style.display = "none")}
-                            />
+                            <img src={getChampionIcon(champion.name)} alt={champion.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
                           </div>
                           <div className="flex-1">
                             <span className="text-white font-medium text-sm">{champion.name}</span>

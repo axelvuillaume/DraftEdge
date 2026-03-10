@@ -1,6 +1,25 @@
 import { useEffect, useState, useRef } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Gamepad2, Shield, ImagePlus, Loader2, Upload, X, BarChart, FileText, Check, ChevronDown, Calendar, Target, Plus, Zap, FolderOpen } from "lucide-react"
+import { Link, useLocation } from "react-router-dom"
+import {
+  LayoutDashboard,
+  Gamepad2,
+  Shield,
+  ImagePlus,
+  Loader2,
+  Upload,
+  X,
+  BarChart3,
+  FileText,
+  Check,
+  ChevronDown,
+  Calendar,
+  Target,
+  Plus,
+  Briefcase,
+  Users,
+  Settings,
+  FolderOpen
+} from "lucide-react"
 import useStore from "@/services/store"
 import api from "@/services/api"
 import { toast } from "react-hot-toast"
@@ -8,19 +27,15 @@ import Modal from "@/components/modal"
 
 const getMenu = user => [
   { title: "Home", to: "/", icon: LayoutDashboard },
-  { title: "Players", to: "/soloq", icon: BarChart },
-  { title: "Stats Team", to: "/performance", icon: Calendar },
+  { title: "Players", to: "/soloq", icon: Users },
+  { title: "Stats Team", to: "/performance", icon: BarChart3 },
   { title: "Performance", to: "/scrim-hub", icon: Target },
-  { title: "Manager space", to: "/opponents", icon: Zap },
-  { title: "Members", to: "/team", icon: Zap }
+  { title: "Manager space", to: "/opponents", icon: Briefcase }
 ]
 
 const Navbar = () => {
   const [selected, setSelected] = useState(0)
   const location = useLocation()
-  const navigate = useNavigate()
-  const [isOpen, setIsOpen] = useState(false)
-  const [isSessionModalOpen, setIsSessionModalOpen] = useState(false)
   const { user } = useStore()
 
   const MENU = getMenu(user)
@@ -74,40 +89,22 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Footer */}
       <div className="p-4 border-t border-slate-700/50 space-y-2">
-        <button
-          data-scrim-btn
-          onClick={() => setIsSessionModalOpen(true)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm rounded-xl transition-all duration-200 border border-slate-700"
+        <Link
+          to="/team"
+          className={`w-full px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 ${
+            location.pathname.includes("/team")
+              ? "bg-gradient-to-r from-amber-500/20 to-amber-600/10 text-amber-400 border border-amber-500/30"
+              : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+          }`}
         >
-          <Calendar className="w-4 h-4" />
-          <span>New Scrim Session</span>
-        </button>
-        <button
-          data-import-btn
-          onClick={() => setIsOpen(true)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-semibold text-sm rounded-xl transition-all duration-200"
-        >
-          <ImagePlus className="w-4 h-4" />
-          <span>Import a Game</span>
-        </button>
-      </div>
-
-      <div className="p-4 border-t border-slate-700/50">
+          <Settings className="w-5 h-5" />
+          <span className="text-sm font-medium">Settings Members</span>
+        </Link>
         <div className="px-3 py-2 rounded-lg bg-slate-800/50">
           <p className="text-slate-500 text-xs">Version 1.0.0</p>
         </div>
       </div>
-      <UploadModal isOpen={isOpen} onClose={() => setIsOpen(false)} user={user} onSuccess={() => setIsOpen(false)} />
-      <NewSessionModal
-        isOpen={isSessionModalOpen}
-        onClose={() => setIsSessionModalOpen(false)}
-        onSuccess={sessionId => {
-          setIsSessionModalOpen(false)
-          navigate(`/scrim-hub/scrims/${sessionId}`)
-        }}
-      />
     </div>
   )
 }
