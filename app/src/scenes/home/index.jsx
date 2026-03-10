@@ -19,6 +19,25 @@ export default function Home() {
   const [soloqData, setSoloqData] = useState([])
   const [objectivesAvg, setObjectivesAvg] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [readyUpOpen, setReadyUpOpen] = useState(false)
+  const [readyUpName, setReadyUpName] = useState("")
+  const [readyUpCreating, setReadyUpCreating] = useState(false)
+
+  const handleReadyUp = async () => {
+    if (!readyUpName.trim()) return toast.error("Session name is required")
+    setReadyUpCreating(true)
+    try {
+      const { ok, data, code } = await api.post("/scrim-session", { name: readyUpName.trim() })
+      if (!ok) return toast.error(code)
+      setReadyUpOpen(false)
+      setReadyUpName("")
+      navigate(`/scrim-hub/scrims/${data._id}`)
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setReadyUpCreating(false)
+    }
+  }
 
   useEffect(() => {
     if (!user?.team_id) return
@@ -113,7 +132,7 @@ export default function Home() {
         {/* ── Quick Actions ── */}
         <div className="grid grid-cols-3 gap-3">
           <button
-            onClick={() => document.querySelector("[data-scrim-btn]")?.click()}
+            onClick={() => setReadyUpOpen(true)}
             className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 hover:border-blue-400/40 p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-blue-500/10 transition-colors" />
@@ -161,6 +180,41 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {readyUpOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setReadyUpOpen(false)}>
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-white font-bold text-lg">New Scrim Session</h2>
+              <button onClick={() => setReadyUpOpen(false)} className="p-1 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form
+              onSubmit={e => {
+                e.preventDefault()
+                handleReadyUp()
+              }}
+            >
+              <input
+                type="text"
+                placeholder="Session name..."
+                value={readyUpName}
+                onChange={e => setReadyUpName(e.target.value)}
+                autoFocus
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-600 bg-slate-900 text-white placeholder-slate-500 text-sm focus:border-blue-500 focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={readyUpCreating || !readyUpName.trim()}
+                className="mt-4 w-full py-2.5 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-40"
+              >
+                {readyUpCreating ? "Creating..." : "Launch Session"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
