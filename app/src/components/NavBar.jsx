@@ -12,6 +12,7 @@ const getMenu = user => [
   { title: "Objectives Scrims", to: "/scrim-hub", icon: Calendar },
   { title: "Draft", to: "/draft", icon: Target },
   { title: "SoloQ", to: "/soloq", icon: Zap },
+  { title: "PokeTeam", to: "/opponents", icon: Target },
   { title: "Games", to: "/games", icon: Gamepad2 },
   { title: "My Team", to: "/team", icon: Shield }
 ]

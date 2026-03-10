@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const passport = require('passport');
 const EnemyTeam = require('../models/enemy-team');
+const Game = require('../models/game');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 
@@ -62,6 +63,38 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
     if (!enemyTeam) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
 
     return res.status(200).send({ ok: true });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// Aggregate win/loss per opponent from games
+router.post('/stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team_id = req.user.team_id;
+
+    const stats = await Game.aggregate([
+      { $match: { team_id, opponent_name: { $ne: null, $exists: true } } },
+      {
+        $group: {
+          _id: '$opponent_name',
+          total_games: { $sum: 1 },
+          wins: { $sum: { $cond: ['$win', 1, 0] } },
+          losses: { $sum: { $cond: ['$win', 0, 1] } },
+        },
+      },
+    ]);
+
+    const data = stats.map((s) => ({
+      opponent_name: s._id,
+      total_games: s.total_games,
+      wins: s.wins,
+      losses: s.losses,
+      win_rate: s.total_games > 0 ? s.wins / s.total_games : 0,
+    }));
+
+    return res.status(200).send({ ok: true, data });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
