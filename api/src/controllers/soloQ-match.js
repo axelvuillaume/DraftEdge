@@ -73,6 +73,86 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
   }
 });
 
+// ==================== AGGREGATE (for StatsV2 comparison) ====================
+
+const POSITION_MAP = { top: 'TOP', jungle: 'JUNGLE', mid: 'MIDDLE', bottom: 'BOTTOM', support: 'UTILITY' };
+
+router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const players = await Player.find({ team_id: req.user.team_id }).lean();
+    const puuids = players.map((p) => p.puuid).filter(Boolean);
+    if (!puuids.length) return res.status(200).send({ ok: true, data: {} });
+
+    const match = { puuid: { $in: puuids }, queueId: 420, gameDuration: { $gte: 300 } };
+    if (req.body.position) match.teamPosition = POSITION_MAP[req.body.position] || req.body.position;
+
+    const agg = await SoloQMatch.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          n: { $sum: 1 },
+          kills: { $sum: '$kills' },
+          deaths: { $sum: '$deaths' },
+          assists: { $sum: '$assists' },
+          damage: { $sum: '$totalDamageDealtToChampions' },
+          gold: { $sum: '$goldEarned' },
+          cs: { $sum: { $add: ['$totalMinionsKilled', '$neutralMinionsKilled'] } },
+          duration: { $sum: '$gameDuration' },
+          visionScore: { $sum: '$visionScore' },
+          wardsPlaced: { $sum: '$wardsPlaced' },
+          wardsKilled: { $sum: '$wardsKilled' },
+          controlWards: { $sum: '$visionWardsBoughtInGame' },
+          dragons: { $sum: '$dragonKills' },
+          barons: { $sum: '$baronKills' },
+          turrets: { $sum: '$turretKills' },
+          enemyJungle: { $sum: '$totalEnemyJungleMinionsKilled' },
+        },
+      },
+    ]);
+
+    if (!agg.length) return res.status(200).send({ ok: true, data: {} });
+
+    const s = agg[0];
+    const n = s.n;
+    const durationMin = s.duration / 60;
+
+    const result = {
+      Combat: {
+        'DMG / min': round1(durationMin > 0 ? s.damage / durationMin : 0),
+        'Kills / game': round1(s.kills / n),
+        'Deaths / game': round1(s.deaths / n),
+        'Kill Participation %': round1(s.kills + s.deaths + s.assists > 0 ? (s.kills / (s.kills + s.deaths + s.assists)) * 100 : 0),
+        'DMG / Gold': round2(s.gold > 0 ? s.damage / s.gold : 0),
+      },
+      Objectives: {
+        'Dragons / game': round1(s.dragons / n),
+        'Heralds / game': '-',
+        'Barons / game': round1(s.barons / n),
+        'Turrets / game': round1(s.turrets / n),
+      },
+      Vision: {
+        'Vision Score / min': round1(durationMin > 0 ? s.visionScore / durationMin : 0),
+        'Wards Placed / game': round1(s.wardsPlaced / n),
+        'Wards Killed / game': round1(s.wardsKilled / n),
+        'Control Wards / game': round1(s.controlWards / n),
+        'Ward Clear %': '-',
+      },
+      Income: {
+        'Gold / min': round1(durationMin > 0 ? s.gold / durationMin : 0),
+        'CS / min': round1(durationMin > 0 ? s.cs / durationMin : 0),
+        'Enemy Jungle / game': round1(s.enemyJungle / n),
+        'Plates Gold / game': '-',
+      },
+    };
+
+    return res.status(200).send({ ok: true, data: result, total: n });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 // ==================== AUTO TIER CALCULATION ====================
 
 function calculateAutoTier(soloq, team) {
@@ -272,6 +352,7 @@ router.post('/compare', passport.authenticate(['admin', 'user'], { session: fals
       data: {
         player: {
           _id: player._id,
+          team_id: player.team_id,
           game_name: player.game_name,
           tag_line: player.tag_line,
           role: player.role,
@@ -281,6 +362,7 @@ router.post('/compare', passport.authenticate(['admin', 'user'], { session: fals
           current_wins: player.current_wins,
           current_losses: player.current_losses,
           champion_pool: player.champion_pool || [],
+          notes: player.notes || '',
         },
         soloqOverall,
         mostPlayed,

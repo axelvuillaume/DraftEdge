@@ -8,7 +8,7 @@ import api from "@/services/api"
 import FilterBar from "@/components/FilterBar"
 import { getChampionIcon } from "@/utils"
 
-const FILTERED_ROUTES = ["/", "/statsV2", "/draft", "/scrim-hub"]
+const FILTERED_ROUTES = ["/statsV2", "/draft", "/scrim-hub"]
 
 const TopBar = () => {
   const navigate = useNavigate()
@@ -59,21 +59,21 @@ const TopBar = () => {
     setSearchNavigation({ type: "player", data: player })
     setSearchQuery("")
     setShowResults(false)
-    navigate("/statsV2")
+    navigate("/performance/stats")
   }
 
   const handleSelectAllyChampion = champion => {
     setSearchNavigation({ type: "allyChampion", data: champion })
     setSearchQuery("")
     setShowResults(false)
-    navigate("/statsV2")
+    navigate("/performance/stats")
   }
 
   const handleSelectEnemyChampion = champion => {
     setSearchNavigation({ type: "enemyChampion", data: champion })
     setSearchQuery("")
     setShowResults(false)
-    navigate("/statsV2")
+    navigate("/performance/stats")
   }
 
   const hasResults = searchResults.players.length > 0 || searchResults.allyChampions.length > 0 || searchResults.enemyChampions.length > 0

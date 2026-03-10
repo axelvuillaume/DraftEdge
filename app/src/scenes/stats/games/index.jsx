@@ -781,7 +781,7 @@ function PlayerRow({ player, teamSide }) {
   const handlePlayerClick = e => {
     e.stopPropagation()
     setSearchNavigation({ type: "player", data: { puuid: player.puuid, name: player.summoner_name } })
-    navigate("/statsV2")
+    navigate("/performance/stats")
   }
 
   return (
@@ -1069,7 +1069,7 @@ function AdvancedTab({ playerStats, game }) {
   const handlePlayerClick = (e, player) => {
     e.stopPropagation()
     setSearchNavigation({ type: "player", data: { puuid: player.puuid, name: player.summoner_name } })
-    navigate("/statsV2")
+    navigate("/performance/stats")
   }
 
   const AdvancedCard = ({ player }) => {

@@ -5,9 +5,8 @@ import { Loader2, ArrowLeft } from "lucide-react"
 import api from "@/services/api"
 import { TIER_COLORS, RANK_ICON_TIERS, ROLE_LABELS } from "@/utils"
 
-import ComparativeTab from "./comparative"
 import SoloQOverviewTab from "./soloQ"
-import ObjectivesTab from "./objective"
+import GlobalView from "./globalView"
 
 function getRankIcon(tier) {
   if (!tier) return null
@@ -16,16 +15,15 @@ function getRankIcon(tier) {
 }
 
 const TABS = [
-  { key: "comparative", label: "Comparative" },
-  { key: "overview", label: "SoloQ" },
-  { key: "Objectives", label: "Objectives" }
+  { key: "global", label: "Global" },
+  { key: "overview", label: "SoloQ" }
 ]
 
 export default function View() {
   const { id } = useParams()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState("comparative")
+  const [tab, setTab] = useState("global")
 
   const fetchData = async () => {
     try {
@@ -125,10 +123,7 @@ export default function View() {
 
         {/* Tab Content */}
         {tab === "overview" && <SoloQOverviewTab data={data} />}
-
-        {tab === "Objectives" && <ObjectivesTab playerId={id} playerName={player.game_name} />}
-
-        {tab === "comparative" && <ComparativeTab data={data} playerId={id} />}
+        {tab === "global" && <GlobalView data={data} />}
       </div>
     </div>
   )

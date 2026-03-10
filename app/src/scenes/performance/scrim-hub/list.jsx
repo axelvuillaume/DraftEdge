@@ -257,7 +257,11 @@ export default function List() {
             ) : (
               <div className="divide-y divide-slate-700/30">
                 {sessions.map(session => (
-                  <button key={session._id} onClick={() => navigate(`/scrim-hub/${session._id}`)} className="w-full text-left px-5 py-4 hover:bg-slate-800/40 transition-colors">
+                  <button
+                    key={session._id}
+                    onClick={() => navigate(`/scrim-hub/scrims/${session._id}`)}
+                    className="w-full text-left px-5 py-4 hover:bg-slate-800/40 transition-colors"
+                  >
                     <div className="flex items-center justify-between gap-4">
                       <div className="min-w-0">
                         <p className="text-white text-sm font-medium truncate">{session.name || "Untitled session"}</p>
@@ -307,7 +311,7 @@ export default function List() {
         </button>
 
         <AddObjectifModal isOpen={showAddObjectifModal} onClose={() => setShowAddObjectifModal(false)} onSuccess={fetchObjectifs} />
-        <AddSessionModal isOpen={showAddSessionModal} onClose={() => setShowAddSessionModal(false)} onSuccess={sessionId => navigate(`/scrim-hub/${sessionId}`)} />
+        <AddSessionModal isOpen={showAddSessionModal} onClose={() => setShowAddSessionModal(false)} onSuccess={sessionId => navigate(`/scrim-hub/scrims/${sessionId}`)} />
       </div>
     </div>
   )

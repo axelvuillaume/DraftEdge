@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts"
-import { Loader2, TrendingUp, TrendingDown, Trophy, Zap, Gamepad2 } from "lucide-react"
+import { Loader2, TrendingUp, TrendingDown, Trophy, Zap, Gamepad2, Archive, Pencil, Check, X, Save, Plus } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
-import { Link, useNavigate } from "react-router-dom"
-import { RANKED_TIERS, DIVS, CHART_COLORS, ROLES, TIER_COLORS, RANK_ICON_TIERS } from "@/utils"
+import { useNavigate } from "react-router-dom"
+import { RANKED_TIERS, DIVS, CHART_COLORS, ROLES, ROLE_LABELS, SERVERS, TIER_COLORS, RANK_ICON_TIERS } from "@/utils"
 
 const PERIODS = [
   { value: "today", label: "Today" },
@@ -50,6 +50,10 @@ export default function SoloQ() {
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState("week")
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [roster, setRoster] = useState({})
+  const [teamData, setTeamData] = useState(null)
+  const [saving, setSaving] = useState(null)
   const navigate = useNavigate()
 
   const fetchPlayers = async () => {
@@ -89,7 +93,66 @@ export default function SoloQ() {
     })()
   }, [players, period])
 
-  const connected = players.filter(p => p.puuid).sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role))
+  const handleArchive = async (e, playerId) => {
+    e.stopPropagation()
+    try {
+      const { ok, code } = await api.put(`/player/${playerId}/archive`)
+      if (!ok) return toast.error(code || "Failed to archive player")
+      setPlayers(prev => prev.filter(p => p._id !== playerId))
+      toast.success("Player archived")
+    } catch (error) {
+      toast.error(error.message || "Failed to archive player")
+    }
+  }
+
+  const openEditModal = async e => {
+    e?.stopPropagation()
+    try {
+      const { ok, data } = await api.get(`/team/${user?.team_id}`)
+      if (ok) setTeamData(data)
+    } catch {}
+    const initial = {}
+    ROLES.forEach(role => {
+      const existing = players.find(p => p.role === role && p.active !== false)
+      initial[role] = existing ? { _id: existing._id, game_name: existing.game_name || "", tag_line: existing.tag_line || "" } : { game_name: "", tag_line: "" }
+    })
+    setRoster(initial)
+    setShowEditModal(true)
+  }
+
+  const handleSaveRole = async role => {
+    const { game_name, tag_line, _id } = roster[role] || {}
+    if (!game_name?.trim() || !tag_line?.trim()) return toast.error("Summoner name and tag are required")
+    const region = teamData?.region || "euw1"
+    setSaving(role)
+    try {
+      const endpoint = _id
+        ? api.put(`/player/${_id}`, { game_name: game_name.trim(), tag_line: tag_line.trim(), region, role })
+        : api.post("/player", { game_name: game_name.trim(), tag_line: tag_line.trim(), region, role })
+      const { ok, data, code } = await endpoint
+      if (!ok) return toast.error(code || "Riot ID not found")
+      setRoster(prev => ({ ...prev, [role]: { ...prev[role], _id: data._id, connected_at: data.connected_at } }))
+      toast.success(`${ROLE_LABELS[role]} saved`)
+      fetchPlayers()
+    } catch (error) {
+      toast.error(error.code || "Failed to save player")
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  const handleRegionChange = async newRegion => {
+    try {
+      const { ok, code } = await api.put(`/team/${user?.team_id}/region`, { region: newRegion })
+      if (!ok) return toast.error(code || "Failed to update region")
+      setTeamData(prev => ({ ...prev, region: newRegion }))
+      toast.success("Region updated")
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const connected = players.filter(p => p.puuid && p.active !== false).sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role))
 
   const periodLabel = { today: "today", week: "this week", month: "this month", all: "all time" }[period]
 
@@ -192,79 +255,93 @@ export default function SoloQ() {
           })()}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          {connected.length === 0 ? (
-            <div className="col-span-full bg-slate-800/50 border border-slate-700/50 rounded-xl p-12 text-center">
-              <p className="text-slate-500">
-                No connected players. Add Riot IDs in the{" "}
-                <Link to="/team" className="text-amber-400 hover:underline">
-                  Team
-                </Link>{" "}
-                page first.
-              </p>
-            </div>
-          ) : (
-            connected.map((p, i) => {
-              const lp = getLPChange(p)
-              const ms = getMatchStats(p._id)
-              const glow = TIER_COLORS[p.current_tier] || "#64748b"
+          {ROLES.map((role, i) => {
+            const p = connected.find(pl => pl.role === role)
+            if (!p) {
               return (
                 <div
-                  key={p._id}
-                  className="relative bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 flex flex-col items-center gap-3 overflow-hidden group hover:border-slate-600/80 transition-all cursor-pointer"
-                  onClick={() => navigate(`/soloq/${p._id}`)}
+                  key={role}
+                  onClick={openEditModal}
+                  className="relative bg-slate-800/30 border border-dashed border-slate-700/50 rounded-xl p-5 flex flex-col items-center justify-center gap-3 min-h-[220px] cursor-pointer hover:border-amber-500/40 hover:bg-slate-800/50 transition-all group"
                 >
-                  <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: CHART_COLORS[i % 5] }} />
-                  <div className="flex items-center gap-2">
-                    <img src={`/roles/${p.role}.png`} alt={p.role} className="w-4 h-4 opacity-60" />
-                    <span className="text-white font-semibold text-sm">{p.game_name}</span>
-                    <span className="text-slate-500 text-xs">#{p.tag_line}</span>
-                  </div>
-                  <div className="relative w-24 h-24 flex items-center justify-center">
-                    {RANK_ICON_TIERS.has(p.current_tier) ? (
-                      <img
-                        src={`/rank/${p.current_tier.toLowerCase()}.png`}
-                        alt={p.current_tier}
-                        className="w-full h-full object-contain drop-shadow-lg"
-                        style={{ filter: `drop-shadow(0 0 12px ${glow}40)` }}
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full flex items-center justify-center border-2" style={{ borderColor: glow, backgroundColor: `${glow}15` }}>
-                        <span className="text-xs font-bold uppercase" style={{ color: glow }}>
-                          {p.current_tier || "N/A"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-center">
-                    <p className="text-white font-bold text-sm tracking-wide">{p.current_tier ? `${p.current_tier} ${p.current_rank || ""}` : "Unranked"}</p>
-                    <p className="text-slate-400 text-xs">{p.current_lp ?? 0} LP</p>
-                  </div>
-                  {ms.total > 0 && (
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className={Math.round((ms.w / ms.total) * 100) >= 50 ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
-                        {Math.round((ms.w / ms.total) * 100)}%
+                  <img src={`/roles/${role}.png`} alt={role} className="w-8 h-8 opacity-30 group-hover:opacity-50 transition-opacity" />
+                  <Plus className="w-5 h-5 text-slate-600 group-hover:text-amber-400 transition-colors" />
+                  <span className="text-slate-600 text-xs group-hover:text-slate-400 transition-colors">Add {ROLE_LABELS[role]}</span>
+                </div>
+              )
+            }
+            const lp = getLPChange(p)
+            const ms = getMatchStats(p._id)
+            const glow = TIER_COLORS[p.current_tier] || "#64748b"
+            return (
+              <div
+                key={p._id}
+                className="relative bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 flex flex-col items-center gap-3 overflow-hidden group hover:border-slate-600/80 transition-all cursor-pointer"
+                onClick={() => navigate(`/soloq/${p._id}`)}
+              >
+                <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: CHART_COLORS[i % 5] }} />
+                {/* Connected indicator + actions */}
+                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={openEditModal} className="p-1 rounded bg-slate-700/80 text-slate-400 hover:text-amber-400 transition-colors" title="Edit Roster">
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                  <button onClick={e => handleArchive(e, p._id)} className="p-1 rounded bg-slate-700/80 text-slate-400 hover:text-orange-400 transition-colors" title="Archive">
+                    <Archive className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="absolute top-2.5 left-2.5" title={p.connected_at ? "Connected" : "Not connected"}>
+                  <div className={`w-2 h-2 rounded-full ${p.connected_at ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" : "bg-slate-600"}`} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <img src={`/roles/${p.role}.png`} alt={p.role} className="w-4 h-4 opacity-60" />
+                  <span className="text-white font-semibold text-sm">{p.game_name}</span>
+                  <span className="text-slate-500 text-xs">#{p.tag_line}</span>
+                </div>
+                <div className="relative w-24 h-24 flex items-center justify-center">
+                  {RANK_ICON_TIERS.has(p.current_tier) ? (
+                    <img
+                      src={`/rank/${p.current_tier.toLowerCase()}.png`}
+                      alt={p.current_tier}
+                      className="w-full h-full object-contain drop-shadow-lg"
+                      style={{ filter: `drop-shadow(0 0 12px ${glow}40)` }}
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center border-2" style={{ borderColor: glow, backgroundColor: `${glow}15` }}>
+                      <span className="text-xs font-bold uppercase" style={{ color: glow }}>
+                        {p.current_tier || "N/A"}
                       </span>
-                      <span className="text-slate-500">
-                        {ms.w}W {ms.l}L
-                      </span>
-                    </div>
-                  )}
-                  {lp !== 0 && (
-                    <div className="flex flex-col items-center">
-                      <div className={`flex items-center gap-1 text-xs font-medium ${lp > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        {lp > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                        <span>
-                          {lp > 0 ? "+" : ""}
-                          {lp} LP
-                        </span>
-                      </div>
-                      <span className="text-slate-600 text-[10px]">{periodLabel}</span>
                     </div>
                   )}
                 </div>
-              )
-            })
-          )}
+                <div className="text-center">
+                  <p className="text-white font-bold text-sm tracking-wide">{p.current_tier ? `${p.current_tier} ${p.current_rank || ""}` : "Unranked"}</p>
+                  <p className="text-slate-400 text-xs">{p.current_lp ?? 0} LP</p>
+                </div>
+                {ms.total > 0 && (
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className={Math.round((ms.w / ms.total) * 100) >= 50 ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
+                      {Math.round((ms.w / ms.total) * 100)}%
+                    </span>
+                    <span className="text-slate-500">
+                      {ms.w}W {ms.l}L
+                    </span>
+                  </div>
+                )}
+                {lp !== 0 && (
+                  <div className="flex flex-col items-center">
+                    <div className={`flex items-center gap-1 text-xs font-medium ${lp > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {lp > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      <span>
+                        {lp > 0 ? "+" : ""}
+                        {lp} LP
+                      </span>
+                    </div>
+                    <span className="text-slate-600 text-[10px]">{periodLabel}</span>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
@@ -300,6 +377,73 @@ export default function SoloQ() {
           </div>
         </div>
       </div>
+
+      {/* Edit Roster Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowEditModal(false)}>
+          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-xl mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
+              <h2 className="text-white font-semibold">Edit Roster</h2>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 text-sm">Region</span>
+                  <select
+                    value={teamData?.region || "euw1"}
+                    onChange={e => handleRegionChange(e.target.value)}
+                    className="w-24 px-2 py-1.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none text-sm appearance-none cursor-pointer"
+                  >
+                    {SERVERS.map(s => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button onClick={() => setShowEditModal(false)} className="p-1 text-slate-400 hover:text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="divide-y divide-slate-700/30">
+              {ROLES.map(role => (
+                <div key={role} className="flex items-center gap-3 px-6 py-3">
+                  <div className="flex items-center gap-2 w-20 shrink-0">
+                    <img src={`/roles/${role}.png`} alt={role} className="w-5 h-5 opacity-70" />
+                    <span className="text-amber-400 font-semibold text-xs uppercase">{ROLE_LABELS[role]}</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={roster[role]?.game_name || ""}
+                    onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], game_name: e.target.value } }))}
+                    placeholder="Summoner Name"
+                    className="flex-1 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
+                  />
+                  <span className="text-slate-500 text-sm">#</span>
+                  <input
+                    type="text"
+                    value={roster[role]?.tag_line || ""}
+                    onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], tag_line: e.target.value } }))}
+                    placeholder="TAG"
+                    className="w-20 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
+                  />
+                  {roster[role]?.connected_at && (
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center" title="Connected">
+                      <Check className="w-3 h-3 text-emerald-400" />
+                    </div>
+                  )}
+                  <button
+                    onClick={() => handleSaveRole(role)}
+                    disabled={saving === role}
+                    className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    {saving === role ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

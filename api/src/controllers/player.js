@@ -63,6 +63,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     let query = {};
 
     if (req.body.team_id) query.team_id = req.body.team_id;
+    if (req.body.active !== undefined) query.active = req.body.active;
     const limit = req.body.limit || 50;
     const skip = req.body.offset || 0;
     const total = await Player.countDocuments(query);
@@ -74,31 +75,45 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
   }
 });
 
+router.put('/:id/archive', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const player = await Player.findById(req.params.id);
+    if (!player) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+    player.active = !player.active;
+    await player.save();
+    return res.status(200).send({ ok: true, data: player });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 router.post('/', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const region = req.body.region || 'euw1';
-    const player = await Player.create({ ...req.body, region, team_id: req.user.team_id, team_name: req.user.team_name });
 
-    const puuid = await getPuuidByRiotId(player.game_name, player.tag_line, region);
-    if (!puuid) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+    const puuid = await getPuuidByRiotId(req.body.game_name, req.body.tag_line, region);
+    if (!puuid) return res.status(400).send({ ok: false, code: 'Riot ID not found' });
+
+    const playerData = { ...req.body, region, active: true, team_id: req.user.team_id, team_name: req.user.team_name, puuid };
+
     const rank = await getRankByPuuid(puuid, region);
     if (rank) {
-      player.current_tier = rank.tier;
-      player.current_rank = rank.rank;
-      player.current_lp = rank.leaguePoints;
-      player.current_wins = rank.wins;
-      player.current_losses = rank.losses;
-      player.last_fetched_at = new Date();
-      player.connected_at = new Date();
+      playerData.current_tier = rank.tier;
+      playerData.current_rank = rank.rank;
+      playerData.current_lp = rank.leaguePoints;
+      playerData.current_wins = rank.wins;
+      playerData.current_losses = rank.losses;
+      playerData.last_fetched_at = new Date();
+      playerData.connected_at = new Date();
     }
-    player.puuid = puuid;
 
-    await player.save();
+    const player = await Player.create(playerData);
 
     return res.status(200).send({ ok: true, data: player });
   } catch (error) {
     capture(error);
-    return res.status(500).send({ ok: false, data: { code: ERROR_CODES.SERVER_ERROR } });
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
   }
 });
 

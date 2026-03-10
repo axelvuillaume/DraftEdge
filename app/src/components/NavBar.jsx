@@ -7,14 +7,12 @@ import { toast } from "react-hot-toast"
 import Modal from "@/components/modal"
 
 const getMenu = user => [
-  { title: "Dashboard", to: "/", icon: LayoutDashboard },
-  { title: "Stats", to: "/statsV2", icon: BarChart },
-  { title: "Objectives Scrims", to: "/scrim-hub", icon: Calendar },
-  { title: "Draft", to: "/draft", icon: Target },
-  { title: "SoloQ", to: "/soloq", icon: Zap },
-  { title: "PokeTeam", to: "/opponents", icon: Target },
-  { title: "Games", to: "/games", icon: Gamepad2 },
-  { title: "My Team", to: "/team", icon: Shield }
+  { title: "Home", to: "/", icon: LayoutDashboard },
+  { title: "Players", to: "/soloq", icon: BarChart },
+  { title: "Stats Team", to: "/performance", icon: Calendar },
+  { title: "Performance", to: "/scrim-hub", icon: Target },
+  { title: "Manager space", to: "/opponents", icon: Zap },
+  { title: "Members", to: "/team", icon: Zap }
 ]
 
 const Navbar = () => {
@@ -79,6 +77,7 @@ const Navbar = () => {
       {/* Footer */}
       <div className="p-4 border-t border-slate-700/50 space-y-2">
         <button
+          data-scrim-btn
           onClick={() => setIsSessionModalOpen(true)}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm rounded-xl transition-all duration-200 border border-slate-700"
         >
@@ -86,6 +85,7 @@ const Navbar = () => {
           <span>New Scrim Session</span>
         </button>
         <button
+          data-import-btn
           onClick={() => setIsOpen(true)}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-semibold text-sm rounded-xl transition-all duration-200"
         >
@@ -105,7 +105,7 @@ const Navbar = () => {
         onClose={() => setIsSessionModalOpen(false)}
         onSuccess={sessionId => {
           setIsSessionModalOpen(false)
-          navigate(`/scrim-hub/${sessionId}`)
+          navigate(`/scrim-hub/scrims/${sessionId}`)
         }}
       />
     </div>

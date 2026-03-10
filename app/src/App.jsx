@@ -6,20 +6,17 @@ import posthog from "posthog-js"
 
 import Auth from "@/scenes/auth"
 import Home from "@/scenes/home"
-import Games from "@/scenes/games"
-import Stats from "@/scenes/stats"
-import Draft from "@/scenes/draft"
 import Navbar from "@/components/NavBar"
 import TopBar from "@/components/TopBar"
 import Loader from "@/components/loader"
 import Team from "@/scenes/team"
 import useStore from "@/services/store"
 import api from "@/services/api"
-import StatsV2 from "@/scenes/statsV2"
-import ScrimHub from "@/scenes/scrim-hub"
+import PerformancePage from "@/scenes/performance"
 import { environment, SENTRY_URL, POSTHOG_API_KEY, POSTHOG_HOST } from "./config"
 import SoloQ from "@/scenes/soloQ"
 import Opponents from "@/scenes/opponents"
+import Performance from "@/scenes/stats"
 
 if (environment === "production") {
   Sentry.init({ dsn: SENTRY_URL, environment: "app" })
@@ -66,14 +63,11 @@ export default function App() {
         </Route>
         <Route element={<UserLayout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/games" element={<Games />} />
-          <Route path="/stats" element={<Stats />} />
           <Route path="/team" element={<Team />} />
-          <Route path="/statsV2" element={<StatsV2 />} />
-          <Route path="/draft/*" element={<Draft />} />
-          <Route path="/scrim-hub/*" element={<ScrimHub />} />
+          <Route path="/scrim-hub/*" element={<PerformancePage />} />
           <Route path="/soloq/*" element={<SoloQ />} />
           <Route path="/opponents/*" element={<Opponents />} />
+          <Route path="/performance/*" element={<Performance />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
