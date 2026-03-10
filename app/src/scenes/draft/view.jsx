@@ -161,6 +161,9 @@ export default function View() {
   const [myTeamFlexed, setMyTeamFlexed] = useState([])
   const [proFlexed, setProFlexed] = useState([])
 
+  // Live draft suggestions
+  const [draftSuggestions, setDraftSuggestions] = useState(null)
+
   async function fetchMyTeamFlexed() {
     try {
       const { ok, data, code } = await api.post("/playerstats/most-flexed", { ...globalFilters, limit: 3 })
@@ -198,6 +201,36 @@ export default function View() {
     fetchDraftAverages(selectedLeagues)
     fetchProFlexed(selectedLeagues)
   }, [selectedLeagues])
+
+  // Fetch live draft suggestions when picks/bans change
+  const suggestTimeoutRef = useRef(null)
+
+  async function fetchDraftSuggestions() {
+    try {
+      const body = {
+        bluePicks: bluePicks.map(p => p?.champion || null),
+        redPicks: redPicks.map(p => p?.champion || null),
+        blueBans: blueBans.map(b => b?.champion || null),
+        redBans: redBans.map(b => b?.champion || null)
+      }
+      if (selectedLeagues.length) body.leagues = selectedLeagues
+      const { ok, data } = await api.post("/pro-game/draft-suggestions", body)
+      if (ok) setDraftSuggestions(data)
+      else setDraftSuggestions(null)
+    } catch (error) {
+      console.error("Failed to fetch draft suggestions:", error)
+    }
+  }
+
+  useEffect(() => {
+    if (suggestTimeoutRef.current) clearTimeout(suggestTimeoutRef.current)
+    suggestTimeoutRef.current = setTimeout(() => {
+      fetchDraftSuggestions()
+    }, 400)
+    return () => {
+      if (suggestTimeoutRef.current) clearTimeout(suggestTimeoutRef.current)
+    }
+  }, [bluePicks, redPicks, blueBans, redBans, selectedLeagues])
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false)
@@ -387,6 +420,7 @@ export default function View() {
                         side="blue"
                         index={idx}
                         onClick={() => openModal("ban", "blue", idx)}
+                        onRemove={() => { const b = [...blueBans]; b[idx] = null; setBlueBans(b) }}
                         draftAverages={draftAverages}
                         myDraftAverages={myDraftAverages}
                         selectedLeagues={selectedLeagues}
@@ -405,6 +439,7 @@ export default function View() {
                         side="red"
                         index={idx}
                         onClick={() => openModal("ban", "red", idx)}
+                        onRemove={() => { const b = [...redBans]; b[idx] = null; setRedBans(b) }}
                         draftAverages={draftAverages}
                         myDraftAverages={myDraftAverages}
                         selectedLeagues={selectedLeagues}
@@ -428,6 +463,7 @@ export default function View() {
                           side="blue"
                           index={idx}
                           onClick={() => openModal("pick", "blue", idx)}
+                          onRemove={() => { const p = [...bluePicks]; p[idx] = null; setBluePicks(p) }}
                           draftAverages={draftAverages}
                           myDraftAverages={myDraftAverages}
                           selectedLeagues={selectedLeagues}
@@ -438,11 +474,9 @@ export default function View() {
                   </div>
                 </div>
 
-                {/* VS Badge */}
+                {/* Decision Tree (replaces VS badge) */}
                 <div className="flex items-center justify-center self-center flex-shrink-0">
-                  <div className="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center">
-                    <span className="text-slate-900 font-bold text-base">VS</span>
-                  </div>
+                  <DraftTree tree={draftSuggestions?.tree} suggestSide={draftSuggestions?.suggestSide} totalGames={draftSuggestions?.totalGames} depth={draftSuggestions?.depth} />
                 </div>
 
                 {/* Red Side Picks */}
@@ -458,6 +492,7 @@ export default function View() {
                           side="red"
                           index={idx}
                           onClick={() => openModal("pick", "red", idx)}
+                          onRemove={() => { const p = [...redPicks]; p[idx] = null; setRedPicks(p) }}
                           draftAverages={draftAverages}
                           myDraftAverages={myDraftAverages}
                           selectedLeagues={selectedLeagues}
@@ -549,7 +584,7 @@ function PriorityPicksPanel({ title, data }) {
   )
 }
 
-function ChampionSlot({ champion, type, side, onClick, index, draftAverages, myDraftAverages, selectedLeagues }) {
+function ChampionSlot({ champion, type, side, onClick, onRemove, index, draftAverages, myDraftAverages, selectedLeagues }) {
   const [showTooltip, setShowTooltip] = useState(false)
   const [synergies, setSynergies] = useState(null)
   const [myTeamSynergies, setMyTeamSynergies] = useState(null)
@@ -616,6 +651,14 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, myD
           <span className={`text-xs ${side === "blue" ? "text-blue-400" : "text-red-400"}`}>{type === "ban" ? "BAN" : side === "blue" ? "B" : "R"}</span>
         )}
       </button>
+      {champion && onRemove && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove() }}
+          className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center text-white text-[8px] font-bold leading-none z-10 transition-colors"
+        >
+          ✕
+        </button>
+      )}
 
       {/* Tooltip - Two columns: My Team | Pro */}
       {showTooltip && (champion || proChampions?.length || myTeamChampions?.length) && (
@@ -852,6 +895,100 @@ function MostFlexedPanel({ title, champions }) {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+function DraftTree({ tree, suggestSide, totalGames, depth }) {
+  if (!tree?.length) {
+    return (
+      <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
+        <span className="text-amber-400 font-bold text-xs">VS</span>
+      </div>
+    )
+  }
+
+  const pickBorder = suggestSide === "blue" ? "border-blue-400/60" : "border-red-400/60"
+  const synBorder = "border-emerald-400/50"
+  const counterBorder = suggestSide === "blue" ? "border-red-400/40" : "border-blue-400/40"
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-amber-400 text-[8px] font-bold uppercase tracking-wider">Picks</span>
+      <div className="flex flex-col gap-2">
+        {tree.map((branch, i) => (
+          <div key={i} className="flex items-center gap-0">
+            <TreeNode champ={branch} borderClass={pickBorder} size={depth === 3 ? "md" : "md"} />
+            <div className="w-2 h-px bg-slate-500/50" />
+            <div className="border-l border-slate-500/50 flex flex-col">
+              {depth === 3 ? (
+                /* Depth 3: pick → synergy → counter */
+                branch.synergies?.length > 0 ? branch.synergies.map((syn, j) => (
+                  <div key={j} className="flex items-center">
+                    <div className="w-1.5 h-px bg-slate-500/50" />
+                    <TreeNode champ={syn} borderClass={synBorder} size="sm" />
+                    <div className="w-1.5 h-px bg-slate-500/50" />
+                    <div className="border-l border-slate-500/50 flex flex-col">
+                      {syn.counters?.length > 0 ? syn.counters.map((ctr, k) => (
+                        <div key={k} className="flex items-center">
+                          <div className="w-1 h-px bg-slate-500/50" />
+                          <TreeNode champ={ctr} borderClass={counterBorder} size="xs" />
+                        </div>
+                      )) : (
+                        <div className="flex items-center">
+                          <div className="w-1 h-px bg-slate-500/50" />
+                          <div className="w-5 h-5 rounded border border-dashed border-slate-600 bg-slate-700/30" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )) : (
+                  <div className="flex items-center">
+                    <div className="w-1.5 h-px bg-slate-500/50" />
+                    <div className="w-6 h-6 rounded border border-dashed border-slate-600 bg-slate-700/30" />
+                  </div>
+                )
+              ) : (
+                /* Depth 2: pick → counter */
+                branch.responses?.length > 0 ? branch.responses.map((resp, j) => (
+                  <div key={j} className="flex items-center">
+                    <div className="w-2 h-px bg-slate-500/50" />
+                    <TreeNode champ={resp} borderClass={counterBorder} size="sm" />
+                  </div>
+                )) : (
+                  <div className="flex items-center">
+                    <div className="w-2 h-px bg-slate-500/50" />
+                    <div className="w-6 h-6 rounded border border-dashed border-slate-600 bg-slate-700/30" />
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      {totalGames > 0 && <span className="text-slate-500 text-[7px]">{totalGames}g</span>}
+    </div>
+  )
+}
+
+function TreeNode({ champ, borderClass, size = "md" }) {
+  const sizes = { md: "w-8 h-8", sm: "w-7 h-7", xs: "w-5 h-5" }
+  const textSizes = { md: "text-[6px]", sm: "text-[5px]", xs: "text-[5px]" }
+  const s = sizes[size] || sizes.md
+  const ts = textSizes[size] || textSizes.md
+  return (
+    <div className="flex flex-col items-center" title={`${champ.name} (${champ.games}g, ${champ.wr}% WR)`}>
+      <div className={`${s} rounded border ${borderClass} bg-slate-700/40 overflow-hidden group`}>
+        <img
+          src={getChampionIcon(champ.name)}
+          alt={champ.name}
+          className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity"
+          onError={e => { e.target.style.display = "none" }}
+        />
+      </div>
+      <span className={`${ts} font-bold leading-tight ${champ.wr >= 55 ? "text-emerald-400" : champ.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
+        {champ.wr}%
+      </span>
     </div>
   )
 }
