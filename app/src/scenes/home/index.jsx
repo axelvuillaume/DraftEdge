@@ -96,8 +96,8 @@ export default function Home() {
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-blue-500/10 transition-colors" />
             <Target className="w-5 h-5 text-blue-400 mb-2" />
-            <p className="text-white font-bold text-sm">Full focus</p>
-            <p className="text-blue-400/60 text-[11px] mt-0.5">Start a scrim</p>
+            <p className="text-white font-bold text-sm">Ready Up</p>
+            <p className="text-blue-400/60 text-[11px] mt-0.5">Launch a scrim session</p>
           </button>
           <button
             onClick={() => navigate("/performance/stats")}
@@ -114,8 +114,8 @@ export default function Home() {
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-purple-500/10 transition-colors" />
             <Zap className="w-5 h-5 text-purple-400 mb-2" />
-            <p className="text-white font-bold text-sm">Taunt your elo mates</p>
-            <p className="text-purple-400/60 text-[11px] mt-0.5">SoloQ tracker</p>
+            <p className="text-white font-bold text-sm">Ranked Grind</p>
+            <p className="text-purple-400/60 text-[11px] mt-0.5">Track SoloQ progress</p>
           </button>
         </div>
 

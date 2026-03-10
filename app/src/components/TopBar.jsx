@@ -8,7 +8,7 @@ import api from "@/services/api"
 import FilterBar from "@/components/FilterBar"
 import { getChampionIcon } from "@/utils"
 
-const FILTERED_ROUTES = ["/statsV2", "/draft", "/scrim-hub"]
+const FILTERED_ROUTES = ["/statsV2", "/draft"]
 
 const TopBar = () => {
   const navigate = useNavigate()

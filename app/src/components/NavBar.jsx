@@ -109,7 +109,7 @@ const Navbar = () => {
   )
 }
 
-function UploadModal({ isOpen, onClose, user, onSuccess }) {
+export function UploadModal({ isOpen, onClose, user, onSuccess }) {
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(null)
