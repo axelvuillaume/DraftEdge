@@ -59,7 +59,7 @@ export default function List() {
           <div className="px-5 py-3 border-b border-slate-700/50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Target className="w-4 h-4 text-amber-500" />
-              <span className="text-white text-sm font-medium">Scrim Sessions</span>
+              <span className="text-white text-sm font-medium">Scrims</span>
             </div>
             <span className="text-slate-500 text-xs">{sessions.length} sessions</span>
           </div>
