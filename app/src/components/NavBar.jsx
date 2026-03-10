@@ -243,6 +243,11 @@ export function UploadModal({ isOpen, onClose, user, onSuccess }) {
       setUploading(false)
       return
     }
+    if (!roflConfig.opponent_name) {
+      toast.error("Select an opponent team")
+      setUploading(false)
+      return
+    }
 
     try {
       const formData = new FormData()
@@ -431,7 +436,7 @@ export function UploadModal({ isOpen, onClose, user, onSuccess }) {
 
                 {/* Opponent dropdown */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-slate-400 mb-1">Opponent Team</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Opponent Team *</label>
                   <button
                     type="button"
                     onClick={() => setShowOpponentDropdown(!showOpponentDropdown)}
@@ -471,16 +476,6 @@ export function UploadModal({ isOpen, onClose, user, onSuccess }) {
                           </form>
                         </div>
                         <div className="max-h-48 overflow-y-auto p-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRoflConfig(prev => ({ ...prev, opponent_name: "" }))
-                              setShowOpponentDropdown(false)
-                            }}
-                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!roflConfig.opponent_name ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
-                          >
-                            No opponent
-                          </button>
                           {enemyTeams.map(team => (
                             <button
                               key={team._id}
@@ -606,7 +601,7 @@ export function UploadModal({ isOpen, onClose, user, onSuccess }) {
           <div className="flex justify-end gap-3 ml-auto">
             <button
               onClick={handleUpload}
-              disabled={!file || uploading || parsing || !roflConfig.team_side}
+              disabled={!file || uploading || parsing || !roflConfig.team_side || !roflConfig.opponent_name}
               className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
             >
               {uploading ? (
