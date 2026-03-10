@@ -121,7 +121,7 @@ export default function View() {
 
         {/* Stats Summary (from games) */}
         {teamStats && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Swords className="w-4 h-4 text-teal-400" />
@@ -147,6 +147,16 @@ export default function View() {
               </div>
               <p className={`text-2xl font-bold ${wrColor}`}>{Math.round(teamStats.win_rate * 100)}%</p>
             </div>
+            <button
+              onClick={() => navigate("/games", { state: { opponent_name: team.name } })}
+              className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 hover:border-amber-500/50 transition-all group text-left"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Swords className="w-4 h-4 text-amber-400" />
+                <p className="text-xs text-slate-400">View Games</p>
+              </div>
+              <p className="text-sm font-medium text-slate-300 group-hover:text-amber-400 transition-colors">See all games vs {team.name}</p>
+            </button>
           </div>
         )}
 

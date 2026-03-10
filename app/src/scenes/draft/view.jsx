@@ -563,10 +563,7 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, myD
     try {
       const body = { champion: champion.champion }
       if (selectedLeagues?.length) body.leagues = selectedLeagues
-      const [proRes, myRes] = await Promise.all([
-        api.post("/pro-game/synergies", body),
-        api.post("/playerstats/synergies", { champion: champion.champion })
-      ])
+      const [proRes, myRes] = await Promise.all([api.post("/pro-game/synergies", body), api.post("/playerstats/synergies", { champion: champion.champion })])
       if (proRes.ok) setSynergies(proRes.data)
       if (myRes.ok) setMyTeamSynergies(myRes.data)
     } catch (e) {
@@ -637,7 +634,14 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, myD
                   <div className="flex items-center gap-2">
                     {myTeamChampions.map((champ, idx) => (
                       <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-amber-500/30">
-                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                        <img
+                          src={getChampionIcon(champ)}
+                          alt={champ}
+                          className="w-full h-full object-cover"
+                          onError={e => {
+                            e.target.style.display = "none"
+                          }}
+                        />
                       </div>
                     ))}
                   </div>
@@ -651,7 +655,14 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, myD
                   <div className="flex items-center gap-2">
                     {myBestWith.slice(0, 3).map((champ, idx) => (
                       <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-emerald-500/30">
-                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                        <img
+                          src={getChampionIcon(champ)}
+                          alt={champ}
+                          className="w-full h-full object-cover"
+                          onError={e => {
+                            e.target.style.display = "none"
+                          }}
+                        />
                       </div>
                     ))}
                   </div>
@@ -663,7 +674,14 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, myD
                   <div className="flex items-center gap-2">
                     {myBestAgainst.slice(0, 3).map((champ, idx) => (
                       <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-red-500/30">
-                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                        <img
+                          src={getChampionIcon(champ)}
+                          alt={champ}
+                          className="w-full h-full object-cover"
+                          onError={e => {
+                            e.target.style.display = "none"
+                          }}
+                        />
                       </div>
                     ))}
                   </div>
@@ -685,7 +703,14 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, myD
                   <div className="flex items-center gap-2">
                     {proChampions.map((champ, idx) => (
                       <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-slate-600">
-                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                        <img
+                          src={getChampionIcon(champ)}
+                          alt={champ}
+                          className="w-full h-full object-cover"
+                          onError={e => {
+                            e.target.style.display = "none"
+                          }}
+                        />
                       </div>
                     ))}
                   </div>
@@ -699,7 +724,14 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, myD
                   <div className="flex items-center gap-2">
                     {bestWith.slice(0, 3).map((champ, idx) => (
                       <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-emerald-500/30">
-                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                        <img
+                          src={getChampionIcon(champ)}
+                          alt={champ}
+                          className="w-full h-full object-cover"
+                          onError={e => {
+                            e.target.style.display = "none"
+                          }}
+                        />
                       </div>
                     ))}
                   </div>
@@ -711,7 +743,14 @@ function ChampionSlot({ champion, type, side, onClick, index, draftAverages, myD
                   <div className="flex items-center gap-2">
                     {bestAgainst.slice(0, 3).map((champ, idx) => (
                       <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-red-500/30">
-                        <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none" }} />
+                        <img
+                          src={getChampionIcon(champ)}
+                          alt={champ}
+                          className="w-full h-full object-cover"
+                          onError={e => {
+                            e.target.style.display = "none"
+                          }}
+                        />
                       </div>
                     ))}
                   </div>
@@ -828,7 +867,6 @@ function ChampionModal({ modalType, searchQuery, setSearchQuery, filteredChampio
   }
 
   const displayedChampions = getFilteredChampions()
-
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={closeModal}>

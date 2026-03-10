@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target, Folder, Plus, Check, FolderInput, X, Pencil, ChevronDown, Shield } from "lucide-react"
@@ -29,6 +29,7 @@ const RankBadge = ({ rank }) => {
 }
 
 export default function Games() {
+  const location = useLocation()
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(true)
   const { user } = useStore()
@@ -36,7 +37,8 @@ export default function Games() {
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false)
   const [newFolder, setNewFolder] = useState({ name: "" })
   const [hoveredFolder, setHoveredFolder] = useState(null)
-  const [filters, setFilters] = useState({ folder_id: null })
+  const [filters, setFilters] = useState({ folder_id: null, opponent_name: location.state?.opponent_name || null })
+  const [enemyTeams, setEnemyTeams] = useState([])
   const [selectedGames, setSelectedGames] = useState([])
   const [selectionMode, setSelectionMode] = useState(false)
   const [showMoveDropdown, setShowMoveDropdown] = useState(false)
@@ -70,6 +72,16 @@ export default function Games() {
       const { ok, data, code } = await api.post("/folder/search", { team_id: user?.team_id })
       if (!ok) return toast.error(code)
       setFolders(data)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const fetchEnemyTeams = async () => {
+    try {
+      const { ok, data, code } = await api.post("/enemy-team/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code)
+      setEnemyTeams(data)
     } catch (error) {
       toast.error(error.message)
     }
@@ -109,6 +121,7 @@ export default function Games() {
   useEffect(() => {
     fetchGames()
     fetchFolders()
+    fetchEnemyTeams()
   }, [filters])
 
   if (loading) {
@@ -201,6 +214,24 @@ export default function Games() {
                 </div>
               </div>
             </Modal>
+
+            {/* Opponent Filter */}
+            {enemyTeams.length > 0 && (
+              <div className="flex items-center gap-3">
+                <select
+                  value={filters.opponent_name || ""}
+                  onChange={e => setFilters({ ...filters, opponent_name: e.target.value || null })}
+                  className="bg-slate-800 border border-slate-700 text-sm text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-amber-500 transition-all duration-200 cursor-pointer"
+                >
+                  <option value="">All opponents</option>
+                  {enemyTeams.map(team => (
+                    <option key={team._id} value={team.name}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Selection Toolbar */}
             {selectionMode && (
