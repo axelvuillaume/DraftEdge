@@ -161,9 +161,17 @@ async function processPlayer(player) {
 
   async function flushBulk() {
     if (bulkOps.length === 0) return;
-    await SoloqMatch.bulkWrite(bulkOps, { ordered: false });
-    saved += bulkOps.length;
+    const ops = bulkOps;
     bulkOps = [];
+    try {
+      const result = await SoloqMatch.bulkWrite(ops, { ordered: false });
+      saved += result.upsertedCount + result.modifiedCount;
+    } catch (err) {
+      const partial = err.result;
+      if (partial) saved += (partial.nUpserted || 0) + (partial.nModified || 0);
+      errors += ops.length - ((partial?.nUpserted || 0) + (partial?.nModified || 0));
+      console.error(`  ❌ bulkWrite failed (${ops.length} ops): ${err.message}`);
+    }
   }
 
   for (let i = 0; i < newIds.length; i++) {
