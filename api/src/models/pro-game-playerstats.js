@@ -207,5 +207,10 @@ const Schema = new mongoose.Schema(
   { timestamps: true },
 );
 
+Schema.index({ gameid: 1, participantid: 1 });
+Schema.index({ participantid: 1, league: 1, position: 1 });
+Schema.index({ participantid: 1, teamname: 1 });
+Schema.index({ participantid: 1, playername: 1 });
+
 const Model = mongoose.model(MODELNAME, Schema);
 module.exports = Model;
