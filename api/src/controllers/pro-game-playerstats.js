@@ -5,6 +5,41 @@ const ProGamePlayerstats = require('../models/pro-game-playerstats');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 
+const ROLE_TO_POSITION = { top: 'top', jungle: 'jng', mid: 'mid', bottom: 'bot', support: 'sup' };
+
+router.get('/teams/list', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const query = { participantid: { $lte: 10 } };
+    if (req.query.league) query.league = req.query.league;
+    const teams = await ProGamePlayerstats.distinct('teamname', query);
+    return res.status(200).send({ ok: true, data: teams.filter(Boolean).sort() });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.get('/players/list', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const query = { participantid: { $lte: 10 } };
+    if (req.query.position) query.position = ROLE_TO_POSITION[req.query.position] || req.query.position;
+    if (req.query.league) query.league = req.query.league;
+    const docs = await ProGamePlayerstats.find(query, { playername: 1, teamname: 1, position: 1 }).lean();
+    const seen = new Set();
+    const players = [];
+    for (const d of docs) {
+      if (!d.playername || seen.has(d.playername)) continue;
+      seen.add(d.playername);
+      players.push({ name: d.playername, team: d.teamname, position: d.position });
+    }
+    players.sort((a, b) => a.name.localeCompare(b.name));
+    return res.status(200).send({ ok: true, data: players });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const proGamePlayerstats = await ProGamePlayerstats.findById(req.params.id);
@@ -75,8 +110,6 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
 const round1 = (val) => Math.round(val * 10) / 10;
 const round2 = (val) => Math.round(val * 100) / 100;
 
-const ROLE_TO_POSITION = { top: 'top', jungle: 'jng', mid: 'mid', bottom: 'bot', support: 'sup' };
-
 router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     let query = { participantid: { $lte: 10 } };
@@ -85,6 +118,8 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
     if (req.body.patch) query.patch = { $regex: `^${req.body.patch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` };
     if (req.body.leagues?.length) query.league = { $in: req.body.leagues };
     else if (req.body.league) query.league = req.body.league;
+    if (req.body.teamname) query.teamname = req.body.teamname;
+    if (req.body.playername) query.playername = req.body.playername;
 
     const stats = await ProGamePlayerstats.find(query).lean();
     if (!stats.length) return res.status(200).send({ ok: true, data: {} });

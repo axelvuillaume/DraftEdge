@@ -4,7 +4,9 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import { getChampionIcon } from "@/utils"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
-import { Shield, ChevronLeft, ChevronDown, Radar, Table2 } from "lucide-react"
+import { Shield, ChevronLeft, ChevronDown, Radar, Table2, Search } from "lucide-react"
+
+const ROLE_TO_POSITION = { top: "top", jungle: "jng", mid: "mid", bottom: "bot", support: "sup" }
 
 export default function StatsV2() {
   const { searchNavigation, setSearchNavigation, globalFilters } = useStore()
@@ -19,8 +21,14 @@ export default function StatsV2() {
   const [proStats, setProStats] = useState(null)
   const [selectedLeagues, setSelectedLeagues] = useState([])
   const [availableLeagues, setAvailableLeagues] = useState([])
-  const [leagueDropdownOpen, setLeagueDropdownOpen] = useState(false)
-  const leagueDropdownRef = useRef(null)
+  const [proSubMode, setProSubMode] = useState("avg") // "avg" | "team" | "player"
+  const [availableProTeams, setAvailableProTeams] = useState([])
+  const [availableProPlayers, setAvailableProPlayers] = useState([])
+  const [selectedProTeam, setSelectedProTeam] = useState(null)
+  const [selectedProPlayer, setSelectedProPlayer] = useState(null)
+  const [proSearchInput, setProSearchInput] = useState("")
+  const [proSelectorOpen, setProSelectorOpen] = useState(false)
+  const proSelectorRef = useRef(null)
 
   const categories = [
     { id: "Combat", icon: CombatIcon, color: "#3b82f6" },
@@ -52,9 +60,36 @@ export default function StatsV2() {
       if (position) body.position = position
       if (globalFilters.patch) body.patch = globalFilters.patch
       if (selectedLeagues.length) body.leagues = selectedLeagues
+      if (proSubMode === "team" && selectedProTeam) body.teamname = selectedProTeam
+      if (proSubMode === "player" && selectedProPlayer) {
+        body.playername = selectedProPlayer.name
+        delete body.position
+      }
       const { ok, data, code } = await api.post("/pro-game-playerstats/aggregate", body)
       if (!ok) return toast.error(code)
       setProStats(data)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const fetchProTeams = async () => {
+    try {
+      const { ok, data, code } = await api.get("/pro-game-playerstats/teams/list")
+      if (!ok) return toast.error(code)
+      setAvailableProTeams(data)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const fetchProPlayers = async position => {
+    try {
+      const pos = position ? ROLE_TO_POSITION[position] || position : ""
+      const params = pos ? `?position=${pos}` : ""
+      const { ok, data, code } = await api.get(`/pro-game-playerstats/players/list${params}`)
+      if (!ok) return toast.error(code)
+      setAvailableProPlayers(data)
     } catch (error) {
       toast.error(error.message)
     }
@@ -71,11 +106,13 @@ export default function StatsV2() {
   }
   useEffect(() => {
     fetchLeagues()
+    fetchProTeams()
+    fetchProPlayers()
   }, [])
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (leagueDropdownRef.current && !leagueDropdownRef.current.contains(event.target)) setLeagueDropdownOpen(false)
+      if (proSelectorRef.current && !proSelectorRef.current.contains(event.target)) setProSelectorOpen(false)
     }
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
@@ -88,7 +125,11 @@ export default function StatsV2() {
 
   useEffect(() => {
     fetchProStats(activePlayer?.role || null)
-  }, [activePlayer?.role, selectedLeagues])
+  }, [activePlayer?.role, selectedLeagues, proSubMode, selectedProTeam, selectedProPlayer])
+
+  useEffect(() => {
+    fetchProPlayers(activePlayer?.role || null)
+  }, [activePlayer?.role])
 
   // Handle search navigation changes (works even when already on statsV2 page)
   useEffect(() => {
@@ -165,6 +206,8 @@ export default function StatsV2() {
     return teamData
   }
 
+  const proCompareLabel = proSubMode === "team" ? selectedProTeam || "Pro Avg" : proSubMode === "player" ? selectedProPlayer?.name || "Pro Avg" : "Pro Avg"
+
   const currentData = getCurrentData()
 
   return (
@@ -216,48 +259,56 @@ export default function StatsV2() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white font-semibold text-sm uppercase tracking-wider">Performance by Category</h2>
               <div className="flex items-center gap-2">
-                {/* League selector for Pro Avg */}
-                <div className="relative" ref={leagueDropdownRef}>
-                  <button
-                    onClick={() => setLeagueDropdownOpen(!leagueDropdownOpen)}
-                    className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-700/50 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
-                  >
-                    <span className="text-amber-400">Pro:</span>
-                    <span className="truncate max-w-[100px]">
-                      {selectedLeagues.length === 0 ? "All Leagues" : selectedLeagues.length === 1 ? selectedLeagues[0] : `${selectedLeagues.length} leagues`}
-                    </span>
-                    <ChevronDown className={`w-3 h-3 transition-transform ${leagueDropdownOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  {leagueDropdownOpen && (
-                    <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 min-w-[160px] max-h-56 overflow-y-auto">
-                      <button
-                        onClick={() => setSelectedLeagues([])}
-                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-700 transition-colors ${selectedLeagues.length === 0 ? "text-amber-400" : "text-white"}`}
-                      >
-                        All Leagues
-                      </button>
-                      <div className="border-t border-slate-700" />
-                      {availableLeagues.map(league => (
-                        <button
-                          key={league}
-                          onClick={() => setSelectedLeagues(prev => (prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]))}
-                          className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-700 transition-colors flex items-center gap-2"
-                        >
-                          <div
-                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${selectedLeagues.includes(league) ? "bg-amber-500 border-amber-500" : "border-slate-500"}`}
-                          >
-                            {selectedLeagues.includes(league) && (
-                              <svg className="w-2.5 h-2.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-                          <span className="text-white">{league}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {/* Pro compare search bar */}
+                <ProSearchBar
+                  leagues={availableLeagues}
+                  teams={availableProTeams}
+                  players={availableProPlayers}
+                  selectedLeagues={selectedLeagues}
+                  selectedProTeam={selectedProTeam}
+                  selectedProPlayer={selectedProPlayer}
+                  proSubMode={proSubMode}
+                  searchInput={proSearchInput}
+                  onSearchChange={setProSearchInput}
+                  isOpen={proSelectorOpen}
+                  onToggle={() => setProSelectorOpen(o => !o)}
+                  dropdownRef={proSelectorRef}
+                  onSelectLeague={league => {
+                    setSelectedLeagues(prev => (prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]))
+                    setProSubMode("avg")
+                    setSelectedProTeam(null)
+                    setSelectedProPlayer(null)
+                  }}
+                  onClearLeagues={() => {
+                    setSelectedLeagues([])
+                    setProSubMode("avg")
+                    setSelectedProTeam(null)
+                    setSelectedProPlayer(null)
+                  }}
+                  onSelectTeam={name => {
+                    setProSubMode("team")
+                    setSelectedProTeam(name)
+                    setSelectedProPlayer(null)
+                    setSelectedLeagues([])
+                    setProSearchInput("")
+                    setProSelectorOpen(false)
+                  }}
+                  onSelectPlayer={p => {
+                    setProSubMode("player")
+                    setSelectedProPlayer(p)
+                    setSelectedProTeam(null)
+                    setSelectedLeagues([])
+                    setProSearchInput("")
+                    setProSelectorOpen(false)
+                  }}
+                  onClear={() => {
+                    setProSubMode("avg")
+                    setSelectedProTeam(null)
+                    setSelectedProPlayer(null)
+                    setSelectedLeagues([])
+                    setProSearchInput("")
+                  }}
+                />
                 <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
                   <button
                     onClick={() => setViewMode("spider")}
@@ -300,7 +351,7 @@ export default function StatsV2() {
 
                 return (
                   <>
-                    <SpiderChart metrics={displayMetrics} isEnemyChampion={isEnemyChampion} compareMode={compareMode} />
+                    <SpiderChart metrics={displayMetrics} isEnemyChampion={isEnemyChampion} compareMode={compareMode} proLabel={proCompareLabel} />
                     <div className="flex justify-end mt-4">
                       <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
                         <button
@@ -325,7 +376,7 @@ export default function StatsV2() {
                 )
               }
 
-              return <MetricsTable metrics={scrimMetrics} isEnemyChampion={isEnemyChampion} proStats={proCategory} />
+              return <MetricsTable metrics={scrimMetrics} isEnemyChampion={isEnemyChampion} proStats={proCategory} proLabel={proCompareLabel} />
             })()}
           </div>
 
@@ -598,7 +649,7 @@ function ScoreCircle({ score, isEnemy }) {
   )
 }
 
-function MetricsTable({ metrics, isEnemyChampion, proStats }) {
+function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel }) {
   if (!metrics || metrics.length === 0) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
@@ -607,11 +658,13 @@ function MetricsTable({ metrics, isEnemyChampion, proStats }) {
 
   return (
     <div className="w-full">
-      <div className={`grid ${hasProStats ? "grid-cols-5" : "grid-cols-4"} gap-4 px-4 py-2 border-b border-slate-700/50 text-xs font-medium text-slate-400 uppercase tracking-wider`}>
+      <div
+        className={`grid ${hasProStats ? "grid-cols-5" : "grid-cols-4"} gap-4 px-4 py-2 border-b border-slate-700/50 text-xs font-medium text-slate-400 uppercase tracking-wider`}
+      >
         <div>Metric</div>
         <div className="text-center">{isEnemyChampion ? "Us" : "Team"}</div>
         <div className="text-center">{isEnemyChampion ? "This champ" : "Enemies"}</div>
-        {hasProStats && <div className="text-center">Pro Avg</div>}
+        {hasProStats && <div className="text-center">{proLabel || "Pro Avg"}</div>}
         <div className="text-right">Diff</div>
       </div>
 
@@ -637,7 +690,7 @@ function MetricsTable({ metrics, isEnemyChampion, proStats }) {
   )
 }
 
-function SpiderChart({ metrics, isEnemyChampion, compareMode }) {
+function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const isPro = compareMode === "pro"
 
@@ -648,7 +701,7 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode }) {
   const enemyFill = isPro ? "rgba(245, 158, 11, 0.1)" : "rgba(239, 68, 68, 0.1)"
   const enemyStroke = isPro ? "rgba(245, 158, 11, 0.5)" : "rgba(239, 68, 68, 0.5)"
   const enemyDot = isPro ? "rgb(245, 158, 11)" : "rgb(239, 68, 68)"
-  const enemyLabel = isEnemyChampion ? "This champ" : isPro ? "Pro Avg" : "Enemies"
+  const enemyLabel = isEnemyChampion ? "This champ" : isPro ? proLabel || "Pro Avg" : "Enemies"
 
   const size = 280
   const center = size / 2
@@ -833,6 +886,159 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode }) {
           <span className="text-slate-400 text-xs">{enemyLabel}</span>
         </div>
       </div>
+    </div>
+  )
+}
+
+function ProSearchBar({
+  leagues,
+  teams,
+  players,
+  selectedLeagues,
+  selectedProTeam,
+  selectedProPlayer,
+  proSubMode,
+  searchInput,
+  onSearchChange,
+  isOpen,
+  onToggle,
+  dropdownRef,
+  onSelectLeague,
+  onClearLeagues,
+  onSelectTeam,
+  onSelectPlayer,
+  onClear
+}) {
+  const q = searchInput.toLowerCase()
+  const filteredLeagues = q ? leagues.filter(l => l.toLowerCase().includes(q)) : []
+  const filteredTeams = q ? teams.filter(t => t.toLowerCase().includes(q)).slice(0, 8) : []
+  const filteredPlayers = q ? players.filter(p => p.name.toLowerCase().includes(q) || (p.team || "").toLowerCase().includes(q)).slice(0, 8) : []
+  const hasResults = filteredLeagues.length > 0 || filteredTeams.length > 0 || filteredPlayers.length > 0
+
+  const label =
+    proSubMode === "team" && selectedProTeam
+      ? selectedProTeam
+      : proSubMode === "player" && selectedProPlayer
+        ? `${selectedProPlayer.name}`
+        : selectedLeagues.length === 1
+          ? selectedLeagues[0]
+          : selectedLeagues.length > 1
+            ? `${selectedLeagues.length} leagues`
+            : "Pro Avg"
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-700/50 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white transition-colors"
+        >
+          <Search className="w-3 h-3 flex-shrink-0 text-slate-500" />
+          <span className="text-amber-400">vs</span>
+          <span className="truncate max-w-[120px]">{label}</span>
+          <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        </button>
+        {(selectedProTeam || selectedProPlayer || selectedLeagues.length > 0) && (
+          <button onClick={onClear} className="text-slate-500 hover:text-slate-300 transition-colors p-1" title="Reset to Pro Avg">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 w-[260px]">
+          <div className="p-2 border-b border-slate-700">
+            <input
+              autoFocus
+              value={searchInput}
+              onChange={e => onSearchChange(e.target.value)}
+              placeholder="Search league, team or player..."
+              className="w-full bg-slate-900/60 border border-slate-600 rounded-md px-2.5 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-amber-500/60 transition-colors"
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto">
+            {!q ? (
+              <div className="p-3">
+                <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-2">Active Leagues</p>
+                <button
+                  onClick={onClearLeagues}
+                  className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedLeagues.length === 0 && proSubMode === "avg" ? "text-amber-400" : "text-white"}`}
+                >
+                  All Leagues (Pro Avg)
+                </button>
+                {leagues.map(l => (
+                  <button
+                    key={l}
+                    onClick={() => onSelectLeague(l)}
+                    className="w-full text-left px-2 py-1.5 text-xs hover:bg-slate-700 transition-colors flex items-center gap-2 rounded"
+                  >
+                    <div
+                      className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${selectedLeagues.includes(l) ? "bg-amber-500 border-amber-500" : "border-slate-500"}`}
+                    >
+                      {selectedLeagues.includes(l) && (
+                        <svg className="w-2 h-2 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-white">{l}</span>
+                  </button>
+                ))}
+              </div>
+            ) : !hasResults ? (
+              <div className="text-slate-500 text-xs text-center py-4">No results</div>
+            ) : (
+              <div className="p-1">
+                {filteredLeagues.length > 0 && (
+                  <>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider px-2 pt-2 pb-1">Leagues</p>
+                    {filteredLeagues.map(l => (
+                      <button
+                        key={l}
+                        onClick={() => onSelectLeague(l)}
+                        className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedLeagues.includes(l) ? "text-amber-400" : "text-white"}`}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </>
+                )}
+                {filteredTeams.length > 0 && (
+                  <>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider px-2 pt-2 pb-1">Teams</p>
+                    {filteredTeams.map(t => (
+                      <button
+                        key={t}
+                        onClick={() => onSelectTeam(t)}
+                        className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedProTeam === t ? "text-amber-400 font-medium" : "text-white"}`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </>
+                )}
+                {filteredPlayers.length > 0 && (
+                  <>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider px-2 pt-2 pb-1">Players</p>
+                    {filteredPlayers.map(p => (
+                      <button
+                        key={p.name}
+                        onClick={() => onSelectPlayer(p)}
+                        className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedProPlayer?.name === p.name ? "text-amber-400 font-medium" : "text-white"}`}
+                      >
+                        <span>{p.name}</span>
+                        {p.team && <span className="text-slate-500 ml-1.5">{p.team}</span>}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
