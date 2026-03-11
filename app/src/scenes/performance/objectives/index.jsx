@@ -3,7 +3,24 @@ import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
-import { Plus, Target, TrendingUp, Trophy, AlertTriangle, Trash2, Swords, Gamepad2, ChevronDown, ChevronUp, XCircle, Loader2, CheckCircle2, User, Users, ToggleLeft } from "lucide-react"
+import {
+  Plus,
+  Target,
+  TrendingUp,
+  Trophy,
+  AlertTriangle,
+  Trash2,
+  Swords,
+  Gamepad2,
+  ChevronDown,
+  ChevronUp,
+  XCircle,
+  Loader2,
+  CheckCircle2,
+  User,
+  Users,
+  ToggleLeft
+} from "lucide-react"
 
 const RATING_MAX = 10
 const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"]
@@ -192,7 +209,7 @@ function ScrimObjectives() {
           className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors text-sm"
         >
           <Plus className="w-4 h-4" />
-          New Objective
+          New Objective Scrim
         </button>
       </div>
 
@@ -300,7 +317,8 @@ function ObjectifOverviewRow({ objectif, onDelete, results }) {
             <span className="text-xs text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium shrink-0">{objectif.player_name}</span>
           ) : (
             <span className="text-xs text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded font-medium shrink-0 flex items-center gap-1">
-              <Users className="w-3 h-3" />Team
+              <Users className="w-3 h-3" />
+              Team
             </span>
           )}
           {isToggle && <ToggleLeft className="w-3.5 h-3.5 text-slate-500 shrink-0" />}
@@ -317,7 +335,9 @@ function ObjectifOverviewRow({ objectif, onDelete, results }) {
               </div>
               <div className="text-right">
                 <span className={`text-xs font-bold tabular-nums ${getSuccessRateColor(toggleRate)}`}>{toggleRate}%</span>
-                <span className="text-slate-600 text-xs ml-1">{doneCount}/{ratings.length}</span>
+                <span className="text-slate-600 text-xs ml-1">
+                  {doneCount}/{ratings.length}
+                </span>
               </div>
             </div>
           ) : (
@@ -370,7 +390,7 @@ function AddScrimObjectifModal({ isOpen, onClose, onSuccess, players }) {
         team_id: user?.team_id,
         team_name: user?.team_name,
         rating_type: ratingType,
-        ...(assignTo === "player" && playerId && { player_id: playerId, player_name: selectedPlayer?.player_name })
+        ...(assignTo === "player" && playerId && { player_id: playerId, player_name: selectedPlayer?.player_name || selectedPlayer?.game_name })
       }
       const { ok, code } = await api.post("/scrim-objectif", body)
       if (!ok) return toast.error(code)
@@ -549,12 +569,14 @@ function SoloQObjectives() {
   const globalSuccessRate = totalResults > 0 ? Math.round((totalSuccess / totalResults) * 100) : null
 
   // Best / worst objective
-  const objStats = objectives.map(obj => {
-    const objResults = resultsByObjective[obj._id] || []
-    const success = objResults.filter(r => r.success).length
-    const rate = objResults.length > 0 ? Math.round((success / objResults.length) * 100) : null
-    return { obj, rate, total: objResults.length }
-  }).filter(o => o.rate != null && o.total >= 1)
+  const objStats = objectives
+    .map(obj => {
+      const objResults = resultsByObjective[obj._id] || []
+      const success = objResults.filter(r => r.success).length
+      const rate = objResults.length > 0 ? Math.round((success / objResults.length) * 100) : null
+      return { obj, rate, total: objResults.length }
+    })
+    .filter(o => o.rate != null && o.total >= 1)
 
   const bestObj = objStats.sort((a, b) => b.rate - a.rate)[0] || null
   const worstObj = objStats.sort((a, b) => a.rate - b.rate)[0] || null
@@ -592,7 +614,9 @@ function SoloQObjectives() {
             {globalSuccessRate != null ? (
               <div className="flex items-baseline gap-1">
                 <span className={`text-2xl font-bold tabular-nums ${getSuccessRateColor(globalSuccessRate)}`}>{globalSuccessRate}%</span>
-                <span className="text-slate-600 text-sm">{totalSuccess}/{totalResults}</span>
+                <span className="text-slate-600 text-sm">
+                  {totalSuccess}/{totalResults}
+                </span>
               </div>
             ) : (
               <span className="text-slate-600 text-sm">-</span>
@@ -651,9 +675,15 @@ function SoloQObjectives() {
                       {ROLE_LABELS[player.role] || player.role}
                     </span>
                     <span className="text-white text-sm font-medium">{player.player_name}</span>
-                    {player.game_name && <span className="text-slate-500 text-xs">{player.game_name}#{player.tag_line}</span>}
+                    {player.game_name && (
+                      <span className="text-slate-500 text-xs">
+                        {player.game_name}#{player.tag_line}
+                      </span>
+                    )}
                   </div>
-                  <span className="text-slate-500 text-xs">{playerObjectives.length} objective{playerObjectives.length !== 1 ? "s" : ""}</span>
+                  <span className="text-slate-500 text-xs">
+                    {playerObjectives.length} objective{playerObjectives.length !== 1 ? "s" : ""}
+                  </span>
                 </div>
 
                 {playerObjectives.length === 0 ? (
@@ -687,9 +717,7 @@ function SoloObjectiveRow({ objective, results, onDelete }) {
   return (
     <div className="group">
       <div className="px-5 py-3 hover:bg-slate-800/40 transition-colors flex items-center gap-4 cursor-pointer" onClick={() => setExpanded(e => !e)}>
-        <button className="p-0.5">
-          {expanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-        </button>
+        <button className="p-0.5">{expanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}</button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-white text-sm font-medium truncate">{objective.name}</h3>
@@ -705,7 +733,9 @@ function SoloObjectiveRow({ objective, results, onDelete }) {
               </div>
               <div className="text-right">
                 <span className={`text-xs font-bold tabular-nums ${getSuccessRateColor(rate)}`}>{rate}%</span>
-                <span className="text-slate-600 text-xs ml-1">{successCount}/{results.length}</span>
+                <span className="text-slate-600 text-xs ml-1">
+                  {successCount}/{results.length}
+                </span>
               </div>
             </div>
           ) : (
@@ -713,7 +743,10 @@ function SoloObjectiveRow({ objective, results, onDelete }) {
           )}
         </div>
         <button
-          onClick={e => { e.stopPropagation(); onDelete(objective._id) }}
+          onClick={e => {
+            e.stopPropagation()
+            onDelete(objective._id)
+          }}
           className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
         >
           <Trash2 className="w-3.5 h-3.5" />
