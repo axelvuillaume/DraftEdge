@@ -840,16 +840,6 @@ function ReadyUpModal({ isOpen, onClose }) {
         {!mode && (
           <div className="grid grid-cols-2 gap-4">
             <button
-              onClick={() => setMode("import")}
-              className="group relative overflow-hidden rounded-xl border border-slate-600 hover:border-amber-500/50 bg-slate-700/30 hover:bg-amber-500/5 p-6 text-left transition-all"
-            >
-              <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/5 rounded-full -translate-y-10 translate-x-10 group-hover:bg-amber-500/10 transition-colors" />
-              <Upload className="w-8 h-8 text-amber-400 mb-3" />
-              <p className="text-white font-bold text-sm mb-1">Import Official Game</p>
-              <p className="text-slate-500 text-xs leading-relaxed">Upload a .rofl replay file to automatically extract all stats.</p>
-            </button>
-
-            <button
               onClick={() => setMode("session")}
               className="group relative overflow-hidden rounded-xl border border-slate-600 hover:border-blue-500/50 bg-slate-700/30 hover:bg-blue-500/5 p-6 text-left transition-all"
             >
@@ -857,6 +847,16 @@ function ReadyUpModal({ isOpen, onClose }) {
               <Calendar className="w-8 h-8 text-blue-400 mb-3" />
               <p className="text-white font-bold text-sm mb-1">Create Scrim Session</p>
               <p className="text-slate-500 text-xs leading-relaxed">Set up a new scrim session with opponent details.</p>
+            </button>
+
+            <button
+              onClick={() => setMode("import")}
+              className="group relative overflow-hidden rounded-xl border border-slate-600 hover:border-amber-500/50 bg-slate-700/30 hover:bg-amber-500/5 p-6 text-left transition-all"
+            >
+              <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/5 rounded-full -translate-y-10 translate-x-10 group-hover:bg-amber-500/10 transition-colors" />
+              <Upload className="w-8 h-8 text-amber-400 mb-3" />
+              <p className="text-white font-bold text-sm mb-1">Import Official Game</p>
+              <p className="text-slate-500 text-xs leading-relaxed">Upload a .rofl replay file to automatically extract all stats.</p>
             </button>
           </div>
         )}
