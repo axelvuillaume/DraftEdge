@@ -297,6 +297,8 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     else if (req.body.folder_id) query.folder_id = req.body.folder_id;
     if (req.body.patch) query.patch = { $regex: `^${req.body.patch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` };
     if (req.body.opponent_name) query.opponent_name = req.body.opponent_name;
+    if (req.body.official === true) query.official = true;
+    else if (req.body.official === false) query.official = { $ne: true };
     const limit = req.body.limit || 50;
     const skip = req.body.offset || 0;
     const total = await Game.countDocuments(query);

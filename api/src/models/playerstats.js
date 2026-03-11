@@ -9,6 +9,7 @@ const Schema = new mongoose.Schema(
     game_name: { type: String, trim: true },
     game_win: { type: Boolean },
     game_duration: { type: Number }, // en secondes
+    game_official: { type: Boolean, default: false },
 
     // ==================== PLAYER INFO ====================
     puuid: { type: String, trim: true },

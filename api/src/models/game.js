@@ -50,6 +50,7 @@ const Schema = new mongoose.Schema(
     duration: { type: Number, required: true }, // en secondes
     patch: { type: String },
     date: { type: Date },
+    official: { type: Boolean, default: false },
 
     // ==================== TEAM CONTEXT ====================
     // Ton équipe

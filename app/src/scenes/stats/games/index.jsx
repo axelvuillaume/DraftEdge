@@ -38,7 +38,7 @@ export default function Games() {
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false)
   const [newFolder, setNewFolder] = useState({ name: "" })
   const [hoveredFolder, setHoveredFolder] = useState(null)
-  const [filters, setFilters] = useState({ folder_id: null, opponent_name: location.state?.opponent_name || null })
+  const [filters, setFilters] = useState({ folder_id: null, opponent_name: location.state?.opponent_name || null, official: null })
   const [enemyTeams, setEnemyTeams] = useState([])
   const [selectedGames, setSelectedGames] = useState([])
   const [selectionMode, setSelectionMode] = useState(false)
@@ -227,9 +227,9 @@ export default function Games() {
               </div>
             </Modal>
 
-            {/* Opponent Filter */}
-            {enemyTeams.length > 0 && (
-              <div className="flex items-center gap-3">
+            {/* Filters */}
+            <div className="flex items-center gap-3">
+              {enemyTeams.length > 0 && (
                 <select
                   value={filters.opponent_name || ""}
                   onChange={e => setFilters({ ...filters, opponent_name: e.target.value || null })}
@@ -242,8 +242,27 @@ export default function Games() {
                     </option>
                   ))}
                 </select>
+              )}
+
+              {/* Official Toggle */}
+              <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                {[
+                  { value: null, label: "All" },
+                  { value: true, label: "Official" },
+                  { value: false, label: "Scrim" }
+                ].map(opt => (
+                  <button
+                    key={String(opt.value)}
+                    onClick={() => setFilters({ ...filters, official: opt.value })}
+                    className={`px-3.5 py-2 text-sm font-medium transition-colors ${
+                      filters.official === opt.value ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
 
             {/* Selection Toolbar */}
             {selectionMode && (

@@ -803,7 +803,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Le fichier doit être un .rofl' });
     }
 
-    const { team_id, team_name, team_side, opponent_name, name, session_id, session_name, folder_id, folder_name, draft_url, date } = req.body;
+    const { team_id, team_name, team_side, opponent_name, name, session_id, session_name, folder_id, folder_name, draft_url, date, official } = req.body;
 
     if (!team_side || !['blue', 'red'].includes(team_side)) {
       return res.status(400).json({ ok: false, error: 'team_side requis (blue ou red)' });
@@ -826,6 +826,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     data.game.folder_id = folder_id || null;
     data.game.folder_name = folder_name || null;
     data.game.win = team_side === 'blue' ? data.game.blue_team.win : data.game.red_team.win;
+    data.game.official = official === 'true';
     if (date) data.game.date = new Date(date);
 
     // Sauvegarder la Game
@@ -844,12 +845,14 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     const enrichedPlayers = await Promise.all(data.players.map((player, index) => enrichPlayerWithRiotData(player, index, platform)));
 
     // Ajouter les infos team/game
+    const isOfficial = official === 'true';
     const playersToSave = enrichedPlayers.map((p) => {
       const isAllyTeam = p.side === team_side;
       return {
         ...p,
         game_id: savedGame._id.toString(),
         game_name: name || null,
+        game_official: isOfficial,
         team_id: team_id || null,
         team_name: isAllyTeam ? team_name : null,
         opponent: !isAllyTeam,
