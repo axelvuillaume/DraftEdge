@@ -12,6 +12,7 @@ import {
   FileText,
   Check,
   ChevronDown,
+  Trophy,
   Calendar,
   Target,
   Plus,
@@ -30,7 +31,8 @@ const getMenu = user => [
   { title: "Players", to: "/soloq", icon: Users },
   { title: "Stats Team", to: "/performance", icon: BarChart3 },
   { title: "Performance", to: "/scrim-hub", icon: Target },
-  { title: "Manager space", to: "/opponents", icon: Briefcase }
+  { title: "Manager space", to: "/opponents", icon: Briefcase },
+  { title: "My League", to: "/league", icon: Trophy }
 ]
 
 const Navbar = () => {

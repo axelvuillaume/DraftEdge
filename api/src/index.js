@@ -55,6 +55,8 @@ app.use('/solo-objectif', require('./controllers/solo-objectif'));
 app.use('/solo-objectif-result', require('./controllers/solo-objectif-result'));
 app.use('/soloq-snapshot', require('./controllers/soloQ-snapshot'));
 app.use('/soloq-match', require('./controllers/soloQ-match'));
+app.use('/team-league', require('./controllers/team-league'));
+app.use('/league', require('./controllers/league'));
 
 setupErrorHandler(app);
 require('./services/passport')(app);

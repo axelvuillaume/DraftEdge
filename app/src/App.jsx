@@ -17,6 +17,7 @@ import { environment, SENTRY_URL, POSTHOG_API_KEY, POSTHOG_HOST } from "./config
 import SoloQ from "@/scenes/soloQ"
 import Opponents from "@/scenes/opponents"
 import Performance from "@/scenes/stats"
+import League from "@/scenes/league"
 
 if (environment === "production") {
   Sentry.init({ dsn: SENTRY_URL, environment: "app" })
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="/soloq/*" element={<SoloQ />} />
           <Route path="/opponents/*" element={<Opponents />} />
           <Route path="/performance/*" element={<Performance />} />
+          <Route path="/league/*" element={<League />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

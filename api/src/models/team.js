@@ -14,6 +14,8 @@ const Schema = new mongoose.Schema(
     prio_mid: [{ type: String }],
     prio_top: [{ type: String }],
     prio_bottom: [{ type: String }],
+    league_id: { type: String },
+    league_name: { type: String },
   },
   { timestamps: true },
 );
