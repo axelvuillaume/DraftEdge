@@ -2,8 +2,9 @@ import { useState, useEffect, Fragment } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
-import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target, Folder, Plus, Check, FolderInput, X, Pencil, ChevronDown, Shield } from "lucide-react"
+import { Clock, Swords, Trash2, MoreVertical, DollarSign, Target, Folder, Plus, Check, FolderInput, X, Pencil, ChevronDown, Shield, ImagePlus } from "lucide-react"
 import Modal from "@/components/modal"
+import { UploadModal } from "@/components/NavBar"
 import useStore from "@/services/store"
 import { getChampionIcon, getItemIcon, getSummonerSpellIcon, getRuneIcon, ROLES, ROLE_LABELS, ROLE_ICON_COLORS, TIER_SHORT, TIER_COLOR } from "@/utils"
 
@@ -42,6 +43,7 @@ export default function Games() {
   const [selectedGames, setSelectedGames] = useState([])
   const [selectionMode, setSelectionMode] = useState(false)
   const [showMoveDropdown, setShowMoveDropdown] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   const deleteFolder = async folderId => {
     if (!confirm("Are you sure you want to delete this folder?")) return
@@ -185,6 +187,16 @@ export default function Games() {
               >
                 <Plus className="w-5 h-5 text-slate-500 group-hover:text-amber-500 transition-colors" />
               </button>
+
+              <div className="ml-auto">
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-semibold text-sm rounded-xl transition-all duration-200"
+                >
+                  <ImagePlus className="w-4 h-4" />
+                  <span>Import a Game</span>
+                </button>
+              </div>
             </div>
 
             <Modal isOpen={showCreateFolderModal} onClose={() => setShowCreateFolderModal(false)} className="w-full max-w-md !bg-slate-900 border border-slate-700/50 shadow-xl">
@@ -324,6 +336,16 @@ export default function Games() {
           </div>
         </section>
       </div>
+
+      <UploadModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        user={user}
+        onSuccess={() => {
+          setShowImportModal(false)
+          fetchGames()
+        }}
+      />
     </div>
   )
 }
@@ -781,7 +803,7 @@ function PlayerRow({ player, teamSide }) {
   const handlePlayerClick = e => {
     e.stopPropagation()
     setSearchNavigation({ type: "player", data: { puuid: player.puuid, name: player.summoner_name } })
-    navigate("/statsV2")
+    navigate("/performance/stats")
   }
 
   return (
@@ -1069,7 +1091,7 @@ function AdvancedTab({ playerStats, game }) {
   const handlePlayerClick = (e, player) => {
     e.stopPropagation()
     setSearchNavigation({ type: "player", data: { puuid: player.puuid, name: player.summoner_name } })
-    navigate("/statsV2")
+    navigate("/performance/stats")
   }
 
   const AdvancedCard = ({ player }) => {

@@ -4,7 +4,7 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import { getChampionIcon } from "@/utils"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
-import { Shield, ChevronLeft, ChevronDown, Radar, Table2, Search } from "lucide-react"
+import { ChevronLeft, ChevronDown, Radar, Table2, Search } from "lucide-react"
 
 const ROLE_TO_POSITION = { top: "top", jungle: "jng", mid: "mid", bottom: "bot", support: "sup" }
 
@@ -17,8 +17,9 @@ export default function StatsV2() {
   const [activeEnemyChampion, setActiveEnemyChampion] = useState(null)
   const [activeCategory, setActiveCategory] = useState("Combat")
   const [viewMode, setViewMode] = useState("spider")
-  const [compareMode, setCompareMode] = useState("scrim") // "scrim" | "pro"
+  const [compareMode, setCompareMode] = useState("scrim") // "scrim" | "pro" | "soloq"
   const [proStats, setProStats] = useState(null)
+  const [soloqStats, setSoloqStats] = useState(null)
   const [selectedLeagues, setSelectedLeagues] = useState([])
   const [availableLeagues, setAvailableLeagues] = useState([])
   const [proSubMode, setProSubMode] = useState("avg") // "avg" | "team" | "player"
@@ -95,6 +96,18 @@ export default function StatsV2() {
     }
   }
 
+  const fetchSoloqStats = async position => {
+    try {
+      const body = {}
+      if (position) body.position = position
+      const { ok, data, code } = await api.post("/soloq-match/aggregate", body)
+      if (!ok) return toast.error(code)
+      setSoloqStats(data)
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
   const fetchLeagues = async () => {
     try {
       const { ok, data, code } = await api.get("/pro-game/leagues/list")
@@ -121,10 +134,12 @@ export default function StatsV2() {
   useEffect(() => {
     fetchStats()
     fetchProStats()
+    fetchSoloqStats()
   }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
 
   useEffect(() => {
     fetchProStats(activePlayer?.role || null)
+    fetchSoloqStats(activePlayer?.role || null)
   }, [activePlayer?.role, selectedLeagues, proSubMode, selectedProTeam, selectedProPlayer])
 
   useEffect(() => {
@@ -211,7 +226,7 @@ export default function StatsV2() {
   const currentData = getCurrentData()
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
+    <div className="h-[calc(100vh-200px)]  bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
       <div className="max-w-[1800px] mx-auto w-full">
         <Breadcrumb
           teamName={teamData.name}
@@ -240,18 +255,6 @@ export default function StatsV2() {
             }
           }}
         />
-
-        <HeaderSection
-          data={currentData}
-          isTeam={isTeam}
-          isChampion={isChampion}
-          isEnemyChampion={isEnemyChampion}
-          winRateBySide={currentData.winRateBySide}
-          winRateByDuration={currentData.winRateByDuration}
-        />
-
-        {/* Séparateur principal */}
-        <div className="h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent mb-4 flex-shrink-0" />
 
         <div className="grid lg:grid-cols-2 gap-6 items-start">
           {/* Colonne gauche - Métriques */}
@@ -336,22 +339,30 @@ export default function StatsV2() {
             {(() => {
               const scrimMetrics = currentData.metrics?.[activeCategory] || []
               const proCategory = proStats?.[activeCategory]
+              const soloqCategory = soloqStats?.[activeCategory]
               const round1 = v => Math.round(v * 10) / 10
+
+              const getCompareMetrics = (source, metrics) =>
+                metrics.map(m => {
+                  const val = source?.[m.name]
+                  if (val == null || val === "-") return m
+                  const diff = val > 0 ? ((m.team - val) / val) * 100 : m.team > 0 ? 100 : 0
+                  return { ...m, enemies: val, diff: round1(diff) }
+                })
 
               if (viewMode === "spider") {
                 const displayMetrics =
                   compareMode === "pro" && proCategory
-                    ? scrimMetrics.map(m => {
-                        const proVal = proCategory[m.name]
-                        if (proVal == null) return m
-                        const diff = proVal > 0 ? ((m.team - proVal) / proVal) * 100 : m.team > 0 ? 100 : 0
-                        return { ...m, enemies: proVal, diff: round1(diff) }
-                      })
-                    : scrimMetrics
+                    ? getCompareMetrics(proCategory, scrimMetrics)
+                    : compareMode === "soloq" && soloqCategory
+                      ? getCompareMetrics(soloqCategory, scrimMetrics)
+                      : scrimMetrics
+
+                const compareLabel = compareMode === "soloq" ? "SoloQ" : proCompareLabel
 
                 return (
                   <>
-                    <SpiderChart metrics={displayMetrics} isEnemyChampion={isEnemyChampion} compareMode={compareMode} proLabel={proCompareLabel} />
+                    <SpiderChart metrics={displayMetrics} isEnemyChampion={isEnemyChampion} compareMode={compareMode} proLabel={compareLabel} />
                     <div className="flex justify-end mt-4">
                       <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
                         <button
@@ -370,13 +381,21 @@ export default function StatsV2() {
                         >
                           vs Pro
                         </button>
+                        <button
+                          onClick={() => setCompareMode("soloq")}
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                            compareMode === "soloq" ? "bg-cyan-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          vs SoloQ
+                        </button>
                       </div>
                     </div>
                   </>
                 )
               }
 
-              return <MetricsTable metrics={scrimMetrics} isEnemyChampion={isEnemyChampion} proStats={proCategory} proLabel={proCompareLabel} />
+              return <MetricsTable metrics={scrimMetrics} isEnemyChampion={isEnemyChampion} proStats={proCategory} proLabel={proCompareLabel} soloqStats={soloqCategory} />
             })()}
           </div>
 
@@ -544,127 +563,25 @@ function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEne
   )
 }
 
-function HeaderSection({ data, isTeam, isChampion, isEnemyChampion, winRateBySide, winRateByDuration }) {
-  const isPlayer = !isTeam && !isChampion && !isEnemyChampion
-  const side = winRateBySide || { blue: 0, red: 0 }
-
-  return (
-    <div className="grid lg:grid-cols-2 gap-4 mb-4 flex-shrink-0">
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          {isTeam ? (
-            <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
-              <Shield className="w-10 h-10 text-slate-900" />
-            </div>
-          ) : isEnemyChampion ? (
-            <div className="w-20 h-20 bg-slate-700/50 border-2 border-red-500/50 rounded-lg flex items-center justify-center overflow-hidden">
-              <img src={getChampionIcon(data.name)} alt={data.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
-            </div>
-          ) : (
-            <div className="w-20 h-20 bg-slate-700/50 border border-emerald-500/30 rounded-lg flex items-center justify-center overflow-hidden">
-              {isChampion && <img src={getChampionIcon(data.name)} alt={data.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />}
-              {isPlayer && data.role && <img src={`/roles/${data.role}.png`} alt={data.role} className="w-10 h-10" onError={e => (e.target.style.display = "none")} />}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className={`text-4xl font-bold tracking-wide ${isEnemyChampion ? "text-red-400" : "text-white"}`}>{(data.name || "").toUpperCase()}</h1>
-            {isPlayer && (
-              <a
-                href={`https://dpm.lol/${data.name}-${data.riot_tag}`}
-                target="_blank"
-                rel="noreferrer"
-                onClick={e => e.stopPropagation()}
-                className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
-              >
-                <img src="/DPMLOLBG.png" alt="DPM" className="w-7 h-7 rounded-md" />
-              </a>
-            )}
-          </div>
-          {isPlayer && data.role && <p className="text-slate-400 capitalize">{data.role}</p>}
-          {isChampion && <p className="text-slate-400">Champion Matchup</p>}
-          {isEnemyChampion && <p className="text-red-400/70">Enemy Champion • {data.role}</p>}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-center gap-6">
-        {/* Score */}
-        <ScoreCircle score={data.score || 0} isEnemy={isEnemyChampion} />
-
-        {/* Stats */}
-        <div className="flex flex-col gap-2">
-          {/* WR & Games & KDA */}
-          <div className="flex items-center gap-4">
-            <div>
-              <p className="text-xl font-bold text-white">{data.winRate || 0}%</p>
-              <p className="text-slate-500 text-[10px] uppercase">WR</p>
-            </div>
-            <div className="w-px h-8 bg-slate-700" />
-            <div>
-              <p className="text-xl font-bold text-white">{data.games || 0}</p>
-              <p className="text-slate-500 text-[10px] uppercase">Games</p>
-            </div>
-            <div className="w-px h-8 bg-slate-700" />
-            <div>
-              <p className="text-xl font-bold text-white">{data.kda || "0.0"}</p>
-              <p className="text-slate-500 text-[10px] uppercase">KDA</p>
-            </div>
-          </div>
-
-          {/* Mini Side bars */}
-          {!isEnemyChampion && (
-            <div className="flex items-center gap-3 mt-1">
-              <div className="flex items-center gap-1">
-                <div className="w-8 h-2 bg-blue-500 rounded" style={{ opacity: side.blue > 0 ? 1 : 0.3 }} />
-                <span className="text-blue-400 text-[10px] font-medium">{side.blue}%</span>
-                <span className="text-slate-500 text-[10px]">({side.blueGames || 0}g)</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-8 h-2 bg-red-400 rounded" style={{ opacity: side.red > 0 ? 1 : 0.3 }} />
-                <span className="text-red-400 text-[10px] font-medium">{side.red}%</span>
-                <span className="text-slate-500 text-[10px]">({side.redGames || 0}g)</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ScoreCircle({ score, isEnemy }) {
-  return (
-    <div className="relative w-20 h-20">
-      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="42" fill="none" stroke="rgb(51 65 85 / 0.5)" strokeWidth="6" />
-        <circle cx="50" cy="50" r="42" fill="none" stroke={"rgb(16 185 129)"} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(score / 100) * 264} 264`} />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-2xl font-bold text-white">{score}</span>
-        <span className="text-slate-500 text-[10px] font-medium">/100</span>
-      </div>
-    </div>
-  )
-}
-
-function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel }) {
+function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats }) {
   if (!metrics || metrics.length === 0) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
 
   const hasProStats = proStats && Object.keys(proStats).length > 0
+  const hasSoloqStats = soloqStats && Object.keys(soloqStats).length > 0
+  const extraCols = (hasProStats ? 1 : 0) + (hasSoloqStats ? 1 : 0)
+  // Tailwind needs static class names for purging
+  const gridCols = extraCols === 2 ? "grid-cols-6" : extraCols === 1 ? "grid-cols-5" : "grid-cols-4"
 
   return (
     <div className="w-full">
-      <div
-        className={`grid ${hasProStats ? "grid-cols-5" : "grid-cols-4"} gap-4 px-4 py-2 border-b border-slate-700/50 text-xs font-medium text-slate-400 uppercase tracking-wider`}
-      >
+      <div className={`grid ${gridCols} gap-4 px-4 py-2 border-b border-slate-700/50 text-xs font-medium text-slate-400 uppercase tracking-wider`}>
         <div>Metric</div>
         <div className="text-center">{isEnemyChampion ? "Us" : "Team"}</div>
         <div className="text-center">{isEnemyChampion ? "This champ" : "Enemies"}</div>
         {hasProStats && <div className="text-center">{proLabel || "Pro Avg"}</div>}
+        {hasSoloqStats && <div className="text-center">SoloQ</div>}
         <div className="text-right">Diff</div>
       </div>
 
@@ -672,12 +589,14 @@ function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel }) {
         {metrics.map((row, i) => {
           const diff = parseFloat(row.diff) || 0
           const proVal = hasProStats ? proStats[row.name] : null
+          const soloqVal = hasSoloqStats ? soloqStats[row.name] : null
           return (
-            <div key={i} className={`grid ${hasProStats ? "grid-cols-5" : "grid-cols-4"} gap-4 px-4 py-3 hover:bg-slate-700/20 transition-colors items-center text-sm`}>
+            <div key={i} className={`grid ${gridCols} gap-4 px-4 py-3 hover:bg-slate-700/20 transition-colors items-center text-sm`}>
               <div className="text-slate-200 font-medium">{row.name}</div>
               <div className="text-center text-emerald-400 font-mono font-medium">{row.team}</div>
               <div className="text-center text-red-400 font-mono">{row.enemies}</div>
               {hasProStats && <div className="text-center text-amber-400 font-mono">{proVal ?? "-"}</div>}
+              {hasSoloqStats && <div className="text-center text-cyan-400 font-mono">{soloqVal ?? "-"}</div>}
               <div className={`text-right font-bold font-mono ${diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                 {diff >= 0 ? "+" : ""}
                 {row.diff}%
@@ -693,15 +612,16 @@ function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel }) {
 function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const isPro = compareMode === "pro"
+  const isSoloq = compareMode === "soloq"
 
   if (!metrics || metrics.length === 0) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
 
-  const enemyFill = isPro ? "rgba(245, 158, 11, 0.1)" : "rgba(239, 68, 68, 0.1)"
-  const enemyStroke = isPro ? "rgba(245, 158, 11, 0.5)" : "rgba(239, 68, 68, 0.5)"
-  const enemyDot = isPro ? "rgb(245, 158, 11)" : "rgb(239, 68, 68)"
-  const enemyLabel = isEnemyChampion ? "This champ" : isPro ? proLabel || "Pro Avg" : "Enemies"
+  const enemyFill = isSoloq ? "rgba(6, 182, 212, 0.1)" : isPro ? "rgba(245, 158, 11, 0.1)" : "rgba(239, 68, 68, 0.1)"
+  const enemyStroke = isSoloq ? "rgba(6, 182, 212, 0.5)" : isPro ? "rgba(245, 158, 11, 0.5)" : "rgba(239, 68, 68, 0.5)"
+  const enemyDot = isSoloq ? "rgb(6, 182, 212)" : isPro ? "rgb(245, 158, 11)" : "rgb(239, 68, 68)"
+  const enemyLabel = isEnemyChampion ? "This champ" : isSoloq ? proLabel || "SoloQ" : isPro ? proLabel || "Pro Avg" : "Enemies"
 
   const size = 280
   const center = size / 2
@@ -861,7 +781,7 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
               </div>
               <div className="flex justify-between items-center mb-1.5">
                 <span className="text-slate-400 text-[10px]">{enemyLabel}</span>
-                <span className={`text-xs font-medium ${isPro ? "text-amber-400" : "text-red-400"}`}>{metrics[hoveredIndex].enemies}</span>
+                <span className={`text-xs font-medium ${isSoloq ? "text-cyan-400" : isPro ? "text-amber-400" : "text-red-400"}`}>{metrics[hoveredIndex].enemies}</span>
               </div>
               <div className="h-px bg-slate-700/50 mb-2" />
               <p className={`text-center text-sm font-bold ${metrics[hoveredIndex].diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
@@ -882,7 +802,7 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
           <span className="text-slate-400 text-xs">{isEnemyChampion ? "Us" : "Team"}</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${isPro ? "bg-amber-500" : "bg-red-500"}`} />
+          <div className={`w-3 h-3 rounded-full ${isSoloq ? "bg-cyan-500" : isPro ? "bg-amber-500" : "bg-red-500"}`} />
           <span className="text-slate-400 text-xs">{enemyLabel}</span>
         </div>
       </div>
@@ -1070,37 +990,57 @@ function PlayersList({ players, onPlayerClick }) {
 }
 
 function Matchups({ champions, onChampionClick, activeChampion, readOnly }) {
-  const allChampions = (champions || []).filter((champ, idx, arr) => arr.findIndex(c => c.name === champ.name) === idx).sort((a, b) => (b.games || 0) - (a.games || 0))
+  const [sortBy, setSortBy] = useState("games")
+  const allChampions = (champions || [])
+    .filter((champ, idx, arr) => arr.findIndex(c => c.name === champ.name) === idx)
+    .sort((a, b) => (sortBy === "winRate" ? (b.winRate || 0) - (a.winRate || 0) : (b.games || 0) - (a.games || 0)))
 
   if (allChampions.length === 0) {
     return <div className="text-slate-500 text-center py-8">No data</div>
   }
 
   return (
-    <div className="max-h-[400px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
-      {allChampions.map((matchup, idx) => {
-        const isWinning = matchup.winRate > 50
-        return (
-          <div
-            key={idx}
-            onClick={readOnly ? undefined : () => onChampionClick(matchup)}
-            className={`bg-slate-900/40 border rounded-lg p-3 flex items-center gap-3 transition-all ${
-              readOnly
-                ? "border-slate-700/40"
-                : `cursor-pointer hover:bg-slate-700/40 ${activeChampion === matchup.name ? "border-emerald-500" : "border-slate-700/40 hover:border-slate-500/50"}`
-            }`}
-          >
-            <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+    <div>
+      <div className="flex items-center gap-1.5 mb-3">
+        <span className="text-slate-500 text-[10px] uppercase tracking-wider mr-1">Sort by</span>
+        <button
+          onClick={() => setSortBy("games")}
+          className={`px-2 py-1 rounded text-xs font-medium transition-all ${sortBy === "games" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-slate-200 bg-slate-800/50"}`}
+        >
+          Games
+        </button>
+        <button
+          onClick={() => setSortBy("winRate")}
+          className={`px-2 py-1 rounded text-xs font-medium transition-all ${sortBy === "winRate" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-slate-200 bg-slate-800/50"}`}
+        >
+          Win Rate
+        </button>
+      </div>
+      <div className="max-h-[400px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+        {allChampions.map((matchup, idx) => {
+          const isWinning = matchup.winRate > 50
+          return (
+            <div
+              key={idx}
+              onClick={readOnly ? undefined : () => onChampionClick(matchup)}
+              className={`bg-slate-900/40 border rounded-lg p-3 flex items-center gap-3 transition-all ${
+                readOnly
+                  ? "border-slate-700/40"
+                  : `cursor-pointer hover:bg-slate-700/40 ${activeChampion === matchup.name ? "border-emerald-500" : "border-slate-700/40 hover:border-slate-500/50"}`
+              }`}
+            >
+              <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>
+                <span className="text-slate-500 text-xs">{matchup.games} games</span>
+              </div>
+              <span className={`font-bold text-sm ${isWinning ? "text-emerald-400" : "text-red-400"}`}>{matchup.winRate}%</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>
-              <span className="text-slate-500 text-xs">{matchup.games} games</span>
-            </div>
-            <span className={`font-bold text-sm ${isWinning ? "text-emerald-400" : "text-red-400"}`}>{matchup.winRate}%</span>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

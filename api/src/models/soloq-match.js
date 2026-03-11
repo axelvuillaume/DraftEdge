@@ -373,6 +373,7 @@ const Schema = new mongoose.Schema(
 Schema.index({ player_id: 1, gameDate: -1 });
 Schema.index({ team_id: 1, gameDate: -1 });
 Schema.index({ puuid: 1, queueId: 1 });
+Schema.index({ matchId: 1, puuid: 1 });
 
 const OBJ = mongoose.model(MODELNAME, Schema);
 module.exports = OBJ;

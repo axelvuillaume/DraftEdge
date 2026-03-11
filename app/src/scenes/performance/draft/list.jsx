@@ -175,7 +175,7 @@ export default function List() {
                 {scenarios.map(scenario => (
                   <tr
                     key={scenario._id}
-                    onClick={() => navigate(`/draft/${scenario._id}`)}
+                    onClick={() => navigate(`/scrim-hub/draft/${scenario._id}`)}
                     className="border-b border-slate-700/30 hover:bg-slate-700/20 cursor-pointer transition-colors"
                   >
                     <td className="w-1/2 px-6 py-4">
@@ -225,7 +225,7 @@ function AddScenario({ isOpen, setIsOpen, onCreated, navigate }) {
       setName("")
       setIsOpen(false)
       onCreated()
-      navigate(`/draft/${data._id}`)
+      navigate(`/scrim-hub/draft/${data._id}`)
     } catch (error) {
       toast.error(error.message)
     }

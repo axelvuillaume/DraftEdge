@@ -8,6 +8,9 @@ const Schema = new mongoose.Schema(
     description: { type: String },
     team_id: { type: String, required: true },
     team_name: { type: String, required: true },
+    player_id: { type: String, default: null },
+    player_name: { type: String, default: null },
+    rating_type: { type: String, enum: ['rating', 'toggle'], default: 'rating' },
   },
   { timestamps: true },
 );

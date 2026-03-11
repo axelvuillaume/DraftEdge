@@ -272,7 +272,7 @@ export default function View() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <button onClick={() => navigate("/scrim-hub")} className="p-1.5 text-slate-400 hover:text-white transition-colors">
+            <button onClick={() => navigate("/scrim-hub/scrims")} className="p-1.5 text-slate-400 hover:text-white transition-colors">
               <ArrowLeft className="w-4 h-4" />
             </button>
             <DebounceInput
@@ -594,8 +594,11 @@ export default function View() {
                       </thead>
                       <tbody>
                         {selectedObjectives.map(obj => {
+                          const isToggle = obj.rating_type === "toggle"
                           const ratedGames = selectedGames.filter(g => getResult(obj._id, g._id).result != null)
-                          const avg = ratedGames.length > 0 ? ratedGames.reduce((sum, g) => sum + getResult(obj._id, g._id).result, 0) / ratedGames.length : null
+                          const avg = !isToggle && ratedGames.length > 0 ? ratedGames.reduce((sum, g) => sum + getResult(obj._id, g._id).result, 0) / ratedGames.length : null
+                          const doneCount = isToggle ? ratedGames.filter(g => getResult(obj._id, g._id).result === 1).length : 0
+                          const toggleRate = isToggle && ratedGames.length > 0 ? Math.round((doneCount / ratedGames.length) * 100) : null
 
                           return (
                             <tr key={obj._id} className="group border-t border-slate-700/15">
@@ -604,6 +607,9 @@ export default function View() {
                                   <span className="text-white text-sm font-medium truncate max-w-[180px]" title={obj.name}>
                                     {obj.name}
                                   </span>
+                                  {obj.player_name && (
+                                    <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1 py-0.5 rounded shrink-0">{obj.player_name}</span>
+                                  )}
                                   <button
                                     onClick={() => setActiveObjectifIds(prev => (prev.includes(obj._id) ? prev.filter(oid => oid !== obj._id) : [...prev, obj._id]))}
                                     className="p-0.5 text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
@@ -616,6 +622,27 @@ export default function View() {
                                 const r = getResult(obj._id, game._id)
                                 const isActive = selectedCell?.objectiveId === obj._id && selectedCell?.gameId === game._id
                                 const hasComment = !!r.comment
+
+                                if (isToggle) {
+                                  const isDone = r.result === 1
+                                  const isFailed = r.result === 0
+                                  return (
+                                    <td key={game._id} className="px-1.5 py-1.5 text-center">
+                                      <button
+                                        onClick={() => {
+                                          const newVal = r.result == null ? 1 : r.result === 1 ? 0 : null
+                                          saveResult(obj._id, game._id, { result: newVal })
+                                        }}
+                                        className={`relative w-12 h-10 rounded-md text-sm font-semibold transition-all ${
+                                          isActive ? "ring-1 ring-amber-500 " : ""
+                                        }${isDone ? "bg-emerald-500/20 text-emerald-400" : isFailed ? "bg-red-500/20 text-red-400" : "bg-slate-700/25 text-slate-600 hover:bg-slate-700/40"}`}
+                                      >
+                                        {isDone ? <Check className="w-4 h-4 mx-auto" /> : isFailed ? <X className="w-4 h-4 mx-auto" /> : "--"}
+                                        {hasComment && <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-3 h-[2px] rounded-full bg-slate-500" />}
+                                      </button>
+                                    </td>
+                                  )
+                                }
 
                                 return (
                                   <td key={game._id} className="px-1.5 py-1.5 text-center">
@@ -632,7 +659,13 @@ export default function View() {
                                 )
                               })}
                               <td className="px-3 py-2 text-center border-l border-slate-700/30">
-                                {avg != null ? (
+                                {isToggle ? (
+                                  toggleRate != null ? (
+                                    <span className={`text-sm font-bold tabular-nums ${toggleRate >= 70 ? "text-emerald-400" : toggleRate >= 50 ? "text-amber-400" : "text-red-400"}`}>{toggleRate}%</span>
+                                  ) : (
+                                    <span className="text-slate-700 text-xs">--</span>
+                                  )
+                                ) : avg != null ? (
                                   <span className={`text-sm font-bold tabular-nums ${getRatingTextColor(Math.round(avg))}`}>{avg.toFixed(1)}</span>
                                 ) : (
                                   <span className="text-slate-700 text-xs">--</span>
@@ -666,22 +699,45 @@ export default function View() {
                             </button>
                           </div>
 
-                          <div className="flex items-center gap-1">
-                            {Array.from({ length: RATING_MAX }, (_, i) => i + 1).map(value => {
-                              const isSelected = r.result === value
-                              return (
-                                <button
-                                  key={value}
-                                  onClick={() => saveResult(selectedCell.objectiveId, selectedCell.gameId, { result: isSelected ? null : value })}
-                                  className={`flex-1 h-8 rounded-md text-xs font-bold transition-all ${
-                                    isSelected ? `${getRatingColor(value)} text-white` : "bg-slate-700/40 text-slate-500 hover:bg-slate-700/60 hover:text-slate-300"
-                                  }`}
-                                >
-                                  {value}
-                                </button>
-                              )
-                            })}
-                          </div>
+                          {obj.rating_type === "toggle" ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => saveResult(selectedCell.objectiveId, selectedCell.gameId, { result: r.result === 1 ? null : 1 })}
+                                className={`flex-1 h-10 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                                  r.result === 1 ? "bg-emerald-500 text-white" : "bg-slate-700/40 text-slate-500 hover:bg-slate-700/60 hover:text-slate-300"
+                                }`}
+                              >
+                                <Check className="w-4 h-4" />
+                                Done
+                              </button>
+                              <button
+                                onClick={() => saveResult(selectedCell.objectiveId, selectedCell.gameId, { result: r.result === 0 ? null : 0 })}
+                                className={`flex-1 h-10 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                                  r.result === 0 ? "bg-red-500 text-white" : "bg-slate-700/40 text-slate-500 hover:bg-slate-700/60 hover:text-slate-300"
+                                }`}
+                              >
+                                <X className="w-4 h-4" />
+                                Not done
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: RATING_MAX }, (_, i) => i + 1).map(value => {
+                                const isSelected = r.result === value
+                                return (
+                                  <button
+                                    key={value}
+                                    onClick={() => saveResult(selectedCell.objectiveId, selectedCell.gameId, { result: isSelected ? null : value })}
+                                    className={`flex-1 h-8 rounded-md text-xs font-bold transition-all ${
+                                      isSelected ? `${getRatingColor(value)} text-white` : "bg-slate-700/40 text-slate-500 hover:bg-slate-700/60 hover:text-slate-300"
+                                    }`}
+                                  >
+                                    {value}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
 
                           <DebounceInput
                             key={`${selectedCell.objectiveId}-${selectedCell.gameId}`}
