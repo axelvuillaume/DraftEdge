@@ -226,7 +226,7 @@ export default function StatsV2() {
   const currentData = getCurrentData()
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
+    <div className="h-[calc(100vh-200px)]  bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
       <div className="max-w-[1800px] mx-auto w-full">
         <Breadcrumb
           teamName={teamData.name}
@@ -990,37 +990,57 @@ function PlayersList({ players, onPlayerClick }) {
 }
 
 function Matchups({ champions, onChampionClick, activeChampion, readOnly }) {
-  const allChampions = (champions || []).filter((champ, idx, arr) => arr.findIndex(c => c.name === champ.name) === idx).sort((a, b) => (b.games || 0) - (a.games || 0))
+  const [sortBy, setSortBy] = useState("games")
+  const allChampions = (champions || [])
+    .filter((champ, idx, arr) => arr.findIndex(c => c.name === champ.name) === idx)
+    .sort((a, b) => (sortBy === "winRate" ? (b.winRate || 0) - (a.winRate || 0) : (b.games || 0) - (a.games || 0)))
 
   if (allChampions.length === 0) {
     return <div className="text-slate-500 text-center py-8">No data</div>
   }
 
   return (
-    <div className="max-h-[400px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
-      {allChampions.map((matchup, idx) => {
-        const isWinning = matchup.winRate > 50
-        return (
-          <div
-            key={idx}
-            onClick={readOnly ? undefined : () => onChampionClick(matchup)}
-            className={`bg-slate-900/40 border rounded-lg p-3 flex items-center gap-3 transition-all ${
-              readOnly
-                ? "border-slate-700/40"
-                : `cursor-pointer hover:bg-slate-700/40 ${activeChampion === matchup.name ? "border-emerald-500" : "border-slate-700/40 hover:border-slate-500/50"}`
-            }`}
-          >
-            <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+    <div>
+      <div className="flex items-center gap-1.5 mb-3">
+        <span className="text-slate-500 text-[10px] uppercase tracking-wider mr-1">Sort by</span>
+        <button
+          onClick={() => setSortBy("games")}
+          className={`px-2 py-1 rounded text-xs font-medium transition-all ${sortBy === "games" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-slate-200 bg-slate-800/50"}`}
+        >
+          Games
+        </button>
+        <button
+          onClick={() => setSortBy("winRate")}
+          className={`px-2 py-1 rounded text-xs font-medium transition-all ${sortBy === "winRate" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-slate-200 bg-slate-800/50"}`}
+        >
+          Win Rate
+        </button>
+      </div>
+      <div className="max-h-[400px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+        {allChampions.map((matchup, idx) => {
+          const isWinning = matchup.winRate > 50
+          return (
+            <div
+              key={idx}
+              onClick={readOnly ? undefined : () => onChampionClick(matchup)}
+              className={`bg-slate-900/40 border rounded-lg p-3 flex items-center gap-3 transition-all ${
+                readOnly
+                  ? "border-slate-700/40"
+                  : `cursor-pointer hover:bg-slate-700/40 ${activeChampion === matchup.name ? "border-emerald-500" : "border-slate-700/40 hover:border-slate-500/50"}`
+              }`}
+            >
+              <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>
+                <span className="text-slate-500 text-xs">{matchup.games} games</span>
+              </div>
+              <span className={`font-bold text-sm ${isWinning ? "text-emerald-400" : "text-red-400"}`}>{matchup.winRate}%</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>
-              <span className="text-slate-500 text-xs">{matchup.games} games</span>
-            </div>
-            <span className={`font-bold text-sm ${isWinning ? "text-emerald-400" : "text-red-400"}`}>{matchup.winRate}%</span>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }
