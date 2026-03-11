@@ -15,7 +15,7 @@ export default function StatsV2() {
   const [activePlayer, setActivePlayer] = useState(null)
   const [activeChampion, setActiveChampion] = useState(null)
   const [activeEnemyChampion, setActiveEnemyChampion] = useState(null)
-  const [activeCategory, setActiveCategory] = useState("Combat")
+  const [activeCategory, setActiveCategory] = useState("Vision")
   const [viewMode, setViewMode] = useState("spider")
   const [compareMode, setCompareMode] = useState("scrim") // "scrim" | "pro" | "soloq"
   const [proStats, setProStats] = useState(null)
@@ -32,10 +32,10 @@ export default function StatsV2() {
   const proSelectorRef = useRef(null)
 
   const categories = [
-    { id: "Combat", icon: CombatIcon, color: "#3b82f6" },
-    { id: "Objectives", icon: ObjectivesIcon, color: "#f97316" },
     { id: "Vision", icon: PatternIcon, color: "#0ea5e9" },
-    { id: "Income", icon: ScalingIcon, color: "#a855f7" }
+    { id: "Income", icon: ScalingIcon, color: "#a855f7" },
+    { id: "Combat", icon: CombatIcon, color: "#3b82f6" },
+    { id: "Objectives", icon: ObjectivesIcon, color: "#f97316" }
   ]
 
   const fetchStats = async () => {

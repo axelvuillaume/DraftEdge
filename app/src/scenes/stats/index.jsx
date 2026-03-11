@@ -2,7 +2,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-
 import { Gamepad2, BarChart3, LayoutDashboard } from "lucide-react"
 import Overview from "./overview"
 import Games from "./games"
-import StatsV2 from "./statsV2"
+import StatsV2 from "./advanced-stats"
 import FilterBar from "@/components/FilterBar"
 
 const TABS = [
