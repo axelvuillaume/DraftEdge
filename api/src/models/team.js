@@ -16,6 +16,7 @@ const Schema = new mongoose.Schema(
     prio_bottom: [{ type: String }],
     league_id: { type: String },
     league_name: { type: String },
+    notes: { type: String, default: '' },
   },
   { timestamps: true },
 );

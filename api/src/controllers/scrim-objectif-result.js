@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const passport = require('passport');
 const ScrimObjectifResult = require('../models/scrim-objectif-result');
+const ScrimObjectif = require('../models/scrim-objectif');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 
@@ -22,6 +23,37 @@ router.put('/:id', passport.authenticate(['admin', 'user'], { session: false, fa
     const scrimObjectifResult = await ScrimObjectifResult.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!scrimObjectifResult) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
     return res.status(200).send({ ok: true, data: scrimObjectifResult });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.post('/average-score', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    if (!req.body.team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const objectives = await ScrimObjectif.find({ team_id: req.body.team_id });
+    const results = await ScrimObjectifResult.find({ team_id: req.body.team_id });
+
+    if (objectives.length === 0 || results.length === 0) return res.status(200).send({ ok: true, data: null });
+
+    const objMap = Object.fromEntries(objectives.map(o => [o._id.toString(), o]));
+    let totalScore = 0;
+    let count = 0;
+
+    for (const r of results) {
+      const obj = objMap[r.objectif_id];
+      if (!obj) continue;
+      if (obj.rating_type === 'toggle') {
+        totalScore += r.result ? 10 : 0;
+      } else {
+        totalScore += r.result || 0;
+      }
+      count++;
+    }
+
+    return res.status(200).send({ ok: true, data: count > 0 ? totalScore / count : null });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });

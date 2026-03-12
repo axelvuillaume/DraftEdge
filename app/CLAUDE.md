@@ -91,3 +91,18 @@ export default function Index() {
 ## Components and Data
 
 NEVER create a component that doesn't fetch its own data. Every component is responsible for fetching the data it needs.
+
+## No Unnecessary Variables
+
+NEVER create intermediate `const` variables for simple derived values. Inline them directly in the JSX.
+
+```jsx
+// BAD
+const score = avg.toFixed(1)
+const pct = (avg / 10) * 100
+const color = avg >= 7 ? "text-emerald-400" : "text-red-400"
+return <span className={color}>{score}</span>
+
+// GOOD
+return <span className={avg >= 7 ? "text-emerald-400" : "text-red-400"}>{avg.toFixed(1)}</span>
+```
