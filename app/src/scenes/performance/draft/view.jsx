@@ -915,25 +915,9 @@ function ProFlexedPanel({ selectedLeagues }) {
 }
 
 function ChampionModal({ modalType, scenario, selectChampionFromModal, closeModal }) {
-  const { user } = useStore()
-  const [teamSettings, setTeamSettings] = useState(null)
+  const { team } = useStore()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedRole, setSelectedRole] = useState(null)
-
-  const fetchTeamSettings = async () => {
-    if (!user?.team_id) return
-    try {
-      const { ok, data, code } = await api.get(`/team/${user.team_id}`)
-      if (!ok) return toast.error(code || "Failed to fetch team settings")
-      setTeamSettings(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch team settings")
-    }
-  }
-
-  useEffect(() => {
-    fetchTeamSettings()
-  }, [])
 
   const usedChampions = [...scenario.blueBans, ...scenario.redBans, ...scenario.bluePicks, ...scenario.redPicks].filter(Boolean)
 
@@ -980,17 +964,17 @@ function ChampionModal({ modalType, scenario, selectChampionFromModal, closeModa
           </div>
         </div>
 
-        {!searchQuery && !selectedRole && modalType === "pick" && (teamSettings?.prio_pick?.length > 0 || teamSettings?.prio_flex?.length > 0) && (
+        {!searchQuery && !selectedRole && modalType === "pick" && (team?.prio_pick?.length > 0 || team?.prio_flex?.length > 0) && (
           <div className="p-4 border-b border-slate-700 bg-slate-800/50">
             <div className="flex gap-6">
-              {teamSettings?.prio_pick?.length > 0 && (
+              {team?.prio_pick?.length > 0 && (
                 <div className="flex-[2]">
                   <div className="flex items-center gap-2 mb-2">
                     <Star className="w-4 h-4 text-amber-500" />
                     <p className="text-amber-500 text-xs font-semibold uppercase">Priority Picks</p>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    {teamSettings.prio_pick.map(champ => (
+                    {team.prio_pick.map(champ => (
                       <button
                         key={champ}
                         onClick={() => !usedChampions.includes(champ) && selectChampionFromModal(champ)}
@@ -1014,14 +998,14 @@ function ChampionModal({ modalType, scenario, selectChampionFromModal, closeModa
                 </div>
               )}
 
-              {teamSettings?.prio_flex?.length > 0 && (
+              {team?.prio_flex?.length > 0 && (
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <Shuffle className="w-4 h-4 text-cyan-500" />
                     <p className="text-cyan-500 text-xs font-semibold uppercase">Flex Picks</p>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    {teamSettings.prio_flex
+                    {team.prio_flex
                       .filter(champ => !usedChampions.includes(champ))
                       .slice(0, 5)
                       .map(champ => (
