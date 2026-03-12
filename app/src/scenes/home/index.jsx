@@ -84,7 +84,7 @@ export default function Home() {
   )
 }
 
-// ─── Mini Stats (top right) ─────────────────────────────────
+//Mini Stats (top right)
 function MiniStats() {
   const { user } = useStore()
   const [stats, setStats] = useState(null)
@@ -120,13 +120,13 @@ function MiniStats() {
       <div className="w-px h-6 bg-slate-700/40" />
       <div className="text-center">
         <p className="text-[9px] text-slate-500 uppercase tracking-wider">Avg Enemy</p>
-        <p className="text-sm font-bold text-white">{stats?.avg_enemy_rank?.tier ? TIER_SHORT[stats.avg_enemy_rank.tier] || stats.avg_enemy_rank.tier : "N/A"}</p>
+        <p className="text-sm font-bold text-white">{stats?.avg_enemy_rank?.tier ? stats.avg_enemy_rank.tier : "N/A"}</p>
       </div>
     </div>
   )
 }
 
-// ─── SoloQ Today (MVP only) ─────────────────────────────────
+//SoloQ Today
 function SoloQToday() {
   const { user } = useStore()
   const navigate = useNavigate()
@@ -196,7 +196,7 @@ function SoloQToday() {
   )
 }
 
-// ─── Objectives Score ────────────────────────────────────────
+// Objectives Score
 function ObjectivesScore() {
   const { user } = useStore()
   const navigate = useNavigate()
@@ -233,7 +233,7 @@ function ObjectivesScore() {
           <div className="text-center">
             <p className="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Avg Score</p>
             <div className="flex items-baseline justify-center gap-0.5">
-              <span className={`text-3xl font-extrabold tabular-nums ${avg >= 7 ? "text-emerald-400" : avg >= 5 ? "text-amber-400" : "text-red-400"}`}>{avg.toFixed(1)}</span>
+              <span className={`text-3xl font-extrabold tabular-nums ${avg >= 7 ? "text-emerald-400" : avg >= 5 ? "text-amber-400" : "text-red-400"}`}>{avg}</span>
               <span className="text-slate-600 text-sm font-medium">/10</span>
             </div>
           </div>
@@ -249,7 +249,7 @@ function ObjectivesScore() {
   )
 }
 
-// ─── Recent Games ───────────────────────────────────────────
+// Recent Games
 function RecentGames() {
   const { user } = useStore()
   const navigate = useNavigate()
@@ -316,7 +316,7 @@ function RecentGames() {
   )
 }
 
-// ─── Scrim Planner ──────────────────────────────────────────
+// Scrim Planner
 function ScrimPlanner() {
   const { user } = useStore()
   const navigate = useNavigate()
@@ -445,7 +445,7 @@ function ScrimPlanner() {
   )
 }
 
-// ─── Ready Up Modal ─────────────────────────────────────────
+// Ready Up Modal
 function ReadyUpModal({ isOpen, onClose }) {
   const { user } = useStore()
   const navigate = useNavigate()
@@ -979,7 +979,7 @@ function ReadyUpModal({ isOpen, onClose }) {
   )
 }
 
-// ─── Team Notes ─────────────────────────────────────────────
+// Team Notes
 function TeamNotes() {
   const { team, setTeam } = useStore()
   const [notes, setNotes] = useState(team?.notes || "")
