@@ -92,6 +92,29 @@ export default function Index() {
 
 NEVER create a component that doesn't fetch its own data. Every component is responsible for fetching the data it needs.
 
+## Fetch Functions Outside useEffect
+
+ALWAYS define fetch functions as `const` outside of `useEffect`, then call them inside `useEffect`.
+
+```jsx
+// GOOD
+const fetchPlayers = async () => {
+  const { ok, data, code } = await api.post("/player/search", { team_id })
+  if (!ok) return toast.error(code || "Failed to fetch players")
+  setPlayers(data)
+}
+
+useEffect(() => {
+  fetchPlayers()
+}, [])
+
+// BAD - never define the function inside useEffect
+useEffect(() => {
+  const fetchPlayers = async () => { ... }
+  fetchPlayers()
+}, [])
+```
+
 ## No Unnecessary Variables
 
 NEVER create intermediate `const` variables for simple derived values. Inline them directly in the JSX.
