@@ -60,6 +60,51 @@ router.post('/average-score', passport.authenticate(['admin', 'user'], { session
   }
 });
 
+router.post('/stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    if (!req.body.team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const objectives = await ScrimObjectif.find({ team_id: req.body.team_id });
+    const results = await ScrimObjectifResult.find({ team_id: req.body.team_id });
+
+    const byObjectif = {};
+    let allRatings = [];
+
+    for (const obj of objectives) byObjectif[obj._id.toString()] = { ratings: [] };
+
+    for (const r of results) {
+      if (!byObjectif[r.objectif_id]) continue;
+      if (r.result != null) byObjectif[r.objectif_id].ratings.push(r.result);
+    }
+
+    for (const id of Object.keys(byObjectif)) {
+      const ratings = byObjectif[id].ratings;
+      byObjectif[id].avg = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
+      allRatings = allRatings.concat(ratings);
+    }
+
+    const sorted = Object.entries(byObjectif)
+      .filter(([, v]) => v.avg != null)
+      .sort((a, b) => b[1].avg - a[1].avg);
+
+    const best = sorted[0] ? { avg: sorted[0][1].avg, obj: objectives.find(o => o._id.toString() === sorted[0][0]) } : null;
+    const worst = sorted.at(-1) ? { avg: sorted.at(-1)[1].avg, obj: objectives.find(o => o._id.toString() === sorted.at(-1)[0]) } : null;
+
+    return res.status(200).send({
+      ok: true,
+      data: {
+        globalAvg: allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : null,
+        totalEvaluations: allRatings.length,
+        best,
+        worst,
+      },
+    });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 router.post('/search', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     let query = {};
