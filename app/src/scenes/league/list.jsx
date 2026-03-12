@@ -7,116 +7,42 @@ import { useNavigate } from "react-router-dom"
 
 export default function List() {
   const navigate = useNavigate()
-  const { user } = useStore()
+  const { team } = useStore()
   const [teams, setTeams] = useState([])
   const [league, setLeague] = useState(null)
-  const [teamData, setTeamData] = useState(null)
   const [search, setSearch] = useState("")
-  const [loading, setLoading] = useState(true)
 
-  // For league selector
-  const [allLeagues, setAllLeagues] = useState([])
-  const [selectedLeagueId, setSelectedLeagueId] = useState("")
-  const [saving, setSaving] = useState(false)
-
-  const fetchData = async () => {
+  const fetchLeague = async () => {
     try {
-      // Get team info
-      const { ok: okTeam, data: team } = await api.get(`/team/${user.team_id}`)
-      if (!okTeam) return toast.error("Failed to load team")
-      setTeamData(team)
-
-      if (team.league_id) {
-        // Fetch league info and teams in parallel
-        const [leagueRes, teamsRes] = await Promise.all([api.get(`/league/${team.league_id}`), api.post("/team-league/search", { league_id: team.league_id })])
-        if (leagueRes.ok) setLeague(leagueRes.data)
-        if (teamsRes.ok) setTeams(teamsRes.data)
-      } else {
-        // No league set, fetch all leagues for selector
-        const { ok, data } = await api.post("/league/search")
-        if (ok) setAllLeagues(data)
-      }
+      const { ok, data, code } = await api.get(`/league/${team.league_id}`)
+      if (!ok) return toast.error(code || "Failed to fetch league")
+      setLeague(data)
     } catch (error) {
-      toast.error(error.message)
-    } finally {
-      setLoading(false)
+      toast.error(error.code || "Failed to fetch league")
     }
   }
 
-  const handleSelectLeague = async () => {
-    if (!selectedLeagueId) return toast.error("Select a league")
-    setSaving(true)
+  const fetchTeams = async () => {
     try {
-      const selected = allLeagues.find(l => l._id === selectedLeagueId)
-      const { ok, code } = await api.put(`/team/${teamData._id}`, {
-        league_id: selectedLeagueId,
-        league_name: selected?.name || ""
-      })
-      if (!ok) return toast.error(code || "Failed to update team")
-      toast.success("League updated")
-      setLoading(true)
-      await fetchData()
+      const { ok, data, code } = await api.post("/team-league/search", { league_id: team.league_id })
+      if (!ok) return toast.error(code || "Failed to fetch teams")
+      setTeams(data)
     } catch (error) {
-      toast.error(error.message)
-    } finally {
-      setSaving(false)
+      toast.error(error.code || "Failed to fetch teams")
     }
   }
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (team?.league_id) {
+      fetchLeague()
+      fetchTeams()
+    }
+  }, [team])
+
+  if (!team?.league_id) return <LeagueSelector />
+  if (!league) return null
 
   const filtered = teams.filter(t => t.name?.toLowerCase().includes(search.toLowerCase()))
-
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
-
-  if (!league) {
-    return (
-      <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="w-full max-w-md mx-auto text-center space-y-6">
-          <Trophy className="w-16 h-16 text-amber-500/40 mx-auto" />
-          <div>
-            <h2 className="text-xl font-bold text-white mb-2">Select your League</h2>
-            <p className="text-sm text-slate-400">Choose the league your team is competing in</p>
-          </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 space-y-4">
-            <div className="relative">
-              <select
-                value={selectedLeagueId}
-                onChange={e => setSelectedLeagueId(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none text-sm appearance-none cursor-pointer"
-              >
-                <option value="">Select a league...</option>
-                {allLeagues.map(l => (
-                  <option key={l._id} value={l._id}>
-                    {l.name}
-                    {l.region ? ` (${l.region})` : ""}
-                    {l.tier ? ` — ${l.tier}` : ""}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-            </div>
-            <button
-              onClick={handleSelectLeague}
-              disabled={!selectedLeagueId || saving}
-              className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg transition-colors text-sm"
-            >
-              {saving ? "Saving..." : "Confirm"}
-            </button>
-          </div>
-          {allLeagues.length === 0 && <p className="text-xs text-slate-500">No leagues available. Contact an admin to create one.</p>}
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="h-full overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8 flex flex-col">
@@ -202,6 +128,78 @@ export default function List() {
             </table>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function LeagueSelector() {
+  const { team, setTeam } = useStore()
+  const [allLeagues, setAllLeagues] = useState([])
+  const [selectedLeagueId, setSelectedLeagueId] = useState("")
+
+  const fetchAllLeagues = async () => {
+    try {
+      const { ok, data, code } = await api.post("/league/search")
+      if (!ok) return toast.error(code || "Failed to fetch leagues")
+      setAllLeagues(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch leagues")
+    }
+  }
+
+  useEffect(() => {
+    fetchAllLeagues()
+  }, [])
+
+  const handleSelectLeague = async () => {
+    if (!selectedLeagueId) return toast.error("Select a league")
+    try {
+      const selected = allLeagues.find(l => l._id === selectedLeagueId)
+      const { ok, code } = await api.put(`/team/${team._id}`, { ...team, league_id: selectedLeagueId, league_name: selected?.name || "" })
+      if (!ok) return toast.error(code || "Failed to update team")
+      setTeam({ ...team, league_id: selectedLeagueId, league_name: selected?.name || "" })
+      toast.success("League updated")
+    } catch (error) {
+      toast.error(error.code || "Failed to update team")
+    }
+  }
+
+  return (
+    <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="w-full max-w-md mx-auto text-center space-y-6">
+        <Trophy className="w-16 h-16 text-amber-500/40 mx-auto" />
+        <div>
+          <h2 className="text-xl font-bold text-white mb-2">Select your League</h2>
+          <p className="text-sm text-slate-400">Choose the league your team is competing in</p>
+        </div>
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 space-y-4">
+          <div className="relative">
+            <select
+              value={selectedLeagueId}
+              onChange={e => setSelectedLeagueId(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none text-sm appearance-none cursor-pointer"
+            >
+              <option value="">Select a league...</option>
+              {allLeagues.map(l => (
+                <option key={l._id} value={l._id}>
+                  {l.name}
+                  {l.region ? ` (${l.region})` : ""}
+                  {l.tier ? ` — ${l.tier}` : ""}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
+          <button
+            onClick={handleSelectLeague}
+            disabled={!selectedLeagueId}
+            className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg transition-colors text-sm"
+          >
+            Confirm
+          </button>
+        </div>
+        {allLeagues.length === 0 && <p className="text-xs text-slate-500">No leagues available. Contact an admin to create one.</p>}
       </div>
     </div>
   )

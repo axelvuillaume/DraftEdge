@@ -6,31 +6,20 @@ import useStore from "@/services/store"
 import Modal from "@/components/modal"
 import { useNavigate } from "react-router-dom"
 
-export default function List() {
+export default function List({ stats }) {
   const navigate = useNavigate()
   const { user } = useStore()
   const [teams, setTeams] = useState([])
-  const [stats, setStats] = useState([])
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState("")
 
   const fetchTeams = async () => {
     try {
       const { ok, data, code } = await api.post("/enemy-team/search", { team_id: user?.team_id })
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to fetch teams")
       setTeams(data)
     } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
-  const fetchStats = async () => {
-    try {
-      const { ok, data, code } = await api.post("/enemy-team/stats")
-      if (!ok) return toast.error(code)
-      setStats(data)
-    } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to fetch teams")
     }
   }
 
@@ -39,17 +28,16 @@ export default function List() {
     if (!confirm("Delete this team?")) return
     try {
       const { ok, code } = await api.delete(`/enemy-team/${id}`)
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to delete team")
       toast.success("Team deleted")
       fetchTeams()
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to delete team")
     }
   }
 
   useEffect(() => {
     fetchTeams()
-    fetchStats()
   }, [])
 
   const getStatsForTeam = name => stats.find(s => s.opponent_name === name)
@@ -162,21 +150,19 @@ export default function List() {
 }
 
 function AddTeamModal({ isOpen, setIsOpen, onCreated, navigate }) {
-  const [name, setName] = useState("")
-  const [league, setLeague] = useState("")
+  const [team, setTeam] = useState({ name: "", league: "" })
 
   const handleAdd = async () => {
-    if (!name.trim()) return toast.error("Enter a team name")
+    if (!team.name.trim()) return toast.error("Enter a team name")
     try {
-      const { ok, data, code } = await api.post("/enemy-team", { name: name.trim(), league: league.trim() })
-      if (!ok) return toast.error(code)
-      setName("")
-      setLeague("")
+      const { ok, data, code } = await api.post("/enemy-team", team)
+      if (!ok) return toast.error(code || "Failed to add team")
+      setTeam({ name: "", league: "" })
       setIsOpen(false)
       onCreated()
       navigate(`/opponents/${data._id}`)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to add team")
     }
   }
 
@@ -188,8 +174,8 @@ function AddTeamModal({ isOpen, setIsOpen, onCreated, navigate }) {
           <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5 block">Team Name</label>
           <input
             type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
+            value={team.name}
+            onChange={e => setTeam(prev => ({ ...prev, name: e.target.value }))}
             onKeyDown={e => e.key === "Enter" && handleAdd()}
             placeholder="e.g. T1, GenG, HLE..."
             className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"
@@ -200,8 +186,8 @@ function AddTeamModal({ isOpen, setIsOpen, onCreated, navigate }) {
           <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5 block">League (optional)</label>
           <input
             type="text"
-            value={league}
-            onChange={e => setLeague(e.target.value)}
+            value={team.league}
+            onChange={e => setTeam(prev => ({ ...prev, league: e.target.value }))}
             onKeyDown={e => e.key === "Enter" && handleAdd()}
             placeholder="e.g. LCK, LEC, LFL..."
             className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"

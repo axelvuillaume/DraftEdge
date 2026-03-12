@@ -4,6 +4,9 @@ const store = create(set => ({
   user: null,
   setUser: user => set(() => ({ user })),
 
+  team: null,
+  setTeam: team => set(() => ({ team })),
+
   organization: null,
   setOrganization: organization => set(() => ({ organization })),
 

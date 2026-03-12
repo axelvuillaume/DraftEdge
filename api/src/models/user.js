@@ -13,6 +13,8 @@ const Schema = new mongoose.Schema(
 
     team_id: { type: String },
     team_name: { type: String },
+    team_league_id: { type: String },
+    team_league_name: { type: String },
 
     password: String,
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
@@ -22,7 +24,7 @@ const Schema = new mongoose.Schema(
 
     last_login_at: { type: Date, default: Date.now },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 Schema.pre('save', function (next) {

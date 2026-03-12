@@ -86,7 +86,7 @@ const AuthLayout = () => {
 
 const UserLayout = () => {
   const [loading, setLoading] = useState(true)
-  const { user, setUser } = useStore()
+  const { user, setUser, setTeam } = useStore()
 
   async function fetchUser() {
     try {
@@ -98,6 +98,12 @@ const UserLayout = () => {
       }
       api.setToken(token)
       setUser(user)
+
+      // Fetch team data
+      if (user.team_id) {
+        const teamRes = await api.get(`/team/${user.team_id}`)
+        if (teamRes.ok) setTeam(teamRes.data)
+      }
 
       // Identify user in PostHog for Session Replay
       posthog.identify(user._id, {

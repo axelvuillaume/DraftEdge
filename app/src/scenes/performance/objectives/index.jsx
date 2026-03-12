@@ -104,10 +104,10 @@ function ScrimObjectives() {
   const fetchObjectifs = async () => {
     try {
       const { ok, data, code } = await api.post("/scrim-objectif/search", { team_id: user?.team_id })
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to fetch objectives")
       setObjectifs(data)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to fetch objectives")
     }
   }
 
