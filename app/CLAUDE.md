@@ -27,6 +27,7 @@ Rules:
 - ALWAYS handle errors with `toast.error` using `code` as the message
 - ALWAYS wrap in try/catch
 - ALWAYS define fetch functions outside of `useEffect`, then call them inside
+- NEVER use `loading`/`setLoading` or `saving`/`setSaving` states around fetch calls
 
 ## State Management for Fetched Objects
 
@@ -68,6 +69,20 @@ export default function Index() {
 
 NEVER fetch inside another fetch in the same component. If you need child data from a parent list, create a child component that fetches its own data by ID.
 
+NEVER have multiple fetches in a single component. If a component needs data from two different endpoints, split it into separate child components, each responsible for its own fetch.
+
+## Props Convention
+
+ALWAYS pass the full `data` object as prop to child components. NEVER destructure or cherry-pick individual fields as props (e.g. `playerId={data.player._id}`). The child accesses what it needs via dot notation.
+
+```jsx
+// BAD
+<SoloObjectives playerId={data.player._id} />
+
+// GOOD
+<SoloObjectives data={data} />
+```
+
 ## No Unnecessary Variables
 
 NEVER create intermediate `const` variables for simple derived values. Inline them directly in the JSX.
@@ -81,3 +96,26 @@ return <span className={color}>{score}</span>
 // GOOD
 return <span className={avg >= 7 ? "text-emerald-400" : "text-red-400"}>{avg.toFixed(1)}</span>
 ```
+
+## No Object Destructuring
+
+NEVER destructure objects into intermediate variables. Access properties directly with dot notation.
+
+```jsx
+// BAD
+const { w, l } = stats
+return (
+  <span>
+    {w}W {l}L
+  </span>
+)
+
+// GOOD
+return (
+  <span>
+    {stats.w}W {stats.l}L
+  </span>
+)
+```
+
+Exception: destructuring API responses (`{ ok, data, code }`) and `useStore()` is allowed.
