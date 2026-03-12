@@ -14,6 +14,10 @@ const fetchObjectifs = async () => {
     toast.error(error.code || "Failed to fetch objectives")
   }
 }
+
+useEffect(() => {
+  fetchObjectifs()
+}, [])
 ```
 
 Rules:
@@ -22,60 +26,34 @@ Rules:
 - ALWAYS destructure `{ ok, data, code }` from the response
 - ALWAYS handle errors with `toast.error` using `code` as the message
 - ALWAYS wrap in try/catch
+- ALWAYS define fetch functions outside of `useEffect`, then call them inside
 
 ## State Management for Fetched Objects
 
-When fetching an object (e.g. a team, a player), ALWAYS store it as a single state object:
+When fetching an object (e.g. a team, a player), ALWAYS store it as a single state object. For PUT/update requests, send the entire object directly.
 
 ```jsx
 const [team, setTeam] = useState(null)
-```
 
-NEVER create separate useState for each field of the object. NEVER create a helper like `setField`. Update fields directly inline:
-
-```jsx
+// update a field
 onChange={e => setTeam(prev => ({ ...prev, league: e.target.value }))}
-```
 
-## PUT Requests
-
-For PUT/update requests, ALWAYS send the entire object directly. NEVER list fields individually:
-
-```jsx
-// GOOD
+// send the whole object
 await api.put(`/enemy-team/${id}`, team)
-
-// BAD - never do this
-await api.put(`/enemy-team/${id}`, { league: team.league, notes: team.notes, ... })
 ```
+
+NEVER create separate useState for each field. NEVER create a helper like `setField`. NEVER list fields individually in PUT requests.
 
 ## No Promise.all
 
 NEVER use `Promise.all` to parallelize API calls. Always call fetches sequentially, one after another.
 
-```jsx
-// GOOD
-const res1 = await api.post("/endpoint1", payload1)
-const res2 = await api.post("/endpoint2", payload2)
+## Data Fetching Rules
 
-// BAD - never do this
-const [res1, res2] = await Promise.all([api.post("/endpoint1", payload1), api.post("/endpoint2", payload2)])
-```
-
-## Nested Fetches
-
-NEVER fetch inside another fetch in the same component.
-If you need to fetch child data from a parent list:
-
-- Create a child component for each item in the list
-- Each child component fetches its own data by ID
-
-## Shared Fetches
-
-If the same API call is used by multiple route components (e.g. List and View), ALWAYS move it to the parent `index.jsx` and pass the data as a prop. NEVER duplicate the same fetch in multiple sibling components.
+Every component is responsible for fetching the data it needs. Exception: if the same fetch is used by multiple route siblings (e.g. List and View), move it to the parent `index.jsx` and pass as prop.
 
 ```jsx
-// index.jsx
+// index.jsx — shared fetch between siblings
 export default function Index() {
   const [stats, setStats] = useState([])
   // fetch here...
@@ -88,32 +66,7 @@ export default function Index() {
 }
 ```
 
-## Components and Data
-
-NEVER create a component that doesn't fetch its own data. Every component is responsible for fetching the data it needs.
-
-## Fetch Functions Outside useEffect
-
-ALWAYS define fetch functions as `const` outside of `useEffect`, then call them inside `useEffect`.
-
-```jsx
-// GOOD
-const fetchPlayers = async () => {
-  const { ok, data, code } = await api.post("/player/search", { team_id })
-  if (!ok) return toast.error(code || "Failed to fetch players")
-  setPlayers(data)
-}
-
-useEffect(() => {
-  fetchPlayers()
-}, [])
-
-// BAD - never define the function inside useEffect
-useEffect(() => {
-  const fetchPlayers = async () => { ... }
-  fetchPlayers()
-}, [])
-```
+NEVER fetch inside another fetch in the same component. If you need child data from a parent list, create a child component that fetches its own data by ID.
 
 ## No Unnecessary Variables
 
@@ -122,7 +75,6 @@ NEVER create intermediate `const` variables for simple derived values. Inline th
 ```jsx
 // BAD
 const score = avg.toFixed(1)
-const pct = (avg / 10) * 100
 const color = avg >= 7 ? "text-emerald-400" : "text-red-400"
 return <span className={color}>{score}</span>
 
