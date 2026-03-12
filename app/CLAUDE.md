@@ -43,7 +43,7 @@ onChange={e => setTeam(prev => ({ ...prev, league: e.target.value }))}
 await api.put(`/enemy-team/${id}`, team)
 ```
 
-NEVER create separate useState for each field. NEVER create a helper like `setField`. NEVER list fields individually in PUT requests.
+NEVER create separate useState for each field. NEVER split a fetched object into multiple setState calls (e.g. `setPrioPicks(data.prio_pick)` + `setPrioFlex(data.prio_flex)`) — store the whole object in one `setData(data)` and access fields via dot notation. NEVER create a helper like `setField`. NEVER list fields individually in PUT requests.
 
 ## No Promise.all
 

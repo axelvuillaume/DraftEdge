@@ -13,42 +13,13 @@ export default function List() {
   const [scenarios, setScenarios] = useState([])
   const [isOpen, setIsOpen] = useState(false)
 
-  const [prioPicks, setPrioPicks] = useState([])
-  const [prioFlex, setPrioFlex] = useState([])
-  const [championModalOpen, setChampionModalOpen] = useState(false)
-  const [championModalType, setChampionModalType] = useState(null)
-
-  const fetchTeamSettings = async () => {
-    if (!user?.team_id) return
-    try {
-      const { ok, data, code } = await api.get(`/team/${user.team_id}`)
-      if (!ok) return toast.error(code)
-      setPrioPicks(data.prio_pick || [])
-      setPrioFlex(data.prio_flex || [])
-    } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
-  const removeChampion = async (type, champion) => {
-    if (!user?.team_id) return
-    const updates = type === "pick" ? { prio_pick: prioPicks.filter(c => c !== champion) } : { prio_flex: prioFlex.filter(c => c !== champion) }
-    try {
-      const { ok, code } = await api.put(`/team/${user.team_id}`, updates)
-      if (!ok) return toast.error(code)
-      fetchTeamSettings()
-    } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
   const fetchScenarios = async () => {
     try {
       const { ok, data, code } = await api.post("/draft-scenario/search", { team_id: user?.team_id })
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to fetch scenarios")
       setScenarios(data)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to fetch scenarios")
     }
   }
 
@@ -56,90 +27,22 @@ export default function List() {
     e.stopPropagation()
     try {
       const { ok, code } = await api.delete(`/draft-scenario/${id}`)
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to delete scenario")
       toast.success("Scenario deleted")
       fetchScenarios()
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to delete scenario")
     }
   }
 
   useEffect(() => {
     fetchScenarios()
-    fetchTeamSettings()
   }, [])
 
   return (
     <div className="h-full overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8 flex flex-col">
       <div className="max-w-[1800px] mx-auto w-full flex flex-col flex-1 min-h-0 space-y-6">
-        {/* Priority Picks & Flex Picks Section */}
-        <div className="grid grid-cols-2 gap-4 flex-shrink-0">
-          {/* Priority Picks */}
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Star className="w-4 h-4 text-amber-500" />
-                <h3 className="text-amber-500 font-semibold text-sm">Priority Picks</h3>
-              </div>
-              <button
-                onClick={() => {
-                  setChampionModalType("pick")
-                  setChampionModalOpen(true)
-                }}
-                className="p-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 rounded-lg transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {prioPicks.length === 0 && <span className="text-slate-500 text-xs">No priority picks set</span>}
-              {prioPicks.map(champ => (
-                <div key={champ} className="flex items-center gap-1.5 bg-slate-700/50 rounded-lg px-2 py-1.5 group">
-                  <div className="w-6 h-6 rounded overflow-hidden bg-slate-600">
-                    <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
-                  </div>
-                  <span className="text-white text-xs">{champ}</span>
-                  <button onClick={() => removeChampion("pick", champ)} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Flex Picks */}
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Shuffle className="w-4 h-4 text-cyan-500" />
-                <h3 className="text-cyan-500 font-semibold text-sm">Flex Picks</h3>
-              </div>
-              <button
-                onClick={() => {
-                  setChampionModalType("flex")
-                  setChampionModalOpen(true)
-                }}
-                className="p-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-500 rounded-lg transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {prioFlex.length === 0 && <span className="text-slate-500 text-xs">No flex picks set</span>}
-              {prioFlex.map(champ => (
-                <div key={champ} className="flex items-center gap-1.5 bg-slate-700/50 rounded-lg px-2 py-1.5 group">
-                  <div className="w-6 h-6 rounded overflow-hidden bg-slate-600">
-                    <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
-                  </div>
-                  <span className="text-white text-xs">{champ}</span>
-                  <button onClick={() => removeChampion("flex", champ)} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <TeamPriorities />
 
         <div className="flex items-center justify-between flex-shrink-0">
           <h1 className="text-white text-xl font-semibold">Draft Scenarios</h1>
@@ -201,33 +104,132 @@ export default function List() {
         </div>
       </div>
 
-      <AddScenario isOpen={isOpen} setIsOpen={setIsOpen} onCreated={fetchScenarios} navigate={navigate} />
-
-      <ChampionModal
-        isOpen={championModalOpen}
-        onClose={() => setChampionModalOpen(false)}
-        type={championModalType}
-        currentPicks={championModalType === "pick" ? prioPicks : prioFlex}
-        onUpdate={fetchTeamSettings}
-      />
+      <AddScenario isOpen={isOpen} setIsOpen={setIsOpen} onCreated={fetchScenarios} />
     </div>
   )
 }
 
-function AddScenario({ isOpen, setIsOpen, onCreated, navigate }) {
+function TeamPriorities() {
+  const { user } = useStore()
+  const [teamSettings, setTeamSettings] = useState(null)
+  const [championModalOpen, setChampionModalOpen] = useState(false)
+  const [championModalType, setChampionModalType] = useState(null)
+
+  const fetchTeamSettings = async () => {
+    if (!user?.team_id) return
+    try {
+      const { ok, data, code } = await api.get(`/team/${user.team_id}`)
+      if (!ok) return toast.error(code || "Failed to fetch team settings")
+      setTeamSettings(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch team settings")
+    }
+  }
+
+  const removeChampion = async (type, champion) => {
+    if (!user?.team_id) return
+    try {
+      const { ok, code } = await api.put(`/team/${user.team_id}`, {
+        ...teamSettings,
+        [type === "pick" ? "prio_pick" : "prio_flex"]: (type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).filter(c => c !== champion)
+      })
+      if (!ok) return toast.error(code || "Failed to update team")
+      fetchTeamSettings()
+    } catch (error) {
+      toast.error(error.code || "Failed to update team")
+    }
+  }
+
+  useEffect(() => {
+    fetchTeamSettings()
+  }, [])
+
+  return (
+    <div className="grid grid-cols-2 gap-4 flex-shrink-0">
+      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-amber-500" />
+            <h3 className="text-amber-500 font-semibold text-sm">Priority Picks</h3>
+          </div>
+          <button
+            onClick={() => {
+              setChampionModalType("pick")
+              setChampionModalOpen(true)
+            }}
+            className="p-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(teamSettings?.prio_pick || []).length === 0 && <span className="text-slate-500 text-xs">No priority picks set</span>}
+          {(teamSettings?.prio_pick || []).map(champ => (
+            <div key={champ} className="flex items-center gap-1.5 bg-slate-700/50 rounded-lg px-2 py-1.5 group">
+              <div className="w-6 h-6 rounded overflow-hidden bg-slate-600">
+                <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+              </div>
+              <span className="text-white text-xs">{champ}</span>
+              <button onClick={() => removeChampion("pick", champ)} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Shuffle className="w-4 h-4 text-cyan-500" />
+            <h3 className="text-cyan-500 font-semibold text-sm">Flex Picks</h3>
+          </div>
+          <button
+            onClick={() => {
+              setChampionModalType("flex")
+              setChampionModalOpen(true)
+            }}
+            className="p-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-500 rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(teamSettings?.prio_flex || []).length === 0 && <span className="text-slate-500 text-xs">No flex picks set</span>}
+          {(teamSettings?.prio_flex || []).map(champ => (
+            <div key={champ} className="flex items-center gap-1.5 bg-slate-700/50 rounded-lg px-2 py-1.5 group">
+              <div className="w-6 h-6 rounded overflow-hidden bg-slate-600">
+                <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+              </div>
+              <span className="text-white text-xs">{champ}</span>
+              <button onClick={() => removeChampion("flex", champ)} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <ChampionModal isOpen={championModalOpen} onClose={() => setChampionModalOpen(false)} type={championModalType} teamSettings={teamSettings} onUpdate={fetchTeamSettings} />
+    </div>
+  )
+}
+
+function AddScenario({ isOpen, setIsOpen, onCreated }) {
+  const navigate = useNavigate()
   const [name, setName] = useState("")
 
   const handleAddScenario = async () => {
     if (!name.trim()) return toast.error("Enter a scenario name")
     try {
       const { ok, data, code } = await api.post("/draft-scenario", { name: name.trim() })
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to create scenario")
       setName("")
       setIsOpen(false)
       onCreated()
       navigate(`/scrim-hub/draft/${data._id}`)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to create scenario")
     }
   }
 
@@ -257,23 +259,25 @@ function AddScenario({ isOpen, setIsOpen, onCreated, navigate }) {
   )
 }
 
-function ChampionModal({ isOpen, onClose, type, currentPicks, onUpdate }) {
+function ChampionModal({ isOpen, onClose, type, teamSettings, onUpdate }) {
   const { user } = useStore()
   const [searchQuery, setSearchQuery] = useState("")
 
   if (!isOpen) return null
 
   const addChampion = async champion => {
-    if (!user?.team_id || currentPicks.includes(champion)) return
-    const updates = type === "pick" ? { prio_pick: [...currentPicks, champion] } : { prio_flex: [...currentPicks, champion] }
+    if (!user?.team_id || (type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).includes(champion)) return
     try {
-      const { ok, code } = await api.put(`/team/${user.team_id}`, updates)
-      if (!ok) return toast.error(code)
+      const { ok, code } = await api.put(`/team/${user.team_id}`, {
+        ...teamSettings,
+        [type === "pick" ? "prio_pick" : "prio_flex"]: [...(type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []), champion]
+      })
+      if (!ok) return toast.error(code || "Failed to add champion")
       onUpdate()
       onClose()
       setSearchQuery("")
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to add champion")
     }
   }
 
@@ -301,22 +305,21 @@ function ChampionModal({ isOpen, onClose, type, currentPicks, onUpdate }) {
         </div>
         <div className="p-4 overflow-y-auto max-h-[50vh]">
           <div className="grid grid-cols-8 gap-2">
-            {ALL_CHAMPIONS.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase())).map(champion => {
-              const isUsed = currentPicks.includes(champion)
-              return (
-                <button
-                  key={champion}
-                  onClick={() => !isUsed && addChampion(champion)}
-                  disabled={isUsed}
-                  className={`flex flex-col items-center p-1.5 rounded-lg transition-colors ${isUsed ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-700 cursor-pointer"}`}
+            {ALL_CHAMPIONS.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase())).map(champion => (
+              <button
+                key={champion}
+                onClick={() => !(type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).includes(champion) && addChampion(champion)}
+                disabled={(type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).includes(champion)}
+                className={`flex flex-col items-center p-1.5 rounded-lg transition-colors ${(type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).includes(champion) ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-700 cursor-pointer"}`}
+              >
+                <div
+                  className={`w-10 h-10 rounded-lg overflow-hidden bg-slate-700 ${(type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).includes(champion) ? "grayscale" : ""}`}
                 >
-                  <div className={`w-10 h-10 rounded-lg overflow-hidden bg-slate-700 ${isUsed ? "grayscale" : ""}`}>
-                    <img src={getChampionIcon(champion)} alt={champion} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
-                  </div>
-                  <span className="text-slate-300 text-[9px] mt-1 text-center truncate w-full">{champion}</span>
-                </button>
-              )
-            })}
+                  <img src={getChampionIcon(champion)} alt={champion} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
+                </div>
+                <span className="text-slate-300 text-[9px] mt-1 text-center truncate w-full">{champion}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
