@@ -8,16 +8,17 @@ export default function Team() {
   const { user } = useStore()
   const [team, setTeam] = useState([])
 
-  useEffect(() => {
-    const fetchTeam = async () => {
-      try {
-        const { ok, data, code } = await api.post("/user/search", { team_id: user?.team_id })
-        if (!ok) return toast.error(code || "Failed to fetch team members")
-        setTeam(data)
-      } catch (error) {
-        toast.error(error.message || "Failed to fetch team members")
-      }
+  const fetchTeam = async () => {
+    try {
+      const { ok, data, code } = await api.post("/user/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code || "Failed to fetch team members")
+      setTeam(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch team members")
     }
+  }
+
+  useEffect(() => {
     fetchTeam()
   }, [])
 

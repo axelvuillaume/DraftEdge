@@ -80,8 +80,8 @@ export default function Home() {
           const fromDate = today.toISOString()
           try {
             const [snapshotResults, matchResults] = await Promise.all([
-              Promise.all(connected.map(p => api.post("/soloq-snapshot/search", { player_id: p._id, limit: 0, from_date: fromDate }))),
-              Promise.all(connected.map(p => api.post("/soloq-match/search", { player_id: p._id, limit: 0, from_date: fromDate })))
+              Promise.all(connected.map(p => api.post("/soloq-snapshot/search", { player_id: p._id, limit: 20, from_date: fromDate }))),
+              Promise.all(connected.map(p => api.post("/soloq-match/search", { player_id: p._id, limit: 20, from_date: fromDate })))
             ])
             const snapshots = snapshotResults.flatMap(r => (r.ok ? r.data : []))
             const matches = matchResults.flatMap(r => (r.ok ? r.data : []))

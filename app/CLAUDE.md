@@ -49,6 +49,19 @@ await api.put(`/enemy-team/${id}`, team)
 await api.put(`/enemy-team/${id}`, { league: team.league, notes: team.notes, ... })
 ```
 
+## No Promise.all
+
+NEVER use `Promise.all` to parallelize API calls. Always call fetches sequentially, one after another.
+
+```jsx
+// GOOD
+const res1 = await api.post("/endpoint1", payload1)
+const res2 = await api.post("/endpoint2", payload2)
+
+// BAD - never do this
+const [res1, res2] = await Promise.all([api.post("/endpoint1", payload1), api.post("/endpoint2", payload2)])
+```
+
 ## Nested Fetches
 
 NEVER fetch inside another fetch in the same component.
