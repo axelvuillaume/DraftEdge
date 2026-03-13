@@ -372,12 +372,14 @@ router.post('/draft-averages', passport.authenticate(['admin', 'user'], { sessio
       return result;
     };
 
-    const responseData = {
-      bans: { blue: toTop3(banStats.blue), red: toTop3(banStats.red) },
-      picks: { blue: toTop3(pickStats.blue), red: toTop3(pickStats.red) },
-    };
-
-    return res.status(200).send({ ok: true, data: responseData, totalGames: games.length });
+    return res.status(200).send({
+      ok: true,
+      data: {
+        bans: { blue: toTop3(banStats.blue), red: toTop3(banStats.red) },
+        picks: { blue: toTop3(pickStats.blue), red: toTop3(pickStats.red) },
+      },
+      totalGames: games.length,
+    });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });

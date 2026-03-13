@@ -102,7 +102,7 @@ export default function SoloQ() {
   const handleArchive = async (e, playerId) => {
     e.stopPropagation()
     try {
-      const { ok, code } = await api.put(`/player/${playerId}/archive`)
+      const { ok, code } = await api.put(`/player/${playerId}`, { active: false })
       if (!ok) return toast.error(code || "Failed to archive player")
       setPlayers(prev => prev.filter(p => p._id !== playerId))
       toast.success("Player archived")
@@ -135,7 +135,7 @@ export default function SoloQ() {
     setSaving(role)
     try {
       const endpoint = _id
-        ? api.put(`/player/${_id}`, { game_name: game_name.trim(), tag_line: tag_line.trim(), region, role })
+        ? api.put(`/player/${_id}/resync`, { game_name: game_name.trim(), tag_line: tag_line.trim(), region, role })
         : api.post("/player", { game_name: game_name.trim(), tag_line: tag_line.trim(), region, role })
       const { ok, data, code } = await endpoint
       if (!ok) return toast.error(code || "Riot ID not found")

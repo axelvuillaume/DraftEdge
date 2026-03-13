@@ -6,10 +6,6 @@ const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const { getPuuidByRiotId, getRankByPuuid, SERVERS } = require('../services/riotgames');
 
-router.get('/servers', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), (req, res) => {
-  return res.status(200).send({ ok: true, data: SERVERS });
-});
-
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const player = await Player.findOne({ _id: req.params.id });
@@ -23,6 +19,18 @@ router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, fa
 });
 
 router.put('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const player = await Player.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!player) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+
+    return res.status(200).send({ ok: true, data: player });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.put('/:id/resync', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const player = await Player.findById(req.params.id);
     if (!player) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
@@ -38,16 +46,15 @@ router.put('/:id', passport.authenticate(['admin', 'user'], { session: false, fa
       if (!puuid) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
       player.puuid = puuid;
       const rank = await getRankByPuuid(puuid, region);
-      if (rank) {
-        player.current_tier = rank.tier;
-        player.current_rank = rank.rank;
-        player.current_lp = rank.leaguePoints;
-        player.current_wins = rank.wins;
-        player.current_losses = rank.losses;
-        player.last_fetched_at = new Date();
-      }
       player.region = region;
       player.connected_at = new Date();
+      if (!rank) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+      player.current_tier = rank.tier;
+      player.current_rank = rank.rank;
+      player.current_lp = rank.leaguePoints;
+      player.current_wins = rank.wins;
+      player.current_losses = rank.losses;
+      player.last_fetched_at = new Date();
     }
 
     await player.save();
@@ -69,19 +76,6 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     const total = await Player.countDocuments(query);
     const data = await Player.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
     return res.status(200).send({ ok: true, data, total });
-  } catch (error) {
-    capture(error);
-    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
-  }
-});
-
-router.put('/:id/archive', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
-  try {
-    const player = await Player.findById(req.params.id);
-    if (!player) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
-    player.active = !player.active;
-    await player.save();
-    return res.status(200).send({ ok: true, data: player });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });

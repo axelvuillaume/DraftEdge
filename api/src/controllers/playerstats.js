@@ -882,8 +882,6 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
       return { name: ourChamp, winRate: mWinRate, games: data.games, diff: mDiff };
     });
 
-    
-
     // Calculate enemy champion's win rate (inverse of ours) and KDA
     const enemyWinRate = uniqueGames.length > 0 ? round1(100 - winRateVsChamp) : 0;
     const enemyKDA = round1(enemyAgg.deaths > 0 ? (enemyAgg.kills + enemyAgg.assists) / enemyAgg.deaths : enemyAgg.kills + enemyAgg.assists);
