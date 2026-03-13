@@ -48,8 +48,8 @@ export default function List() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 p-4 lg:p-6">
-      <div className="max-w-[1400px] mx-auto space-y-4">
+    <div className="h-full overflow-hidden bg-slate-900 p-4 lg:p-6 flex flex-col">
+      <div className="w-full mx-auto flex flex-col gap-4 min-h-0 flex-1">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -114,7 +114,7 @@ export default function List() {
         </div>
 
         {/* Table */}
-        <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl overflow-hidden">
+        <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl overflow-y-auto min-h-0 flex-1">
           {sessions.length === 0 ? (
             <div className="p-16 text-center">
               <Target className="w-10 h-10 text-slate-700 mx-auto mb-3" />
@@ -337,17 +337,22 @@ function OpponentFilterDropdown({ value, onChange }) {
 }
 
 function AddSessionModal({ isOpen, onClose, onSuccess }) {
-  const [form, setForm] = useState({ name: "", opponent: "", date: new Date().toISOString().slice(0, 10) })
+  const [form, setForm] = useState({ name: "", opponent: null, date: new Date().toISOString().slice(0, 10) })
   const [creating, setCreating] = useState(false)
 
   const handleCreate = async () => {
     if (!form.name.trim()) return toast.error("Session name is required")
-    if (!form.opponent) return toast.error("Select an opponent")
+    if (!form.opponent?._id) return toast.error("Select an opponent")
     setCreating(true)
     try {
-      const { ok, data, code } = await api.post("/scrim-session", { ...form, name: form.name.trim(), date: form.date ? new Date(form.date).toISOString() : undefined })
+      const { ok, data, code } = await api.post("/scrim-session", {
+        name: form.name.trim(),
+        opponent_id: form.opponent?._id,
+        opponent_name: form.opponent?.name,
+        date: form.date ? new Date(form.date).toISOString() : undefined
+      })
       if (!ok) return toast.error(code || "Failed to create session")
-      setForm({ name: "", opponent: "", date: new Date().toISOString().slice(0, 10) })
+      setForm({ name: "", opponent: null, date: new Date().toISOString().slice(0, 10) })
       onClose()
       onSuccess(data._id)
     } catch (error) {
@@ -372,7 +377,7 @@ function AddSessionModal({ isOpen, onClose, onSuccess }) {
             className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none transition-all"
           />
         </div>
-        <OpponentDropdown value={form.opponent} onChange={v => setForm(f => ({ ...f, opponent: v }))} label="Opponent Team *" />
+        <OpponentDropdown value={form.opponent?.name || ""} onChange={v => setForm(f => ({ ...f, opponent: v }))} label="Opponent Team *" />
         <div>
           <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
           <input
@@ -385,7 +390,7 @@ function AddSessionModal({ isOpen, onClose, onSuccess }) {
         <div className="flex justify-end pt-2">
           <button
             onClick={handleCreate}
-            disabled={creating || !form.name.trim() || !form.opponent}
+            disabled={creating || !form.name.trim() || !form.opponent?._id}
             className="px-5 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg transition-colors text-sm"
           >
             {creating ? "Creating..." : "Create Session"}
