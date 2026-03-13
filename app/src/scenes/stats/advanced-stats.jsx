@@ -83,11 +83,12 @@ export default function StatsV2() {
     }
   }
 
-  const fetchOfficialSplit = async (position, champion) => {
+  const fetchOfficialSplit = async (position, champion, puuid) => {
     try {
       const body = { ...globalFilters }
       if (position) body.position = position
       if (champion) body.champion = champion
+      if (puuid) body.puuid = puuid
       const { ok, data, code } = await api.post("/playerstats/official_split", body)
       if (!ok) return toast.error(code || "Failed to fetch official split stats")
       setOfficialSplitStats(data)
@@ -107,7 +108,7 @@ export default function StatsV2() {
     const champion = activeChampion?.name || null
     fetchProStats(activePlayer?.role || null, champion)
     fetchSoloqStats(activePlayer?.role || null, activePlayer?.puuid || null, champion)
-    fetchOfficialSplit(activePlayer?.role || null, champion)
+    fetchOfficialSplit(activePlayer?.role || null, champion, activePlayer?.puuid || null)
   }, [activePlayer?.role, activePlayer?.puuid, activeChampion?.name, selectedLeagues, proSubMode, selectedProTeam, selectedProPlayer])
 
   useEffect(() => {

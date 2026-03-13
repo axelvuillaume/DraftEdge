@@ -702,7 +702,15 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
 
     const players = Object.entries(playersById).map(([_key, data]) => {
       const name = data.name;
-      const pStats = data.stats;
+
+      // Determine primary role (most played)
+      const roleCounts = {};
+      data.stats.forEach((s) => {
+        if (s.role) roleCounts[s.role] = (roleCounts[s.role] || 0) + 1;
+      });
+      const primaryRole = Object.entries(roleCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || data.role;
+
+      const pStats = data.stats.filter((s) => s.role === primaryRole);
       const pGames = [...new Set(pStats.map((s) => s.game_id))];
 
       // Get opponent stats for this player's games
@@ -781,7 +789,7 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
         puuid: _key,
         name,
         riot_tag: data.riot_tag || '',
-        role: data.role || 'Unknown',
+        role: primaryRole || data.role || 'Unknown',
         score: Math.round(Object.values(pCategoryScores).reduce((a, b) => a + b, 0) / Object.values(pCategoryScores).length),
         winRate: pAgg.games > 0 ? round1((pAgg.wins / pAgg.games) * 100) : 0,
         games: pAgg.games,
@@ -1294,10 +1302,14 @@ router.post('/official_split', passport.authenticate(['admin', 'user'], { sessio
     const filters = extractFilters(req.body);
     const { gameIdFilter } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
 
-    let teamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false, ...gameIdFilter });
+    let teamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false, puuid: { $exists: true, $ne: null }, ...gameIdFilter });
     let enemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
 
     const position = req.body.position;
+    const puuid = req.body.puuid;
+    if (puuid) {
+      teamStats = teamStats.filter((s) => s.puuid === puuid);
+    }
     if (position) {
       teamStats = teamStats.filter((s) => s.role === position);
       enemyStats = enemyStats.filter((s) => s.role === position);
