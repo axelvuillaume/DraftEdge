@@ -57,6 +57,32 @@ export default function View() {
     fetchGames()
   }, [id])
 
+  useEffect(() => {
+    if (!session?._id) return
+    if (session.win === games.filter(g => g.win).length && session.loss === games.filter(g => !g.win).length) return
+    setSession(prev => ({
+      ...prev,
+      win: games.filter(g => g.win).length,
+      loss: games.filter(g => !g.win).length,
+      winrate: games.length > 0 ? Math.round((games.filter(g => g.win).length / games.length) * 100) : 0
+    }))
+    syncSessionRecord()
+  }, [games, session?._id])
+
+  const syncSessionRecord = async () => {
+    try {
+      const { ok, code } = await api.put(`/scrim-session/${id}`, {
+        ...session,
+        win: games.filter(g => g.win).length,
+        loss: games.filter(g => !g.win).length,
+        winrate: games.length > 0 ? Math.round((games.filter(g => g.win).length / games.length) * 100) : 0
+      })
+      if (!ok) return toast.error(code || "Failed to update session")
+    } catch (error) {
+      toast.error(error.code || "Failed to update session")
+    }
+  }
+
   const fetchSession = async () => {
     try {
       const { ok, data, code } = await api.get(`/scrim-session/${id}`)
@@ -134,7 +160,15 @@ export default function View() {
                 <span className="text-emerald-400 font-mono">{getPatchPrefix(session.patch)}</span>
               </span>
             )}
-            <OpponentDropdown value={session.opponent} onChange={val => updateSession("opponent", val)} />
+            <OpponentDropdown
+              value={session.opponent_name}
+              onChange={({ _id, name }) => {
+                setSession(prev => ({ ...prev, opponent_id: _id, opponent_name: name }))
+                api.put(`/scrim-session/${id}`, { ...session, opponent_id: _id, opponent_name: name }).then(({ ok, code }) => {
+                  if (!ok) toast.error(code || "Failed to update session")
+                })
+              }}
+            />
             <FolderDropdown session={session} games={games} onUpdate={fetchSession} />
           </div>
           <div className="flex items-center gap-2">
@@ -757,7 +791,7 @@ function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [] }
   }, [isOpen, user?.team_id])
 
   useEffect(() => {
-    if (isOpen && session?.opponent) setRoflConfig(prev => ({ ...prev, opponent_name: session.opponent }))
+    if (isOpen && session?.opponent_name) setRoflConfig(prev => ({ ...prev, opponent_name: session.opponent_name }))
   }, [isOpen, session?.opponent])
 
   useEffect(() => {
@@ -1102,7 +1136,7 @@ function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [] }
                       </div>
                     </div>
 
-                    <OpponentDropdown value={roflConfig.opponent_name} onChange={val => setRoflConfig(prev => ({ ...prev, opponent_name: val }))} label="Opponent Team" />
+                    <OpponentDropdown value={roflConfig.opponent_name} onChange={({ name }) => setRoflConfig(prev => ({ ...prev, opponent_name: name }))} label="Opponent Team" />
 
                     <div className="relative">
                       <label className="block text-sm font-medium text-slate-400 mb-1">Folder</label>

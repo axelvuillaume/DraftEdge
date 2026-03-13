@@ -54,7 +54,7 @@ export default function OpponentDropdown({ value, onChange, label }) {
       const { ok, data, code } = await api.post("/enemy-team", { name })
       if (!ok) return toast.error(code || "Failed to create team")
       setEnemyTeams(prev => [data, ...prev])
-      onChange(data.name)
+      onChange({ _id: data._id, name: data.name })
       setNewTeamName("")
       setOpen(false)
     } catch (error) {
@@ -110,7 +110,7 @@ export default function OpponentDropdown({ value, onChange, label }) {
                     key={team._id}
                     type="button"
                     onClick={() => {
-                      onChange(team.name)
+                      onChange({ _id: team._id, name: team.name })
                       setOpen(false)
                     }}
                     className={`w-full text-left px-3 py-1.5 rounded-md text-xs ${value === team.name ? "bg-blue-500/20 text-blue-400" : "text-slate-300 hover:bg-slate-700/50"}`}

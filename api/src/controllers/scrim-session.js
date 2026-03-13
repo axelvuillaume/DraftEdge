@@ -5,6 +5,19 @@ const ScrimSession = require('../models/scrim-session');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 
+router.post('/patches', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const query = {};
+    if (req.body.team_id) query.team_id = req.body.team_id;
+    const patches = await ScrimSession.distinct('patch', query);
+    const prefixes = [...new Set(patches.filter(Boolean).map(p => p.split('.').slice(0, 2).join('.')))].sort().reverse();
+    return res.status(200).send({ ok: true, data: prefixes });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const scrimSession = await ScrimSession.findById(req.params.id);
@@ -32,8 +45,12 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     let query = {};
     if (req.body.team_id) query.team_id = req.body.team_id;
     if (req.body.patch) query.patch = { $regex: `^${req.body.patch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` };
-    if (req.body.opponent) query.opponent = req.body.opponent;
+    if (req.body.opponent_name) query.opponent_name = req.body.opponent_name;
     if (req.body.folder_id) query.folder_id = req.body.folder_id;
+    if (req.body.search) {
+      const escaped = req.body.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.$or = [{ name: { $regex: escaped, $options: 'i' } }, { opponent_name: { $regex: escaped, $options: 'i' } }, { patch: { $regex: escaped, $options: 'i' } }];
+    }
     const data = await ScrimSession.find(query).sort({ createdAt: -1 });
     return res.status(200).send({ ok: true, data });
   } catch (error) {

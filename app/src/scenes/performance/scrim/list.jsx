@@ -4,17 +4,30 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
 import { useNavigate } from "react-router-dom"
-import { Plus, Target, Trash2, ChevronRight } from "lucide-react"
+import { Plus, Target, Trash2, ChevronDown, Search, X, Calendar, Trophy } from "lucide-react"
+
+function formatDate(value) {
+  if (!value) return "—"
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return "—"
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+}
+
+function getPatchPrefix(patch) {
+  if (!patch) return null
+  return patch.split(".").slice(0, 2).join(".")
+}
 
 export default function List() {
   const navigate = useNavigate()
   const [sessions, setSessions] = useState([])
   const { user } = useStore()
   const [showAddSessionModal, setShowAddSessionModal] = useState(false)
+  const [filters, setFilters] = useState({ search: "", patch: "", opponent_name: "" })
 
   const fetchSessions = async () => {
     try {
-      const { ok, data, code } = await api.post("/scrim-session/search", { team_id: user?.team_id })
+      const { ok, data, code } = await api.post("/scrim-session/search", { team_id: user?.team_id, ...filters })
       if (!ok) return toast.error(code || "Failed to fetch sessions")
       setSessions(data)
     } catch (error) {
@@ -24,9 +37,10 @@ export default function List() {
 
   useEffect(() => {
     fetchSessions()
-  }, [])
+  }, [filters])
 
-  const handleDeleteSession = async id => {
+  const handleDeleteSession = async (e, id) => {
+    e.stopPropagation()
     if (!window.confirm("Are you sure you want to delete this session?")) return
     try {
       const { ok, code } = await api.delete(`/scrim-session/${id}`)
@@ -39,8 +53,14 @@ export default function List() {
 
   return (
     <div className="min-h-screen bg-slate-900 p-4 lg:p-6">
-      <div className="max-w-[1800px] mx-auto space-y-5">
-        <div className="flex items-center justify-end">
+      <div className="max-w-[1400px] mx-auto space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Target className="w-5 h-5 text-amber-500" />
+            <h1 className="text-white text-lg font-semibold">Scrim Sessions</h1>
+            <span className="text-slate-500 text-sm">{sessions.length} total</span>
+          </div>
           <button
             onClick={() => setShowAddSessionModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors text-sm"
@@ -50,61 +70,270 @@ export default function List() {
           </button>
         </div>
 
-        <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-700/50 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-amber-500" />
-              <span className="text-white text-sm font-medium">Scrims</span>
-            </div>
-            <span className="text-slate-500 text-xs">{sessions.length} sessions</span>
+        {/* Filters */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search sessions..."
+              value={filters.search}
+              onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+              className="w-full pl-9 pr-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-lg text-white placeholder-slate-500 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
+            />
           </div>
 
-          {sessions.length === 0 ? (
-            <div className="p-12 text-center">
-              <Target className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-              <p className="text-slate-500 text-sm">No scrim sessions yet</p>
-              <p className="text-slate-600 text-xs mt-1">Create a new session to start reviewing</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-700/30">
-              {sessions.map(session => (
-                <button
-                  key={session._id}
-                  onClick={() => navigate(`/scrim-hub/scrims/${session._id}`)}
-                  className="w-full text-left px-5 py-4 hover:bg-slate-800/40 transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-white text-sm font-medium truncate">{session.name || "Untitled session"}</p>
-                      <p className="text-slate-500 text-xs mt-0.5 truncate">
-                        {session.date || "No date"} {session.opponent ? `• vs ${session.opponent}` : ""}
-                      </p>
-                    </div>
-                    <Trash2
-                      className="w-4 h-4 text-slate-500 hover:text-red-500 transition-colors cursor-pointer"
-                      onClick={e => (e.stopPropagation(), handleDeleteSession(session._id))}
-                      title="Delete session"
-                    />
-                  </div>
-                </button>
-              ))}
+          <PatchFilterDropdown value={filters.patch} onChange={v => setFilters(f => ({ ...f, patch: v }))} />
+          <OpponentFilterDropdown value={filters.opponent_name} onChange={v => setFilters(f => ({ ...f, opponent_name: v }))} />
+
+          {(filters.patch || filters.opponent_name || filters.search.trim()) && (
+            <button
+              onClick={() => setFilters({ search: "", patch: "", opponent_name: "" })}
+              className="flex items-center gap-1.5 px-3 py-2 text-slate-400 hover:text-white text-sm transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+              Clear
+            </button>
+          )}
+
+          {sessions.reduce((sum, s) => sum + (s.win || 0) + (s.loss || 0), 0) > 0 && (
+            <div className="ml-auto flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-emerald-400 font-medium">{sessions.reduce((sum, s) => sum + (s.win || 0), 0)}W</span>
+                <span className="text-slate-600">-</span>
+                <span className="text-red-400 font-medium">{sessions.reduce((sum, s) => sum + (s.loss || 0), 0)}L</span>
+              </div>
+              <span
+                className={`font-semibold tabular-nums ${
+                  Math.round((sessions.reduce((sum, s) => sum + (s.win || 0), 0) / sessions.reduce((sum, s) => sum + (s.win || 0) + (s.loss || 0), 0)) * 100) >= 50
+                    ? "text-emerald-400"
+                    : "text-red-400"
+                }`}
+              >
+                {Math.round((sessions.reduce((sum, s) => sum + (s.win || 0), 0) / sessions.reduce((sum, s) => sum + (s.win || 0) + (s.loss || 0), 0)) * 100)}%
+              </span>
             </div>
           )}
         </div>
 
-        <button
-          onClick={() => setShowAddSessionModal(true)}
-          className="w-full flex items-center justify-between px-5 py-4 bg-slate-800/40 border border-slate-700/30 border-dashed rounded-xl hover:border-amber-500/30 hover:bg-amber-500/5 transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <Plus className="w-5 h-5 text-slate-500 group-hover:text-amber-500 transition-colors" />
-            <span className="text-slate-400 group-hover:text-slate-200 text-sm transition-colors">Start a new scrim session review</span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-amber-500 transition-colors" />
-        </button>
+        {/* Table */}
+        <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl overflow-hidden">
+          {sessions.length === 0 ? (
+            <div className="p-16 text-center">
+              <Target className="w-10 h-10 text-slate-700 mx-auto mb-3" />
+              <p className="text-slate-500 text-sm">
+                {filters.patch || filters.opponent_name || filters.search.trim() ? "No sessions match your filters" : "No scrim sessions yet"}
+              </p>
+              {!(filters.patch || filters.opponent_name || filters.search.trim()) && <p className="text-slate-600 text-xs mt-1">Create a new session to start reviewing</p>}
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-700/50">
+                  <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-5 py-3">Session</th>
+                  <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Date</th>
+                  <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Opponent</th>
+                  <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Patch</th>
+                  <th className="text-center text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Record</th>
+                  <th className="text-center text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">WR</th>
+                  <th className="w-10" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700/30">
+                {sessions.map(session => (
+                  <tr key={session._id} onClick={() => navigate(`/scrim-hub/scrims/${session._id}`)} className="hover:bg-slate-700/20 transition-colors cursor-pointer group">
+                    <td className="px-5 py-3.5">
+                      <span className="text-white text-sm font-medium">{session.name || "Untitled session"}</span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-sm">
+                        <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                        {formatDate(session.date)}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {session.opponent_name ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-700/50 rounded text-sm text-slate-300">{session.opponent_name}</span>
+                      ) : (
+                        <span className="text-slate-600 text-sm">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {session.patch ? (
+                        <span className="font-mono text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">{getPatchPrefix(session.patch)}</span>
+                      ) : (
+                        <span className="text-slate-600 text-sm">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      {(session.win || 0) + (session.loss || 0) > 0 ? (
+                        <span className="text-sm tabular-nums">
+                          <span className="text-emerald-400 font-medium">{session.win || 0}</span>
+                          <span className="text-slate-600 mx-0.5">-</span>
+                          <span className="text-red-400 font-medium">{session.loss || 0}</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-600 text-sm">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      {(session.win || 0) + (session.loss || 0) > 0 && session.winrate != null ? (
+                        <span className={`text-sm font-semibold tabular-nums ${session.winrate >= 50 ? "text-emerald-400" : "text-red-400"}`}>{session.winrate}%</span>
+                      ) : (
+                        <span className="text-slate-600 text-sm">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3.5">
+                      <button
+                        onClick={e => handleDeleteSession(e, session._id)}
+                        className="p-1.5 rounded-md text-slate-600 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                        title="Delete session"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
 
         <AddSessionModal isOpen={showAddSessionModal} onClose={() => setShowAddSessionModal(false)} onSuccess={sessionId => navigate(`/scrim-hub/scrims/${sessionId}`)} />
       </div>
+    </div>
+  )
+}
+
+function PatchFilterDropdown({ value, onChange }) {
+  const { user } = useStore()
+  const [open, setOpen] = useState(false)
+  const [patches, setPatches] = useState([])
+
+  const fetchPatches = async () => {
+    try {
+      const { ok, data, code } = await api.post("/scrim-session/patches", { team_id: user?.team_id })
+      if (!ok) return toast.error(code || "Failed to fetch patches")
+      setPatches(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch patches")
+    }
+  }
+
+  useEffect(() => {
+    fetchPatches()
+  }, [user?.team_id])
+
+  if (patches.length === 0) return null
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+          value ? "bg-amber-500/10 border-amber-500/30 text-amber-400" : "bg-slate-800/60 border-slate-700/50 text-slate-400 hover:border-slate-600"
+        }`}
+      >
+        <span>{value || "Patch"}</span>
+        <ChevronDown className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden">
+            <div className="max-h-56 overflow-y-auto p-1">
+              <button
+                onClick={() => {
+                  onChange("")
+                  setOpen(false)
+                }}
+                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!value ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
+              >
+                All Patches
+              </button>
+              {patches.map(p => (
+                <button
+                  key={p}
+                  onClick={() => {
+                    onChange(p)
+                    setOpen(false)
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${value === p ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function OpponentFilterDropdown({ value, onChange }) {
+  const { user } = useStore()
+  const [open, setOpen] = useState(false)
+  const [opponents, setOpponents] = useState([])
+
+  const fetchOpponents = async () => {
+    try {
+      const { ok, data, code } = await api.post("/enemy-team/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code || "Failed to fetch opponents")
+      setOpponents(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch opponents")
+    }
+  }
+
+  useEffect(() => {
+    fetchOpponents()
+  }, [user?.team_id])
+
+  if (opponents.length === 0) return null
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+          value ? "bg-amber-500/10 border-amber-500/30 text-amber-400" : "bg-slate-800/60 border-slate-700/50 text-slate-400 hover:border-slate-600"
+        }`}
+      >
+        <span>{value || "Opponent"}</span>
+        <ChevronDown className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden">
+            <div className="max-h-56 overflow-y-auto p-1">
+              <button
+                onClick={() => {
+                  onChange("")
+                  setOpen(false)
+                }}
+                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!value ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
+              >
+                All Opponents
+              </button>
+              {opponents.map(t => (
+                <button
+                  key={t._id}
+                  onClick={() => {
+                    onChange(t.name)
+                    setOpen(false)
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${value === t.name ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
