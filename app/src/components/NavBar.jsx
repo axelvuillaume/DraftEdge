@@ -121,6 +121,7 @@ export function UploadModal({ isOpen, onClose, user, onSuccess }) {
   // ROFL specific state
   const [roflConfig, setRoflConfig] = useState({
     team_side: "",
+    opponent_id: "",
     opponent_name: "",
     name: "",
     draft_url: "",
@@ -156,7 +157,7 @@ export function UploadModal({ isOpen, onClose, user, onSuccess }) {
       const { ok, data, code } = await api.post("/enemy-team", { name })
       if (!ok) return toast.error(code)
       setEnemyTeams(prev => [data, ...prev])
-      setRoflConfig(prev => ({ ...prev, opponent_name: data.name }))
+      setRoflConfig(prev => ({ ...prev, opponent_id: data._id, opponent_name: data.name }))
       setNewTeamName("")
       setShowOpponentDropdown(false)
     } catch (error) {
@@ -215,7 +216,7 @@ export function UploadModal({ isOpen, onClose, user, onSuccess }) {
   const removeFile = () => {
     setFile(null)
     setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent_name: "", name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "" })
+    setRoflConfig({ team_side: "", opponent_id: "", opponent_name: "", name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "" })
   }
 
   const handleDrag = e => {
@@ -257,6 +258,7 @@ export function UploadModal({ isOpen, onClose, user, onSuccess }) {
       formData.append("team_side", roflConfig.team_side)
       formData.append("team_id", user?.team_id || "")
       formData.append("team_name", user?.team_name || "")
+      if (roflConfig.opponent_id) formData.append("opponent_id", roflConfig.opponent_id)
       formData.append("opponent_name", roflConfig.opponent_name)
       formData.append("name", roflConfig.name)
       if (roflConfig.date) formData.append("date", new Date(roflConfig.date).toISOString())
@@ -290,7 +292,7 @@ export function UploadModal({ isOpen, onClose, user, onSuccess }) {
     setFile(null)
     setUploadProgress(null)
     setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent_name: "", name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "" })
+    setRoflConfig({ team_side: "", opponent_id: "", opponent_name: "", name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "" })
     setShowOpponentDropdown(false)
     setNewTeamName("")
     setShowFolderDropdown(false)
@@ -483,10 +485,10 @@ export function UploadModal({ isOpen, onClose, user, onSuccess }) {
                               key={team._id}
                               type="button"
                               onClick={() => {
-                                setRoflConfig(prev => ({ ...prev, opponent_name: team.name }))
+                                setRoflConfig(prev => ({ ...prev, opponent_id: team._id, opponent_name: team.name }))
                                 setShowOpponentDropdown(false)
                               }}
-                              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${roflConfig.opponent_name === team.name ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${roflConfig.opponent_id === team._id ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
                             >
                               {team.name}
                             </button>

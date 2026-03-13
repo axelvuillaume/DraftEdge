@@ -38,7 +38,7 @@ function WinRateRing() {
 
   useEffect(() => {
     fetchStats()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   return (
     <div className="relative w-32 h-32 flex-shrink-0">
@@ -94,7 +94,7 @@ function StatsPills() {
     fetchHeaderStats()
     fetchGames()
     fetchKdaStats()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   const avgDurationSec = games.length ? Math.round(games.reduce((s, g) => s + (g.duration || 0), 0) / games.length) : 0
 
@@ -168,7 +168,7 @@ function EloPanel() {
 
   useEffect(() => {
     fetchStats()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   return (
     <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 flex flex-col">
@@ -204,7 +204,7 @@ function SideWinRatePanel() {
 
   useEffect(() => {
     fetchGames()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   return (
     <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 flex flex-col">
@@ -268,7 +268,7 @@ function DurationChart() {
 
   useEffect(() => {
     fetchGames()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   return (
     <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 flex flex-col">

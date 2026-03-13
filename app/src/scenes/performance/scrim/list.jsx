@@ -19,7 +19,7 @@ export default function List() {
   const [sessions, setSessions] = useState([])
   const { user } = useStore()
   const [showAddSessionModal, setShowAddSessionModal] = useState(false)
-  const [filters, setFilters] = useState({ search: "", patch: "", opponent_name: "" })
+  const [filters, setFilters] = useState({ search: "", patch: "", opponent_id: "" })
 
   const fetchSessions = async () => {
     try {
@@ -80,11 +80,11 @@ export default function List() {
           </div>
 
           <PatchFilterDropdown value={filters.patch} onChange={v => setFilters(f => ({ ...f, patch: v }))} />
-          <OpponentFilterDropdown value={filters.opponent_name} onChange={v => setFilters(f => ({ ...f, opponent_name: v }))} />
+          <OpponentFilterDropdown value={filters.opponent_id} onChange={v => setFilters(f => ({ ...f, opponent_id: v }))} />
 
-          {(filters.patch || filters.opponent_name || filters.search.trim()) && (
+          {(filters.patch || filters.opponent_id || filters.search.trim()) && (
             <button
-              onClick={() => setFilters({ search: "", patch: "", opponent_name: "" })}
+              onClick={() => setFilters({ search: "", patch: "", opponent_id: "" })}
               className="flex items-center gap-1.5 px-3 py-2 text-slate-400 hover:text-white text-sm transition-colors"
             >
               <X className="w-3.5 h-3.5" />
@@ -119,9 +119,9 @@ export default function List() {
             <div className="p-16 text-center">
               <Target className="w-10 h-10 text-slate-700 mx-auto mb-3" />
               <p className="text-slate-500 text-sm">
-                {filters.patch || filters.opponent_name || filters.search.trim() ? "No sessions match your filters" : "No scrim sessions yet"}
+                {filters.patch || filters.opponent_id || filters.search.trim() ? "No sessions match your filters" : "No scrim sessions yet"}
               </p>
-              {!(filters.patch || filters.opponent_name || filters.search.trim()) && <p className="text-slate-600 text-xs mt-1">Create a new session to start reviewing</p>}
+              {!(filters.patch || filters.opponent_id || filters.search.trim()) && <p className="text-slate-600 text-xs mt-1">Create a new session to start reviewing</p>}
             </div>
           ) : (
             <table className="w-full">
@@ -291,6 +291,8 @@ function OpponentFilterDropdown({ value, onChange }) {
 
   if (opponents.length === 0) return null
 
+  const selected = opponents.find(t => t._id === value)
+
   return (
     <div className="relative">
       <button
@@ -299,7 +301,7 @@ function OpponentFilterDropdown({ value, onChange }) {
           value ? "bg-amber-500/10 border-amber-500/30 text-amber-400" : "bg-slate-800/60 border-slate-700/50 text-slate-400 hover:border-slate-600"
         }`}
       >
-        <span>{value || "Opponent"}</span>
+        <span>{selected?.name || "Opponent"}</span>
         <ChevronDown className="w-3.5 h-3.5" />
       </button>
       {open && (
@@ -320,10 +322,10 @@ function OpponentFilterDropdown({ value, onChange }) {
                 <button
                   key={t._id}
                   onClick={() => {
-                    onChange(t.name)
+                    onChange(t._id)
                     setOpen(false)
                   }}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${value === t.name ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${value === t._id ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
                 >
                   {t.name}
                 </button>

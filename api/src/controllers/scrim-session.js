@@ -45,7 +45,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     let query = {};
     if (req.body.team_id) query.team_id = req.body.team_id;
     if (req.body.patch) query.patch = { $regex: `^${req.body.patch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` };
-    if (req.body.opponent_name) query.opponent_name = req.body.opponent_name;
+    if (req.body.opponent_id) query.opponent_id = req.body.opponent_id;
     if (req.body.folder_id) query.folder_id = req.body.folder_id;
     if (req.body.search) {
       const escaped = req.body.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

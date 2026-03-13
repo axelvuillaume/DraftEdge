@@ -79,7 +79,7 @@ export default function StatsV2() {
     fetchStats()
     fetchProStats()
     fetchSoloqStats()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   useEffect(() => {
     fetchProStats(activePlayer?.role || null)

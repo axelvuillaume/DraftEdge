@@ -763,7 +763,7 @@ function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [] }
   const [dragActive, setDragActive] = useState(false)
   const inputRef = useRef(null)
 
-  const [roflConfig, setRoflConfig] = useState({ team_side: "", opponent_name: "", name: "", folder_id: "", folder_name: "", draft_url: "" })
+  const [roflConfig, setRoflConfig] = useState({ team_side: "", opponent_id: "", opponent_name: "", name: "", folder_id: "", folder_name: "", draft_url: "" })
   const [roflPreview, setRoflPreview] = useState(null)
   const [parsing, setParsing] = useState(false)
 
@@ -791,7 +791,7 @@ function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [] }
   }, [isOpen, user?.team_id])
 
   useEffect(() => {
-    if (isOpen && session?.opponent_name) setRoflConfig(prev => ({ ...prev, opponent_name: session.opponent_name }))
+    if (isOpen && session?.opponent_name) setRoflConfig(prev => ({ ...prev, opponent_id: session.opponent_id || "", opponent_name: session.opponent_name }))
   }, [isOpen, session?.opponent])
 
   useEffect(() => {
@@ -881,7 +881,7 @@ function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [] }
   const removeFile = () => {
     setFile(null)
     setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent_name: "", name: "", folder_id: "", folder_name: "", draft_url: "" })
+    setRoflConfig({ team_side: "", opponent_id: "", opponent_name: "", name: "", folder_id: "", folder_name: "", draft_url: "" })
   }
 
   const handleDrag = e => {
@@ -909,6 +909,7 @@ function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [] }
       formData.append("team_side", roflConfig.team_side)
       formData.append("team_id", user?.team_id || "")
       formData.append("team_name", user?.team_name || "")
+      if (roflConfig.opponent_id) formData.append("opponent_id", roflConfig.opponent_id)
       formData.append("opponent_name", roflConfig.opponent_name)
       formData.append("name", roflConfig.name)
       if (session?._id) formData.append("session_id", session._id)
@@ -941,7 +942,7 @@ function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [] }
     setFile(null)
     setUploadProgress(null)
     setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent_name: "", name: "", folder_id: "", folder_name: "", draft_url: "" })
+    setRoflConfig({ team_side: "", opponent_id: "", opponent_name: "", name: "", folder_id: "", folder_name: "", draft_url: "" })
     setShowFolderDropdown(false)
     setNewFolderName("")
     setActiveTab("import")
@@ -1136,7 +1137,12 @@ function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [] }
                       </div>
                     </div>
 
-                    <OpponentDropdown value={roflConfig.opponent_name} onChange={({ name }) => setRoflConfig(prev => ({ ...prev, opponent_name: name }))} label="Opponent Team" />
+                    <div>
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Opponent</label>
+                      <div className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white text-sm">
+                        {session?.opponent_name || <span className="text-slate-400">No opponent set</span>}
+                      </div>
+                    </div>
 
                     <div className="relative">
                       <label className="block text-sm font-medium text-slate-400 mb-1">Folder</label>

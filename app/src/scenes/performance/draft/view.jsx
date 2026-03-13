@@ -575,7 +575,7 @@ function MyTeamMostPlayedPanel() {
 
   useEffect(() => {
     fetchData()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   return (
     <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
@@ -692,7 +692,7 @@ function MyTeamCombosPanel() {
 
   useEffect(() => {
     fetchData()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   return (
     <div className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
@@ -821,7 +821,7 @@ function MyTeamFlexedPanel() {
 
   useEffect(() => {
     fetchData()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_name])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   if (!data || data.length === 0) {
     return (

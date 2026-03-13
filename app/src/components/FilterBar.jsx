@@ -33,14 +33,17 @@ const FilterBar = () => {
     return () => document.removeEventListener("mousedown", handler)
   }, [])
 
-  const hasActiveFilters = globalFilters.patch || globalFilters.folder_id || globalFilters.opponent_name
+  const hasActiveFilters = globalFilters.patch || globalFilters.folder_id || globalFilters.opponent_id
 
   const getScopeLabel = () => {
     if (globalFilters.folder_id) {
       const folder = filterOptions.folders?.find(f => f._id === globalFilters.folder_id)
       return folder?.name || "Folder"
     }
-    if (globalFilters.opponent_name) return `vs ${globalFilters.opponent_name}`
+    if (globalFilters.opponent_id) {
+      const team = filterOptions.opponents?.find(t => t._id === globalFilters.opponent_id)
+      return team ? `vs ${team.name}` : "Opponent"
+    }
     return "All Games"
   }
 
@@ -91,13 +94,13 @@ const FilterBar = () => {
         <button
           onClick={() => setScopeOpen(!scopeOpen)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-            globalFilters.folder_id || globalFilters.opponent_name
+            globalFilters.folder_id || globalFilters.opponent_id
               ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
               : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600"
           }`}
         >
           {globalFilters.folder_id && <Folder className="w-3 h-3" />}
-          {globalFilters.opponent_name && <Swords className="w-3 h-3" />}
+          {globalFilters.opponent_id && <Swords className="w-3 h-3" />}
           <span className="max-w-[140px] truncate">{getScopeLabel()}</span>
           <ChevronDown className="w-3 h-3" />
         </button>
@@ -106,11 +109,11 @@ const FilterBar = () => {
             {/* All Games */}
             <button
               onClick={() => {
-                setGlobalFilters({ folder_id: null, opponent_name: null })
+                setGlobalFilters({ folder_id: null, opponent_id: null })
                 setScopeOpen(false)
               }}
               className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-700/50 transition-colors ${
-                !globalFilters.folder_id && !globalFilters.opponent_name ? "text-amber-400" : "text-white"
+                !globalFilters.folder_id && !globalFilters.opponent_id ? "text-amber-400" : "text-white"
               }`}
             >
               All Games
@@ -125,7 +128,7 @@ const FilterBar = () => {
                   <button
                     key={folder._id}
                     onClick={() => {
-                      setGlobalFilters({ folder_id: folder._id, opponent_name: null })
+                      setGlobalFilters({ folder_id: folder._id, opponent_id: null })
                       setScopeOpen(false)
                     }}
                     className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-700/50 transition-colors flex items-center gap-2 ${
@@ -148,11 +151,11 @@ const FilterBar = () => {
                   <button
                     key={team._id}
                     onClick={() => {
-                      setGlobalFilters({ opponent_name: team.name, folder_id: null })
+                      setGlobalFilters({ opponent_id: team._id, folder_id: null })
                       setScopeOpen(false)
                     }}
                     className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-700/50 transition-colors flex items-center gap-2 ${
-                      globalFilters.opponent_name === team.name ? "text-amber-400" : "text-white"
+                      globalFilters.opponent_id === team._id ? "text-amber-400" : "text-white"
                     }`}
                   >
                     <Swords className="w-3.5 h-3.5 text-red-400/70 shrink-0" />

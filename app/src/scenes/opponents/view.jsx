@@ -99,7 +99,7 @@ export default function View({ stats }) {
               <p className={`text-2xl font-bold ${wrColor}`}>{Math.round(teamStats.win_rate * 100)}%</p>
             </div>
             <button
-              onClick={() => navigate("/performance/games", { state: { opponent_name: team.name } })}
+              onClick={() => navigate("/performance/games", { state: { opponent_id: team._id } })}
               className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 hover:border-amber-500/50 transition-all group text-left"
             >
               <div className="flex items-center gap-2 mb-1">

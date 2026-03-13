@@ -21,7 +21,7 @@ export default function Games() {
   const [games, setGames] = useState([])
   const { user } = useStore()
   const [folders, setFolders] = useState([])
-  const [filters, setFilters] = useState({ folder_id: null, opponent_name: location.state?.opponent_name || null, official: null })
+  const [filters, setFilters] = useState({ folder_id: null, opponent_id: location.state?.opponent_id || null, official: null })
   const [selectedGames, setSelectedGames] = useState([])
   const [selectionMode, setSelectionMode] = useState(false)
   const [showMoveDropdown, setShowMoveDropdown] = useState(false)
@@ -349,13 +349,13 @@ function OpponentFilter({ filters, onFilterChange }) {
 
   return (
     <select
-      value={filters.opponent_name || ""}
-      onChange={e => onFilterChange({ ...filters, opponent_name: e.target.value || null })}
+      value={filters.opponent_id || ""}
+      onChange={e => onFilterChange({ ...filters, opponent_id: e.target.value || null })}
       className="bg-slate-800 border border-slate-700 text-sm text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-amber-500 transition-all duration-200 cursor-pointer"
     >
       <option value="">All opponents</option>
       {enemyTeams.map(team => (
-        <option key={team._id} value={team.name}>
+        <option key={team._id} value={team._id}>
           {team.name}
         </option>
       ))}
@@ -609,7 +609,7 @@ function EditGameModal({ game, isOpen, onClose, onSaved }) {
               autoFocus
             />
           </div>
-          <OpponentDropdown value={editForm.opponent_name} onChange={name => setEditForm(prev => ({ ...prev, opponent_name: name }))} label="Opponent Team" />
+          <OpponentDropdown value={editForm.opponent_name} onChange={({ name }) => setEditForm(prev => ({ ...prev, opponent_name: name }))} label="Opponent Team" />
           <div>
             <label className="block text-sm font-medium text-slate-400 mb-2">Date</label>
             <input

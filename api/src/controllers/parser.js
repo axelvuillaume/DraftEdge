@@ -655,7 +655,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Le fichier doit être un .rofl' });
     }
 
-    const { team_id, team_name, team_side, opponent_name, name, session_id, session_name, folder_id, folder_name, draft_url, date, official } = req.body;
+    const { team_id, team_name, team_side, opponent_id, opponent_name, name, session_id, session_name, folder_id, folder_name, draft_url, date, official } = req.body;
 
     if (!team_side || !['blue', 'red'].includes(team_side)) {
       return res.status(400).json({ ok: false, error: 'team_side requis (blue ou red)' });
@@ -671,6 +671,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     data.game.team_id = team_id || null;
     data.game.team_name = team_name || null;
     data.game.team_side = team_side;
+    data.game.opponent_id = opponent_id || null;
     data.game.opponent_name = opponent_name || null;
     data.game.name = name || null;
     data.game.session_id = session_id || null;

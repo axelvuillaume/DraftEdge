@@ -577,6 +577,7 @@ function ReadyUpModal({ isOpen, onClose }) {
       formData.append("team_side", roflConfig.team_side)
       formData.append("team_id", user?.team_id || "")
       formData.append("team_name", user?.team_name || "")
+      if (roflConfig.opponent?._id) formData.append("opponent_id", roflConfig.opponent._id)
       formData.append("opponent_name", roflConfig.opponent?.name || "")
       formData.append("name", roflConfig.name)
       if (roflConfig.date) formData.append("date", new Date(roflConfig.date).toISOString())
