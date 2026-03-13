@@ -12,3 +12,17 @@ const team = await Team.findById(id);
 const team = await Team.findById(id).lean();
 const team = await Team.findById(id).select("name league");
 ```
+
+## No Unnecessary Variables
+
+NEVER create intermediate `const` variables for simple derived values. Inline them directly in the JS.
+
+```jsx
+// BAD
+const score = avg.toFixed(1);
+const color = avg >= 7 ? "text-emerald-400" : "text-red-400";
+return <span className={color}>{score}</span>;
+
+// GOOD
+return <span className={avg >= 7 ? "text-emerald-400" : "text-red-400"}>{avg.toFixed(1)}</span>;
+```

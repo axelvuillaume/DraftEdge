@@ -69,7 +69,7 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
   }
 });
 
-// Aggregate win/loss per opponent from games
+// Manager space
 router.post('/stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const team_id = req.user.team_id;
@@ -86,13 +86,7 @@ router.post('/stats', passport.authenticate(['admin', 'user'], { session: false,
       },
     ]);
 
-    const data = stats.map((s) => ({
-      opponent_name: s._id,
-      total_games: s.total_games,
-      wins: s.wins,
-      losses: s.losses,
-      win_rate: s.total_games > 0 ? s.wins / s.total_games : 0,
-    }));
+    const data = stats.map((s) => ({ opponent_name: s._id, total_games: s.total_games, wins: s.wins, losses: s.losses, win_rate: s.total_games > 0 ? s.wins / s.total_games : 0 }));
 
     return res.status(200).send({ ok: true, data });
   } catch (error) {

@@ -91,7 +91,7 @@ function MiniStats() {
 
   const fetchData = async () => {
     try {
-      const { ok, data, code } = await api.post("/game/header-stats", {})
+      const { ok, data, code } = await api.get("/game/home-stats")
       if (!ok) return toast.error(code || "Failed to fetch stats")
       setStats(data)
     } catch (error) {
