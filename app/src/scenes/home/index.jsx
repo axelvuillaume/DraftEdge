@@ -322,7 +322,7 @@ function ScrimPlanner() {
   const navigate = useNavigate()
   const [sessions, setSessions] = useState([])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: "", opponent: "", date: "" })
+  const [form, setForm] = useState({ name: "", opponent: null, date: "" })
 
   const fetchData = async () => {
     try {
@@ -343,14 +343,14 @@ function ScrimPlanner() {
 
   const createSession = async () => {
     if (!form.name.trim()) return toast.error("Session name is required")
-    if (!form.opponent) return toast.error("Opponent is required")
+    if (!form.opponent?._id) return toast.error("Opponent is required")
     try {
-      const body = { name: form.name.trim(), opponent: form.opponent }
+      const body = { name: form.name.trim(), opponent_id: form.opponent._id, opponent_name: form.opponent.name }
       if (form.date) body.date = new Date(form.date).toISOString()
       const { ok, data, code } = await api.post("/scrim-session", body)
       if (!ok) return toast.error(code || "Failed to create session")
       setSessions(prev => [...prev, data].sort((a, b) => new Date(a.date) - new Date(b.date)))
-      setForm({ name: "", opponent: "", date: "" })
+      setForm({ name: "", opponent: null, date: "" })
       setShowForm(false)
       toast.success("Scrim session created")
     } catch (error) {
@@ -374,7 +374,7 @@ function ScrimPlanner() {
         isOpen={showForm}
         onClose={() => {
           setShowForm(false)
-          setForm({ name: "", opponent: "", date: "" })
+          setForm({ name: "", opponent: null, date: "" })
         }}
         className="max-w-md w-full bg-slate-900"
       >
@@ -387,7 +387,7 @@ function ScrimPlanner() {
             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white placeholder-slate-500 text-sm focus:border-blue-500 focus:outline-none"
           />
-          <OpponentDropdown value={form.opponent} onChange={v => setForm(f => ({ ...f, opponent: v }))} label="Opponent Team *" />
+          <OpponentDropdown value={form.opponent?.name || ""} onChange={v => setForm(f => ({ ...f, opponent: v }))} label="Opponent Team *" />
           <input
             type="date"
             value={form.date}
@@ -396,7 +396,7 @@ function ScrimPlanner() {
           />
           <button
             onClick={createSession}
-            disabled={!form.name.trim() || !form.opponent}
+            disabled={!form.name.trim() || !form.opponent?._id}
             className="w-full py-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40"
           >
             Create Session
@@ -459,7 +459,7 @@ function ReadyUpModal({ isOpen, onClose }) {
   const inputRef = useRef(null)
   const [roflConfig, setRoflConfig] = useState({
     team_side: "",
-    opponent_name: "",
+    opponent: null,
     name: "",
     draft_url: "",
     date: new Date().toISOString().slice(0, 10),
@@ -471,7 +471,7 @@ function ReadyUpModal({ isOpen, onClose }) {
   const [parsing, setParsing] = useState(false)
 
   // === Session tab state ===
-  const [sessionForm, setSessionForm] = useState({ name: "", opponent: "", date: new Date().toISOString().slice(0, 10) })
+  const [sessionForm, setSessionForm] = useState({ name: "", opponent: null, date: new Date().toISOString().slice(0, 10) })
   const [creatingSession, setCreatingSession] = useState(false)
 
   // === Shared state ===
@@ -499,10 +499,10 @@ function ReadyUpModal({ isOpen, onClose }) {
     setFile(null)
     setUploadProgress(null)
     setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent_name: "", name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "", official: true })
+    setRoflConfig({ team_side: "", opponent: null, name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "", official: true })
     setShowFolderDropdown(false)
     setNewFolderName("")
-    setSessionForm({ name: "", opponent: "", date: new Date().toISOString().slice(0, 10) })
+    setSessionForm({ name: "", opponent: null, date: new Date().toISOString().slice(0, 10) })
     onClose()
   }
 
@@ -548,7 +548,7 @@ function ReadyUpModal({ isOpen, onClose }) {
   const removeFile = () => {
     setFile(null)
     setRoflPreview(null)
-    setRoflConfig(prev => ({ ...prev, team_side: "", opponent_name: "", name: "", draft_url: "", folder_id: "", folder_name: "", official: true }))
+    setRoflConfig(prev => ({ ...prev, team_side: "", opponent: null, name: "", draft_url: "", folder_id: "", folder_name: "", official: true }))
   }
 
   const handleDrag = e => {
@@ -568,7 +568,7 @@ function ReadyUpModal({ isOpen, onClose }) {
   const handleUpload = async () => {
     if (!file) return
     if (!roflConfig.team_side) return toast.error("Select your side (Blue/Red)")
-    if (!roflConfig.opponent_name) return toast.error("Select an opponent team")
+    if (!roflConfig.opponent?.name) return toast.error("Select an opponent team")
     setUploading(true)
     setUploadProgress("uploading")
     try {
@@ -577,7 +577,7 @@ function ReadyUpModal({ isOpen, onClose }) {
       formData.append("team_side", roflConfig.team_side)
       formData.append("team_id", user?.team_id || "")
       formData.append("team_name", user?.team_name || "")
-      formData.append("opponent_name", roflConfig.opponent_name)
+      formData.append("opponent_name", roflConfig.opponent?.name || "")
       formData.append("name", roflConfig.name)
       if (roflConfig.date) formData.append("date", new Date(roflConfig.date).toISOString())
       if (roflConfig.draft_url) formData.append("draft_url", roflConfig.draft_url)
@@ -604,10 +604,10 @@ function ReadyUpModal({ isOpen, onClose }) {
   // === Session creation handler ===
   const handleCreateSession = async () => {
     if (!sessionForm.name.trim()) return toast.error("Session name is required")
-    if (!sessionForm.opponent) return toast.error("Select an opponent")
+    if (!sessionForm.opponent?._id) return toast.error("Select an opponent")
     setCreatingSession(true)
     try {
-      const body = { name: sessionForm.name.trim(), opponent: sessionForm.opponent }
+      const body = { name: sessionForm.name.trim(), opponent_id: sessionForm.opponent._id, opponent_name: sessionForm.opponent.name }
       if (sessionForm.date) body.date = new Date(sessionForm.date).toISOString()
       const { ok, data, code } = await api.post("/scrim-session", body)
       if (!ok) return toast.error(code || "Failed to create session")
@@ -788,7 +788,7 @@ function ReadyUpModal({ isOpen, onClose }) {
                       </div>
                     </div>
 
-                    <OpponentDropdown value={roflConfig.opponent_name} onChange={v => setRoflConfig(prev => ({ ...prev, opponent_name: v }))} label="Opponent Team *" />
+                    <OpponentDropdown value={roflConfig.opponent?.name || ""} onChange={v => setRoflConfig(prev => ({ ...prev, opponent: v }))} label="Opponent Team *" />
 
                     {/* Folder */}
                     <div className="relative">
@@ -911,7 +911,7 @@ function ReadyUpModal({ isOpen, onClose }) {
             <div className="flex justify-end mt-6">
               <button
                 onClick={handleUpload}
-                disabled={!file || uploading || parsing || !roflConfig.team_side || !roflConfig.opponent_name}
+                disabled={!file || uploading || parsing || !roflConfig.team_side || !roflConfig.opponent?.name}
                 className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
               >
                 {uploading ? (
@@ -945,7 +945,7 @@ function ReadyUpModal({ isOpen, onClose }) {
               />
             </div>
 
-            <OpponentDropdown value={sessionForm.opponent} onChange={v => setSessionForm(f => ({ ...f, opponent: v }))} label="Opponent Team *" />
+            <OpponentDropdown value={sessionForm.opponent?.name || ""} onChange={v => setSessionForm(f => ({ ...f, opponent: v }))} label="Opponent Team *" />
 
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
@@ -960,7 +960,7 @@ function ReadyUpModal({ isOpen, onClose }) {
             <div className="flex justify-end pt-2">
               <button
                 onClick={handleCreateSession}
-                disabled={creatingSession || !sessionForm.name.trim() || !sessionForm.opponent}
+                disabled={creatingSession || !sessionForm.name.trim() || !sessionForm.opponent?._id}
                 className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
               >
                 {creatingSession ? (
