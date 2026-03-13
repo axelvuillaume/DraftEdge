@@ -610,9 +610,8 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
   try {
     const filters = extractFilters(req.body);
     const { gameIdFilter, gameQuery } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
-    const allStats = await PlayerStats.find({ team_id: req.user.team_id, ...gameIdFilter });
-    const playerStats = allStats.filter((s) => !s.opponent);
-    const opponentStats = allStats.filter((s) => s.opponent);
+    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false, ...gameIdFilter });
+    const opponentStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
     const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
 
     // Build opponent map for matchups
@@ -816,9 +815,8 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
 
     const filters = extractFilters(req.body);
     const { gameIdFilter, gameQuery } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
-    const allStats = await PlayerStats.find({ team_id: req.user.team_id, ...gameIdFilter });
-    const playerStats = allStats.filter((s) => !s.opponent);
-    const opponentStats = allStats.filter((s) => s.opponent);
+    const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false, ...gameIdFilter });
+    const opponentStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
     const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
 
     const getCategoryScores = (teamAgg, enemyAgg) => {
@@ -1295,19 +1293,19 @@ router.post('/official_split', passport.authenticate(['admin', 'user'], { sessio
   try {
     const filters = extractFilters(req.body);
     const { gameIdFilter } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
-    const allStats = await PlayerStats.find({ team_id: req.user.team_id, ...gameIdFilter });
+
+    let teamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false, ...gameIdFilter });
+    let enemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
 
     const position = req.body.position;
-    let teamStats = allStats.filter((s) => !s.opponent);
-    let enemyStats = allStats.filter((s) => s.opponent);
-
     if (position) {
       teamStats = teamStats.filter((s) => s.role === position);
       enemyStats = enemyStats.filter((s) => s.role === position);
     }
     if (req.body.champion) {
       teamStats = teamStats.filter((s) => s.champion === req.body.champion);
-      enemyStats = enemyStats.filter((s) => s.champion === req.body.champion);
+      const champGameIds = new Set(teamStats.map((s) => s.game_id));
+      enemyStats = enemyStats.filter((s) => champGameIds.has(s.game_id));
     }
 
     const buildCategoryValues = (tStats, eStats) => {
