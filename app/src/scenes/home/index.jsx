@@ -888,21 +888,13 @@ function ReadyUpModal({ isOpen, onClose }) {
                     </div>
 
                     <div className="flex items-end pb-0.5">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setRoflConfig(prev => ({ ...prev, official: !prev.official }))}
-                          className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-all ${roflConfig.official ? "bg-amber-500 border-amber-500" : "border-slate-600 bg-slate-700/50 hover:border-slate-500"}`}
-                        >
-                          {roflConfig.official && (
-                            <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
-                              <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                        </button>
-                        <label className="text-sm text-slate-300 cursor-pointer select-none" onClick={() => setRoflConfig(prev => ({ ...prev, official: !prev.official }))}>
-                          Official game
-                        </label>
+                      <div className="flex items-center gap-2 opacity-60">
+                        <div className="w-5 h-5 rounded border flex items-center justify-center shrink-0 bg-amber-500 border-amber-500">
+                          <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                            <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                        <span className="text-sm text-slate-300 select-none">Official game</span>
                       </div>
                     </div>
                   </div>
