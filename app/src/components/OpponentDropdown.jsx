@@ -38,7 +38,7 @@ export default function OpponentDropdown({ value, onChange, label }) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative min-w-[200px]">
       {label && <label className="block text-sm font-medium text-slate-400 mb-1">{label}</label>}
       <button
         type="button"
