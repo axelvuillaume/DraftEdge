@@ -14,7 +14,7 @@ const Schema = new mongoose.Schema(
     // Match details
     dateTime: { type: Date, required: true, index: true },
     league: { type: String, index: true }, // e.g., 'LCK'
-    year: { type: Number, default: 2026 }, // e.g., 2025
+    year: { type: Number }, // e.g., 2025
     split: { type: String }, // e.g., 'Spring'
 
     patch: { type: String },
