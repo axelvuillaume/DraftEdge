@@ -27,12 +27,7 @@ router.get('/players/list', passport.authenticate(['admin', 'user'], { session: 
     if (req.query.position) match.position = ROLE_TO_POSITION[req.query.position] || req.query.position;
     if (req.query.league) match.league = req.query.league;
 
-    const players = await ProGamePlayerstats.aggregate([
-      { $match: match },
-      { $group: { _id: '$playername', team: { $last: '$teamname' }, position: { $last: '$position' } } },
-      { $project: { _id: 0, name: '$_id', team: 1, position: 1 } },
-      { $sort: { name: 1 } },
-    ]);
+    const players = await ProGamePlayerstats.aggregate([{ $match: match }, { $group: { _id: '$playername', team: { $last: '$teamname' }, position: { $last: '$position' } } }, { $project: { _id: 0, name: '$_id', team: 1, position: 1 } }, { $sort: { name: 1 } }]);
 
     return res.status(200).send({ ok: true, data: players });
   } catch (error) {

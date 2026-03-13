@@ -370,7 +370,13 @@ function getDraftPhaseInfo(blueCount, redCount) {
 // E.g. if pickIndices=[2] but we're in blue's B2+B3 phase, return [1,2].
 // This ensures we scan both draft order slots even when one is already filled.
 function getFullPhaseRange(suggestSide, pickIndices) {
-  const multiPickPhases = suggestSide === 'blue' ? [[1, 2], [3, 4]] : [[0, 1]];
+  const multiPickPhases =
+    suggestSide === 'blue'
+      ? [
+          [1, 2],
+          [3, 4],
+        ]
+      : [[0, 1]];
   for (const phase of multiPickPhases) {
     if (pickIndices.some((idx) => phase.includes(idx))) {
       return phase;
@@ -381,7 +387,8 @@ function getFullPhaseRange(suggestSide, pickIndices) {
 
 // After the current phase completes, find the next phase for a specific side
 function getNextPhaseForSide(targetSide, currentSide, blueCount, redCount, pickIndices) {
-  let newBlue = blueCount, newRed = redCount;
+  let newBlue = blueCount,
+    newRed = redCount;
   if (currentSide === 'blue') {
     newBlue = Math.max(newBlue, Math.max(...pickIndices) + 1);
   } else {
@@ -409,12 +416,7 @@ router.post('/draft-suggestions', passport.authenticate(['admin', 'user'], { ses
     const blueCount = blueChamps.length;
     const redCount = redChamps.length;
 
-    const allUsed = new Set([
-      ...blueChamps,
-      ...redChamps,
-      ...(blueBans || []).filter(Boolean),
-      ...(redBans || []).filter(Boolean),
-    ]);
+    const allUsed = new Set([...blueChamps, ...redChamps, ...(blueBans || []).filter(Boolean), ...(redBans || []).filter(Boolean)]);
 
     const phase = getDraftPhaseInfo(blueCount, redCount);
     if (!phase) {
@@ -553,11 +555,14 @@ router.post('/draft-suggestions', passport.authenticate(['admin', 'user'], { ses
           if (responsePhase) {
             const synUniqueMatchIds = [...new Set(synMatchIds[syn.name])];
             if (synUniqueMatchIds.length > 0) {
-              const counterGames = await ProGame.find({
-                ...baseQuery,
-                side: responsePhase.suggestSide,
-                matchId: { $in: synUniqueMatchIds },
-              }, { picks: 1, winner: 1 }).lean();
+              const counterGames = await ProGame.find(
+                {
+                  ...baseQuery,
+                  side: responsePhase.suggestSide,
+                  matchId: { $in: synUniqueMatchIds },
+                },
+                { picks: 1, winner: 1 },
+              ).lean();
 
               const counterExclude = new Set([...excludeSet, syn.name]);
               const counterStats = {};
@@ -596,11 +601,14 @@ router.post('/draft-suggestions', passport.authenticate(['admin', 'user'], { ses
         const branchData = { ...branch, responses: [] };
 
         if (responsePhase && uniqueMatchIds.length > 0) {
-          const opponentGames = await ProGame.find({
-            ...baseQuery,
-            side: responsePhase.suggestSide,
-            matchId: { $in: uniqueMatchIds },
-          }, { picks: 1, winner: 1 }).lean();
+          const opponentGames = await ProGame.find(
+            {
+              ...baseQuery,
+              side: responsePhase.suggestSide,
+              matchId: { $in: uniqueMatchIds },
+            },
+            { picks: 1, winner: 1 },
+          ).lean();
 
           const excludeSet = new Set([...allUsed, branch.name]);
           const respStats = {};
