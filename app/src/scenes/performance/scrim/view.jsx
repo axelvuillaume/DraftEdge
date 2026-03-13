@@ -808,7 +808,7 @@ function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [] }
 
   const fetchHistoryGames = async () => {
     try {
-      const { ok, data, code } = await api.post("/game/search", { team_id: user?.team_id, limit: 100 })
+      const { ok, data, code } = await api.post("/game/search", { team_id: user?.team_id, limit: 100, session_id: null })
       if (!ok) return toast.error(code || "Failed to fetch games")
       setHistoryGames(data)
     } catch (error) {
