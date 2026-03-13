@@ -14,7 +14,7 @@ const S3_SECRETACCESSKEY = process.env.S3_SECRETACCESSKEY || '';
 
 const BREVO_KEY = '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';
 
-const RIOT_API_KEY = 'RGAPI-164aa939-d6ce-41c0-8e83-196550ad86eb' || '';
+const RIOT_API_KEY = 'RGAPI-4262b941-2677-4e42-a8c7-f89750638407' || '';
 
 const POSTHOG_API_KEY = 'phc_ytErKBckHNz5Rs3qW4sJqVbCiMLRBj6BTFZ1a5fVNrU';
 const POSTHOG_HOST = 'https://eu.i.posthog.com';
