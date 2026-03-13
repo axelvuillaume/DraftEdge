@@ -236,7 +236,7 @@ async function processPlayer(player) {
 
 (async () => {
   // ⬇️ Mettre un team_id ici pour filtrer sur une seule équipe, ou null pour tout récupérer
-  const TEAM_ID = "697cb58fc93718dc53d6408b";
+  const TEAM_ID = "694a62d976604af5522a5a32";
 
   console.log("Connecting to MongoDB…");
   await mongoose.connect(MONGODB_ENDPOINT, MONGO_OPTIONS);

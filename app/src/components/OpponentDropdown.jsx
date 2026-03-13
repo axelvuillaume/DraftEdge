@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
@@ -9,7 +9,7 @@ export default function OpponentDropdown({ value, onChange, label }) {
   const { user } = useStore()
   const [enemyTeams, setEnemyTeams] = useState([])
   const [open, setOpen] = useState(false)
-  const [newTeamName, setNewTeamName] = useState("")
+  const [search, setSearch] = useState("")
   const btnRef = useRef(null)
   const [dropdownPos, setDropdownPos] = useState(null)
 
@@ -34,7 +34,10 @@ export default function OpponentDropdown({ value, onChange, label }) {
   }, [])
 
   const handleToggle = () => {
-    if (!open) updatePosition()
+    if (!open) {
+      updatePosition()
+      setSearch("")
+    }
     setOpen(prev => !prev)
   }
 
@@ -55,12 +58,23 @@ export default function OpponentDropdown({ value, onChange, label }) {
       if (!ok) return toast.error(code || "Failed to create team")
       setEnemyTeams(prev => [data, ...prev])
       onChange({ _id: data._id, name: data.name })
-      setNewTeamName("")
+      setSearch("")
       setOpen(false)
     } catch (error) {
       toast.error(error.code || "Failed to create team")
     }
   }
+
+  const filteredTeams = useMemo(() => {
+    if (!search.trim()) return enemyTeams
+    const q = search.trim().toLowerCase()
+    return enemyTeams.filter(t => t.name.toLowerCase().includes(q))
+  }, [enemyTeams, search])
+
+  const exactMatch = useMemo(() => {
+    if (!search.trim()) return true
+    return enemyTeams.some(t => t.name.toLowerCase() === search.trim().toLowerCase())
+  }, [enemyTeams, search])
 
   return (
     <div className="relative min-w-[200px]">
@@ -87,25 +101,28 @@ export default function OpponentDropdown({ value, onChange, label }) {
                 <form
                   onSubmit={e => {
                     e.preventDefault()
-                    if (newTeamName.trim()) createEnemyTeam(newTeamName.trim())
+                    if (search.trim() && !exactMatch) createEnemyTeam(search.trim())
                   }}
                   className="flex items-center gap-1.5"
                 >
                   <input
                     type="text"
-                    placeholder="New team..."
-                    value={newTeamName}
-                    onChange={e => setNewTeamName(e.target.value)}
+                    placeholder="Search or create team..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
                     className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-blue-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
                     autoFocus
                   />
-                  <button type="submit" disabled={!newTeamName.trim()} className="p-1.5 bg-blue-500 hover:bg-blue-400 disabled:opacity-30 text-white rounded-md transition-colors">
-                    <Plus className="w-3 h-3" />
-                  </button>
+                  {search.trim() && !exactMatch && (
+                    <button type="submit" className="p-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-md transition-colors" title="Create team">
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  )}
                 </form>
               </div>
               <div className="max-h-40 overflow-y-auto p-1">
-                {enemyTeams.map(team => (
+                {filteredTeams.length === 0 && <p className="text-xs text-slate-500 text-center py-2">{search.trim() ? "No match — press + to create" : "No teams yet"}</p>}
+                {filteredTeams.map(team => (
                   <button
                     key={team._id}
                     type="button"
