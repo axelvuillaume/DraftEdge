@@ -62,7 +62,7 @@ export default function StatsV2() {
       const { ok, data, code, total } = await api.post("/pro-game-playerstats/aggregate", body)
       if (!ok) return toast.error(code || "Failed to fetch pro stats")
       setProStats(data)
-      setProGames(total || null)
+      setProGames(total ?? null)
     } catch (error) {
       toast.error(error.code || "Failed to fetch pro stats")
     }
@@ -77,7 +77,7 @@ export default function StatsV2() {
       const { ok, data, code, total } = await api.post("/soloq-match/aggregate", body)
       if (!ok) return toast.error(code || "Failed to fetch soloq stats")
       setSoloqStats(data)
-      setSoloqGames(total || null)
+      setSoloqGames(total ?? null)
     } catch (error) {
       toast.error(error.code || "Failed to fetch soloq stats")
     }
@@ -280,6 +280,57 @@ export default function StatsV2() {
                 })
 
               if (viewMode === "spider") {
+                const noCompareData =
+                  (compareMode === "pro" && !proGames) ||
+                  (compareMode === "soloq" && !soloqGames) ||
+                  (compareMode === "offi" && (!officialSplitStats || !officialSplitStats.officialGames))
+
+                if (noCompareData) {
+                  return (
+                    <>
+                      <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                        <p className="text-sm font-medium">No data</p>
+                      </div>
+                      <div className="flex justify-end mt-4">
+                        <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
+                          <button
+                            onClick={() => setCompareMode("scrim")}
+                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                              compareMode === "scrim" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                            }`}
+                          >
+                            vs Scrim
+                          </button>
+                          <button
+                            onClick={() => setCompareMode("pro")}
+                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                              compareMode === "pro" ? "bg-amber-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
+                            }`}
+                          >
+                            vs Pro
+                          </button>
+                          <button
+                            onClick={() => setCompareMode("soloq")}
+                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                              compareMode === "soloq" ? "bg-cyan-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
+                            }`}
+                          >
+                            vs SoloQ
+                          </button>
+                          <button
+                            onClick={() => setCompareMode("offi")}
+                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                              compareMode === "offi" ? "bg-violet-500/90 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                            }`}
+                          >
+                            Offi vs Non-Offi
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )
+                }
+
                 const spiderMetrics =
                   compareMode === "offi" && officialSplitStats?.official?.[activeCategory] && officialSplitStats?.nonOfficial?.[activeCategory]
                     ? buildOfficialMetrics(officialSplitStats.official[activeCategory], officialSplitStats.nonOfficial[activeCategory], currentData.metrics?.[activeCategory] || [])
@@ -303,13 +354,13 @@ export default function StatsV2() {
                       {compareMode === "pro" && (
                         <>
                           {currentData.games != null && <span>Scrim: {currentData.games} games</span>}
-                          {proGames != null && <span>Pro: {proGames} games</span>}
+                          <span>Pro: {proGames} games</span>
                         </>
                       )}
                       {compareMode === "soloq" && (
                         <>
                           {currentData.games != null && <span>Scrim: {currentData.games} games</span>}
-                          {soloqGames != null && <span>SoloQ: {soloqGames} games</span>}
+                          <span>SoloQ: {soloqGames} games</span>
                         </>
                       )}
                       {compareMode === "offi" && officialSplitStats && (
