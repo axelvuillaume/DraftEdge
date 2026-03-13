@@ -8,6 +8,7 @@ const Schema = new mongoose.Schema(
     team_id: { type: String, required: true },
     team_name: { type: String, required: true },
     league: { type: String, default: '' },
+    players_ids: [{ type: String }],
     multi_opgg: { type: String, default: '' },
     contact_name: { type: String, default: '' },
     contact_role: { type: String, default: '' },

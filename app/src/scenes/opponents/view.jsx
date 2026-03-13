@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
-import { ArrowLeft, Save, ExternalLink, Trophy, Swords } from "lucide-react"
+import { ArrowLeft, Save, ExternalLink, Trophy, Swords, Users } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
 
@@ -114,6 +114,33 @@ export default function View({ stats }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column - Info */}
           <div className="space-y-6">
+            {/* Roster */}
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-amber-500" />
+                <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">Roster ({team.players_ids?.length || 0})</h2>
+              </div>
+              {team.players_ids?.length > 0 ? (
+                <div className="space-y-2">
+                  {team.players_ids.map((riotId, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 bg-slate-700/30 rounded-lg">
+                      <span className="text-white text-sm flex-1">{riotId}</span>
+                      <a
+                        href={`https://dpm.lol/${encodeURIComponent(riotId.replace("#", "-"))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/80 transition-all flex-shrink-0"
+                      >
+                        <img src="/dpm_full_logo.png" alt="DPM.lol" className="h-4 object-contain" />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-500 text-sm">No players found — import a game against this team to auto-detect the roster</p>
+              )}
+            </div>
+
             {/* Team Info */}
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 space-y-4">
               <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">Team Info</h2>

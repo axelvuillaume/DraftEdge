@@ -34,11 +34,28 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     let query = {};
 
     if (req.body.team_id) query.team_id = req.body.team_id;
+    if (req.body.search) query.name = { $regex: req.body.search, $options: 'i' };
+    if (req.body.league) query.league = req.body.league;
     const limit = req.body.limit || 50;
     const skip = req.body.offset || 0;
     const total = await EnemyTeam.countDocuments(query);
     const data = await EnemyTeam.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
     return res.status(200).send({ ok: true, data, total });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.post('/filters', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const leagues = await EnemyTeam.aggregate([
+      { $match: { team_id: req.user.team_id, league: { $exists: true, $nin: [null, ''] } } },
+      { $group: { _id: '$league' } },
+      { $sort: { _id: 1 } },
+    ]);
+
+    return res.status(200).send({ ok: true, data: { leagues: leagues.map((l) => l._id).filter(Boolean) } });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
