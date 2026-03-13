@@ -122,21 +122,20 @@ export default function SoloQ() {
     const initial = {}
     ROLES.forEach(role => {
       const existing = players.find(p => p.role === role && p.active !== false)
-      initial[role] = existing ? { _id: existing._id, game_name: existing.game_name || "", tag_line: existing.tag_line || "" } : { game_name: "", tag_line: "" }
+      initial[role] = existing ? { _id: existing._id, player_name: existing.player_name || "", game_name: existing.game_name || "", tag_line: existing.tag_line || "" } : { player_name: "", game_name: "", tag_line: "" }
     })
     setRoster(initial)
     setShowEditModal(true)
   }
 
   const handleSaveRole = async role => {
-    const { game_name, tag_line, _id } = roster[role] || {}
+    const { game_name, tag_line, player_name, _id } = roster[role] || {}
     if (!game_name?.trim() || !tag_line?.trim()) return toast.error("Summoner name and tag are required")
     const region = teamData?.region || "euw1"
+    const payload = { game_name: game_name.trim(), tag_line: tag_line.trim(), player_name: player_name?.trim() || "", region, role }
     setSaving(role)
     try {
-      const endpoint = _id
-        ? api.put(`/player/${_id}/resync`, { game_name: game_name.trim(), tag_line: tag_line.trim(), region, role })
-        : api.post("/player", { game_name: game_name.trim(), tag_line: tag_line.trim(), region, role })
+      const endpoint = _id ? api.put(`/player/${_id}/resync`, payload) : api.post("/player", payload)
       const { ok, data, code } = await endpoint
       if (!ok) return toast.error(code || "Riot ID not found")
       setRoster(prev => ({ ...prev, [role]: { ...prev[role], _id: data._id, connected_at: data.connected_at } }))
@@ -303,8 +302,8 @@ export default function SoloQ() {
                 </div>
                 <div className="flex items-center gap-2">
                   <img src={`/roles/${p.role}.png`} alt={p.role} className="w-4 h-4 opacity-60" />
-                  <span className="text-white font-semibold text-sm">{p.game_name}</span>
-                  <span className="text-slate-500 text-xs">#{p.tag_line}</span>
+                  <span className="text-white font-semibold text-sm">{p.player_name || p.game_name}</span>
+                  {!p.player_name && <span className="text-slate-500 text-xs">#{p.tag_line}</span>}
                 </div>
                 <div className="relative w-24 h-24 flex items-center justify-center">
                   {RANK_ICON_TIERS.has(p.current_tier) ? (
@@ -373,10 +372,13 @@ export default function SoloQ() {
                     contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                     labelStyle={{ color: "#94a3b8" }}
                     labelFormatter={v => new Date(v).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                    formatter={(value, name) => [lpLabel(value), connected.find(p => p._id === name)?.game_name || name]}
+                    formatter={(value, name) => {
+                      const pl = connected.find(p => p._id === name)
+                      return [lpLabel(value), pl?.player_name || pl?.game_name || name]
+                    }}
                     itemSorter={a => -a.value}
                   />
-                  <Legend formatter={v => connected.find(p => p._id === v)?.game_name || v} />
+                  <Legend formatter={v => { const pl = connected.find(p => p._id === v); return pl?.player_name || pl?.game_name || v }} />
                   {connected.map((p, i) => (
                     <Line key={p._id} dataKey={p._id} stroke={CHART_COLORS[i % 5]} strokeWidth={2} dot={false} connectNulls activeDot={{ r: 4, strokeWidth: 2 }} />
                   ))}
@@ -390,7 +392,7 @@ export default function SoloQ() {
       {/* Edit Roster Modal */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowEditModal(false)}>
-          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-xl mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
               <h2 className="text-white font-semibold">Edit Roster</h2>
               <div className="flex items-center gap-3">
@@ -420,6 +422,13 @@ export default function SoloQ() {
                     <img src={`/roles/${role}.png`} alt={role} className="w-5 h-5 opacity-70" />
                     <span className="text-amber-400 font-semibold text-xs uppercase">{ROLE_LABELS[role]}</span>
                   </div>
+                  <input
+                    type="text"
+                    value={roster[role]?.player_name || ""}
+                    onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], player_name: e.target.value } }))}
+                    placeholder="Name"
+                    className="w-28 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
+                  />
                   <input
                     type="text"
                     value={roster[role]?.game_name || ""}

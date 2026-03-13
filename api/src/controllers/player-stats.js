@@ -5,6 +5,7 @@ const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const PlayerStats = require('../models/player-stats');
 const Game = require('../models/game');
+const Player = require('../models/player');
 const { client: geminiClient } = require('../services/gemini');
 const { buildGameFilters, extractFilters } = require('../utils/gameFilters');
 
@@ -685,10 +686,14 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
       winRateByDuration: calculateWinRateByDuration(playerStats),
     };
 
-    // --- Build Players Data (grouped by puuid) ---
+    // --- Build Players Data (grouped by puuid, filtered to active roster) ---
+    const activePlayers = await Player.find({ team_id: req.user.team_id, active: true });
+    const activePuuids = new Set(activePlayers.map((p) => p.puuid).filter(Boolean));
+
     const playersById = {};
     playerStats.forEach((stat) => {
       if (!stat.puuid) return;
+      if (!activePuuids.has(stat.puuid)) return;
       if (!playersById[stat.puuid]) playersById[stat.puuid] = { stats: [], name: stat.summoner_name, role: stat.role, riot_tag: stat.riot_tag };
       playersById[stat.puuid].stats.push(stat);
       playersById[stat.puuid].name = stat.summoner_name;

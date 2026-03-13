@@ -195,7 +195,6 @@ function parsePlayerStats(p, gameData) {
     // ==================== PLAYER INFO ====================
     summoner_name: p.RIOT_ID_GAME_NAME || p.NAME,
     riot_tag: p.RIOT_ID_TAG_LINE || '',
-    puuid: p.PUUID || null,
 
     // Ranked info (enrichi via API Riot)
     tier: null,
