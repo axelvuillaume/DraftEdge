@@ -7,6 +7,7 @@ import { getChampionIcon } from "@/utils"
 import { ArrowLeft, Plus, X, Target, TrendingUp, ImagePlus, ChevronDown, Loader2, Upload, FileText, Check, Gamepad2, Search, Clock, AlertTriangle, FolderOpen } from "lucide-react"
 import Modal from "@/components/modal"
 import DebounceInput from "@/components/debounceInput"
+import OpponentDropdown from "@/components/OpponentDropdown"
 
 const RATING_MAX = 10
 
@@ -45,218 +46,57 @@ function patchesMatch(patch1, patch2) {
 export default function View() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user } = useStore()
   const [session, setSession] = useState(null)
-  const [selectedGames, setSelectedGames] = useState([])
-  const [allObjectives, setAllObjectives] = useState([])
-  const [results, setResults] = useState({})
-  const [activeObjectifIds, setActiveObjectifIds] = useState([])
-
-  const [enemyTeams, setEnemyTeams] = useState([])
-  const [showOpponentDropdown, setShowOpponentDropdown] = useState(false)
-  const [newTeamName, setNewTeamName] = useState("")
-
-  const [folders, setFolders] = useState([])
-  const [showFolderDropdown, setShowFolderDropdown] = useState(false)
-  const [newFolderName, setNewFolderName] = useState("")
-
-  const [newObjectifName, setNewObjectifName] = useState("")
-
+  const [games, setGames] = useState([])
   const [showImportModal, setShowImportModal] = useState(false)
-  const [showObjectivePicker, setShowObjectivePicker] = useState(false)
-  const [selectedCell, setSelectedCell] = useState(null)
-
-  const selectedObjectives = allObjectives.filter(o => activeObjectifIds.includes(o._id))
+  const [sessionAvg, setSessionAvg] = useState(null)
 
   useEffect(() => {
     if (!id) return
     fetchSession()
     fetchGames()
-    fetchObjectives()
-    fetchResults()
-    fetchEnemyTeams()
-    fetchFolders()
   }, [id])
 
   const fetchSession = async () => {
     try {
       const { ok, data, code } = await api.get(`/scrim-session/${id}`)
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to fetch session")
       setSession(data)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to fetch session")
     }
   }
 
   const fetchGames = async () => {
     try {
       const { ok, data, code } = await api.post("/game/search", { session_id: id })
-      if (!ok) return toast.error(code)
-      setSelectedGames(data)
+      if (!ok) return toast.error(code || "Failed to fetch games")
+      setGames(data)
     } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
-  const fetchFolders = async () => {
-    try {
-      const { ok, data, code } = await api.post("/folder/search", { team_id: user?.team_id })
-      if (!ok) return toast.error(code)
-      setFolders(data)
-    } catch (error) {
-      toast.error(error.code)
-    }
-  }
-
-  const createFolder = async name => {
-    try {
-      const { ok, data, code } = await api.post("/folder", { name })
-      if (!ok) return toast.error(code)
-      setFolders(prev => [data, ...prev])
-      updateSessionFolder(data._id, data.name)
-      setNewFolderName("")
-    } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
-  const updateSessionFolder = async (folderId, folderName) => {
-    updateSession("folder_id", folderId)
-    updateSession("folder_name", folderName)
-    setShowFolderDropdown(false)
-    if (selectedGames.length > 0) {
-      try {
-        const gameIds = selectedGames.map(g => g._id)
-        const { ok, code } = await api.put("/game/move", { game_ids: gameIds, folder_id: folderId || null })
-        if (!ok) return toast.error(code)
-      } catch (error) {
-        toast.error(error.code)
-      }
-    }
-  }
-
-  const fetchEnemyTeams = async () => {
-    try {
-      const { ok, data, code } = await api.post("/enemy-team/search", { team_id: user?.team_id })
-      if (!ok) return toast.error(code)
-      setEnemyTeams(data)
-    } catch (error) {
-      toast.error(error.code)
-    }
-  }
-
-  const createEnemyTeam = async name => {
-    try {
-      const { ok, data, code } = await api.post("/enemy-team", { name })
-      if (!ok) return toast.error(code)
-      setEnemyTeams(prev => [data, ...prev])
-      updateSession("opponent", data.name)
-      setNewTeamName("")
-      setShowOpponentDropdown(false)
-    } catch (error) {
-      toast.error(error.code)
-    }
-  }
-
-  const createObjective = async name => {
-    try {
-      const { ok, data, code } = await api.post("/scrim-objectif", { name })
-      if (!ok) return toast.error(code)
-      setAllObjectives(prev => [data, ...prev])
-      setActiveObjectifIds(prev => [...prev, data._id])
-      setNewObjectifName("")
-    } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
-  const fetchObjectives = async () => {
-    try {
-      const { ok, data, code } = await api.post("/scrim-objectif/search", { team_id: user?.team_id })
-      if (!ok) return toast.error(code)
-      setAllObjectives(data)
-    } catch (error) {
-      toast.error(error.code)
-    }
-  }
-
-  const fetchResults = async () => {
-    try {
-      const { ok, data, code } = await api.post("/scrim-objectif-result/search", { session_id: id })
-      if (!ok) return toast.error(code)
-      const map = {}
-      const objIds = new Set()
-      for (const r of data) {
-        if (!map[r.objectif_id]) map[r.objectif_id] = {}
-        map[r.objectif_id][r.game_id] = r
-        objIds.add(r.objectif_id)
-      }
-      setResults(map)
-      setActiveObjectifIds(prev => [...new Set([...prev, ...objIds])])
-    } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to fetch games")
     }
   }
 
   const updateSession = async (field, value) => {
-    setSession(prev => ({ ...prev, [field]: value }))
+    setSession({ ...session, [field]: value })
     try {
-      const { ok, code } = await api.put(`/scrim-session/${id}`, { [field]: value })
-      if (!ok) return toast.error(code)
-      fetchSession()
+      const { ok, code } = await api.put(`/scrim-session/${id}`, { ...session, [field]: value })
+      if (!ok) return toast.error(code || "Failed to update session")
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to update session")
     }
   }
 
   const removeGame = async game => {
-    setSelectedGames(prev => prev.filter(g => g._id !== game._id))
+    setGames(prev => prev.filter(g => g._id !== game._id))
     try {
       const { ok, code } = await api.put(`/game/${game._id}`, { session_id: null, session_name: null })
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to remove game")
       fetchGames()
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to remove game")
     }
   }
-
-  const saveResult = async (objectifId, gameId, updates) => {
-    try {
-      const existing = results[objectifId]?.[gameId]
-      if (existing?._id) {
-        const { ok, code } = await api.put(`/scrim-objectif-result/${existing._id}`, updates)
-        if (!ok) return toast.error(code)
-        fetchResults()
-      } else {
-        const obj = allObjectives.find(o => o._id === objectifId)
-        const game = selectedGames.find(g => g._id === gameId)
-        const { ok, code } = await api.post("/scrim-objectif-result", {
-          objectif_id: objectifId,
-          objectif_name: obj?.name,
-          game_id: gameId,
-          game_name: game?.name,
-          session_id: id,
-          session_name: session?.name,
-          patch: session?.patch,
-          ...updates
-        })
-        if (!ok) return toast.error(code)
-        fetchResults()
-      }
-    } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
-  const getResult = (objectifId, gameId) => results[objectifId]?.[gameId] || {}
-
-  const allRatings = []
-  for (const objId of Object.keys(results)) {
-    for (const gameId of Object.keys(results[objId])) {
-      if (results[objId][gameId].result != null) allRatings.push(results[objId][gameId].result)
-    }
-  }
-  const sessionAvg = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : null
 
   if (!session) {
     return (
@@ -294,136 +134,8 @@ export default function View() {
                 <span className="text-emerald-400 font-mono">{getPatchPrefix(session.patch)}</span>
               </span>
             )}
-            <div className="relative">
-              <button
-                onClick={() => setShowOpponentDropdown(!showOpponentDropdown)}
-                className="flex items-center gap-2 bg-slate-700/50 rounded-lg px-3 py-1.5 text-sm w-36 hover:bg-slate-700/70 transition-colors"
-              >
-                <span className={session.opponent ? "text-white" : "text-slate-400"}>{session.opponent || "Opponent..."}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-auto" />
-              </button>
-
-              {showOpponentDropdown && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowOpponentDropdown(false)} />
-                  <div className="absolute top-full left-0 mt-1 w-56 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
-                    {/* Create new team */}
-                    <div className="p-2 border-b border-slate-700/50">
-                      <form
-                        onSubmit={e => {
-                          e.preventDefault()
-                          if (newTeamName.trim()) createEnemyTeam(newTeamName.trim())
-                        }}
-                        className="flex items-center gap-1.5"
-                      >
-                        <input
-                          type="text"
-                          placeholder="New team..."
-                          value={newTeamName}
-                          onChange={e => setNewTeamName(e.target.value)}
-                          className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
-                          autoFocus
-                        />
-                        <button
-                          type="submit"
-                          disabled={!newTeamName.trim()}
-                          className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </form>
-                    </div>
-
-                    {/* Team list */}
-                    <div className="max-h-48 overflow-y-auto p-1">
-                      {/* No opponent option */}
-                      <button
-                        onClick={() => {
-                          updateSession("opponent", null)
-                          setShowOpponentDropdown(false)
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!session.opponent ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
-                      >
-                        No opponent
-                      </button>
-
-                      {enemyTeams.map(team => (
-                        <button
-                          key={team._id}
-                          onClick={() => {
-                            updateSession("opponent", team.name)
-                            setShowOpponentDropdown(false)
-                          }}
-                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${session.opponent === team.name ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
-                        >
-                          {team.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="relative">
-              <button
-                onClick={() => setShowFolderDropdown(!showFolderDropdown)}
-                className="flex items-center gap-2 bg-slate-700/50 rounded-lg px-3 py-1.5 text-sm w-36 hover:bg-slate-700/70 transition-colors"
-              >
-                <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
-                <span className={session.folder_name ? "text-white" : "text-slate-400"}>{session.folder_name || "Folder..."}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-auto" />
-              </button>
-
-              {showFolderDropdown && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowFolderDropdown(false)} />
-                  <div className="absolute top-full left-0 mt-1 w-56 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
-                    <div className="p-2 border-b border-slate-700/50">
-                      <form
-                        onSubmit={e => {
-                          e.preventDefault()
-                          if (newFolderName.trim()) createFolder(newFolderName.trim())
-                        }}
-                        className="flex items-center gap-1.5"
-                      >
-                        <input
-                          type="text"
-                          placeholder="New folder..."
-                          value={newFolderName}
-                          onChange={e => setNewFolderName(e.target.value)}
-                          className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
-                          autoFocus
-                        />
-                        <button
-                          type="submit"
-                          disabled={!newFolderName.trim()}
-                          className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </form>
-                    </div>
-                    <div className="max-h-48 overflow-y-auto p-1">
-                      <button
-                        onClick={() => updateSessionFolder(null, null)}
-                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!session.folder_id ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
-                      >
-                        No folder
-                      </button>
-                      {folders.map(folder => (
-                        <button
-                          key={folder._id}
-                          onClick={() => updateSessionFolder(folder._id, folder.name)}
-                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${session.folder_id === folder._id ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
-                        >
-                          {folder.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+            <OpponentDropdown value={session.opponent} onChange={val => updateSession("opponent", val)} />
+            <FolderDropdown session={session} games={games} onUpdate={fetchSession} />
           </div>
           <div className="flex items-center gap-2">
             {sessionAvg != null && (
@@ -438,7 +150,7 @@ export default function View() {
         </div>
 
         <div className="grid grid-cols-12 gap-6">
-          {/* Left Column - Games */}
+          {/* Left Column */}
           <div className="col-span-4 space-y-4">
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
@@ -452,12 +164,11 @@ export default function View() {
                 </button>
               </div>
 
-              {/* Selected Games List */}
-              {selectedGames.length === 0 ? (
+              {games.length === 0 ? (
                 <p className="text-slate-500 text-xs text-center py-4">No games imported yet</p>
               ) : (
                 <div className="space-y-2">
-                  {selectedGames.map(game => (
+                  {games.map(game => (
                     <div key={game._id} className="flex items-center justify-between bg-slate-700/30 rounded-lg px-3 py-2">
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${game.win ? "bg-emerald-400" : "bg-red-400"}`} />
@@ -477,8 +188,6 @@ export default function View() {
                 </div>
               )}
             </div>
-
-            {/* Comment */}
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 space-y-2">
               <h2 className="text-white font-semibold text-sm">Comment</h2>
               <DebounceInput
@@ -492,268 +201,9 @@ export default function View() {
             </div>
           </div>
 
-          {/* Right Column - Objectives Review */}
+          {/* Right Column */}
           <div className="col-span-8">
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-white font-semibold text-sm">Objectives Review</h2>
-                <div className="relative">
-                  <button
-                    onClick={() => setShowObjectivePicker(!showObjectivePicker)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 rounded-lg transition-colors text-xs font-medium"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Add Objective
-                  </button>
-
-                  {showObjectivePicker && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setShowObjectivePicker(false)} />
-                      <div className="absolute top-full right-0 mt-1 w-64 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
-                        {/* Create new objective */}
-                        <div className="p-2 border-b border-slate-700/50">
-                          <form
-                            onSubmit={e => {
-                              e.preventDefault()
-                              if (newObjectifName.trim()) createObjective(newObjectifName.trim())
-                            }}
-                            className="flex items-center gap-1.5"
-                          >
-                            <input
-                              type="text"
-                              placeholder="New objective..."
-                              value={newObjectifName}
-                              onChange={e => setNewObjectifName(e.target.value)}
-                              className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
-                              autoFocus
-                            />
-                            <button
-                              type="submit"
-                              disabled={!newObjectifName.trim()}
-                              className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </form>
-                        </div>
-
-                        {/* Existing objectives list */}
-                        <div className="max-h-48 overflow-y-auto p-1">
-                          {allObjectives.length === 0 ? (
-                            <p className="text-slate-500 text-xs text-center py-3">No objectives yet. Create one above.</p>
-                          ) : (
-                            allObjectives.map(obj => {
-                              const isSelected = activeObjectifIds.includes(obj._id)
-                              return (
-                                <button
-                                  key={obj._id}
-                                  onClick={() => setActiveObjectifIds(prev => (prev.includes(obj._id) ? prev.filter(oid => oid !== obj._id) : [...prev, obj._id]))}
-                                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${isSelected ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
-                                >
-                                  <div className="font-medium">{obj.name}</div>
-                                  {obj.description && <div className="text-xs text-slate-500 mt-0.5">{obj.description}</div>}
-                                </button>
-                              )
-                            })
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Assessment Matrix */}
-              {selectedObjectives.length === 0 || selectedGames.length === 0 ? (
-                <div className="text-center py-12">
-                  <Target className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-500 text-sm">
-                    {selectedGames.length === 0 && selectedObjectives.length === 0
-                      ? "Add games and objectives to start reviewing"
-                      : selectedGames.length === 0
-                        ? "Add games to start reviewing"
-                        : "Add objectives to start reviewing"}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr>
-                          <th className="text-left text-slate-600 text-[11px] font-normal uppercase tracking-wider px-3 py-2 w-[220px]">Objective</th>
-                          {selectedGames.map((game, idx) => (
-                            <th key={game._id} className="px-1.5 py-2 min-w-[64px]">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <span className="text-slate-500 text-[11px] font-normal">G{idx + 1}</span>
-                              </div>
-                            </th>
-                          ))}
-                          <th className="text-center text-slate-600 text-[11px] font-normal uppercase tracking-wider px-3 py-2 w-[56px] border-l border-slate-700/30">Avg</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedObjectives.map(obj => {
-                          const isToggle = obj.rating_type === "toggle"
-                          const ratedGames = selectedGames.filter(g => getResult(obj._id, g._id).result != null)
-                          const avg = !isToggle && ratedGames.length > 0 ? ratedGames.reduce((sum, g) => sum + getResult(obj._id, g._id).result, 0) / ratedGames.length : null
-                          const doneCount = isToggle ? ratedGames.filter(g => getResult(obj._id, g._id).result === 1).length : 0
-                          const toggleRate = isToggle && ratedGames.length > 0 ? Math.round((doneCount / ratedGames.length) * 100) : null
-
-                          return (
-                            <tr key={obj._id} className="group border-t border-slate-700/15">
-                              <td className="px-3 py-2.5">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-white text-sm font-medium truncate max-w-[180px]" title={obj.name}>
-                                    {obj.name}
-                                  </span>
-                                  {obj.player_name && (
-                                    <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1 py-0.5 rounded shrink-0">{obj.player_name}</span>
-                                  )}
-                                  <button
-                                    onClick={() => setActiveObjectifIds(prev => (prev.includes(obj._id) ? prev.filter(oid => oid !== obj._id) : [...prev, obj._id]))}
-                                    className="p-0.5 text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </td>
-                              {selectedGames.map(game => {
-                                const r = getResult(obj._id, game._id)
-                                const isActive = selectedCell?.objectiveId === obj._id && selectedCell?.gameId === game._id
-                                const hasComment = !!r.comment
-
-                                if (isToggle) {
-                                  const isDone = r.result === 1
-                                  const isFailed = r.result === 0
-                                  return (
-                                    <td key={game._id} className="px-1.5 py-1.5 text-center">
-                                      <button
-                                        onClick={() => {
-                                          const newVal = r.result == null ? 1 : r.result === 1 ? 0 : null
-                                          saveResult(obj._id, game._id, { result: newVal })
-                                        }}
-                                        className={`relative w-12 h-10 rounded-md text-sm font-semibold transition-all ${
-                                          isActive ? "ring-1 ring-amber-500 " : ""
-                                        }${isDone ? "bg-emerald-500/20 text-emerald-400" : isFailed ? "bg-red-500/20 text-red-400" : "bg-slate-700/25 text-slate-600 hover:bg-slate-700/40"}`}
-                                      >
-                                        {isDone ? <Check className="w-4 h-4 mx-auto" /> : isFailed ? <X className="w-4 h-4 mx-auto" /> : "--"}
-                                        {hasComment && <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-3 h-[2px] rounded-full bg-slate-500" />}
-                                      </button>
-                                    </td>
-                                  )
-                                }
-
-                                return (
-                                  <td key={game._id} className="px-1.5 py-1.5 text-center">
-                                    <button
-                                      onClick={() => setSelectedCell(isActive ? null : { objectiveId: obj._id, gameId: game._id })}
-                                      className={`relative w-12 h-10 rounded-md text-sm font-semibold tabular-nums transition-all ${
-                                        isActive ? "bg-slate-600/50 ring-1 ring-amber-500" : "bg-slate-700/25 hover:bg-slate-700/40"
-                                      } ${r.result != null ? getRatingTextColor(r.result) : "text-slate-600"}`}
-                                    >
-                                      {r.result ?? "--"}
-                                      {hasComment && <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-3 h-[2px] rounded-full bg-slate-500" />}
-                                    </button>
-                                  </td>
-                                )
-                              })}
-                              <td className="px-3 py-2 text-center border-l border-slate-700/30">
-                                {isToggle ? (
-                                  toggleRate != null ? (
-                                    <span className={`text-sm font-bold tabular-nums ${toggleRate >= 70 ? "text-emerald-400" : toggleRate >= 50 ? "text-amber-400" : "text-red-400"}`}>{toggleRate}%</span>
-                                  ) : (
-                                    <span className="text-slate-700 text-xs">--</span>
-                                  )
-                                ) : avg != null ? (
-                                  <span className={`text-sm font-bold tabular-nums ${getRatingTextColor(Math.round(avg))}`}>{avg.toFixed(1)}</span>
-                                ) : (
-                                  <span className="text-slate-700 text-xs">--</span>
-                                )}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Detail Panel */}
-                  {selectedCell &&
-                    (() => {
-                      const obj = selectedObjectives.find(o => o._id === selectedCell.objectiveId)
-                      const game = selectedGames.find(g => g._id === selectedCell.gameId)
-                      const r = getResult(selectedCell.objectiveId, selectedCell.gameId)
-                      if (!obj || !game) return null
-
-                      return (
-                        <div className="mt-4 border-t border-slate-700/30 pt-4 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <span className="text-white text-sm font-medium">{obj.name}</span>
-                              <span className="text-slate-600 mx-2">/</span>
-                              <span className="text-slate-400 text-sm">{game.name || `Game ${game.game_id}`}</span>
-                            </div>
-                            <button onClick={() => setSelectedCell(null)} className="p-1 text-slate-600 hover:text-slate-300 transition-colors">
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-
-                          {obj.rating_type === "toggle" ? (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => saveResult(selectedCell.objectiveId, selectedCell.gameId, { result: r.result === 1 ? null : 1 })}
-                                className={`flex-1 h-10 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                                  r.result === 1 ? "bg-emerald-500 text-white" : "bg-slate-700/40 text-slate-500 hover:bg-slate-700/60 hover:text-slate-300"
-                                }`}
-                              >
-                                <Check className="w-4 h-4" />
-                                Done
-                              </button>
-                              <button
-                                onClick={() => saveResult(selectedCell.objectiveId, selectedCell.gameId, { result: r.result === 0 ? null : 0 })}
-                                className={`flex-1 h-10 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                                  r.result === 0 ? "bg-red-500 text-white" : "bg-slate-700/40 text-slate-500 hover:bg-slate-700/60 hover:text-slate-300"
-                                }`}
-                              >
-                                <X className="w-4 h-4" />
-                                Not done
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              {Array.from({ length: RATING_MAX }, (_, i) => i + 1).map(value => {
-                                const isSelected = r.result === value
-                                return (
-                                  <button
-                                    key={value}
-                                    onClick={() => saveResult(selectedCell.objectiveId, selectedCell.gameId, { result: isSelected ? null : value })}
-                                    className={`flex-1 h-8 rounded-md text-xs font-bold transition-all ${
-                                      isSelected ? `${getRatingColor(value)} text-white` : "bg-slate-700/40 text-slate-500 hover:bg-slate-700/60 hover:text-slate-300"
-                                    }`}
-                                  >
-                                    {value}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          )}
-
-                          <DebounceInput
-                            key={`${selectedCell.objectiveId}-${selectedCell.gameId}`}
-                            isTextArea
-                            placeholder="Add a note..."
-                            value={r.comment || ""}
-                            onChange={e => saveResult(selectedCell.objectiveId, selectedCell.gameId, { comment: e.target.value })}
-                            rows={2}
-                            className="w-full px-3 py-2 rounded-lg border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 bg-slate-700/30 text-white placeholder-slate-600 text-sm resize-none"
-                          />
-                        </div>
-                      )
-                    })()}
-                </>
-              )}
-            </div>
+            <ObjectivesSection session={session} games={games} onSessionAvg={setSessionAvg} />
           </div>
         </div>
       </div>
@@ -761,14 +211,8 @@ export default function View() {
       <UploadModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
-        user={user}
-        sessionId={id}
-        sessionName={session?.name}
-        sessionPatch={session?.patch}
-        sessionFolderId={session?.folder_id}
-        sessionFolderName={session?.folder_name}
-        opponentName={session?.opponent}
-        existingGameIds={selectedGames.map(g => g._id)}
+        session={session}
+        selectedGames={games}
         onSuccess={gamePatch => {
           if (!session?.patch && gamePatch) updateSession("patch", gamePatch)
           setShowImportModal(false)
@@ -779,10 +223,506 @@ export default function View() {
   )
 }
 
-function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName, sessionPatch, sessionFolderId, sessionFolderName, opponentName, existingGameIds = [] }) {
+function FolderDropdown({ session, games, onUpdate }) {
+  const { user } = useStore()
+  const [folders, setFolders] = useState([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [newFolderName, setNewFolderName] = useState("")
+
+  useEffect(() => {
+    if (user?.team_id) fetchFolders()
+  }, [user?.team_id])
+
+  const fetchFolders = async () => {
+    try {
+      const { ok, data, code } = await api.post("/folder/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code || "Failed to fetch folders")
+      setFolders(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch folders")
+    }
+  }
+
+  const selectFolder = async (folderId, folderName) => {
+    setShowDropdown(false)
+    try {
+      const { ok, code } = await api.put(`/scrim-session/${session._id}`, { ...session, folder_id: folderId, folder_name: folderName })
+      if (!ok) return toast.error(code || "Failed to update session")
+    } catch (error) {
+      toast.error(error.code || "Failed to update session")
+    }
+    if (games.length > 0) {
+      try {
+        const { ok, code } = await api.put("/game/move", { game_ids: games.map(g => g._id), folder_id: folderId || null })
+        if (!ok) return toast.error(code || "Failed to move games")
+      } catch (error) {
+        toast.error(error.code || "Failed to move games")
+      }
+    }
+    onUpdate()
+  }
+
+  const createFolder = async name => {
+    try {
+      const { ok, data, code } = await api.post("/folder", { name })
+      if (!ok) return toast.error(code || "Failed to create folder")
+      setFolders(prev => [data, ...prev])
+      selectFolder(data._id, data.name)
+      setNewFolderName("")
+    } catch (error) {
+      toast.error(error.code || "Failed to create folder")
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowDropdown(!showDropdown)}
+        className="flex items-center gap-2 bg-slate-700/50 rounded-lg px-3 py-1.5 text-sm w-36 hover:bg-slate-700/70 transition-colors"
+      >
+        <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
+        <span className={session.folder_name ? "text-white" : "text-slate-400"}>{session.folder_name || "Folder..."}</span>
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-auto" />
+      </button>
+
+      {showDropdown && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
+          <div className="absolute top-full left-0 mt-1 w-56 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+            <div className="p-2 border-b border-slate-700/50">
+              <form
+                onSubmit={e => {
+                  e.preventDefault()
+                  if (newFolderName.trim()) createFolder(newFolderName.trim())
+                }}
+                className="flex items-center gap-1.5"
+              >
+                <input
+                  type="text"
+                  placeholder="New folder..."
+                  value={newFolderName}
+                  onChange={e => setNewFolderName(e.target.value)}
+                  className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={!newFolderName.trim()}
+                  className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </form>
+            </div>
+            <div className="max-h-48 overflow-y-auto p-1">
+              <button
+                onClick={() => selectFolder(null, null)}
+                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!session.folder_id ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
+              >
+                No folder
+              </button>
+              {folders.map(folder => (
+                <button
+                  key={folder._id}
+                  onClick={() => selectFolder(folder._id, folder.name)}
+                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${session.folder_id === folder._id ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                >
+                  {folder.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function ObjectivesSection({ session, games, onSessionAvg }) {
+  const { user } = useStore()
+  const [allObjectives, setAllObjectives] = useState([])
+  const [activeObjectifIds, setActiveObjectifIds] = useState([])
+  const [showObjectivePicker, setShowObjectivePicker] = useState(false)
+  const [newObjectifName, setNewObjectifName] = useState("")
+
+  useEffect(() => {
+    if (user?.team_id) fetchObjectives()
+  }, [user?.team_id])
+
+  const fetchObjectives = async () => {
+    try {
+      const { ok, data, code } = await api.post("/scrim-objectif/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code || "Failed to fetch objectives")
+      setAllObjectives(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch objectives")
+    }
+  }
+
+  const createObjective = async name => {
+    try {
+      const { ok, data, code } = await api.post("/scrim-objectif", { name })
+      if (!ok) return toast.error(code || "Failed to create objective")
+      setAllObjectives(prev => [data, ...prev])
+      setActiveObjectifIds(prev => [...prev, data._id])
+      setNewObjectifName("")
+    } catch (error) {
+      toast.error(error.code || "Failed to create objective")
+    }
+  }
+
+  return (
+    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-white font-semibold text-sm">Objectives Review</h2>
+        <div className="relative">
+          <button
+            onClick={() => setShowObjectivePicker(!showObjectivePicker)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 rounded-lg transition-colors text-xs font-medium"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Objective
+          </button>
+
+          {showObjectivePicker && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowObjectivePicker(false)} />
+              <div className="absolute top-full right-0 mt-1 w-64 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+                <div className="p-2 border-b border-slate-700/50">
+                  <form
+                    onSubmit={e => {
+                      e.preventDefault()
+                      if (newObjectifName.trim()) createObjective(newObjectifName.trim())
+                    }}
+                    className="flex items-center gap-1.5"
+                  >
+                    <input
+                      type="text"
+                      placeholder="New objective..."
+                      value={newObjectifName}
+                      onChange={e => setNewObjectifName(e.target.value)}
+                      className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
+                      autoFocus
+                    />
+                    <button
+                      type="submit"
+                      disabled={!newObjectifName.trim()}
+                      className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </form>
+                </div>
+                <div className="max-h-48 overflow-y-auto p-1">
+                  {allObjectives.length === 0 ? (
+                    <p className="text-slate-500 text-xs text-center py-3">No objectives yet. Create one above.</p>
+                  ) : (
+                    allObjectives.map(obj => (
+                      <button
+                        key={obj._id}
+                        onClick={() => setActiveObjectifIds(prev => (prev.includes(obj._id) ? prev.filter(oid => oid !== obj._id) : [...prev, obj._id]))}
+                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${activeObjectifIds.includes(obj._id) ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                      >
+                        <div className="font-medium">{obj.name}</div>
+                        {obj.description && <div className="text-xs text-slate-500 mt-0.5">{obj.description}</div>}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <ObjectivesTable
+        session={session}
+        games={games}
+        objectives={allObjectives.filter(o => activeObjectifIds.includes(o._id))}
+        onAddActiveIds={ids => setActiveObjectifIds(prev => [...new Set([...prev, ...ids])])}
+        onToggleObjective={objId => setActiveObjectifIds(prev => (prev.includes(objId) ? prev.filter(oid => oid !== objId) : [...prev, objId]))}
+        onSessionAvg={onSessionAvg}
+      />
+    </div>
+  )
+}
+
+function ObjectivesTable({ session, games, objectives, onAddActiveIds, onToggleObjective, onSessionAvg }) {
+  const [rowRatings, setRowRatings] = useState({})
+
+  const fetchActiveIds = async () => {
+    try {
+      const { ok, data, code } = await api.post("/scrim-objectif-result/search", { session_id: session._id })
+      if (!ok) return toast.error(code || "Failed to fetch results")
+      onAddActiveIds([...new Set(data.map(r => r.objectif_id))])
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch results")
+    }
+  }
+
+  useEffect(() => {
+    if (session?._id) fetchActiveIds()
+  }, [session?._id])
+
+  useEffect(() => {
+    const allRatings = Object.values(rowRatings).flat()
+    onSessionAvg(allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : null)
+  }, [rowRatings])
+
+  if (objectives.length === 0 || games.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Target className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+        <p className="text-slate-500 text-sm">
+          {games.length === 0 && objectives.length === 0
+            ? "Add games and objectives to start reviewing"
+            : games.length === 0
+              ? "Add games to start reviewing"
+              : "Add objectives to start reviewing"}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr>
+            <th className="text-left text-slate-600 text-[11px] font-normal uppercase tracking-wider px-3 py-2 w-[220px]">Objective</th>
+            {games.map((game, idx) => (
+              <th key={game._id} className="px-1.5 py-2 min-w-[64px]">
+                <div className="flex items-center justify-center gap-1.5">
+                  <span className="text-slate-500 text-[11px] font-normal">G{idx + 1}</span>
+                </div>
+              </th>
+            ))}
+            <th className="text-center text-slate-600 text-[11px] font-normal uppercase tracking-wider px-3 py-2 w-[56px] border-l border-slate-700/30">Avg</th>
+          </tr>
+        </thead>
+        <tbody>
+          {objectives.map(obj => (
+            <ObjectiveRow
+              key={obj._id}
+              session={session}
+              games={games}
+              objective={obj}
+              onToggleObjective={onToggleObjective}
+              onRatingsChange={(objId, ratings) => setRowRatings(prev => ({ ...prev, [objId]: ratings }))}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function ObjectiveRow({ session, games, objective, onToggleObjective, onRatingsChange }) {
+  const [results, setResults] = useState({})
+  const [selectedGameId, setSelectedGameId] = useState(null)
+
+  const fetchResults = async () => {
+    try {
+      const { ok, data, code } = await api.post("/scrim-objectif-result/search", { session_id: session._id, objectif_id: objective._id })
+      if (!ok) return toast.error(code || "Failed to fetch results")
+      const map = {}
+      for (const r of data) {
+        map[r.game_id] = r
+      }
+      setResults(map)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch results")
+    }
+  }
+
+  useEffect(() => {
+    if (session?._id && objective?._id) fetchResults()
+  }, [session?._id, objective?._id])
+
+  useEffect(() => {
+    onRatingsChange(
+      objective._id,
+      Object.values(results)
+        .filter(r => r.result != null)
+        .map(r => r.result)
+    )
+  }, [results])
+
+  const saveResult = async (gameId, updates) => {
+    try {
+      if (results[gameId]?._id) {
+        const { ok, code } = await api.put(`/scrim-objectif-result/${results[gameId]._id}`, updates)
+        if (!ok) return toast.error(code || "Failed to save result")
+        fetchResults()
+      } else {
+        const { ok, code } = await api.post("/scrim-objectif-result", {
+          objectif_id: objective._id,
+          objectif_name: objective.name,
+          game_id: gameId,
+          game_name: games.find(g => g._id === gameId)?.name,
+          session_id: session._id,
+          session_name: session?.name,
+          patch: session?.patch,
+          ...updates
+        })
+        if (!ok) return toast.error(code || "Failed to save result")
+        fetchResults()
+      }
+    } catch (error) {
+      toast.error(error.code || "Failed to save result")
+    }
+  }
+
+  const ratedGames = games.filter(g => results[g._id]?.result != null)
+  const avg = objective.rating_type !== "toggle" && ratedGames.length > 0 ? ratedGames.reduce((sum, g) => sum + results[g._id]?.result, 0) / ratedGames.length : null
+  const toggleRate =
+    objective.rating_type === "toggle" && ratedGames.length > 0 ? Math.round((ratedGames.filter(g => results[g._id]?.result === 1).length / ratedGames.length) * 100) : null
+
+  return (
+    <>
+      <tr className="group border-t border-slate-700/15">
+        <td className="px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-white text-sm font-medium truncate max-w-[180px]" title={objective.name}>
+              {objective.name}
+            </span>
+            {objective.player_name && <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1 py-0.5 rounded shrink-0">{objective.player_name}</span>}
+            <button
+              onClick={() => onToggleObjective(objective._id)}
+              className="p-0.5 text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        </td>
+        {games.map(game => {
+          if (objective.rating_type === "toggle") {
+            return (
+              <td key={game._id} className="px-1.5 py-1.5 text-center">
+                <button
+                  onClick={() => saveResult(game._id, { result: (results[game._id] || {}).result == null ? 1 : (results[game._id] || {}).result === 1 ? 0 : null })}
+                  className={`relative w-12 h-10 rounded-md text-sm font-semibold transition-all ${
+                    selectedGameId === game._id ? "ring-1 ring-amber-500 " : ""
+                  }${(results[game._id] || {}).result === 1 ? "bg-emerald-500/20 text-emerald-400" : (results[game._id] || {}).result === 0 ? "bg-red-500/20 text-red-400" : "bg-slate-700/25 text-slate-600 hover:bg-slate-700/40"}`}
+                >
+                  {(results[game._id] || {}).result === 1 ? (
+                    <Check className="w-4 h-4 mx-auto" />
+                  ) : (results[game._id] || {}).result === 0 ? (
+                    <X className="w-4 h-4 mx-auto" />
+                  ) : (
+                    "--"
+                  )}
+                  {(results[game._id] || {}).comment && <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-3 h-[2px] rounded-full bg-slate-500" />}
+                </button>
+              </td>
+            )
+          }
+
+          return (
+            <td key={game._id} className="px-1.5 py-1.5 text-center">
+              <button
+                onClick={() => setSelectedGameId(selectedGameId === game._id ? null : game._id)}
+                className={`relative w-12 h-10 rounded-md text-sm font-semibold tabular-nums transition-all ${
+                  selectedGameId === game._id ? "bg-slate-600/50 ring-1 ring-amber-500" : "bg-slate-700/25 hover:bg-slate-700/40"
+                } ${(results[game._id] || {}).result != null ? getRatingTextColor((results[game._id] || {}).result) : "text-slate-600"}`}
+              >
+                {(results[game._id] || {}).result ?? "--"}
+                {(results[game._id] || {}).comment && <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-3 h-[2px] rounded-full bg-slate-500" />}
+              </button>
+            </td>
+          )
+        })}
+        <td className="px-3 py-2 text-center border-l border-slate-700/30">
+          {objective.rating_type === "toggle" ? (
+            toggleRate != null ? (
+              <span className={`text-sm font-bold tabular-nums ${toggleRate >= 70 ? "text-emerald-400" : toggleRate >= 50 ? "text-amber-400" : "text-red-400"}`}>
+                {toggleRate}%
+              </span>
+            ) : (
+              <span className="text-slate-700 text-xs">--</span>
+            )
+          ) : avg != null ? (
+            <span className={`text-sm font-bold tabular-nums ${getRatingTextColor(Math.round(avg))}`}>{avg.toFixed(1)}</span>
+          ) : (
+            <span className="text-slate-700 text-xs">--</span>
+          )}
+        </td>
+      </tr>
+      {selectedGameId && (
+        <tr>
+          <td colSpan={games.length + 2} className="px-3 pb-3">
+            <div className="border-t border-slate-700/30 pt-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-white text-sm font-medium">{objective.name}</span>
+                  <span className="text-slate-600 mx-2">/</span>
+                  <span className="text-slate-400 text-sm">{games.find(g => g._id === selectedGameId)?.name || "Game"}</span>
+                </div>
+                <button onClick={() => setSelectedGameId(null)} className="p-1 text-slate-600 hover:text-slate-300 transition-colors">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {objective.rating_type === "toggle" ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => saveResult(selectedGameId, { result: (results[selectedGameId] || {}).result === 1 ? null : 1 })}
+                    className={`flex-1 h-10 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                      (results[selectedGameId] || {}).result === 1 ? "bg-emerald-500 text-white" : "bg-slate-700/40 text-slate-500 hover:bg-slate-700/60 hover:text-slate-300"
+                    }`}
+                  >
+                    <Check className="w-4 h-4" />
+                    Done
+                  </button>
+                  <button
+                    onClick={() => saveResult(selectedGameId, { result: (results[selectedGameId] || {}).result === 0 ? null : 0 })}
+                    className={`flex-1 h-10 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                      (results[selectedGameId] || {}).result === 0 ? "bg-red-500 text-white" : "bg-slate-700/40 text-slate-500 hover:bg-slate-700/60 hover:text-slate-300"
+                    }`}
+                  >
+                    <X className="w-4 h-4" />
+                    Not done
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: RATING_MAX }, (_, i) => i + 1).map(value => (
+                    <button
+                      key={value}
+                      onClick={() => saveResult(selectedGameId, { result: (results[selectedGameId] || {}).result === value ? null : value })}
+                      className={`flex-1 h-8 rounded-md text-xs font-bold transition-all ${
+                        (results[selectedGameId] || {}).result === value
+                          ? `${getRatingColor(value)} text-white`
+                          : "bg-slate-700/40 text-slate-500 hover:bg-slate-700/60 hover:text-slate-300"
+                      }`}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <DebounceInput
+                key={`${objective._id}-${selectedGameId}`}
+                isTextArea
+                placeholder="Add a note..."
+                value={(results[selectedGameId] || {}).comment || ""}
+                onChange={e => saveResult(selectedGameId, { comment: e.target.value })}
+                rows={2}
+                className="w-full px-3 py-2 rounded-lg border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 bg-slate-700/30 text-white placeholder-slate-600 text-sm resize-none"
+              />
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [] }) {
+  const { user } = useStore()
   const [activeTab, setActiveTab] = useState("import")
 
-  // === Import tab state ===
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(null)
@@ -793,13 +733,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
   const [roflPreview, setRoflPreview] = useState(null)
   const [parsing, setParsing] = useState(false)
 
-  const [enemyTeams, setEnemyTeams] = useState([])
-  const [showOpponentDropdown, setShowOpponentDropdown] = useState(false)
-  const [newTeamName, setNewTeamName] = useState("")
-
-  // === History tab state ===
   const [historyGames, setHistoryGames] = useState([])
-  const [loadingHistory, setLoadingHistory] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedHistoryIds, setSelectedHistoryIds] = useState([])
   const [addingGames, setAddingGames] = useState(false)
@@ -808,55 +742,39 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
   const [showFolderDropdown, setShowFolderDropdown] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
 
-  const fetchEnemyTeams = async () => {
-    try {
-      const { ok, data, code } = await api.post("/enemy-team/search", { team_id: user?.team_id })
-      if (!ok) return toast.error(code)
-      setEnemyTeams(data)
-    } catch (error) {
-      toast.error(error.code)
-    }
-  }
-
   const fetchFolders = async () => {
     try {
       const { ok, data, code } = await api.post("/folder/search", { team_id: user?.team_id })
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to fetch folders")
       setFolders(data)
     } catch (error) {
-      toast.error(error.code)
+      toast.error(error.code || "Failed to fetch folders")
     }
   }
 
   useEffect(() => {
-    if (isOpen && user?.team_id) {
-      fetchEnemyTeams()
-      fetchFolders()
-    }
+    if (isOpen && user?.team_id) fetchFolders()
   }, [isOpen, user?.team_id])
 
   useEffect(() => {
-    if (isOpen && opponentName) setRoflConfig(prev => ({ ...prev, opponent_name: opponentName }))
-  }, [isOpen, opponentName])
+    if (isOpen && session?.opponent) setRoflConfig(prev => ({ ...prev, opponent_name: session.opponent }))
+  }, [isOpen, session?.opponent])
 
   useEffect(() => {
-    if (isOpen && sessionFolderId) setRoflConfig(prev => ({ ...prev, folder_id: sessionFolderId, folder_name: sessionFolderName }))
-  }, [isOpen, sessionFolderId])
+    if (isOpen && session?.folder_id) setRoflConfig(prev => ({ ...prev, folder_id: session.folder_id, folder_name: session.folder_name }))
+  }, [isOpen, session?.folder_id])
 
   useEffect(() => {
     if (isOpen && activeTab === "history" && user?.team_id) fetchHistoryGames()
   }, [isOpen, activeTab, user?.team_id])
 
   const fetchHistoryGames = async () => {
-    setLoadingHistory(true)
     try {
-      const { ok, data } = await api.post("/game/search", { team_id: user?.team_id, limit: 100 })
-      if (!ok) return toast.error(code)
+      const { ok, data, code } = await api.post("/game/search", { team_id: user?.team_id, limit: 100 })
+      if (!ok) return toast.error(code || "Failed to fetch games")
       setHistoryGames(data)
     } catch (error) {
-      toast.error(error.message)
-    } finally {
-      setLoadingHistory(false)
+      toast.error(error.code || "Failed to fetch games")
     }
   }
 
@@ -870,11 +788,11 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
     try {
       for (const gameId of selectedHistoryIds) {
         const { ok, code } = await api.put(`/game/${gameId}`, {
-          session_id: sessionId,
-          session_name: sessionName,
+          session_id: session?._id,
+          session_name: session?.name,
           ...(roflConfig.folder_id && { folder_id: roflConfig.folder_id, folder_name: roflConfig.folder_name })
         })
-        if (!ok) return toast.error(code)
+        if (!ok) return toast.error(code || "Failed to add game")
       }
       toast.success(`${selectedHistoryIds.length} game${selectedHistoryIds.length > 1 ? "s" : ""} added to session`)
       const firstAddedGame = historyGames.find(g => selectedHistoryIds.includes(g._id))
@@ -882,35 +800,22 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
       handleClose()
       onSuccess?.(firstAddedGame?.patch)
     } catch (error) {
-      toast.error(error.code)
+      toast.error(error.code || "Failed to add games")
     } finally {
       setAddingGames(false)
-    }
-  }
-
-  const createEnemyTeam = async name => {
-    try {
-      const { ok, data, code } = await api.post("/enemy-team", { name })
-      if (!ok) return toast.error(code)
-      setEnemyTeams(prev => [data, ...prev])
-      setRoflConfig(prev => ({ ...prev, opponent_name: data.name }))
-      setNewTeamName("")
-      setShowOpponentDropdown(false)
-    } catch (error) {
-      toast.error(error.code)
     }
   }
 
   const createFolder = async name => {
     try {
       const { ok, data, code } = await api.post("/folder", { name })
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to create folder")
       setFolders(prev => [data, ...prev])
       setRoflConfig(prev => ({ ...prev, folder_id: data._id, folder_name: data.name }))
       setNewFolderName("")
       setShowFolderDropdown(false)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to create folder")
     }
   }
 
@@ -932,7 +837,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
         setFile(null)
       }
     } catch (error) {
-      toast.error(error.code)
+      toast.error(error.code || "Failed to parse file")
       setFile(null)
     } finally {
       setParsing(false)
@@ -972,8 +877,8 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
       formData.append("team_name", user?.team_name || "")
       formData.append("opponent_name", roflConfig.opponent_name)
       formData.append("name", roflConfig.name)
-      if (sessionId) formData.append("session_id", sessionId)
-      if (sessionName) formData.append("session_name", sessionName)
+      if (session?._id) formData.append("session_id", session._id)
+      if (session?.name) formData.append("session_name", session.name)
       if (roflConfig.folder_id) formData.append("folder_id", roflConfig.folder_id)
       if (roflConfig.folder_name) formData.append("folder_name", roflConfig.folder_name)
       if (roflConfig.draft_url) formData.append("draft_url", roflConfig.draft_url)
@@ -986,11 +891,11 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
           onSuccess?.(roflPreview?.game?.patch)
         }, 1000)
       } else {
-        return toast.error(response.error || response.details || "Error during import")
+        toast.error(response.error || response.details || "Error during import")
         setUploadProgress("error")
       }
     } catch (error) {
-      toast.error(error.code)
+      toast.error(error.code || "Failed to import game")
       setUploadProgress("error")
     } finally {
       setUploading(false)
@@ -1003,8 +908,6 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
     setUploadProgress(null)
     setRoflPreview(null)
     setRoflConfig({ team_side: "", opponent_name: "", name: "", folder_id: "", folder_name: "", draft_url: "" })
-    setShowOpponentDropdown(false)
-    setNewTeamName("")
     setShowFolderDropdown(false)
     setNewFolderName("")
     setActiveTab("import")
@@ -1014,7 +917,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
   }
 
   const filteredHistoryGames = historyGames.filter(g => {
-    if (sessionPatch && !patchesMatch(sessionPatch, g.patch)) return false
+    if (session?.patch && !patchesMatch(session.patch, g.patch)) return false
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase()
     return (
@@ -1163,12 +1066,12 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
                   </div>
                 )}
 
-                {roflPreview && sessionPatch && !patchesMatch(sessionPatch, roflPreview.game?.patch) && (
+                {roflPreview && session?.patch && !patchesMatch(session.patch, roflPreview.game?.patch) && (
                   <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                     <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
                     <p className="text-red-400 text-sm">
                       Patch mismatch: this game is on <span className="font-mono font-medium">{getPatchPrefix(roflPreview.game?.patch)}</span> but the session is on{" "}
-                      <span className="font-mono font-medium">{getPatchPrefix(sessionPatch)}</span>
+                      <span className="font-mono font-medium">{getPatchPrefix(session?.patch)}</span>
                     </p>
                   </div>
                 )}
@@ -1199,75 +1102,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
                       </div>
                     </div>
 
-                    <div className="relative">
-                      <label className="block text-sm font-medium text-slate-400 mb-1">Opponent Team</label>
-                      <button
-                        type="button"
-                        onClick={() => setShowOpponentDropdown(!showOpponentDropdown)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all text-left"
-                      >
-                        <span className={roflConfig.opponent_name ? "text-white" : "text-slate-400"}>{roflConfig.opponent_name || "Select opponent..."}</span>
-                        <ChevronDown className="w-4 h-4 text-slate-400" />
-                      </button>
-
-                      {showOpponentDropdown && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => setShowOpponentDropdown(false)} />
-                          <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
-                            <div className="p-2 border-b border-slate-700/50">
-                              <form
-                                onSubmit={e => {
-                                  e.preventDefault()
-                                  if (newTeamName.trim()) createEnemyTeam(newTeamName.trim())
-                                }}
-                                className="flex items-center gap-1.5"
-                              >
-                                <input
-                                  type="text"
-                                  placeholder="New team..."
-                                  value={newTeamName}
-                                  onChange={e => setNewTeamName(e.target.value)}
-                                  className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
-                                  autoFocus
-                                />
-                                <button
-                                  type="submit"
-                                  disabled={!newTeamName.trim()}
-                                  className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </button>
-                              </form>
-                            </div>
-                            <div className="max-h-48 overflow-y-auto p-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRoflConfig(prev => ({ ...prev, opponent_name: "" }))
-                                  setShowOpponentDropdown(false)
-                                }}
-                                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!roflConfig.opponent_name ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
-                              >
-                                No opponent
-                              </button>
-                              {enemyTeams.map(team => (
-                                <button
-                                  key={team._id}
-                                  type="button"
-                                  onClick={() => {
-                                    setRoflConfig(prev => ({ ...prev, opponent_name: team.name }))
-                                    setShowOpponentDropdown(false)
-                                  }}
-                                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${roflConfig.opponent_name === team.name ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
-                                >
-                                  {team.name}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                    <OpponentDropdown value={roflConfig.opponent_name} onChange={val => setRoflConfig(prev => ({ ...prev, opponent_name: val }))} label="Opponent Team" />
 
                     <div className="relative">
                       <label className="block text-sm font-medium text-slate-400 mb-1">Folder</label>
@@ -1360,7 +1195,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
             <div className="flex justify-end mt-6">
               <button
                 onClick={handleUpload}
-                disabled={!file || uploading || parsing || !roflConfig.team_side || (sessionPatch && roflPreview && !patchesMatch(sessionPatch, roflPreview.game?.patch))}
+                disabled={!file || uploading || parsing || !roflConfig.team_side || (session?.patch && roflPreview && !patchesMatch(session.patch, roflPreview.game?.patch))}
                 className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
               >
                 {uploading ? (
@@ -1400,11 +1235,7 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
             </div>
 
             {/* Games list */}
-            {loadingHistory ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
-              </div>
-            ) : filteredHistoryGames.length === 0 ? (
+            {filteredHistoryGames.length === 0 ? (
               <div className="text-center py-12">
                 <Gamepad2 className="w-10 h-10 text-slate-500 mx-auto mb-3" />
                 <p className="text-slate-400 text-sm">{searchQuery ? "No games match your search" : "No games found for your team"}</p>
@@ -1412,8 +1243,8 @@ function UploadModal({ isOpen, onClose, user, onSuccess, sessionId, sessionName,
             ) : (
               <div className="max-h-[400px] overflow-y-auto space-y-1.5 pr-1">
                 {filteredHistoryGames.map(game => {
-                  const isAlreadyInSession = existingGameIds.includes(game._id)
-                  const isInOtherSession = !isAlreadyInSession && game.session_id && game.session_id !== sessionId
+                  const isAlreadyInSession = selectedGames.some(g => g._id === game._id)
+                  const isInOtherSession = !isAlreadyInSession && game.session_id && game.session_id !== session?._id
                   const isSelected = selectedHistoryIds.includes(game._id)
 
                   return (

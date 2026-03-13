@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
 import { toast } from "react-hot-toast"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import api from "@/services/api"
 import { TIER_COLORS, RANK_ICON_TIERS, ROLE_LABELS } from "@/utils"
 
@@ -21,43 +21,42 @@ const TABS = [
 
 export default function View() {
   const { id } = useParams()
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [player, setPlayer] = useState(null)
+  const [soloqOverview, setSoloqOverview] = useState(null)
   const [tab, setTab] = useState("global")
 
-  const fetchData = async () => {
+  const fetchPlayer = async () => {
     try {
-      const { ok, data, code } = await api.post("/soloq-match/compare", { player_id: id })
-      if (!ok) return toast.error(code || "Failed to fetch data")
-      setData(data)
+      const { ok, data, code } = await api.get(`/player/${id}`)
+      if (!ok) return toast.error(code || "Failed to fetch player")
+      setPlayer(data)
     } catch (error) {
-      toast.error(error.message || "Failed to fetch data")
-    } finally {
-      setLoading(false)
+      toast.error(error.code || "Failed to fetch player")
+    }
+  }
+
+  const fetchSoloqOverview = async () => {
+    try {
+      const { ok, data, code } = await api.post("/soloq-match/soloq-overview", { player_id: id })
+      if (!ok) return toast.error(code || "Failed to fetch soloq overview")
+      setSoloqOverview(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch soloq overview")
     }
   }
 
   useEffect(() => {
-    fetchData()
+    fetchPlayer()
+    fetchSoloqOverview()
   }, [id])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
-      </div>
-    )
-  }
-
-  if (!data) {
+  if (!player) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <p className="text-slate-500">No data available.</p>
       </div>
     )
   }
-
-  const { player } = data
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8">
@@ -122,8 +121,8 @@ export default function View() {
         </div>
 
         {/* Tab Content */}
-        {tab === "overview" && <SoloQOverviewTab data={data} />}
-        {tab === "global" && <GlobalView data={data} />}
+        {tab === "overview" && <SoloQOverviewTab player={player} soloqOverview={soloqOverview} />}
+        {tab === "global" && <GlobalView player={player} soloqOverview={soloqOverview} />}
       </div>
     </div>
   )

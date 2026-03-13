@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const passport = require('passport');
 const ScrimObjectifResult = require('../models/scrim-objectif-result');
+const ScrimObjectif = require('../models/scrim-objectif');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 
@@ -22,6 +23,83 @@ router.put('/:id', passport.authenticate(['admin', 'user'], { session: false, fa
     const scrimObjectifResult = await ScrimObjectifResult.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!scrimObjectifResult) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
     return res.status(200).send({ ok: true, data: scrimObjectifResult });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// utiliser dans page objective
+router.post('/average-score', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    if (!req.body.team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const objectives = await ScrimObjectif.find({ team_id: req.body.team_id });
+    const results = await ScrimObjectifResult.find({ team_id: req.body.team_id });
+
+    if (objectives.length === 0 || results.length === 0) return res.status(200).send({ ok: true, data: null });
+
+    const objMap = Object.fromEntries(objectives.map((o) => [o._id.toString(), o]));
+    let totalScore = 0;
+    let count = 0;
+
+    for (const r of results) {
+      const obj = objMap[r.objectif_id];
+      if (!obj) continue;
+      if (obj.rating_type === 'toggle') {
+        totalScore += r.result ? 10 : 0;
+      } else {
+        totalScore += r.result || 0;
+      }
+      count++;
+    }
+
+    return res.status(200).send({ ok: true, data: count > 0 ? totalScore / count : null });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.post('/stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    if (!req.body.team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const objectives = await ScrimObjectif.find({ team_id: req.body.team_id });
+    const results = await ScrimObjectifResult.find({ team_id: req.body.team_id });
+
+    const byObjectif = {};
+    let allRatings = [];
+
+    for (const obj of objectives) byObjectif[obj._id.toString()] = { ratings: [] };
+
+    for (const r of results) {
+      if (!byObjectif[r.objectif_id]) continue;
+      if (r.result != null) byObjectif[r.objectif_id].ratings.push(r.result);
+    }
+
+    for (const id of Object.keys(byObjectif)) {
+      const ratings = byObjectif[id].ratings;
+      byObjectif[id].avg = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
+      allRatings = allRatings.concat(ratings);
+    }
+
+    const sorted = Object.entries(byObjectif)
+      .filter(([, v]) => v.avg != null)
+      .sort((a, b) => b[1].avg - a[1].avg);
+
+    const best = sorted[0] ? { avg: sorted[0][1].avg, obj: objectives.find((o) => o._id.toString() === sorted[0][0]) } : null;
+    const worst = sorted.at(-1) ? { avg: sorted.at(-1)[1].avg, obj: objectives.find((o) => o._id.toString() === sorted.at(-1)[0]) } : null;
+
+    return res.status(200).send({
+      ok: true,
+      data: {
+        globalAvg: allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : null,
+        totalEvaluations: allRatings.length,
+        best,
+        worst,
+      },
+    });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });

@@ -7,9 +7,7 @@ import api from "@/services/api"
 export default function View() {
   const { id } = useParams()
   const navigate = useNavigate()
-
   const [team, setTeam] = useState(null)
-  const [loading, setLoading] = useState(true)
 
   const fetchTeam = async () => {
     try {
@@ -17,23 +15,13 @@ export default function View() {
       if (!ok) return toast.error(code || "Failed to load team")
       setTeam(data)
     } catch (error) {
-      toast.error(error.message)
-    } finally {
-      setLoading(false)
+      toast.error(error.code || "Failed to load team")
     }
   }
 
   useEffect(() => {
     fetchTeam()
   }, [id])
-
-  if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-65px)] flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
 
   if (!team) {
     return (
@@ -82,7 +70,12 @@ export default function View() {
                       <div key={i} className="flex items-center gap-3 px-4 py-2.5 bg-slate-700/30 rounded-lg">
                         <span className="text-white text-sm flex-1">{player}</span>
                         {dpmUrl && (
-                          <a href={dpmUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/80 transition-all flex-shrink-0">
+                          <a
+                            href={dpmUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/80 transition-all flex-shrink-0"
+                          >
                             <img src="/dpm_full_logo.png" alt="DPM.lol" className="h-4 object-contain" />
                           </a>
                         )}
@@ -147,9 +140,9 @@ export default function View() {
                   <p className="text-white text-sm">{team.discord_captain || "—"}</p>
                 </div>
                 {(() => {
-                  const multiUrl = team.multi_opgg || (team.players_ids?.length > 0
-                    ? `https://www.op.gg/multisearch/euw?summoners=${team.players_ids.map(id => encodeURIComponent(id)).join(",")}`
-                    : null)
+                  const multiUrl =
+                    team.multi_opgg ||
+                    (team.players_ids?.length > 0 ? `https://www.op.gg/multisearch/euw?summoners=${team.players_ids.map(id => encodeURIComponent(id)).join(",")}` : null)
                   if (!multiUrl) return null
                   return (
                     <div>

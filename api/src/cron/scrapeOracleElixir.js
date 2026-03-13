@@ -1,7 +1,7 @@
 const https = require('https');
 const { parse } = require('csv-parse');
 const ProMatch = require('../models/pro-game');
-const ProGamePlayerStats = require('../models/pro-game-playerstats');
+const ProGamePlayerStats = require('../models/pro-game-player-stats');
 
 const GOOGLE_DRIVE_FILE_ID = '1hnpbrUpBMS1TZI7IovfpKeZfWJH1Aptm';
 const CSV_URL = `https://drive.google.com/uc?export=download&id=${GOOGLE_DRIVE_FILE_ID}`;

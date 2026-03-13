@@ -11,6 +11,8 @@ const { apiFetch, PLATFORM_TO_REGIONAL } = require("../src/services/riotgames");
 const SEASON_START = new Date("2026-01-08T00:00:00Z");
 const QUEUE_ID = 420; // Ranked Solo/Duo
 const DELAY_MS = 1300; // ~46 req/min — safe under 100 req/2 min
+const IN_BATCH_SIZE = 200; // Max IDs per $in query (M0 safe)
+const MONGO_OPTIONS = { maxPoolSize: 5, socketTimeoutMS: 45000, serverSelectionTimeoutMS: 10000 };
 
 function getMatchV5Base(region) {
   const regional = PLATFORM_TO_REGIONAL[region] || "europe";
@@ -148,8 +150,13 @@ async function processPlayer(player) {
 
   if (matchIds.length === 0) return { saved: 0, skipped: 0, errors: 0 };
 
-  const existing = await SoloqMatch.find({ matchId: { $in: matchIds }, puuid: player.puuid }, { matchId: 1 }).lean();
-  const existingSet = new Set(existing.map((d) => d.matchId));
+  // Batch the $in query to avoid huge queries on M0
+  const existingSet = new Set();
+  for (let i = 0; i < matchIds.length; i += IN_BATCH_SIZE) {
+    const batch = matchIds.slice(i, i + IN_BATCH_SIZE);
+    const docs = await SoloqMatch.find({ matchId: { $in: batch }, puuid: player.puuid }, { matchId: 1 }).lean();
+    for (const d of docs) existingSet.add(d.matchId);
+  }
   const newIds = matchIds.filter((id) => !existingSet.has(id));
   console.log(`  ${existingSet.size} already in DB — ${newIds.length} new to fetch`);
 
@@ -232,7 +239,7 @@ async function processPlayer(player) {
   const TEAM_ID = "697cb58fc93718dc53d6408b";
 
   console.log("Connecting to MongoDB…");
-  await mongoose.connect(MONGODB_ENDPOINT);
+  await mongoose.connect(MONGODB_ENDPOINT, MONGO_OPTIONS);
   console.log("✅ Connected\n");
 
   try {
@@ -272,22 +279,20 @@ async function processPlayer(player) {
     console.log(`Total errors: ${totalErrors}`);
     console.log("");
 
-    const puuids = validPlayers.map((p) => p.puuid);
-    const allStats = await SoloqMatch.aggregate([
-      { $match: { puuid: { $in: puuids }, queueId: QUEUE_ID } },
-      {
-        $group: {
-          _id: "$puuid",
-          total: { $sum: 1 },
-          wins: { $sum: { $cond: ["$win", 1, 0] } },
-          losses: { $sum: { $cond: ["$win", 0, 1] } },
-        },
-      },
-    ]);
-    const statsMap = new Map(allStats.map((s) => [s._id, s]));
-
+    // Per-player stats — avoids a single heavy aggregation on M0
     for (const player of validPlayers) {
-      const s = statsMap.get(player.puuid);
+      const stats = await SoloqMatch.aggregate([
+        { $match: { puuid: player.puuid, queueId: QUEUE_ID } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            wins: { $sum: { $cond: ["$win", 1, 0] } },
+            losses: { $sum: { $cond: ["$win", 0, 1] } },
+          },
+        },
+      ]);
+      const s = stats[0];
       if (s) {
         const wr = s.wins + s.losses > 0 ? Math.round((s.wins / (s.wins + s.losses)) * 100) : 0;
         console.log(`  ${player.game_name}#${player.tag_line}: ${s.total} games — ${s.wins}W ${s.losses}L (${wr}% WR)`);

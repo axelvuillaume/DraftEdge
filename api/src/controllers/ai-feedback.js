@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
-const AIFeedBack = require('../models/AIFeedBack');
-const PlayerStats = require('../models/playerstats');
+const AIFeedBack = require('../models/ai-feedback');
+const PlayerStats = require('../models/player-stats');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 

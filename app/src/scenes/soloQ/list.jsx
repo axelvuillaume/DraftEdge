@@ -62,7 +62,30 @@ export default function SoloQ() {
       if (!ok) return toast.error(code || "Failed to fetch players")
       setPlayers(data)
     } catch (error) {
-      toast.error(error.message || "Failed to fetch players")
+      toast.error(error.code || "Failed to fetch players")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchData = async () => {
+    const conn = players.filter(p => p.puuid)
+    if (!conn.length) return
+    const fromDate = period === "all" ? undefined : getPeriodStart(period).toISOString()
+    setLoading(true)
+    try {
+      const allSnapshots = []
+      const allMatches = []
+      for (const p of conn) {
+        const snapshotRes = await api.post("/soloq-snapshot/search", { player_id: p._id, limit: 0, from_date: fromDate })
+        if (snapshotRes.ok) allSnapshots.push(...snapshotRes.data)
+        const matchRes = await api.post("/soloq-match/search", { player_id: p._id, limit: 0, from_date: fromDate })
+        if (matchRes.ok) allMatches.push(...matchRes.data)
+      }
+      setSnapshots(allSnapshots)
+      setMatches(allMatches)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch data")
     } finally {
       setLoading(false)
     }
@@ -73,35 +96,18 @@ export default function SoloQ() {
   }, [])
 
   useEffect(() => {
-    const conn = players.filter(p => p.puuid)
-    if (!conn.length) return
-    const fromDate = period === "all" ? undefined : getPeriodStart(period).toISOString()
-    ;(async () => {
-      setLoading(true)
-      try {
-        const [snapshotResults, matchResults] = await Promise.all([
-          Promise.all(conn.map(p => api.post("/soloq-snapshot/search", { player_id: p._id, limit: 0, from_date: fromDate }))),
-          Promise.all(conn.map(p => api.post("/soloq-match/search", { player_id: p._id, limit: 0, from_date: fromDate })))
-        ])
-        setSnapshots(snapshotResults.flatMap(r => (r.ok ? r.data : [])))
-        setMatches(matchResults.flatMap(r => (r.ok ? r.data : [])))
-      } catch (error) {
-        console.error(error)
-      } finally {
-        setLoading(false)
-      }
-    })()
+    fetchData()
   }, [players, period])
 
   const handleArchive = async (e, playerId) => {
     e.stopPropagation()
     try {
-      const { ok, code } = await api.put(`/player/${playerId}/archive`)
+      const { ok, code } = await api.put(`/player/${playerId}`, { active: false })
       if (!ok) return toast.error(code || "Failed to archive player")
       setPlayers(prev => prev.filter(p => p._id !== playerId))
       toast.success("Player archived")
     } catch (error) {
-      toast.error(error.message || "Failed to archive player")
+      toast.error(error.code || "Failed to archive player")
     }
   }
 
@@ -110,25 +116,26 @@ export default function SoloQ() {
     try {
       const { ok, data } = await api.get(`/team/${user?.team_id}`)
       if (ok) setTeamData(data)
-    } catch {}
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch team")
+    }
     const initial = {}
     ROLES.forEach(role => {
       const existing = players.find(p => p.role === role && p.active !== false)
-      initial[role] = existing ? { _id: existing._id, game_name: existing.game_name || "", tag_line: existing.tag_line || "" } : { game_name: "", tag_line: "" }
+      initial[role] = existing ? { _id: existing._id, player_name: existing.player_name || "", game_name: existing.game_name || "", tag_line: existing.tag_line || "" } : { player_name: "", game_name: "", tag_line: "" }
     })
     setRoster(initial)
     setShowEditModal(true)
   }
 
   const handleSaveRole = async role => {
-    const { game_name, tag_line, _id } = roster[role] || {}
+    const { game_name, tag_line, player_name, _id } = roster[role] || {}
     if (!game_name?.trim() || !tag_line?.trim()) return toast.error("Summoner name and tag are required")
     const region = teamData?.region || "euw1"
+    const payload = { game_name: game_name.trim(), tag_line: tag_line.trim(), player_name: player_name?.trim() || "", region, role }
     setSaving(role)
     try {
-      const endpoint = _id
-        ? api.put(`/player/${_id}`, { game_name: game_name.trim(), tag_line: tag_line.trim(), region, role })
-        : api.post("/player", { game_name: game_name.trim(), tag_line: tag_line.trim(), region, role })
+      const endpoint = _id ? api.put(`/player/${_id}/resync`, payload) : api.post("/player", payload)
       const { ok, data, code } = await endpoint
       if (!ok) return toast.error(code || "Riot ID not found")
       setRoster(prev => ({ ...prev, [role]: { ...prev[role], _id: data._id, connected_at: data.connected_at } }))
@@ -148,7 +155,7 @@ export default function SoloQ() {
       setTeamData(prev => ({ ...prev, region: newRegion }))
       toast.success("Region updated")
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to update region")
     }
   }
 
@@ -191,16 +198,7 @@ export default function SoloQ() {
       <div className="max-w-[1800px] mx-auto space-y-6">
         {connected.length > 0 &&
           (() => {
-            const teamStats = connected.reduce(
-              (acc, p) => {
-                const s = getMatchStats(p._id)
-                return { w: acc.w + s.w, l: acc.l + s.l }
-              },
-              { w: 0, l: 0 }
-            )
-            const { w, l } = teamStats
-            const wr = w + l > 0 ? Math.round((w / (w + l)) * 100) : 0
-            const change = connected.reduce((s, p) => s + getLPChange(p), 0)
+            const teamStats = connected.reduce((acc, p) => ({ w: acc.w + getMatchStats(p._id).w, l: acc.l + getMatchStats(p._id).l }), { w: 0, l: 0 })
             return (
               <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl px-6 py-3 flex items-center gap-10">
                 <div className="flex items-center gap-10 flex-1 justify-center">
@@ -218,24 +216,34 @@ export default function SoloQ() {
                   <div className="flex items-center gap-2">
                     <Gamepad2 className="w-3.5 h-3.5 text-blue-400" />
                     <span className="text-slate-400 text-xs uppercase tracking-wider">Total Games</span>
-                    <span className="text-white font-bold text-lg tabular-nums">{w + l}</span>
+                    <span className="text-white font-bold text-lg tabular-nums">{teamStats.w + teamStats.l}</span>
                   </div>
                   <div className="w-px h-5 bg-slate-700" />
                   <div className="flex items-center gap-2">
                     <Trophy className="w-3.5 h-3.5 text-emerald-400" />
                     <span className="text-slate-400 text-xs uppercase tracking-wider">Win Rate</span>
-                    <span className={`font-bold text-lg tabular-nums ${wr >= 50 ? "text-emerald-400" : "text-red-400"}`}>{wr}%</span>
+                    <span
+                      className={`font-bold text-lg tabular-nums ${teamStats.w + teamStats.l > 0 ? (Math.round((teamStats.w / (teamStats.w + teamStats.l)) * 100) >= 50 ? "text-emerald-400" : "text-red-400") : "text-slate-400"}`}
+                    >
+                      {teamStats.w + teamStats.l > 0 ? Math.round((teamStats.w / (teamStats.w + teamStats.l)) * 100) : 0}%
+                    </span>
                     <span className="text-slate-500 text-xs">
-                      {w}W {l}L
+                      {teamStats.w}W {teamStats.l}L
                     </span>
                   </div>
                   <div className="w-px h-5 bg-slate-700" />
                   <div className="flex items-center gap-2">
-                    {change >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
+                    {connected.reduce((s, p) => s + getLPChange(p), 0) >= 0 ? (
+                      <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+                    )}
                     <span className="text-slate-400 text-xs uppercase tracking-wider">LP Change {periodLabel}</span>
-                    <span className={`font-bold text-lg tabular-nums ${change > 0 ? "text-emerald-400" : change < 0 ? "text-red-400" : "text-slate-400"}`}>
-                      {change > 0 ? "+" : ""}
-                      {change}
+                    <span
+                      className={`font-bold text-lg tabular-nums ${connected.reduce((s, p) => s + getLPChange(p), 0) > 0 ? "text-emerald-400" : connected.reduce((s, p) => s + getLPChange(p), 0) < 0 ? "text-red-400" : "text-slate-400"}`}
+                    >
+                      {connected.reduce((s, p) => s + getLPChange(p), 0) > 0 ? "+" : ""}
+                      {connected.reduce((s, p) => s + getLPChange(p), 0)}
                     </span>
                   </div>
                 </div>
@@ -294,8 +302,8 @@ export default function SoloQ() {
                 </div>
                 <div className="flex items-center gap-2">
                   <img src={`/roles/${p.role}.png`} alt={p.role} className="w-4 h-4 opacity-60" />
-                  <span className="text-white font-semibold text-sm">{p.game_name}</span>
-                  <span className="text-slate-500 text-xs">#{p.tag_line}</span>
+                  <span className="text-white font-semibold text-sm">{p.player_name || p.game_name}</span>
+                  {!p.player_name && <span className="text-slate-500 text-xs">#{p.tag_line}</span>}
                 </div>
                 <div className="relative w-24 h-24 flex items-center justify-center">
                   {RANK_ICON_TIERS.has(p.current_tier) ? (
@@ -364,10 +372,13 @@ export default function SoloQ() {
                     contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                     labelStyle={{ color: "#94a3b8" }}
                     labelFormatter={v => new Date(v).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                    formatter={(value, name) => [lpLabel(value), connected.find(p => p._id === name)?.game_name || name]}
+                    formatter={(value, name) => {
+                      const pl = connected.find(p => p._id === name)
+                      return [lpLabel(value), pl?.player_name || pl?.game_name || name]
+                    }}
                     itemSorter={a => -a.value}
                   />
-                  <Legend formatter={v => connected.find(p => p._id === v)?.game_name || v} />
+                  <Legend formatter={v => { const pl = connected.find(p => p._id === v); return pl?.player_name || pl?.game_name || v }} />
                   {connected.map((p, i) => (
                     <Line key={p._id} dataKey={p._id} stroke={CHART_COLORS[i % 5]} strokeWidth={2} dot={false} connectNulls activeDot={{ r: 4, strokeWidth: 2 }} />
                   ))}
@@ -381,7 +392,7 @@ export default function SoloQ() {
       {/* Edit Roster Modal */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowEditModal(false)}>
-          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-xl mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
               <h2 className="text-white font-semibold">Edit Roster</h2>
               <div className="flex items-center gap-3">
@@ -411,6 +422,13 @@ export default function SoloQ() {
                     <img src={`/roles/${role}.png`} alt={role} className="w-5 h-5 opacity-70" />
                     <span className="text-amber-400 font-semibold text-xs uppercase">{ROLE_LABELS[role]}</span>
                   </div>
+                  <input
+                    type="text"
+                    value={roster[role]?.player_name || ""}
+                    onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], player_name: e.target.value } }))}
+                    placeholder="Name"
+                    className="w-28 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
+                  />
                   <input
                     type="text"
                     value={roster[role]?.game_name || ""}

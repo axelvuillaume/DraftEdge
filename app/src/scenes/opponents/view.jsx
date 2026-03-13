@@ -5,84 +5,36 @@ import { ArrowLeft, Save, ExternalLink, Trophy, Swords } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
 
-export default function View() {
+export default function View({ stats }) {
   const { id } = useParams()
   const navigate = useNavigate()
 
   const [team, setTeam] = useState(null)
-  const [stats, setStats] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-
-  // Editable fields
-  const [league, setLeague] = useState("")
-  const [multiOpgg, setMultiOpgg] = useState("")
-  const [contactName, setContactName] = useState("")
-  const [contactRole, setContactRole] = useState("")
-  const [contactDiscord, setContactDiscord] = useState("")
-  const [contactTwitter, setContactTwitter] = useState("")
-  const [notes, setNotes] = useState("")
 
   const fetchTeam = async () => {
     try {
       const { ok, data, code } = await api.get(`/enemy-team/${id}`)
       if (!ok) return toast.error(code || "Failed to load team")
       setTeam(data)
-      setLeague(data.league || "")
-      setMultiOpgg(data.multi_opgg || "")
-      setContactName(data.contact_name || "")
-      setContactRole(data.contact_role || "")
-      setContactDiscord(data.contact_discord || "")
-      setContactTwitter(data.contact_twitter || "")
-      setNotes(data.notes || "")
     } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
-  const fetchStats = async () => {
-    try {
-      const { ok, data } = await api.post("/enemy-team/stats")
-      if (!ok) return toast.error(code)
-      setStats(data)
-    } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to load team")
     }
   }
 
   useEffect(() => {
-    Promise.all([fetchTeam(), fetchStats()]).finally(() => setLoading(false))
+    fetchTeam()
   }, [id])
 
   const teamStats = team && stats ? stats.find(s => s.opponent_name === team.name) : null
 
   const handleSave = async () => {
-    setSaving(true)
     try {
-      const { ok, code } = await api.put(`/enemy-team/${id}`, {
-        league,
-        multi_opgg: multiOpgg,
-        contact_name: contactName,
-        contact_role: contactRole,
-        contact_discord: contactDiscord,
-        contact_twitter: contactTwitter,
-        notes
-      })
-      if (!ok) return toast.error(code)
+      const { ok, code } = await api.put(`/enemy-team/${id}`, team)
+      if (!ok) return toast.error(code || "Failed to save")
       toast.success("Saved")
     } catch (error) {
-      toast.error(error.message)
-    } finally {
-      setSaving(false)
+      toast.error(error.code || "Failed to save")
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-65px)] flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
   }
 
   if (!team) {
@@ -106,16 +58,15 @@ export default function View() {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-white">{team.name}</h1>
-              {league && <p className="text-sm text-slate-400 mt-0.5">{league}</p>}
+              {team.league && <p className="text-sm text-slate-400 mt-0.5">{team.league}</p>}
             </div>
           </div>
           <button
             onClick={handleSave}
-            disabled={saving}
             className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-900 font-semibold rounded-lg transition-colors"
           >
             <Save className="w-4 h-4" />
-            {saving ? "Saving..." : "Save"}
+            Save
           </button>
         </div>
 
@@ -170,8 +121,8 @@ export default function View() {
                 <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5 block">League</label>
                 <input
                   type="text"
-                  value={league}
-                  onChange={e => setLeague(e.target.value)}
+                  value={team.league || ""}
+                  onChange={e => setTeam(prev => ({ ...prev, league: e.target.value }))}
                   placeholder="e.g. LCK, LEC, LFL..."
                   className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"
                 />
@@ -181,14 +132,14 @@ export default function View() {
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    value={multiOpgg}
-                    onChange={e => setMultiOpgg(e.target.value)}
+                    value={team.multi_opgg || ""}
+                    onChange={e => setTeam(prev => ({ ...prev, multi_opgg: e.target.value }))}
                     placeholder="https://www.op.gg/multisearch/..."
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"
                   />
-                  {multiOpgg && (
+                  {team.multi_opgg && (
                     <a
-                      href={multiOpgg}
+                      href={team.multi_opgg}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-slate-400 hover:text-amber-400 transition-colors flex-shrink-0"
@@ -208,8 +159,8 @@ export default function View() {
                   <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5 block">Name</label>
                   <input
                     type="text"
-                    value={contactName}
-                    onChange={e => setContactName(e.target.value)}
+                    value={team.contact_name || ""}
+                    onChange={e => setTeam(prev => ({ ...prev, contact_name: e.target.value }))}
                     placeholder="Manager name"
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"
                   />
@@ -218,8 +169,8 @@ export default function View() {
                   <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5 block">Role</label>
                   <input
                     type="text"
-                    value={contactRole}
-                    onChange={e => setContactRole(e.target.value)}
+                    value={team.contact_role || ""}
+                    onChange={e => setTeam(prev => ({ ...prev, contact_role: e.target.value }))}
                     placeholder="Manager, Coach..."
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"
                   />
@@ -230,8 +181,8 @@ export default function View() {
                   <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5 block">Discord</label>
                   <input
                     type="text"
-                    value={contactDiscord}
-                    onChange={e => setContactDiscord(e.target.value)}
+                    value={team.contact_discord || ""}
+                    onChange={e => setTeam(prev => ({ ...prev, contact_discord: e.target.value }))}
                     placeholder="username#1234"
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"
                   />
@@ -240,8 +191,8 @@ export default function View() {
                   <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5 block">Twitter / X</label>
                   <input
                     type="text"
-                    value={contactTwitter}
-                    onChange={e => setContactTwitter(e.target.value)}
+                    value={team.contact_twitter || ""}
+                    onChange={e => setTeam(prev => ({ ...prev, contact_twitter: e.target.value }))}
                     placeholder="@username"
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"
                   />
@@ -256,8 +207,8 @@ export default function View() {
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 space-y-4">
               <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">Notes</h2>
               <textarea
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
+                value={team.notes || ""}
+                onChange={e => setTeam(prev => ({ ...prev, notes: e.target.value }))}
                 placeholder="Quick notes about this team... (scrim quality, playstyle, availability, etc.)"
                 rows={6}
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm resize-none"

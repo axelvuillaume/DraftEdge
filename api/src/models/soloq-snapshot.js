@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const MODELNAME = 'soloQ-snapshot';
+const MODELNAME = 'soloq-snapshot';
 
 const Schema = new mongoose.Schema(
   {

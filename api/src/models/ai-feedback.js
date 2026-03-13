@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const MODELNAME = 'aifeedback';
+const MODELNAME = 'ai-feedback';
 
 const Schema = new mongoose.Schema(
   {

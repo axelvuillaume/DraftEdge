@@ -1,0 +1,96 @@
+import { useState, useEffect } from "react"
+import { toast } from "react-hot-toast"
+import api from "@/services/api"
+import useStore from "@/services/store"
+import { ChevronDown, Plus } from "lucide-react"
+
+export default function OpponentDropdown({ value, onChange, label }) {
+  const { user } = useStore()
+  const [enemyTeams, setEnemyTeams] = useState([])
+  const [open, setOpen] = useState(false)
+  const [newTeamName, setNewTeamName] = useState("")
+
+  const fetchEnemyTeams = async () => {
+    try {
+      const { ok, data, code } = await api.post("/enemy-team/search", { team_id: user.team_id })
+      if (!ok) return toast.error(code || "Failed to fetch teams")
+      setEnemyTeams(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch teams")
+    }
+  }
+
+  useEffect(() => {
+    if (user?.team_id) fetchEnemyTeams()
+  }, [user?.team_id])
+
+  const createEnemyTeam = async name => {
+    try {
+      const { ok, data, code } = await api.post("/enemy-team", { name })
+      if (!ok) return toast.error(code || "Failed to create team")
+      setEnemyTeams(prev => [data, ...prev])
+      onChange(data.name)
+      setNewTeamName("")
+      setOpen(false)
+    } catch (error) {
+      toast.error(error.code || "Failed to create team")
+    }
+  }
+
+  return (
+    <div className="relative min-w-[200px]">
+      {label && <label className="block text-sm font-medium text-slate-400 mb-1">{label}</label>}
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all text-left"
+      >
+        <span className={value ? "text-white text-sm" : "text-slate-400 text-sm"}>{value || "Select opponent..."}</span>
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+            <div className="p-2 border-b border-slate-700/50">
+              <form
+                onSubmit={e => {
+                  e.preventDefault()
+                  if (newTeamName.trim()) createEnemyTeam(newTeamName.trim())
+                }}
+                className="flex items-center gap-1.5"
+              >
+                <input
+                  type="text"
+                  placeholder="New team..."
+                  value={newTeamName}
+                  onChange={e => setNewTeamName(e.target.value)}
+                  className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-blue-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
+                  autoFocus
+                />
+                <button type="submit" disabled={!newTeamName.trim()} className="p-1.5 bg-blue-500 hover:bg-blue-400 disabled:opacity-30 text-white rounded-md transition-colors">
+                  <Plus className="w-3 h-3" />
+                </button>
+              </form>
+            </div>
+            <div className="max-h-40 overflow-y-auto p-1">
+              {enemyTeams.map(team => (
+                <button
+                  key={team._id}
+                  type="button"
+                  onClick={() => {
+                    onChange(team.name)
+                    setOpen(false)
+                  }}
+                  className={`w-full text-left px-3 py-1.5 rounded-md text-xs ${value === team.name ? "bg-blue-500/20 text-blue-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                >
+                  {team.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

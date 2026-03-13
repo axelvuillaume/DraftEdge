@@ -37,14 +37,13 @@ app.get('/', async (req, res) => {
 });
 
 app.use('/user', require('./controllers/user'));
-app.use('/file', require('./controllers/file'));
 app.use('/game', require('./controllers/game'));
-app.use('/aifeedback', require('./controllers/AIFeedBack'));
+app.use('/aifeedback', require('./controllers/ai-feedback'));
 app.use('/folder', require('./controllers/folder'));
-app.use('/playerstats', require('./controllers/playerstats'));
+app.use('/playerstats', require('./controllers/player-stats'));
 app.use('/draft-scenario', require('./controllers/draft-scenario'));
 app.use('/pro-game', require('./controllers/pro-game'));
-app.use('/pro-game-playerstats', require('./controllers/pro-game-playerstats'));
+app.use('/pro-game-playerstats', require('./controllers/pro-game-player-stats'));
 app.use('/team', require('./controllers/team'));
 app.use('/scrim-objectif', require('./controllers/scrim-objectif'));
 app.use('/scrim-objectif-result', require('./controllers/scrim-objectif-result'));
@@ -53,8 +52,8 @@ app.use('/enemy-team', require('./controllers/enemy-team'));
 app.use('/player', require('./controllers/player'));
 app.use('/solo-objectif', require('./controllers/solo-objectif'));
 app.use('/solo-objectif-result', require('./controllers/solo-objectif-result'));
-app.use('/soloq-snapshot', require('./controllers/soloQ-snapshot'));
-app.use('/soloq-match', require('./controllers/soloQ-match'));
+app.use('/soloq-snapshot', require('./controllers/soloq-snapshot'));
+app.use('/soloq-match', require('./controllers/soloq-match'));
 app.use('/team-league', require('./controllers/team-league'));
 app.use('/league', require('./controllers/league'));
 

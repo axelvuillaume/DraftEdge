@@ -3,7 +3,47 @@ const router = express.Router();
 const passport = require('passport');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
-const SoloQSnapshot = require('../models/soloQ-snapshot');
+const SoloQSnapshot = require('../models/soloq-snapshot');
+const Player = require('../models/player');
+
+const RANKED_TIERS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
+const DIVS = { IV: 0, III: 1, II: 2, I: 3 };
+
+function toLP(tier, rank, lp = 0) {
+  const i = RANKED_TIERS.indexOf(tier);
+  if (i === -1) return 0;
+  return i >= 7 ? 2800 + lp : i * 400 + (DIVS[rank] || 0) * 100 + lp;
+}
+
+router.post('/best-grinder', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const { team_id } = req.body;
+    if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_PARAMS });
+
+    const players = await Player.find({ team_id, puuid: { $exists: true, $ne: '' }, active: { $ne: false } });
+    if (players.length === 0) return res.status(200).send({ ok: true, data: null });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const snapshots = await SoloQSnapshot.find({ team_id, fetched_at: { $gte: today } }).sort({ fetched_at: 1 });
+
+    let best = null;
+    for (const player of players) {
+      const playerSnaps = snapshots.filter(s => s.player_id === player._id.toString()).sort((a, b) => new Date(a.fetched_at) - new Date(b.fetched_at));
+      if (playerSnaps.length < 2) continue;
+      const lpChange = toLP(playerSnaps.at(-1).tier, playerSnaps.at(-1).rank, playerSnaps.at(-1).league_points) - toLP(playerSnaps[0].tier, playerSnaps[0].rank, playerSnaps[0].league_points);
+      if (lpChange > 0 && (!best || lpChange > best.lpChange)) {
+        best = { game_name: player.game_name, current_tier: player.current_tier, lpChange };
+      }
+    }
+
+    return res.status(200).send({ ok: true, data: best });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
 
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {

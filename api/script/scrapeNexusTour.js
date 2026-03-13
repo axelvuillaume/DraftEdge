@@ -1,7 +1,7 @@
 const puppeteer = require("puppeteer");
 const mongoose = require("mongoose");
 const { MONGODB_ENDPOINT } = require("../src/config.js");
-const TeamLeague = require("../src/models/teamLeague.js");
+const TeamLeague = require("../src/models/team-league.js");
 
 const BASE_URL = "https://www.opentourfrance.fr/fr/tournaments/2367625949264826367/participants/";
 const LEAGUE_ID = "69b19b7b9453d5bb395b88fe";

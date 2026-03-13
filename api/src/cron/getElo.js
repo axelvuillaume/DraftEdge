@@ -1,5 +1,5 @@
 const Player = require('../models/player');
-const SoloQSnapshot = require('../models/soloQ-snapshot');
+const SoloQSnapshot = require('../models/soloq-snapshot');
 const { getRankByPuuid } = require('../services/riotgames');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

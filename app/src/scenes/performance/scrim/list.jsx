@@ -9,36 +9,31 @@ import { Plus, Target, Trash2, ChevronRight } from "lucide-react"
 export default function List() {
   const navigate = useNavigate()
   const [sessions, setSessions] = useState([])
-  const { user, globalFilters } = useStore()
+  const { user } = useStore()
   const [showAddSessionModal, setShowAddSessionModal] = useState(false)
 
   const fetchSessions = async () => {
     try {
-      const { ok, data, code } = await api.post("/scrim-session/search", {
-        team_id: user?.team_id,
-        ...(globalFilters.patch && { patch: globalFilters.patch }),
-        ...(globalFilters.opponent_name && { opponent: globalFilters.opponent_name }),
-        ...(globalFilters.folder_id && { folder_id: globalFilters.folder_id })
-      })
-      if (!ok) return toast.error(code)
+      const { ok, data, code } = await api.post("/scrim-session/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code || "Failed to fetch sessions")
       setSessions(data)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to fetch sessions")
     }
   }
 
   useEffect(() => {
     fetchSessions()
-  }, [user?.team_id, globalFilters.patch, globalFilters.opponent_name, globalFilters.folder_id])
+  }, [])
 
   const handleDeleteSession = async id => {
     if (!window.confirm("Are you sure you want to delete this session?")) return
     try {
       const { ok, code } = await api.delete(`/scrim-session/${id}`)
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to delete session")
       fetchSessions()
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to delete session")
     }
   }
 
@@ -126,7 +121,7 @@ function AddSessionModal({ isOpen, onClose, onSuccess }) {
       onClose()
       onSuccess(data._id)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to create session")
     }
   }
 

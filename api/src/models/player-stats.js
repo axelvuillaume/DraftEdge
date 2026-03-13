@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const MODELNAME = 'playerstats';
+const MODELNAME = 'player-stats';
 
 const Schema = new mongoose.Schema(
   {
