@@ -162,11 +162,15 @@ export default function View() {
             )}
             <OpponentDropdown
               value={session.opponent_name}
-              onChange={({ _id, name }) => {
+              onChange={async ({ _id, name }) => {
                 setSession(prev => ({ ...prev, opponent_id: _id, opponent_name: name }))
-                api.put(`/scrim-session/${id}`, { ...session, opponent_id: _id, opponent_name: name }).then(({ ok, code }) => {
-                  if (!ok) toast.error(code || "Failed to update session")
-                })
+                const { ok, code } = await api.put(`/scrim-session/${id}`, { ...session, opponent_id: _id, opponent_name: name })
+                if (!ok) return toast.error(code || "Failed to update session")
+                if (games.length > 0) {
+                  const results = await Promise.all(games.map(g => api.put(`/game/${g._id}`, { opponent_id: _id || null, opponent_name: name || null })))
+                  if (results.some(r => !r.ok)) toast.error("Failed to update some games")
+                  else fetchGames()
+                }
               }}
             />
             <FolderDropdown session={session} games={games} onUpdate={fetchSession} />
@@ -824,6 +828,7 @@ function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [] }
         const { ok, code } = await api.put(`/game/${gameId}`, {
           session_id: session?._id,
           session_name: session?.name,
+          ...(session?.opponent_id && { opponent_id: session.opponent_id, opponent_name: session.opponent_name }),
           ...(roflConfig.folder_id && { folder_id: roflConfig.folder_id, folder_name: roflConfig.folder_name })
         })
         if (!ok) return toast.error(code || "Failed to add game")
