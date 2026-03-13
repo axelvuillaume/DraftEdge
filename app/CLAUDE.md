@@ -119,3 +119,48 @@ return (
 ```
 
 Exception: destructuring API responses (`{ ok, data, code }`) and `useStore()` is allowed.
+
+## Backend Filtering
+
+ALWAYS filter data on the backend. NEVER filter on the frontend with `useMemo`, `.filter()`, or any client-side logic on fetched arrays.
+
+Store filters in a single `useState` object and spread them directly into the `api.post` body. The `useEffect` re-fetches whenever `filters` changes.
+
+```jsx
+const [filters, setFilters] = useState({ search: "", patch: "", opponent_name: "" })
+
+const fetchSessions = async () => {
+  try {
+    const { ok, data, code } = await api.post("/scrim-session/search", { team_id: user?.team_id, ...filters })
+    if (!ok) return toast.error(code || "Failed to fetch sessions")
+    setSessions(data)
+  } catch (error) {
+    toast.error(error.code || "Failed to fetch sessions")
+  }
+}
+
+useEffect(() => {
+  fetchSessions()
+}, [filters])
+```
+
+Rules:
+
+- ALWAYS store all filters in a single `useState` object, NEVER one `useState` per filter
+- ALWAYS spread `...filters` directly in the `api.post` call, NEVER build a separate `body` variable
+- ALWAYS re-fetch via `useEffect` on `[filters]`, the backend handles empty/falsy filter values
+- Filter dropdowns (patch, opponent, etc.) are self-contained components that fetch their own options
+
+## No External Body Variable
+
+NEVER create an intermediate `body` or `payload` variable for `api.post`. Pass the object inline.
+
+```jsx
+// BAD
+const body = { team_id: user?.team_id }
+if (filters.search) body.search = filters.search
+const { ok, data, code } = await api.post("/endpoint", body)
+
+// GOOD
+const { ok, data, code } = await api.post("/endpoint", { team_id: user?.team_id, ...filters })
+```

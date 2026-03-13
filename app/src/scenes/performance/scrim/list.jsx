@@ -4,6 +4,7 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
 import { useNavigate } from "react-router-dom"
+import OpponentDropdown from "@/components/OpponentDropdown"
 import { Plus, Target, Trash2, ChevronDown, Search, X, Calendar, Trophy } from "lucide-react"
 
 function formatDate(value) {
@@ -341,44 +342,58 @@ function OpponentFilterDropdown({ value, onChange }) {
 }
 
 function AddSessionModal({ isOpen, onClose, onSuccess }) {
-  const [name, setName] = useState("")
+  const [form, setForm] = useState({ name: "", opponent: "", date: new Date().toISOString().slice(0, 10) })
+  const [creating, setCreating] = useState(false)
 
-  const handleAdd = async () => {
-    if (!name.trim()) return
+  const handleCreate = async () => {
+    if (!form.name.trim()) return toast.error("Session name is required")
+    if (!form.opponent) return toast.error("Select an opponent")
+    setCreating(true)
     try {
-      const { ok, data, code } = await api.post("/scrim-session", { name })
-      if (!ok) return toast.error(code)
-      setName("")
+      const { ok, data, code } = await api.post("/scrim-session", { ...form, name: form.name.trim(), date: form.date ? new Date(form.date).toISOString() : undefined })
+      if (!ok) return toast.error(code || "Failed to create session")
+      setForm({ name: "", opponent: "", date: new Date().toISOString().slice(0, 10) })
       onClose()
       onSuccess(data._id)
     } catch (error) {
       toast.error(error.code || "Failed to create session")
+    } finally {
+      setCreating(false)
     }
   }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-md bg-slate-800 p-6">
       <div className="space-y-4">
-        <h2 className="text-white font-semibold text-lg">New Session</h2>
+        <h2 className="text-white font-semibold text-lg">New Scrim Session</h2>
         <div>
-          <label className="text-slate-400 text-xs font-medium mb-1.5 block">Name</label>
+          <label className="block text-sm font-medium text-slate-400 mb-1">Session Name *</label>
           <input
             type="text"
-            placeholder="e.g. Scrim vs Team B"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="w-full bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 text-sm"
-            onKeyDown={e => e.key === "Enter" && handleAdd()}
+            placeholder="e.g. Scrim vs Team B - Week 5"
+            value={form.name}
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             autoFocus
+            className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none transition-all"
           />
         </div>
-        <div className="flex justify-end gap-2 pt-2">
+        <OpponentDropdown value={form.opponent} onChange={v => setForm(f => ({ ...f, opponent: v }))} label="Opponent Team *" />
+        <div>
+          <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
+          <input
+            type="date"
+            value={form.date}
+            onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+            className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-blue-500 focus:outline-none transition-all [color-scheme:dark]"
+          />
+        </div>
+        <div className="flex justify-end pt-2">
           <button
-            onClick={handleAdd}
-            disabled={!name.trim()}
+            onClick={handleCreate}
+            disabled={creating || !form.name.trim() || !form.opponent}
             className="px-5 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg transition-colors text-sm"
           >
-            Create
+            {creating ? "Creating..." : "Create Session"}
           </button>
         </div>
       </div>
