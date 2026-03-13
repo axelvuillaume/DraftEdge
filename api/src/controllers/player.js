@@ -43,12 +43,12 @@ router.put('/:id/resync', passport.authenticate(['admin', 'user'], { session: fa
 
     if ((riotIdChanged || regionChanged) && req.body.game_name && req.body.tag_line) {
       const puuid = await getPuuidByRiotId(req.body.game_name, req.body.tag_line, region);
-      if (!puuid) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+      if (!puuid) return res.status(400).send({ ok: false, code: 'Riot ID not found' });
       player.puuid = puuid;
       const rank = await getRankByPuuid(puuid, region);
       player.region = region;
       player.connected_at = new Date();
-      if (!rank) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+      if (!rank) return res.status(400).send({ ok: false, code: 'Rank not found' });
       player.current_tier = rank.tier;
       player.current_rank = rank.rank;
       player.current_lp = rank.leaguePoints;
