@@ -14,11 +14,6 @@ function formatDate(value) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
-function getPatchPrefix(patch) {
-  if (!patch) return null
-  return patch.split(".").slice(0, 2).join(".")
-}
-
 export default function List() {
   const navigate = useNavigate()
   const [sessions, setSessions] = useState([])
@@ -182,7 +177,7 @@ export default function List() {
                     </td>
                     <td className="px-4 py-3.5">
                       {session.patch ? (
-                        <span className="font-mono text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">{getPatchPrefix(session.patch)}</span>
+                        <span className="font-mono text-xs text-slate-300 px-2 py-0.5 rounded">{session.patch?.split(".").slice(0, 2).join(".")}</span>
                       ) : (
                         <span className="text-slate-600 text-sm">—</span>
                       )}

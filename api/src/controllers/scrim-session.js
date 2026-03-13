@@ -10,7 +10,7 @@ router.post('/patches', passport.authenticate(['admin', 'user'], { session: fals
     const query = {};
     if (req.body.team_id) query.team_id = req.body.team_id;
     const patches = await ScrimSession.distinct('patch', query);
-    const prefixes = [...new Set(patches.filter(Boolean).map(p => p.split('.').slice(0, 2).join('.')))].sort().reverse();
+    const prefixes = [...new Set(patches.filter(Boolean).map((p) => p.split('.').slice(0, 2).join('.')))].sort().reverse();
     return res.status(200).send({ ok: true, data: prefixes });
   } catch (error) {
     capture(error);
@@ -51,7 +51,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
       const escaped = req.body.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [{ name: { $regex: escaped, $options: 'i' } }, { opponent_name: { $regex: escaped, $options: 'i' } }, { patch: { $regex: escaped, $options: 'i' } }];
     }
-    const data = await ScrimSession.find(query).sort({ createdAt: -1 });
+    const data = await ScrimSession.find(query).sort({ date: -1 });
     return res.status(200).send({ ok: true, data });
   } catch (error) {
     capture(error);
