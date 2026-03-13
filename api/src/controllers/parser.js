@@ -665,7 +665,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     const data = processRoflData(metadata, req.file.originalname, team_id);
 
     const existingGame = await Game.findOne({ game_fingerprint: data.game.game_fingerprint });
-    //if (existingGame) return res.status(409).json({ ok: false, error: 'This game already exists', existing_game_id: existingGame._id });
+    if (existingGame) return res.status(409).json({ ok: false, error: 'This game already exists', existing_game_id: existingGame._id });
 
     // Enrichir les données Game
     data.game.team_id = team_id || null;
