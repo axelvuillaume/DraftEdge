@@ -8,50 +8,39 @@ import { ChevronLeft, ChevronDown, Radar, Table2, Search } from "lucide-react"
 
 const ROLE_TO_POSITION = { top: "top", jungle: "jng", mid: "mid", bottom: "bot", support: "sup" }
 
+const CATEGORIES = [
+  { id: "Vision", icon: PatternIcon, color: "#0ea5e9" },
+  { id: "Income", icon: ScalingIcon, color: "#a855f7" },
+  { id: "Combat", icon: CombatIcon, color: "#3b82f6" },
+  { id: "Objectives", icon: ObjectivesIcon, color: "#f97316" }
+]
+
 export default function StatsV2() {
   const { searchNavigation, setSearchNavigation, globalFilters } = useStore()
   const [teamData, setTeamData] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [activePlayer, setActivePlayer] = useState(null)
   const [activeChampion, setActiveChampion] = useState(null)
   const [activeEnemyChampion, setActiveEnemyChampion] = useState(null)
   const [activeCategory, setActiveCategory] = useState("Vision")
   const [viewMode, setViewMode] = useState("spider")
-  const [compareMode, setCompareMode] = useState("scrim") // "scrim" | "pro" | "soloq"
+  const [compareMode, setCompareMode] = useState("scrim")
   const [proStats, setProStats] = useState(null)
   const [soloqStats, setSoloqStats] = useState(null)
   const [selectedLeagues, setSelectedLeagues] = useState([])
-  const [availableLeagues, setAvailableLeagues] = useState([])
-  const [proSubMode, setProSubMode] = useState("avg") // "avg" | "team" | "player"
-  const [availableProTeams, setAvailableProTeams] = useState([])
-  const [availableProPlayers, setAvailableProPlayers] = useState([])
+  const [proSubMode, setProSubMode] = useState("avg")
   const [selectedProTeam, setSelectedProTeam] = useState(null)
   const [selectedProPlayer, setSelectedProPlayer] = useState(null)
-  const [proSearchInput, setProSearchInput] = useState("")
-  const [proSelectorOpen, setProSelectorOpen] = useState(false)
-  const proSelectorRef = useRef(null)
-
-  const categories = [
-    { id: "Vision", icon: PatternIcon, color: "#0ea5e9" },
-    { id: "Income", icon: ScalingIcon, color: "#a855f7" },
-    { id: "Combat", icon: CombatIcon, color: "#3b82f6" },
-    { id: "Objectives", icon: ObjectivesIcon, color: "#f97316" }
-  ]
 
   const fetchStats = async () => {
     try {
       const { ok, data, code } = await api.post("/playerstats/team_stats_v2", { ...globalFilters })
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to fetch stats")
       setTeamData(data)
       setActivePlayer(null)
       setActiveChampion(null)
       setActiveEnemyChampion(null)
-      return data
     } catch (error) {
-      toast.error(error.message)
-      return null
-    } finally {
-      setLoading(false)
+      toast.error(error.code || "Failed to fetch stats")
     }
   }
 
@@ -67,32 +56,10 @@ export default function StatsV2() {
         delete body.position
       }
       const { ok, data, code } = await api.post("/pro-game-playerstats/aggregate", body)
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to fetch pro stats")
       setProStats(data)
     } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
-  const fetchProTeams = async () => {
-    try {
-      const { ok, data, code } = await api.get("/pro-game-playerstats/teams/list")
-      if (!ok) return toast.error(code)
-      setAvailableProTeams(data)
-    } catch (error) {
-      toast.error(error.message)
-    }
-  }
-
-  const fetchProPlayers = async position => {
-    try {
-      const pos = position ? ROLE_TO_POSITION[position] || position : ""
-      const params = pos ? `?position=${pos}` : ""
-      const { ok, data, code } = await api.get(`/pro-game-playerstats/players/list${params}`)
-      if (!ok) return toast.error(code)
-      setAvailableProPlayers(data)
-    } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to fetch pro stats")
     }
   }
 
@@ -101,35 +68,12 @@ export default function StatsV2() {
       const body = {}
       if (position) body.position = position
       const { ok, data, code } = await api.post("/soloq-match/aggregate", body)
-      if (!ok) return toast.error(code)
+      if (!ok) return toast.error(code || "Failed to fetch soloq stats")
       setSoloqStats(data)
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.code || "Failed to fetch soloq stats")
     }
   }
-
-  const fetchLeagues = async () => {
-    try {
-      const { ok, data, code } = await api.get("/pro-game/leagues/list")
-      if (!ok) return toast.error(code)
-      setAvailableLeagues(data)
-    } catch (error) {
-      toast.error(error.message)
-    }
-  }
-  useEffect(() => {
-    fetchLeagues()
-    fetchProTeams()
-    fetchProPlayers()
-  }, [])
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (proSelectorRef.current && !proSelectorRef.current.contains(event.target)) setProSelectorOpen(false)
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
 
   useEffect(() => {
     fetchStats()
@@ -143,36 +87,25 @@ export default function StatsV2() {
   }, [activePlayer?.role, selectedLeagues, proSubMode, selectedProTeam, selectedProPlayer])
 
   useEffect(() => {
-    fetchProPlayers(activePlayer?.role || null)
-  }, [activePlayer?.role])
-
-  // Handle search navigation changes (works even when already on statsV2 page)
-  useEffect(() => {
     if (!searchNavigation || !teamData) return
 
     const applyNavigation = async () => {
       if (searchNavigation.type === "player") {
-        const d = searchNavigation.data
-        const player = teamData.players?.find(p => p.puuid === d.puuid)
+        const player = teamData.players?.find(p => p.puuid === searchNavigation.data.puuid)
         if (player) {
           setActivePlayer(player)
           setActiveChampion(null)
           setActiveEnemyChampion(null)
         }
       } else if (searchNavigation.type === "allyChampion") {
-        const d = searchNavigation.data
-        const championName = d.name
-        const player = teamData.players?.find(p => p.puuid === d.puuid)
+        const player = teamData.players?.find(p => p.puuid === searchNavigation.data.puuid)
         if (player) {
           setActivePlayer(player)
           setActiveEnemyChampion(null)
-          const champion = (player.champions || []).find(c => c.name === championName)
-          if (champion) {
-            setActiveChampion(champion)
-          }
+          const champion = (player.champions || []).find(c => c.name === searchNavigation.data.name)
+          if (champion) setActiveChampion(champion)
         }
       } else if (searchNavigation.type === "enemyChampion") {
-        // Fetch enemy champion stats from API
         try {
           const { ok, data } = await api.post("/playerstats/enemy_champion_stats", { ...globalFilters, championName: searchNavigation.data.name })
           if (ok) {
@@ -181,7 +114,7 @@ export default function StatsV2() {
             setActiveEnemyChampion(data)
           }
         } catch (error) {
-          toast.error("Error loading enemy champion stats")
+          toast.error(error.code || "Failed to load enemy champion stats")
         }
       }
       setSearchNavigation(null)
@@ -190,7 +123,7 @@ export default function StatsV2() {
     applyNavigation()
   }, [searchNavigation?.timestamp, teamData])
 
-  if (loading) {
+  if (!teamData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -201,36 +134,14 @@ export default function StatsV2() {
     )
   }
 
-  if (!teamData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <p className="text-slate-400 font-medium">No data available</p>
-      </div>
-    )
-  }
-
-  const isEnemyChampion = activeEnemyChampion !== null
-  const isTeam = activePlayer === null && activeChampion === null && !isEnemyChampion
-  const isPlayer = activePlayer !== null && activeChampion === null && !isEnemyChampion
-  const isChampion = activeChampion !== null && !isEnemyChampion
-
-  const getCurrentData = () => {
-    if (isEnemyChampion) return activeEnemyChampion
-    if (isChampion) return activeChampion
-    if (isPlayer) return activePlayer
-    return teamData
-  }
-
+  const currentData = activeEnemyChampion || activeChampion || activePlayer || teamData
   const proCompareLabel = proSubMode === "team" ? selectedProTeam || "Pro Avg" : proSubMode === "player" ? selectedProPlayer?.name || "Pro Avg" : "Pro Avg"
 
-  const currentData = getCurrentData()
-
   return (
-    <div className="h-[calc(100vh-200px)]  bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
+    <div className="h-[calc(100vh-200px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
       <div className="max-w-[1800px] mx-auto w-full">
         <Breadcrumb
-          teamName={teamData.name}
-          players={teamData.players || []}
+          teamData={teamData}
           activePlayer={activePlayer}
           activeChampion={activeChampion}
           activeEnemyChampion={activeEnemyChampion}
@@ -257,25 +168,16 @@ export default function StatsV2() {
         />
 
         <div className="grid lg:grid-cols-2 gap-6 items-start">
-          {/* Colonne gauche - Métriques */}
           <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white font-semibold text-sm uppercase tracking-wider">Performance by Category</h2>
               <div className="flex items-center gap-2">
-                {/* Pro compare search bar */}
                 <ProSearchBar
-                  leagues={availableLeagues}
-                  teams={availableProTeams}
-                  players={availableProPlayers}
                   selectedLeagues={selectedLeagues}
                   selectedProTeam={selectedProTeam}
                   selectedProPlayer={selectedProPlayer}
                   proSubMode={proSubMode}
-                  searchInput={proSearchInput}
-                  onSearchChange={setProSearchInput}
-                  isOpen={proSelectorOpen}
-                  onToggle={() => setProSelectorOpen(o => !o)}
-                  dropdownRef={proSelectorRef}
+                  activePlayerRole={activePlayer?.role || null}
                   onSelectLeague={league => {
                     setSelectedLeagues(prev => (prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]))
                     setProSubMode("avg")
@@ -293,23 +195,18 @@ export default function StatsV2() {
                     setSelectedProTeam(name)
                     setSelectedProPlayer(null)
                     setSelectedLeagues([])
-                    setProSearchInput("")
-                    setProSelectorOpen(false)
                   }}
                   onSelectPlayer={p => {
                     setProSubMode("player")
                     setSelectedProPlayer(p)
                     setSelectedProTeam(null)
                     setSelectedLeagues([])
-                    setProSearchInput("")
-                    setProSelectorOpen(false)
                   }}
                   onClear={() => {
                     setProSubMode("avg")
                     setSelectedProTeam(null)
                     setSelectedProPlayer(null)
                     setSelectedLeagues([])
-                    setProSearchInput("")
                   }}
                 />
                 <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
@@ -335,7 +232,7 @@ export default function StatsV2() {
               </div>
             </div>
             <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
-            <CategoryTabs categories={categories} activeCategory={activeCategory} onCategoryChange={setActiveCategory} categoryScores={currentData.categoryScores} />
+            <CategoryTabs categories={CATEGORIES} activeCategory={activeCategory} onCategoryChange={setActiveCategory} data={currentData} />
             {(() => {
               const scrimMetrics = currentData.metrics?.[activeCategory] || []
               const proCategory = proStats?.[activeCategory]
@@ -346,23 +243,24 @@ export default function StatsV2() {
                 metrics.map(m => {
                   const val = source?.[m.name]
                   if (val == null || val === "-") return m
-                  const diff = val > 0 ? ((m.team - val) / val) * 100 : m.team > 0 ? 100 : 0
-                  return { ...m, enemies: val, diff: round1(diff) }
+                  return { ...m, enemies: val, diff: round1(val > 0 ? ((m.team - val) / val) * 100 : m.team > 0 ? 100 : 0) }
                 })
 
               if (viewMode === "spider") {
-                const displayMetrics =
-                  compareMode === "pro" && proCategory
-                    ? getCompareMetrics(proCategory, scrimMetrics)
-                    : compareMode === "soloq" && soloqCategory
-                      ? getCompareMetrics(soloqCategory, scrimMetrics)
-                      : scrimMetrics
-
-                const compareLabel = compareMode === "soloq" ? "SoloQ" : proCompareLabel
-
                 return (
                   <>
-                    <SpiderChart metrics={displayMetrics} isEnemyChampion={isEnemyChampion} compareMode={compareMode} proLabel={compareLabel} />
+                    <SpiderChart
+                      metrics={
+                        compareMode === "pro" && proCategory
+                          ? getCompareMetrics(proCategory, scrimMetrics)
+                          : compareMode === "soloq" && soloqCategory
+                            ? getCompareMetrics(soloqCategory, scrimMetrics)
+                            : scrimMetrics
+                      }
+                      isEnemyChampion={!!activeEnemyChampion}
+                      compareMode={compareMode}
+                      proLabel={compareMode === "soloq" ? "SoloQ" : proCompareLabel}
+                    />
                     <div className="flex justify-end mt-4">
                       <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
                         <button
@@ -395,33 +293,62 @@ export default function StatsV2() {
                 )
               }
 
-              return <MetricsTable metrics={scrimMetrics} isEnemyChampion={isEnemyChampion} proStats={proCategory} proLabel={proCompareLabel} soloqStats={soloqCategory} />
+              return <MetricsTable metrics={scrimMetrics} isEnemyChampion={!!activeEnemyChampion} proStats={proCategory} proLabel={proCompareLabel} soloqStats={soloqCategory} />
             })()}
           </div>
 
-          {/* Colonne droite - Listes */}
-          {isTeam && (
-            <SectionCard title="Team Players">
-              <PlayersList players={teamData.players || []} onPlayerClick={setActivePlayer} />
-            </SectionCard>
+          {!activePlayer && !activeChampion && !activeEnemyChampion && (
+            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
+              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">Team Players</h2>
+              <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
+              {!teamData.players || teamData.players.length === 0 ? (
+                <div className="text-slate-500 text-center py-8">No players available</div>
+              ) : (
+                <div className="space-y-2">
+                  {teamData.players.map((player, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setActivePlayer(player)}
+                      className="bg-slate-900/40 border border-slate-700/40 rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-700/40 hover:border-emerald-500/40 transition-all group"
+                    >
+                      <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">
+                        <img src={`/roles/${player.role}.png`} alt={player.role} className="w-5 h-5" onError={e => (e.target.style.display = "none")} />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">{player.name}</span>
+                      </div>
+                      <span className={`font-bold text-sm ${player.score >= 70 ? "text-emerald-400" : player.score >= 50 ? "text-amber-400" : "text-red-400"}`}>
+                        {player.score || 0}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
-          {isPlayer && (
-            <SectionCard title="Champions">
-              <Matchups champions={activePlayer.champions} onChampionClick={setActiveChampion} />
-            </SectionCard>
+          {activePlayer && !activeChampion && !activeEnemyChampion && (
+            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
+              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">Champions</h2>
+              <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
+              <Matchups data={activePlayer} onChampionClick={setActiveChampion} />
+            </div>
           )}
 
-          {isChampion && (
-            <SectionCard title="Matchup Details">
-              <Matchups champions={activeChampion.champions} readOnly />
-            </SectionCard>
+          {activeChampion && !activeEnemyChampion && (
+            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
+              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">Matchup Details</h2>
+              <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
+              <Matchups data={activeChampion} readOnly />
+            </div>
           )}
 
-          {isEnemyChampion && (
-            <SectionCard title="Our champions vs this champion">
-              <Matchups champions={activeEnemyChampion.champions} readOnly />
-            </SectionCard>
+          {activeEnemyChampion && (
+            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
+              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">Our champions vs this champion</h2>
+              <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
+              <Matchups data={activeEnemyChampion} readOnly />
+            </div>
           )}
         </div>
       </div>
@@ -429,57 +356,39 @@ export default function StatsV2() {
   )
 }
 
-// Composant réutilisable pour les sections avec titre
-function SectionCard({ title, children }) {
-  return (
-    <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
-      {title && (
-        <>
-          <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">{title}</h2>
-          <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
-        </>
-      )}
-      {children}
-    </div>
-  )
-}
-
-function CategoryTabs({ categories, activeCategory, onCategoryChange, categoryScores }) {
-  const defaultScores = { Combat: 50, Objectives: 50, Vision: 50, Income: 50 }
-  const scores = categoryScores || defaultScores
-
+function CategoryTabs({ categories, activeCategory, onCategoryChange, data }) {
   return (
     <div className="flex items-center gap-2 mb-5">
-      {categories.map(cat => {
-        const isActive = activeCategory === cat.id
-        const score = scores[cat.id] ?? 50
-        return (
-          <button
-            key={cat.id}
-            onClick={() => onCategoryChange(cat.id)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
-              isActive ? "bg-slate-700/80 border-slate-500 ring-1 ring-slate-400/50" : "bg-slate-800/50 border-slate-700/50 hover:bg-slate-700/50 hover:border-slate-600"
+      {categories.map(cat => (
+        <button
+          key={cat.id}
+          onClick={() => onCategoryChange(cat.id)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
+            activeCategory === cat.id
+              ? "bg-slate-700/80 border-slate-500 ring-1 ring-slate-400/50"
+              : "bg-slate-800/50 border-slate-700/50 hover:bg-slate-700/50 hover:border-slate-600"
+          }`}
+        >
+          <div className="w-6 h-6 rounded flex items-center justify-center" style={{ backgroundColor: cat.color + "20" }}>
+            <cat.icon className="w-4 h-4" style={{ color: cat.color }} />
+          </div>
+          <span
+            className={`font-bold text-sm ${
+              (data.categoryScores?.[cat.id] ?? 50) >= 70 ? "text-emerald-400" : (data.categoryScores?.[cat.id] ?? 50) >= 50 ? "text-amber-400" : "text-red-400"
             }`}
           >
-            <div className="w-6 h-6 rounded flex items-center justify-center" style={{ backgroundColor: cat.color + "20" }}>
-              <cat.icon className="w-4 h-4" style={{ color: cat.color }} />
-            </div>
-            <span className={`font-bold text-sm ${score >= 70 ? "text-emerald-400" : score >= 50 ? "text-amber-400" : "text-red-400"}`}>{score}</span>
-          </button>
-        )
-      })}
+            {data.categoryScores?.[cat.id] ?? 50}
+          </span>
+        </button>
+      ))}
     </div>
   )
 }
 
-function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEnemyChampion, onTeamClick, onPlayerChange, onChampionChange, onBack }) {
-  const allChampions = activePlayer ? activePlayer.champions || [] : []
-
-  const showBackButton = activePlayer || activeChampion || activeEnemyChampion
-
+function Breadcrumb({ teamData, activePlayer, activeChampion, activeEnemyChampion, onTeamClick, onPlayerChange, onChampionChange, onBack }) {
   return (
     <div className="flex items-center gap-2 mb-3 text-sm flex-shrink-0">
-      {showBackButton && (
+      {(activePlayer || activeChampion || activeEnemyChampion) && (
         <button
           onClick={onBack}
           className="w-6 h-6 flex items-center justify-center rounded bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 hover:text-white transition-colors"
@@ -492,7 +401,7 @@ function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEne
         onClick={onTeamClick}
         className={`font-medium transition-colors ${!activePlayer && !activeChampion && !activeEnemyChampion ? "text-emerald-400" : "text-slate-400 hover:text-white"}`}
       >
-        {teamName}
+        {teamData.name}
       </button>
       {activeEnemyChampion && (
         <>
@@ -509,7 +418,7 @@ function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEne
           <select
             value={activePlayer.puuid}
             onChange={e => {
-              const player = players.find(p => p.puuid === e.target.value)
+              const player = (teamData.players || []).find(p => p.puuid === e.target.value)
               if (player) onPlayerChange(player)
             }}
             className={`bg-transparent font-medium px-1 py-1 outline-none border-none cursor-pointer transition-colors appearance-none pr-6 ${activeChampion ? "text-slate-400 hover:text-white" : "text-emerald-400"}`}
@@ -523,7 +432,7 @@ function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEne
               backgroundSize: "14px"
             }}
           >
-            {players.map(player => (
+            {(teamData.players || []).map(player => (
               <option key={player.puuid} value={player.puuid} className="bg-slate-800 text-white">
                 {player.name}
               </option>
@@ -537,7 +446,7 @@ function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEne
           <select
             value={activeChampion.name}
             onChange={e => {
-              const champion = allChampions.find(c => c.name === e.target.value)
+              const champion = (activePlayer?.champions || []).find(c => c.name === e.target.value)
               if (champion) onChampionChange(champion)
             }}
             className="bg-transparent font-medium text-emerald-400 px-1 py-1 outline-none border-none cursor-pointer transition-colors appearance-none pr-6"
@@ -551,7 +460,7 @@ function Breadcrumb({ teamName, players, activePlayer, activeChampion, activeEne
               backgroundSize: "14px"
             }}
           >
-            {allChampions.map(champion => (
+            {(activePlayer?.champions || []).map(champion => (
               <option key={champion.name} value={champion.name} className="bg-slate-800 text-white">
                 {champion.name}
               </option>
@@ -570,9 +479,7 @@ function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats
 
   const hasProStats = proStats && Object.keys(proStats).length > 0
   const hasSoloqStats = soloqStats && Object.keys(soloqStats).length > 0
-  const extraCols = (hasProStats ? 1 : 0) + (hasSoloqStats ? 1 : 0)
-  // Tailwind needs static class names for purging
-  const gridCols = extraCols === 2 ? "grid-cols-6" : extraCols === 1 ? "grid-cols-5" : "grid-cols-4"
+  const gridCols = hasProStats && hasSoloqStats ? "grid-cols-6" : hasProStats || hasSoloqStats ? "grid-cols-5" : "grid-cols-4"
 
   return (
     <div className="w-full">
@@ -586,24 +493,19 @@ function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats
       </div>
 
       <div className="divide-y divide-slate-700/30">
-        {metrics.map((row, i) => {
-          const diff = parseFloat(row.diff) || 0
-          const proVal = hasProStats ? proStats[row.name] : null
-          const soloqVal = hasSoloqStats ? soloqStats[row.name] : null
-          return (
-            <div key={i} className={`grid ${gridCols} gap-4 px-4 py-3 hover:bg-slate-700/20 transition-colors items-center text-sm`}>
-              <div className="text-slate-200 font-medium">{row.name}</div>
-              <div className="text-center text-emerald-400 font-mono font-medium">{row.team}</div>
-              <div className="text-center text-red-400 font-mono">{row.enemies}</div>
-              {hasProStats && <div className="text-center text-amber-400 font-mono">{proVal ?? "-"}</div>}
-              {hasSoloqStats && <div className="text-center text-cyan-400 font-mono">{soloqVal ?? "-"}</div>}
-              <div className={`text-right font-bold font-mono ${diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                {diff >= 0 ? "+" : ""}
-                {row.diff}%
-              </div>
+        {metrics.map((row, i) => (
+          <div key={i} className={`grid ${gridCols} gap-4 px-4 py-3 hover:bg-slate-700/20 transition-colors items-center text-sm`}>
+            <div className="text-slate-200 font-medium">{row.name}</div>
+            <div className="text-center text-emerald-400 font-mono font-medium">{row.team}</div>
+            <div className="text-center text-red-400 font-mono">{row.enemies}</div>
+            {hasProStats && <div className="text-center text-amber-400 font-mono">{proStats[row.name] ?? "-"}</div>}
+            {hasSoloqStats && <div className="text-center text-cyan-400 font-mono">{soloqStats[row.name] ?? "-"}</div>}
+            <div className={`text-right font-bold font-mono ${(parseFloat(row.diff) || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+              {(parseFloat(row.diff) || 0) >= 0 ? "+" : ""}
+              {row.diff}%
             </div>
-          )
-        })}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -618,125 +520,109 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
 
-  const enemyFill = isSoloq ? "rgba(6, 182, 212, 0.1)" : isPro ? "rgba(245, 158, 11, 0.1)" : "rgba(239, 68, 68, 0.1)"
-  const enemyStroke = isSoloq ? "rgba(6, 182, 212, 0.5)" : isPro ? "rgba(245, 158, 11, 0.5)" : "rgba(239, 68, 68, 0.5)"
-  const enemyDot = isSoloq ? "rgb(6, 182, 212)" : isPro ? "rgb(245, 158, 11)" : "rgb(239, 68, 68)"
   const enemyLabel = isEnemyChampion ? "This champ" : isSoloq ? proLabel || "SoloQ" : isPro ? proLabel || "Pro Avg" : "Enemies"
 
   const size = 280
   const center = size / 2
   const maxRadius = size / 2 - 40
   const levels = 5
-
-  // Calculate angle for each metric
   const angleStep = (2 * Math.PI) / metrics.length
-  const startAngle = -Math.PI / 2 // Start from top
+  const startAngle = -Math.PI / 2
 
-  // Get point coordinates for a given value (0-100) and index
   const getPoint = (value, index) => {
     const angle = startAngle + index * angleStep
     const radius = (value / 100) * maxRadius
-    return {
-      x: center + radius * Math.cos(angle),
-      y: center + radius * Math.sin(angle)
-    }
+    return { x: center + radius * Math.cos(angle), y: center + radius * Math.sin(angle) }
   }
 
-  // Generate polygon points string
-  const getPolygonPoints = values => {
-    return values
+  const getPolygonPoints = values =>
+    values
       .map((val, i) => {
         const point = getPoint(val, i)
         return `${point.x},${point.y}`
       })
       .join(" ")
-  }
 
-  // Generate grid lines for each level
   const gridLevels = Array.from({ length: levels }, (_, i) => ((i + 1) / levels) * 100)
 
-  // Better normalization: use the diff to show actual magnitude of differences
-  // Center is at 50%, spread proportionally to the real difference
-  // This way: 75% vs 9.3% shows a HUGE visual gap, while 51% vs 49% shows minimal gap
-  const basePosition = 50 // Center of the chart
-  const maxSpread = 40 // Maximum deviation from center (so range is 10-90)
+  const basePosition = 50
+  const maxSpread = 40
 
-  // diff from backend is already inverted for metrics like Deaths (lower = better),
-  // so diff > 0 always means "team is better" regardless of the metric.
+  // diff > 0 always means "team is better" regardless of the metric
   const teamValues = metrics.map(m => {
     const diff = parseFloat(m.diff) || 0
-
     const clampedDiff = Math.max(-100, Math.min(100, diff))
     const sign = clampedDiff >= 0 ? 1 : -1
     const scaledDiff = sign * Math.pow(Math.abs(clampedDiff) / 100, 0.7) * 100
-
-    const offset = (scaledDiff / 100) * maxSpread
-    return Math.max(15, Math.min(95, basePosition + offset))
+    return Math.max(15, Math.min(95, basePosition + (scaledDiff / 100) * maxSpread))
   })
 
   const enemyValues = metrics.map(m => {
     const diff = parseFloat(m.diff) || 0
-
     const clampedDiff = Math.max(-100, Math.min(100, diff))
     const sign = clampedDiff >= 0 ? 1 : -1
     const scaledDiff = sign * Math.pow(Math.abs(clampedDiff) / 100, 0.7) * 100
-
-    const offset = (scaledDiff / 100) * maxSpread
-    return Math.max(15, Math.min(95, basePosition - offset))
+    return Math.max(15, Math.min(95, basePosition - (scaledDiff / 100) * maxSpread))
   })
 
   return (
     <div className="flex flex-col items-center">
       <div className="flex items-center gap-4">
         <svg width={size} height={size} className="overflow-visible">
-          {/* Background grid circles */}
           {gridLevels.map((level, i) => {
             const points = metrics.map((_, idx) => getPoint(level, idx))
             const pathData = points.map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ") + " Z"
             return <path key={i} d={pathData} fill="none" stroke="rgb(51 65 85 / 0.3)" strokeWidth="1" pointerEvents="none" />
           })}
 
-          {/* Axis lines */}
           {metrics.map((_, i) => {
             const endPoint = getPoint(100, i)
             return <line key={i} x1={center} y1={center} x2={endPoint.x} y2={endPoint.y} stroke="rgb(51 65 85 / 0.4)" strokeWidth="1" pointerEvents="none" />
           })}
 
-          {/* Enemy polygon (baseline) */}
-          <polygon points={getPolygonPoints(enemyValues)} fill={enemyFill} stroke={enemyStroke} strokeWidth="2" pointerEvents="none" />
+          <polygon
+            points={getPolygonPoints(enemyValues)}
+            fill={isSoloq ? "rgba(6, 182, 212, 0.1)" : isPro ? "rgba(245, 158, 11, 0.1)" : "rgba(239, 68, 68, 0.1)"}
+            stroke={isSoloq ? "rgba(6, 182, 212, 0.5)" : isPro ? "rgba(245, 158, 11, 0.5)" : "rgba(239, 68, 68, 0.5)"}
+            strokeWidth="2"
+            pointerEvents="none"
+          />
 
-          {/* Team polygon */}
           <polygon points={getPolygonPoints(teamValues)} fill="rgba(16, 185, 129, 0.15)" stroke="rgb(16, 185, 129)" strokeWidth="2" pointerEvents="none" />
 
-          {/* Data points for enemies (rendered after polygons so they're visible) */}
           {enemyValues.map((val, i) => {
             const point = getPoint(val, i)
-            return <circle key={`enemy-${i}`} cx={point.x} cy={point.y} r="4" fill={enemyDot} stroke="rgb(30, 41, 59)" strokeWidth="2" pointerEvents="none" />
+            return (
+              <circle
+                key={`enemy-${i}`}
+                cx={point.x}
+                cy={point.y}
+                r="4"
+                fill={isSoloq ? "rgb(6, 182, 212)" : isPro ? "rgb(245, 158, 11)" : "rgb(239, 68, 68)"}
+                stroke="rgb(30, 41, 59)"
+                strokeWidth="2"
+                pointerEvents="none"
+              />
+            )
           })}
 
-          {/* Data points for team */}
           {teamValues.map((val, i) => {
             const point = getPoint(val, i)
             return <circle key={`team-${i}`} cx={point.x} cy={point.y} r="4" fill="rgb(16, 185, 129)" stroke="rgb(30, 41, 59)" strokeWidth="2" pointerEvents="none" />
           })}
 
-          {/* Invisible hover sectors (pie slices) for better hitbox */}
           {metrics.map((_, i) => {
             const angle1 = startAngle + (i - 0.5) * angleStep
             const angle2 = startAngle + (i + 0.5) * angleStep
             const r = maxRadius + 30
-
             const x1 = center + r * Math.cos(angle1)
             const y1 = center + r * Math.sin(angle1)
             const x2 = center + r * Math.cos(angle2)
             const y2 = center + r * Math.sin(angle2)
-
-            const pathData = `M ${center} ${center} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`
-
             return (
               <path
                 key={`hover-${i}`}
-                d={pathData}
+                d={`M ${center} ${center} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`}
                 fill="transparent"
                 className="cursor-pointer"
                 onMouseEnter={() => setHoveredIndex(i)}
@@ -745,20 +631,15 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
             )
           })}
 
-          {/* Metric labels */}
           {metrics.map((metric, i) => {
             const labelPoint = getPoint(115, i)
             const angle = startAngle + i * angleStep
-            const isRight = Math.cos(angle) > 0.1
-            const isLeft = Math.cos(angle) < -0.1
-            const textAnchor = isRight ? "start" : isLeft ? "end" : "middle"
-
             return (
               <text
                 key={i}
                 x={labelPoint.x}
                 y={labelPoint.y}
-                textAnchor={textAnchor}
+                textAnchor={Math.cos(angle) > 0.1 ? "start" : Math.cos(angle) < -0.1 ? "end" : "middle"}
                 dominantBaseline="middle"
                 className="fill-slate-300 text-[10px] font-medium"
                 pointerEvents="none"
@@ -769,7 +650,6 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
           })}
         </svg>
 
-        {/* Tooltip panel next to spider */}
         <div className="w-[140px] flex-shrink-0">
           {hoveredIndex !== null ? (
             <div className="bg-slate-900/80 border border-slate-600/50 rounded-lg p-3">
@@ -795,7 +675,6 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
         </div>
       </div>
 
-      {/* Legend */}
       <div className="flex items-center gap-6 mt-4">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-emerald-500" />
@@ -811,55 +690,108 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
 }
 
 function ProSearchBar({
-  leagues,
-  teams,
-  players,
   selectedLeagues,
   selectedProTeam,
   selectedProPlayer,
   proSubMode,
-  searchInput,
-  onSearchChange,
-  isOpen,
-  onToggle,
-  dropdownRef,
+  activePlayerRole,
   onSelectLeague,
   onClearLeagues,
   onSelectTeam,
   onSelectPlayer,
   onClear
 }) {
+  const [leagues, setLeagues] = useState([])
+  const [teams, setTeams] = useState([])
+  const [players, setPlayers] = useState([])
+  const [searchInput, setSearchInput] = useState("")
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef(null)
+
+  const fetchLeagues = async () => {
+    try {
+      const { ok, data, code } = await api.get("/pro-game/leagues/list")
+      if (!ok) return toast.error(code || "Failed to fetch leagues")
+      setLeagues(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch leagues")
+    }
+  }
+
+  const fetchTeams = async () => {
+    try {
+      const { ok, data, code } = await api.get("/pro-game-playerstats/teams/list")
+      if (!ok) return toast.error(code || "Failed to fetch teams")
+      setTeams(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch teams")
+    }
+  }
+
+  const fetchPlayers = async () => {
+    try {
+      const pos = activePlayerRole ? ROLE_TO_POSITION[activePlayerRole] || activePlayerRole : ""
+      const { ok, data, code } = await api.get(`/pro-game-playerstats/players/list${pos ? `?position=${pos}` : ""}`)
+      if (!ok) return toast.error(code || "Failed to fetch players")
+      setPlayers(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch players")
+    }
+  }
+
+  useEffect(() => {
+    fetchLeagues()
+    fetchTeams()
+  }, [])
+
+  useEffect(() => {
+    fetchPlayers()
+  }, [activePlayerRole])
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setIsOpen(false)
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
   const q = searchInput.toLowerCase()
   const filteredLeagues = q ? leagues.filter(l => l.toLowerCase().includes(q)) : []
   const filteredTeams = q ? teams.filter(t => t.toLowerCase().includes(q)).slice(0, 8) : []
   const filteredPlayers = q ? players.filter(p => p.name.toLowerCase().includes(q) || (p.team || "").toLowerCase().includes(q)).slice(0, 8) : []
-  const hasResults = filteredLeagues.length > 0 || filteredTeams.length > 0 || filteredPlayers.length > 0
-
-  const label =
-    proSubMode === "team" && selectedProTeam
-      ? selectedProTeam
-      : proSubMode === "player" && selectedProPlayer
-        ? `${selectedProPlayer.name}`
-        : selectedLeagues.length === 1
-          ? selectedLeagues[0]
-          : selectedLeagues.length > 1
-            ? `${selectedLeagues.length} leagues`
-            : "Pro Avg"
 
   return (
     <div className="relative" ref={dropdownRef}>
       <div className="flex items-center gap-1">
         <button
-          onClick={onToggle}
+          onClick={() => setIsOpen(o => !o)}
           className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-700/50 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white transition-colors"
         >
           <Search className="w-3 h-3 flex-shrink-0 text-slate-500" />
           <span className="text-amber-400">vs</span>
-          <span className="truncate max-w-[120px]">{label}</span>
+          <span className="truncate max-w-[120px]">
+            {proSubMode === "team" && selectedProTeam
+              ? selectedProTeam
+              : proSubMode === "player" && selectedProPlayer
+                ? selectedProPlayer.name
+                : selectedLeagues.length === 1
+                  ? selectedLeagues[0]
+                  : selectedLeagues.length > 1
+                    ? `${selectedLeagues.length} leagues`
+                    : "Pro Avg"}
+          </span>
           <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
         </button>
         {(selectedProTeam || selectedProPlayer || selectedLeagues.length > 0) && (
-          <button onClick={onClear} className="text-slate-500 hover:text-slate-300 transition-colors p-1" title="Reset to Pro Avg">
+          <button
+            onClick={() => {
+              onClear()
+              setSearchInput("")
+            }}
+            className="text-slate-500 hover:text-slate-300 transition-colors p-1"
+            title="Reset to Pro Avg"
+          >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -873,7 +805,7 @@ function ProSearchBar({
             <input
               autoFocus
               value={searchInput}
-              onChange={e => onSearchChange(e.target.value)}
+              onChange={e => setSearchInput(e.target.value)}
               placeholder="Search league, team or player..."
               className="w-full bg-slate-900/60 border border-slate-600 rounded-md px-2.5 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-amber-500/60 transition-colors"
             />
@@ -907,7 +839,7 @@ function ProSearchBar({
                   </button>
                 ))}
               </div>
-            ) : !hasResults ? (
+            ) : filteredLeagues.length === 0 && filteredTeams.length === 0 && filteredPlayers.length === 0 ? (
               <div className="text-slate-500 text-xs text-center py-4">No results</div>
             ) : (
               <div className="p-1">
@@ -931,7 +863,11 @@ function ProSearchBar({
                     {filteredTeams.map(t => (
                       <button
                         key={t}
-                        onClick={() => onSelectTeam(t)}
+                        onClick={() => {
+                          onSelectTeam(t)
+                          setSearchInput("")
+                          setIsOpen(false)
+                        }}
                         className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedProTeam === t ? "text-amber-400 font-medium" : "text-white"}`}
                       >
                         {t}
@@ -945,7 +881,11 @@ function ProSearchBar({
                     {filteredPlayers.map(p => (
                       <button
                         key={p.name}
-                        onClick={() => onSelectPlayer(p)}
+                        onClick={() => {
+                          onSelectPlayer(p)
+                          setSearchInput("")
+                          setIsOpen(false)
+                        }}
                         className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedProPlayer?.name === p.name ? "text-amber-400 font-medium" : "text-white"}`}
                       >
                         <span>{p.name}</span>
@@ -963,35 +903,9 @@ function ProSearchBar({
   )
 }
 
-function PlayersList({ players, onPlayerClick }) {
-  if (!players || players.length === 0) {
-    return <div className="text-slate-500 text-center py-8">No players available</div>
-  }
-
-  return (
-    <div className="space-y-2">
-      {players.map((player, idx) => (
-        <div
-          key={idx}
-          onClick={() => onPlayerClick(player)}
-          className="bg-slate-900/40 border border-slate-700/40 rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-700/40 hover:border-emerald-500/40 transition-all group"
-        >
-          <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">
-            <img src={`/roles/${player.role}.png`} alt={player.role} className="w-5 h-5" onError={e => (e.target.style.display = "none")} />
-          </div>
-          <div className="flex-1">
-            <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">{player.name}</span>
-          </div>
-          <span className={`font-bold text-sm ${player.score >= 70 ? "text-emerald-400" : player.score >= 50 ? "text-amber-400" : "text-red-400"}`}>{player.score || 0}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function Matchups({ champions, onChampionClick, activeChampion, readOnly }) {
+function Matchups({ data, onChampionClick, readOnly }) {
   const [sortBy, setSortBy] = useState("games")
-  const allChampions = (champions || [])
+  const allChampions = (data.champions || [])
     .filter((champ, idx, arr) => arr.findIndex(c => c.name === champ.name) === idx)
     .sort((a, b) => (sortBy === "winRate" ? (b.winRate || 0) - (a.winRate || 0) : (b.games || 0) - (a.games || 0)))
 
@@ -1017,29 +931,24 @@ function Matchups({ champions, onChampionClick, activeChampion, readOnly }) {
         </button>
       </div>
       <div className="max-h-[400px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
-        {allChampions.map((matchup, idx) => {
-          const isWinning = matchup.winRate > 50
-          return (
-            <div
-              key={idx}
-              onClick={readOnly ? undefined : () => onChampionClick(matchup)}
-              className={`bg-slate-900/40 border rounded-lg p-3 flex items-center gap-3 transition-all ${
-                readOnly
-                  ? "border-slate-700/40"
-                  : `cursor-pointer hover:bg-slate-700/40 ${activeChampion === matchup.name ? "border-emerald-500" : "border-slate-700/40 hover:border-slate-500/50"}`
-              }`}
-            >
-              <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-                <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>
-                <span className="text-slate-500 text-xs">{matchup.games} games</span>
-              </div>
-              <span className={`font-bold text-sm ${isWinning ? "text-emerald-400" : "text-red-400"}`}>{matchup.winRate}%</span>
+        {allChampions.map((matchup, idx) => (
+          <div
+            key={idx}
+            onClick={readOnly ? undefined : () => onChampionClick(matchup)}
+            className={`bg-slate-900/40 border rounded-lg p-3 flex items-center gap-3 transition-all ${
+              readOnly ? "border-slate-700/40" : "cursor-pointer hover:bg-slate-700/40 border-slate-700/40 hover:border-slate-500/50"
+            }`}
+          >
+            <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
             </div>
-          )
-        })}
+            <div className="flex-1 min-w-0">
+              <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>
+              <span className="text-slate-500 text-xs">{matchup.games} games</span>
+            </div>
+            <span className={`font-bold text-sm ${matchup.winRate > 50 ? "text-emerald-400" : "text-red-400"}`}>{matchup.winRate}%</span>
+          </div>
+        ))}
       </div>
     </div>
   )
