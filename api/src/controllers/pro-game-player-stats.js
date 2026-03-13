@@ -116,6 +116,7 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
     else if (req.body.league) match.league = req.body.league;
     if (req.body.teamname) match.teamname = req.body.teamname;
     if (req.body.playername) match.playername = req.body.playername;
+    if (req.body.champion) match.champion = req.body.champion;
 
     const agg = await ProGamePlayerstats.aggregate([
       { $match: match },

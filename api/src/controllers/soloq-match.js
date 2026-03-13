@@ -78,12 +78,18 @@ const POSITION_MAP = { top: 'TOP', jungle: 'JUNGLE', mid: 'MIDDLE', bottom: 'BOT
 
 router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const players = await Player.find({ team_id: req.user.team_id }).lean();
-    const puuids = players.map((p) => p.puuid).filter(Boolean);
+    let puuids;
+    if (req.body.puuid) {
+      puuids = [req.body.puuid];
+    } else {
+      const players = await Player.find({ team_id: req.user.team_id }).lean();
+      puuids = players.map((p) => p.puuid).filter(Boolean);
+    }
     if (!puuids.length) return res.status(200).send({ ok: true, data: {} });
 
     const match = { puuid: { $in: puuids }, queueId: 420, gameDuration: { $gte: 300 } };
-    if (req.body.position) match.teamPosition = POSITION_MAP[req.body.position] || req.body.position;
+    if (!req.body.puuid && req.body.position) match.teamPosition = POSITION_MAP[req.body.position] || req.body.position;
+    if (req.body.championName) match.championName = req.body.championName;
 
     const agg = await SoloQMatch.aggregate([
       { $match: match },

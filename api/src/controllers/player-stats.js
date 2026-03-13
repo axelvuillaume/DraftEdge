@@ -1291,4 +1291,57 @@ router.post('/synergies', passport.authenticate(['admin', 'user'], { session: fa
   }
 });
 
+router.post('/official_split', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const filters = extractFilters(req.body);
+    const { gameIdFilter } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
+    const allStats = await PlayerStats.find({ team_id: req.user.team_id, ...gameIdFilter });
+
+    const position = req.body.position;
+    let teamStats = allStats.filter((s) => !s.opponent);
+    let enemyStats = allStats.filter((s) => s.opponent);
+
+    if (position) {
+      teamStats = teamStats.filter((s) => s.role === position);
+      enemyStats = enemyStats.filter((s) => s.role === position);
+    }
+    if (req.body.champion) {
+      teamStats = teamStats.filter((s) => s.champion === req.body.champion);
+      enemyStats = enemyStats.filter((s) => s.champion === req.body.champion);
+    }
+
+    const buildCategoryValues = (tStats, eStats) => {
+      if (!tStats.length) return null;
+      const t = aggregateStats(tStats);
+      const e = aggregateStats(eStats);
+      const result = {};
+      ['Combat', 'Objectives', 'Vision', 'Income'].forEach((cat) => {
+        result[cat] = {};
+        getMetrics(t, e, cat).forEach((m) => {
+          result[cat][m.name] = m.team;
+        });
+      });
+      return result;
+    };
+
+    const officialTeam = teamStats.filter((s) => s.game_official === true);
+    const officialEnemy = enemyStats.filter((s) => s.game_official === true);
+    const nonOfficialTeam = teamStats.filter((s) => !s.game_official);
+    const nonOfficialEnemy = enemyStats.filter((s) => !s.game_official);
+
+    return res.status(200).send({
+      ok: true,
+      data: {
+        official: buildCategoryValues(officialTeam, officialEnemy),
+        nonOfficial: buildCategoryValues(nonOfficialTeam, nonOfficialEnemy),
+        officialGames: [...new Set(officialTeam.map((s) => s.game_id))].length,
+        nonOfficialGames: [...new Set(nonOfficialTeam.map((s) => s.game_id))].length,
+      },
+    });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 module.exports = router;

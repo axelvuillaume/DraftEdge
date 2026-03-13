@@ -30,6 +30,9 @@ export default function StatsV2() {
   const [proSubMode, setProSubMode] = useState("avg")
   const [selectedProTeam, setSelectedProTeam] = useState(null)
   const [selectedProPlayer, setSelectedProPlayer] = useState(null)
+  const [officialSplitStats, setOfficialSplitStats] = useState(null)
+  const [proGames, setProGames] = useState(null)
+  const [soloqGames, setSoloqGames] = useState(null)
 
   const fetchStats = async () => {
     try {
@@ -44,10 +47,11 @@ export default function StatsV2() {
     }
   }
 
-  const fetchProStats = async position => {
+  const fetchProStats = async (position, champion) => {
     try {
       const body = {}
       if (position) body.position = position
+      if (champion) body.champion = champion
       if (globalFilters.patch) body.patch = globalFilters.patch
       if (selectedLeagues.length) body.leagues = selectedLeagues
       if (proSubMode === "team" && selectedProTeam) body.teamname = selectedProTeam
@@ -55,36 +59,56 @@ export default function StatsV2() {
         body.playername = selectedProPlayer.name
         delete body.position
       }
-      const { ok, data, code } = await api.post("/pro-game-playerstats/aggregate", body)
+      const { ok, data, code, total } = await api.post("/pro-game-playerstats/aggregate", body)
       if (!ok) return toast.error(code || "Failed to fetch pro stats")
       setProStats(data)
+      setProGames(total || null)
     } catch (error) {
       toast.error(error.code || "Failed to fetch pro stats")
     }
   }
 
-  const fetchSoloqStats = async position => {
+  const fetchSoloqStats = async (position, puuid, championName) => {
     try {
       const body = {}
       if (position) body.position = position
-      const { ok, data, code } = await api.post("/soloq-match/aggregate", body)
+      if (puuid) body.puuid = puuid
+      if (championName) body.championName = championName
+      const { ok, data, code, total } = await api.post("/soloq-match/aggregate", body)
       if (!ok) return toast.error(code || "Failed to fetch soloq stats")
       setSoloqStats(data)
+      setSoloqGames(total || null)
     } catch (error) {
       toast.error(error.code || "Failed to fetch soloq stats")
+    }
+  }
+
+  const fetchOfficialSplit = async (position, champion) => {
+    try {
+      const body = { ...globalFilters }
+      if (position) body.position = position
+      if (champion) body.champion = champion
+      const { ok, data, code } = await api.post("/playerstats/official_split", body)
+      if (!ok) return toast.error(code || "Failed to fetch official split stats")
+      setOfficialSplitStats(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch official split stats")
     }
   }
 
   useEffect(() => {
     fetchStats()
     fetchProStats()
-    fetchSoloqStats()
+    fetchSoloqStats(null, null)
+    fetchOfficialSplit()
   }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   useEffect(() => {
-    fetchProStats(activePlayer?.role || null)
-    fetchSoloqStats(activePlayer?.role || null)
-  }, [activePlayer?.role, selectedLeagues, proSubMode, selectedProTeam, selectedProPlayer])
+    const champion = activeChampion?.name || null
+    fetchProStats(activePlayer?.role || null, champion)
+    fetchSoloqStats(activePlayer?.role || null, activePlayer?.puuid || null, champion)
+    fetchOfficialSplit(activePlayer?.role || null, champion)
+  }, [activePlayer?.role, activePlayer?.puuid, activeChampion?.name, selectedLeagues, proSubMode, selectedProTeam, selectedProPlayer])
 
   useEffect(() => {
     if (!searchNavigation || !teamData) return
@@ -234,9 +258,6 @@ export default function StatsV2() {
             <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
             <CategoryTabs categories={CATEGORIES} activeCategory={activeCategory} onCategoryChange={setActiveCategory} data={currentData} />
             {(() => {
-              const scrimMetrics = currentData.metrics?.[activeCategory] || []
-              const proCategory = proStats?.[activeCategory]
-              const soloqCategory = soloqStats?.[activeCategory]
               const round1 = v => Math.round(v * 10) / 10
 
               const getCompareMetrics = (source, metrics) =>
@@ -246,21 +267,57 @@ export default function StatsV2() {
                   return { ...m, enemies: val, diff: round1(val > 0 ? ((m.team - val) / val) * 100 : m.team > 0 ? 100 : 0) }
                 })
 
+              const buildOfficialMetrics = (official, nonOfficial, metrics) =>
+                metrics.map(m => {
+                  const offiVal = official?.[m.name]
+                  const nonOffiVal = nonOfficial?.[m.name]
+                  if (offiVal == null && nonOffiVal == null) return m
+                  const team = offiVal ?? 0
+                  const enemies = nonOffiVal ?? 0
+                  const diff = round1(enemies > 0 ? ((team - enemies) / enemies) * 100 : team > 0 ? 100 : 0)
+                  return { ...m, team, enemies, diff }
+                })
+
               if (viewMode === "spider") {
+                const spiderMetrics =
+                  compareMode === "offi" && officialSplitStats?.official?.[activeCategory] && officialSplitStats?.nonOfficial?.[activeCategory]
+                    ? buildOfficialMetrics(officialSplitStats.official[activeCategory], officialSplitStats.nonOfficial[activeCategory], currentData.metrics?.[activeCategory] || [])
+                    : compareMode === "pro" && proStats?.[activeCategory]
+                      ? getCompareMetrics(proStats[activeCategory], currentData.metrics?.[activeCategory] || [])
+                      : compareMode === "soloq" && soloqStats?.[activeCategory]
+                        ? getCompareMetrics(soloqStats[activeCategory], currentData.metrics?.[activeCategory] || [])
+                        : currentData.metrics?.[activeCategory] || []
+
                 return (
                   <>
                     <SpiderChart
-                      metrics={
-                        compareMode === "pro" && proCategory
-                          ? getCompareMetrics(proCategory, scrimMetrics)
-                          : compareMode === "soloq" && soloqCategory
-                            ? getCompareMetrics(soloqCategory, scrimMetrics)
-                            : scrimMetrics
-                      }
+                      metrics={spiderMetrics}
                       isEnemyChampion={!!activeEnemyChampion}
                       compareMode={compareMode}
-                      proLabel={compareMode === "soloq" ? "SoloQ" : proCompareLabel}
+                      proLabel={compareMode === "soloq" ? "SoloQ" : compareMode === "offi" ? "Non-Offi" : proCompareLabel}
+                      teamLabel={compareMode === "offi" ? "Official" : undefined}
                     />
+                    <div className="flex justify-center gap-4 mt-2 text-[10px] text-slate-500">
+                      {compareMode === "scrim" && currentData.games != null && <span>Scrim: {currentData.games} games</span>}
+                      {compareMode === "pro" && (
+                        <>
+                          {currentData.games != null && <span>Scrim: {currentData.games} games</span>}
+                          {proGames != null && <span>Pro: {proGames} games</span>}
+                        </>
+                      )}
+                      {compareMode === "soloq" && (
+                        <>
+                          {currentData.games != null && <span>Scrim: {currentData.games} games</span>}
+                          {soloqGames != null && <span>SoloQ: {soloqGames} games</span>}
+                        </>
+                      )}
+                      {compareMode === "offi" && officialSplitStats && (
+                        <>
+                          <span>Official: {officialSplitStats.officialGames} games</span>
+                          <span>Non-Official: {officialSplitStats.nonOfficialGames} games</span>
+                        </>
+                      )}
+                    </div>
                     <div className="flex justify-end mt-4">
                       <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
                         <button
@@ -287,13 +344,31 @@ export default function StatsV2() {
                         >
                           vs SoloQ
                         </button>
+                        <button
+                          onClick={() => setCompareMode("offi")}
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                            compareMode === "offi" ? "bg-violet-500/90 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          Offi vs Non-Offi
+                        </button>
                       </div>
                     </div>
                   </>
                 )
               }
 
-              return <MetricsTable metrics={scrimMetrics} isEnemyChampion={!!activeEnemyChampion} proStats={proCategory} proLabel={proCompareLabel} soloqStats={soloqCategory} />
+              return (
+                <MetricsTable
+                  metrics={currentData.metrics?.[activeCategory] || []}
+                  isEnemyChampion={!!activeEnemyChampion}
+                  proStats={proStats?.[activeCategory]}
+                  proLabel={proCompareLabel}
+                  soloqStats={soloqStats?.[activeCategory]}
+                  officialStats={officialSplitStats?.official?.[activeCategory]}
+                  nonOfficialStats={officialSplitStats?.nonOfficial?.[activeCategory]}
+                />
+              )
             })()}
           </div>
 
@@ -472,14 +547,20 @@ function Breadcrumb({ teamData, activePlayer, activeChampion, activeEnemyChampio
   )
 }
 
-function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats }) {
+function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats, officialStats, nonOfficialStats }) {
   if (!metrics || metrics.length === 0) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
 
-  const hasProStats = proStats && Object.keys(proStats).length > 0
-  const hasSoloqStats = soloqStats && Object.keys(soloqStats).length > 0
-  const gridCols = hasProStats && hasSoloqStats ? "grid-cols-6" : hasProStats || hasSoloqStats ? "grid-cols-5" : "grid-cols-4"
+  const gridCols =
+    { 0: "grid-cols-4", 1: "grid-cols-5", 2: "grid-cols-6", 3: "grid-cols-7", 4: "grid-cols-8" }[
+      [
+        proStats && Object.keys(proStats).length > 0,
+        soloqStats && Object.keys(soloqStats).length > 0,
+        officialStats && Object.keys(officialStats).length > 0,
+        nonOfficialStats && Object.keys(nonOfficialStats).length > 0
+      ].filter(Boolean).length
+    ] || "grid-cols-4"
 
   return (
     <div className="w-full">
@@ -487,8 +568,10 @@ function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats
         <div>Metric</div>
         <div className="text-center">{isEnemyChampion ? "Us" : "Team"}</div>
         <div className="text-center">{isEnemyChampion ? "This champ" : "Enemies"}</div>
-        {hasProStats && <div className="text-center">{proLabel || "Pro Avg"}</div>}
-        {hasSoloqStats && <div className="text-center">SoloQ</div>}
+        {proStats && Object.keys(proStats).length > 0 && <div className="text-center">{proLabel || "Pro Avg"}</div>}
+        {soloqStats && Object.keys(soloqStats).length > 0 && <div className="text-center">SoloQ</div>}
+        {officialStats && Object.keys(officialStats).length > 0 && <div className="text-center">Official</div>}
+        {nonOfficialStats && Object.keys(nonOfficialStats).length > 0 && <div className="text-center">Non-Offi</div>}
         <div className="text-right">Diff</div>
       </div>
 
@@ -498,8 +581,10 @@ function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats
             <div className="text-slate-200 font-medium">{row.name}</div>
             <div className="text-center text-emerald-400 font-mono font-medium">{row.team}</div>
             <div className="text-center text-red-400 font-mono">{row.enemies}</div>
-            {hasProStats && <div className="text-center text-amber-400 font-mono">{proStats[row.name] ?? "-"}</div>}
-            {hasSoloqStats && <div className="text-center text-cyan-400 font-mono">{soloqStats[row.name] ?? "-"}</div>}
+            {proStats && Object.keys(proStats).length > 0 && <div className="text-center text-amber-400 font-mono">{proStats[row.name] ?? "-"}</div>}
+            {soloqStats && Object.keys(soloqStats).length > 0 && <div className="text-center text-cyan-400 font-mono">{soloqStats[row.name] ?? "-"}</div>}
+            {officialStats && Object.keys(officialStats).length > 0 && <div className="text-center text-violet-400 font-mono">{officialStats[row.name] ?? "-"}</div>}
+            {nonOfficialStats && Object.keys(nonOfficialStats).length > 0 && <div className="text-center text-fuchsia-400 font-mono">{nonOfficialStats[row.name] ?? "-"}</div>}
             <div className={`text-right font-bold font-mono ${(parseFloat(row.diff) || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
               {(parseFloat(row.diff) || 0) >= 0 ? "+" : ""}
               {row.diff}%
@@ -511,28 +596,28 @@ function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats
   )
 }
 
-function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
+function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel, teamLabel }) {
   const [hoveredIndex, setHoveredIndex] = useState(null)
-  const isPro = compareMode === "pro"
-  const isSoloq = compareMode === "soloq"
 
   if (!metrics || metrics.length === 0) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
 
-  const enemyLabel = isEnemyChampion ? "This champ" : isSoloq ? proLabel || "SoloQ" : isPro ? proLabel || "Pro Avg" : "Enemies"
-
-  const size = 280
-  const center = size / 2
-  const maxRadius = size / 2 - 40
-  const levels = 5
-  const angleStep = (2 * Math.PI) / metrics.length
-  const startAngle = -Math.PI / 2
+  const enemyLabel = isEnemyChampion
+    ? "This champ"
+    : compareMode === "offi"
+      ? proLabel || "Non-Offi"
+      : compareMode === "soloq"
+        ? proLabel || "SoloQ"
+        : compareMode === "pro"
+          ? proLabel || "Pro Avg"
+          : "Enemies"
+  const displayTeamLabel = teamLabel || (isEnemyChampion ? "Us" : "Team")
 
   const getPoint = (value, index) => {
-    const angle = startAngle + index * angleStep
-    const radius = (value / 100) * maxRadius
-    return { x: center + radius * Math.cos(angle), y: center + radius * Math.sin(angle) }
+    const angle = -Math.PI / 2 + (index * (2 * Math.PI)) / metrics.length
+    const radius = value
+    return { x: 140 + radius * Math.cos(angle), y: 140 + radius * Math.sin(angle) }
   }
 
   const getPolygonPoints = values =>
@@ -543,18 +628,12 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
       })
       .join(" ")
 
-  const gridLevels = Array.from({ length: levels }, (_, i) => ((i + 1) / levels) * 100)
-
-  const basePosition = 50
-  const maxSpread = 40
-
-  // diff > 0 always means "team is better" regardless of the metric
   const teamValues = metrics.map(m => {
     const diff = parseFloat(m.diff) || 0
     const clampedDiff = Math.max(-100, Math.min(100, diff))
     const sign = clampedDiff >= 0 ? 1 : -1
     const scaledDiff = sign * Math.pow(Math.abs(clampedDiff) / 100, 0.7) * 100
-    return Math.max(15, Math.min(95, basePosition + (scaledDiff / 100) * maxSpread))
+    return Math.max(15, Math.min(95, 50 + (scaledDiff / 100) * 40))
   })
 
   const enemyValues = metrics.map(m => {
@@ -562,14 +641,14 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
     const clampedDiff = Math.max(-100, Math.min(100, diff))
     const sign = clampedDiff >= 0 ? 1 : -1
     const scaledDiff = sign * Math.pow(Math.abs(clampedDiff) / 100, 0.7) * 100
-    return Math.max(15, Math.min(95, basePosition - (scaledDiff / 100) * maxSpread))
+    return Math.max(15, Math.min(95, 50 - (scaledDiff / 100) * 40))
   })
 
   return (
     <div className="flex flex-col items-center">
       <div className="flex items-center gap-4">
-        <svg width={size} height={size} className="overflow-visible">
-          {gridLevels.map((level, i) => {
+        <svg width={280} height={280} className="overflow-visible">
+          {[20, 40, 60, 80, 100].map((level, i) => {
             const points = metrics.map((_, idx) => getPoint(level, idx))
             const pathData = points.map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ") + " Z"
             return <path key={i} d={pathData} fill="none" stroke="rgb(51 65 85 / 0.3)" strokeWidth="1" pointerEvents="none" />
@@ -577,13 +656,29 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
 
           {metrics.map((_, i) => {
             const endPoint = getPoint(100, i)
-            return <line key={i} x1={center} y1={center} x2={endPoint.x} y2={endPoint.y} stroke="rgb(51 65 85 / 0.4)" strokeWidth="1" pointerEvents="none" />
+            return <line key={i} x1={140} y1={140} x2={endPoint.x} y2={endPoint.y} stroke="rgb(51 65 85 / 0.4)" strokeWidth="1" pointerEvents="none" />
           })}
 
           <polygon
             points={getPolygonPoints(enemyValues)}
-            fill={isSoloq ? "rgba(6, 182, 212, 0.1)" : isPro ? "rgba(245, 158, 11, 0.1)" : "rgba(239, 68, 68, 0.1)"}
-            stroke={isSoloq ? "rgba(6, 182, 212, 0.5)" : isPro ? "rgba(245, 158, 11, 0.5)" : "rgba(239, 68, 68, 0.5)"}
+            fill={
+              compareMode === "offi"
+                ? "rgba(139, 92, 246, 0.1)"
+                : compareMode === "soloq"
+                  ? "rgba(6, 182, 212, 0.1)"
+                  : compareMode === "pro"
+                    ? "rgba(245, 158, 11, 0.1)"
+                    : "rgba(239, 68, 68, 0.1)"
+            }
+            stroke={
+              compareMode === "offi"
+                ? "rgba(139, 92, 246, 0.5)"
+                : compareMode === "soloq"
+                  ? "rgba(6, 182, 212, 0.5)"
+                  : compareMode === "pro"
+                    ? "rgba(245, 158, 11, 0.5)"
+                    : "rgba(239, 68, 68, 0.5)"
+            }
             strokeWidth="2"
             pointerEvents="none"
           />
@@ -598,7 +693,9 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
                 cx={point.x}
                 cy={point.y}
                 r="4"
-                fill={isSoloq ? "rgb(6, 182, 212)" : isPro ? "rgb(245, 158, 11)" : "rgb(239, 68, 68)"}
+                fill={
+                  compareMode === "offi" ? "rgb(139, 92, 246)" : compareMode === "soloq" ? "rgb(6, 182, 212)" : compareMode === "pro" ? "rgb(245, 158, 11)" : "rgb(239, 68, 68)"
+                }
                 stroke="rgb(30, 41, 59)"
                 strokeWidth="2"
                 pointerEvents="none"
@@ -611,43 +708,36 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
             return <circle key={`team-${i}`} cx={point.x} cy={point.y} r="4" fill="rgb(16, 185, 129)" stroke="rgb(30, 41, 59)" strokeWidth="2" pointerEvents="none" />
           })}
 
-          {metrics.map((_, i) => {
-            const angle1 = startAngle + (i - 0.5) * angleStep
-            const angle2 = startAngle + (i + 0.5) * angleStep
-            const r = maxRadius + 30
-            const x1 = center + r * Math.cos(angle1)
-            const y1 = center + r * Math.sin(angle1)
-            const x2 = center + r * Math.cos(angle2)
-            const y2 = center + r * Math.sin(angle2)
-            return (
-              <path
-                key={`hover-${i}`}
-                d={`M ${center} ${center} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`}
-                fill="transparent"
-                className="cursor-pointer"
-                onMouseEnter={() => setHoveredIndex(i)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              />
-            )
-          })}
+          {metrics.map((_, i) => (
+            <path
+              key={`hover-${i}`}
+              d={`M 140 140 L ${140 + 130 * Math.cos(-Math.PI / 2 + ((i - 0.5) * (2 * Math.PI)) / metrics.length)} ${140 + 130 * Math.sin(-Math.PI / 2 + ((i - 0.5) * (2 * Math.PI)) / metrics.length)} A 130 130 0 0 1 ${140 + 130 * Math.cos(-Math.PI / 2 + ((i + 0.5) * (2 * Math.PI)) / metrics.length)} ${140 + 130 * Math.sin(-Math.PI / 2 + ((i + 0.5) * (2 * Math.PI)) / metrics.length)} Z`}
+              fill="transparent"
+              className="cursor-pointer"
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
+          ))}
 
-          {metrics.map((metric, i) => {
-            const labelPoint = getPoint(115, i)
-            const angle = startAngle + i * angleStep
-            return (
-              <text
-                key={i}
-                x={labelPoint.x}
-                y={labelPoint.y}
-                textAnchor={Math.cos(angle) > 0.1 ? "start" : Math.cos(angle) < -0.1 ? "end" : "middle"}
-                dominantBaseline="middle"
-                className="fill-slate-300 text-[10px] font-medium"
-                pointerEvents="none"
-              >
-                {metric.name}
-              </text>
-            )
-          })}
+          {metrics.map((metric, i) => (
+            <text
+              key={i}
+              x={getPoint(115, i).x}
+              y={getPoint(115, i).y}
+              textAnchor={
+                Math.cos(-Math.PI / 2 + (i * (2 * Math.PI)) / metrics.length) > 0.1
+                  ? "start"
+                  : Math.cos(-Math.PI / 2 + (i * (2 * Math.PI)) / metrics.length) < -0.1
+                    ? "end"
+                    : "middle"
+              }
+              dominantBaseline="middle"
+              className="fill-slate-300 text-[10px] font-medium"
+              pointerEvents="none"
+            >
+              {metric.name}
+            </text>
+          ))}
         </svg>
 
         <div className="w-[140px] flex-shrink-0">
@@ -656,12 +746,16 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
               <p className="text-white text-xs font-semibold mb-2 truncate">{metrics[hoveredIndex].name}</p>
               <div className="h-px bg-slate-700/50 mb-2" />
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-slate-400 text-[10px]">Team</span>
+                <span className="text-slate-400 text-[10px]">{displayTeamLabel}</span>
                 <span className="text-emerald-400 text-xs font-medium">{metrics[hoveredIndex].team}</span>
               </div>
               <div className="flex justify-between items-center mb-1.5">
                 <span className="text-slate-400 text-[10px]">{enemyLabel}</span>
-                <span className={`text-xs font-medium ${isSoloq ? "text-cyan-400" : isPro ? "text-amber-400" : "text-red-400"}`}>{metrics[hoveredIndex].enemies}</span>
+                <span
+                  className={`text-xs font-medium ${compareMode === "offi" ? "text-violet-400" : compareMode === "soloq" ? "text-cyan-400" : compareMode === "pro" ? "text-amber-400" : "text-red-400"}`}
+                >
+                  {metrics[hoveredIndex].enemies}
+                </span>
               </div>
               <div className="h-px bg-slate-700/50 mb-2" />
               <p className={`text-center text-sm font-bold ${metrics[hoveredIndex].diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
@@ -678,10 +772,12 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel }) {
       <div className="flex items-center gap-6 mt-4">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-emerald-500" />
-          <span className="text-slate-400 text-xs">{isEnemyChampion ? "Us" : "Team"}</span>
+          <span className="text-slate-400 text-xs">{displayTeamLabel}</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${isSoloq ? "bg-cyan-500" : isPro ? "bg-amber-500" : "bg-red-500"}`} />
+          <div
+            className={`w-3 h-3 rounded-full ${compareMode === "offi" ? "bg-violet-500" : compareMode === "soloq" ? "bg-cyan-500" : compareMode === "pro" ? "bg-amber-500" : "bg-red-500"}`}
+          />
           <span className="text-slate-400 text-xs">{enemyLabel}</span>
         </div>
       </div>
