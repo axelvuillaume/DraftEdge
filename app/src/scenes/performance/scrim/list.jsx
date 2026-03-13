@@ -156,7 +156,7 @@ export default function List() {
                     </td>
                     <td className="px-4 py-3.5">
                       {session.opponent_name ? (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-700/50 rounded text-sm text-slate-300">{session.opponent_name}</span>
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-sm text-slate-300">{session.opponent_name}</span>
                       ) : (
                         <span className="text-slate-600 text-sm">—</span>
                       )}
