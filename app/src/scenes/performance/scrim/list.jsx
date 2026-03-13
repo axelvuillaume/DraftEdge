@@ -134,9 +134,10 @@ export default function List() {
                   <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-5 py-3">Session</th>
                   <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Date</th>
                   <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Opponent</th>
-                  <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Patch</th>
                   <th className="text-center text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Record</th>
                   <th className="text-center text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">WR</th>
+                  <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Patch</th>
+
                   <th className="w-10" />
                 </tr>
               </thead>
@@ -159,13 +160,7 @@ export default function List() {
                         <span className="text-slate-600 text-sm">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3.5">
-                      {session.patch ? (
-                        <span className="font-mono text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">{getPatchPrefix(session.patch)}</span>
-                      ) : (
-                        <span className="text-slate-600 text-sm">—</span>
-                      )}
-                    </td>
+
                     <td className="px-4 py-3.5 text-center">
                       {(session.win || 0) + (session.loss || 0) > 0 ? (
                         <span className="text-sm tabular-nums">
@@ -180,6 +175,13 @@ export default function List() {
                     <td className="px-4 py-3.5 text-center">
                       {(session.win || 0) + (session.loss || 0) > 0 && session.winrate != null ? (
                         <span className={`text-sm font-semibold tabular-nums ${session.winrate >= 50 ? "text-emerald-400" : "text-red-400"}`}>{session.winrate}%</span>
+                      ) : (
+                        <span className="text-slate-600 text-sm">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {session.patch ? (
+                        <span className="font-mono text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">{getPatchPrefix(session.patch)}</span>
                       ) : (
                         <span className="text-slate-600 text-sm">—</span>
                       )}
