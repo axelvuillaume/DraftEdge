@@ -233,7 +233,9 @@ function ObjectivesScore() {
           <div className="text-center">
             <p className="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Avg Score</p>
             <div className="flex items-baseline justify-center gap-0.5">
-              <span className={`text-3xl font-extrabold tabular-nums ${avg >= 7 ? "text-emerald-400" : avg >= 5 ? "text-amber-400" : "text-red-400"}`}>{avg}</span>
+              <span className={`text-3xl font-extrabold tabular-nums ${avg >= 7 ? "text-emerald-400" : avg >= 5 ? "text-amber-400" : "text-red-400"}`}>
+                {avg != null ? Number(avg).toFixed(1) : "–"}
+              </span>
               <span className="text-slate-600 text-sm font-medium">/10</span>
             </div>
           </div>
