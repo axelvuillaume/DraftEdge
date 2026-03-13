@@ -3,7 +3,7 @@ const router = express.Router();
 const passport = require('passport');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
-const SoloQSnapshot = require('../models/soloQ-snapshot');
+const SoloQSnapshot = require('../models/soloq-snapshot');
 const Player = require('../models/player');
 
 const RANKED_TIERS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];

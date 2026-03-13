@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
-const TeamLeague = require('../models/teamLeague');
+const TeamLeague = require('../models/team-league');
 
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');

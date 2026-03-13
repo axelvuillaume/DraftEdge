@@ -4,8 +4,8 @@ const multer = require('multer');
 const https = require('https');
 const Game = require('../models/game');
 const Team = require('../models/team');
-const PlayerStats = require('../models/playerstats');
-const AIFeedBack = require('../models/AIFeedBack');
+const PlayerStats = require('../models/player-stats');
+const AIFeedBack = require('../models/ai-feedback');
 const CONFIG = require('../config');
 const { client: geminiClient } = require('../services/gemini');
 

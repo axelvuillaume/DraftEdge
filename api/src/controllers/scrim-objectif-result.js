@@ -29,6 +29,7 @@ router.put('/:id', passport.authenticate(['admin', 'user'], { session: false, fa
   }
 });
 
+// utiliser dans page objective
 router.post('/average-score', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     if (!req.body.team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
@@ -38,7 +39,7 @@ router.post('/average-score', passport.authenticate(['admin', 'user'], { session
 
     if (objectives.length === 0 || results.length === 0) return res.status(200).send({ ok: true, data: null });
 
-    const objMap = Object.fromEntries(objectives.map(o => [o._id.toString(), o]));
+    const objMap = Object.fromEntries(objectives.map((o) => [o._id.toString(), o]));
     let totalScore = 0;
     let count = 0;
 
@@ -87,8 +88,8 @@ router.post('/stats', passport.authenticate(['admin', 'user'], { session: false,
       .filter(([, v]) => v.avg != null)
       .sort((a, b) => b[1].avg - a[1].avg);
 
-    const best = sorted[0] ? { avg: sorted[0][1].avg, obj: objectives.find(o => o._id.toString() === sorted[0][0]) } : null;
-    const worst = sorted.at(-1) ? { avg: sorted.at(-1)[1].avg, obj: objectives.find(o => o._id.toString() === sorted.at(-1)[0]) } : null;
+    const best = sorted[0] ? { avg: sorted[0][1].avg, obj: objectives.find((o) => o._id.toString() === sorted[0][0]) } : null;
+    const worst = sorted.at(-1) ? { avg: sorted.at(-1)[1].avg, obj: objectives.find((o) => o._id.toString() === sorted.at(-1)[0]) } : null;
 
     return res.status(200).send({
       ok: true,
