@@ -13,7 +13,7 @@ const TABS = [
     title: "Objectives Overview",
     description: "Track scrim team objectives and individual SoloQ goals."
   },
-  { key: "scrims", label: "Scrims", icon: FolderOpen, path: "scrims", title: "Scrim Hub", description: "Organize your scrim sessions and track reviews." },
+  { key: "scrims", label: "Scrims", icon: FolderOpen, path: "scrims", title: "Scrim", description: "Organize your scrim sessions and track reviews." },
   { key: "draft", label: "Draft", icon: Swords, path: "draft", title: "Draft Prep", description: "Prepare and analyze draft scenarios for upcoming matches." }
 ]
 
