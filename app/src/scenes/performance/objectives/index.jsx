@@ -745,6 +745,7 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
   const [request, setRequest] = useState("")
   const [playerId, setPlayerId] = useState("")
   const [players, setPlayers] = useState([])
+  const [loading, setLoading] = useState(false)
   const { user } = useStore()
 
   const fetchPlayers = async () => {
@@ -767,6 +768,7 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
 
   const handleAdd = async () => {
     if (!name.trim() || !playerId) return
+    setLoading(true)
     try {
       const { ok, code } = await api.post("/solo-objectif", {
         name: name.trim(),
@@ -781,6 +783,8 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
       onSuccess()
     } catch (error) {
       toast.error(error.code || "Failed to add objective")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -830,10 +834,11 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
         <div className="flex justify-end gap-2 pt-2">
           <button
             onClick={handleAdd}
-            disabled={!name.trim() || !playerId}
-            className="px-5 py-2 bg-violet-500 hover:bg-violet-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors text-sm"
+            disabled={!name.trim() || !playerId || loading}
+            className="px-5 py-2 bg-violet-500 hover:bg-violet-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors text-sm flex items-center gap-2"
           >
-            Add
+            {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+            {loading ? "Adding..." : "Add"}
           </button>
         </div>
       </div>
