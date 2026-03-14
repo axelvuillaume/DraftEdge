@@ -23,7 +23,8 @@ import {
   FolderOpen,
   ToggleLeft,
   Users,
-  User
+  User,
+  ExternalLink
 } from "lucide-react"
 import Modal from "@/components/modal"
 import DebounceInput from "@/components/debounceInput"
@@ -205,7 +206,7 @@ export default function View() {
                   }
                 }}
               />
-              <FolderDropdown session={session} games={games} onUpdate={fetchSession} />
+              <MultiOpggLink session={session} />
             </div>
 
             <div className="flex items-center gap-2">
@@ -351,118 +352,35 @@ export default function View() {
   )
 }
 
-function FolderDropdown({ session, games, onUpdate }) {
-  const { user } = useStore()
-  const [folders, setFolders] = useState([])
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [newFolderName, setNewFolderName] = useState("")
+function MultiOpggLink({ session }) {
+  const [multiOpgg, setMultiOpgg] = useState(null)
+
+  const fetchEnemyTeam = async () => {
+    try {
+      const { ok, data, code } = await api.get(`/enemy-team/${session.opponent_id}`)
+      if (!ok) return
+      setMultiOpgg(data.multi_opgg)
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
   useEffect(() => {
-    if (user?.team_id) fetchFolders()
-  }, [user?.team_id])
+    if (session?.opponent_id) fetchEnemyTeam()
+  }, [session?.opponent_id])
 
-  const fetchFolders = async () => {
-    try {
-      const { ok, data, code } = await api.post("/folder/search", { team_id: user?.team_id })
-      if (!ok) return toast.error(code || "Failed to fetch folders")
-      setFolders(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch folders")
-    }
-  }
-
-  const selectFolder = async (folderId, folderName) => {
-    setShowDropdown(false)
-    try {
-      const { ok, code } = await api.put(`/scrim-session/${session._id}`, { ...session, folder_id: folderId, folder_name: folderName })
-      if (!ok) return toast.error(code || "Failed to update session")
-    } catch (error) {
-      toast.error(error.code || "Failed to update session")
-    }
-    if (games.length > 0) {
-      try {
-        const { ok, code } = await api.put("/game/move", { game_ids: games.map(g => g._id), folder_id: folderId || null })
-        if (!ok) return toast.error(code || "Failed to move games")
-      } catch (error) {
-        toast.error(error.code || "Failed to move games")
-      }
-    }
-    onUpdate()
-  }
-
-  const createFolder = async name => {
-    try {
-      const { ok, data, code } = await api.post("/folder", { name })
-      if (!ok) return toast.error(code || "Failed to create folder")
-      setFolders(prev => [data, ...prev])
-      selectFolder(data._id, data.name)
-      setNewFolderName("")
-    } catch (error) {
-      toast.error(error.code || "Failed to create folder")
-    }
-  }
+  if (!multiOpgg) return null
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center gap-2 bg-slate-700/40 rounded-lg px-3 py-1.5 text-sm w-36 hover:bg-slate-700/60 transition-colors"
-      >
-        <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
-        <span className={`truncate ${session.folder_name ? "text-white" : "text-slate-400"}`}>{session.folder_name || "Folder..."}</span>
-        <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-auto shrink-0" />
-      </button>
-
-      {showDropdown && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
-          <div className="absolute top-full left-0 mt-1 w-56 bg-slate-800 border border-slate-600/50 rounded-xl shadow-2xl z-20 overflow-hidden">
-            <div className="p-2 border-b border-slate-700/50">
-              <form
-                onSubmit={e => {
-                  e.preventDefault()
-                  if (newFolderName.trim()) createFolder(newFolderName.trim())
-                }}
-                className="flex items-center gap-1.5"
-              >
-                <input
-                  type="text"
-                  placeholder="New folder..."
-                  value={newFolderName}
-                  onChange={e => setNewFolderName(e.target.value)}
-                  className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  disabled={!newFolderName.trim()}
-                  className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </form>
-            </div>
-            <div className="max-h-48 overflow-y-auto p-1">
-              <button
-                onClick={() => selectFolder(null, null)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!session.folder_id ? "bg-amber-500/15 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
-              >
-                No folder
-              </button>
-              {folders.map(folder => (
-                <button
-                  key={folder._id}
-                  onClick={() => selectFolder(folder._id, folder.name)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${session.folder_id === folder._id ? "bg-amber-500/15 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
-                >
-                  {folder.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
+    <a
+      href={multiOpgg}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-1.5 bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 rounded-lg px-3 py-1.5 text-sm transition-colors"
+    >
+      <ExternalLink className="w-3.5 h-3.5" />
+      <span>Multi OP.GG</span>
+    </a>
   )
 }
 
