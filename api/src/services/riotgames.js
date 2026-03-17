@@ -42,7 +42,7 @@ const SERVERS = [
   { value: 'me1', label: 'ME' },
 ];
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 4;
 
 async function apiFetch(url, retries = 0) {
   const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}api_key=${RIOT_API_KEY}`);
