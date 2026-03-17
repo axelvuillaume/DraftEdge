@@ -69,6 +69,7 @@ function EditRosterModal({ players, onClose }) {
 
   const handleDeleteRole = async role => {
     if (!roster[role]?._id) return setRoster(prev => ({ ...prev, [role]: { player_name: "", game_name: "", tag_line: "" } }))
+    if (!window.confirm("Are you sure you want to archive this player?")) return
     setSaving(role)
     try {
       const { ok, code } = await api.put(`/player/${roster[role]._id}`, { active: false })
@@ -285,6 +286,7 @@ export default function SoloQ() {
 
   const handleArchive = async (e, playerId) => {
     e.stopPropagation()
+    if (!window.confirm("Are you sure you want to archive this player?")) return
     try {
       const { ok, code } = await api.put(`/player/${playerId}`, { active: false })
       if (!ok) return toast.error(code || "Failed to archive player")
