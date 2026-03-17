@@ -22,6 +22,7 @@ const Schema = new mongoose.Schema(
     current_lp: { type: Number },
     current_wins: { type: Number },
     current_losses: { type: Number },
+    sync_soloq: { type: String, enum: ['pending', 'done'] },
 
     // Champion pool (tier list manuelle du joueur)
     champion_pool: [

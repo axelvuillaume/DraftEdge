@@ -27,7 +27,6 @@ Rules:
 - ALWAYS handle errors with `toast.error` using `code` as the message
 - ALWAYS wrap in try/catch
 - ALWAYS define fetch functions outside of `useEffect`, then call them inside
-- NEVER use `loading`/`setLoading` or `saving`/`setSaving` states around fetch calls
 
 ## State Management for Fetched Objects
 

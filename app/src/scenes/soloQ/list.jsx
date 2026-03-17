@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { toast } from "react-hot-toast"
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts"
-import { Loader2, TrendingUp, TrendingDown, Trophy, Zap, Gamepad2, Archive, Pencil, Check, X, Save, Plus } from "lucide-react"
+import { Loader2, TrendingUp, TrendingDown, Trophy, Zap, Gamepad2, Archive, Pencil, X, Save, Plus, RefreshCw } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import { useNavigate } from "react-router-dom"
@@ -13,6 +13,185 @@ const PERIODS = [
   { value: "month", label: "Last Month" },
   { value: "all", label: "All Time" }
 ]
+
+function EditRosterModal({ players, onClose }) {
+  const { user, team, setTeam } = useStore()
+  const [roster, setRoster] = useState({})
+  const [saving, setSaving] = useState(null)
+  const [editingRole, setEditingRole] = useState(null)
+
+  useEffect(() => {
+    const initial = {}
+    ROLES.forEach(role => {
+      const existing = players.find(p => p.role === role && p.active !== false)
+      initial[role] = existing
+        ? {
+            _id: existing._id,
+            player_name: existing.player_name || "",
+            game_name: existing.game_name || "",
+            tag_line: existing.tag_line || "",
+            connected_at: existing.connected_at
+          }
+        : { player_name: "", game_name: "", tag_line: "" }
+    })
+    setRoster(initial)
+  }, [])
+
+  const handleSaveRole = async role => {
+    if (!roster[role]?.game_name?.trim() || !roster[role]?.tag_line?.trim()) return toast.error("Summoner name and tag are required")
+    setSaving(role)
+    try {
+      const { ok, data, code } = roster[role]?._id
+        ? await api.put(`/player/${roster[role]._id}/resync`, {
+            game_name: roster[role].game_name.trim(),
+            tag_line: roster[role].tag_line.trim(),
+            player_name: roster[role].player_name?.trim() || "",
+            region: team?.region || "euw1",
+            role
+          })
+        : await api.post("/player", {
+            game_name: roster[role].game_name.trim(),
+            tag_line: roster[role].tag_line.trim(),
+            player_name: roster[role].player_name?.trim() || "",
+            region: team?.region || "euw1",
+            role
+          })
+      if (!ok) return toast.error(code || "Riot ID not found")
+      setRoster(prev => ({ ...prev, [role]: { ...prev[role], _id: data._id, connected_at: data.connected_at } }))
+      setEditingRole(null)
+      toast.success(`${ROLE_LABELS[role]} saved`)
+    } catch (error) {
+      toast.error(error.code || "Failed to save player")
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  const handleDeleteRole = async role => {
+    if (!roster[role]?._id) return setRoster(prev => ({ ...prev, [role]: { player_name: "", game_name: "", tag_line: "" } }))
+    setSaving(role)
+    try {
+      const { ok, code } = await api.put(`/player/${roster[role]._id}`, { active: false })
+      if (!ok) return toast.error(code || "Failed to archive player")
+      setRoster(prev => ({ ...prev, [role]: { player_name: "", game_name: "", tag_line: "" } }))
+      toast.success(`${ROLE_LABELS[role]} archived`)
+    } catch (error) {
+      toast.error(error.code || "Failed to archive player")
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  const handleRegionChange = async newRegion => {
+    try {
+      const { ok, code } = await api.put(`/team/${user?.team_id}/region`, { region: newRegion })
+      if (!ok) return toast.error(code || "Failed to update region")
+      setTeam({ ...team, region: newRegion })
+      toast.success("Region updated")
+    } catch (error) {
+      toast.error(error.code || "Failed to update region")
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
+          <h2 className="text-white font-semibold">Edit Roster</h2>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm">Region</span>
+              <select
+                value={team?.region || "euw1"}
+                onChange={e => handleRegionChange(e.target.value)}
+                className="w-24 px-2 py-1.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none text-sm appearance-none cursor-pointer"
+              >
+                {SERVERS.map(s => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button onClick={onClose} className="p-1 text-slate-400 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+        <div className="divide-y divide-slate-700/30">
+          {ROLES.map(role => (
+            <div key={role} className="flex items-center gap-3 px-6 py-3 min-h-[56px]">
+              <div className="flex items-center gap-2 w-20 shrink-0">
+                <img src={`/roles/${role}.png`} alt={role} className="w-5 h-5 opacity-70" />
+                <span className="text-amber-400 font-semibold text-xs uppercase">{ROLE_LABELS[role]}</span>
+              </div>
+              {editingRole === role || !roster[role]?._id ? (
+                <>
+                  <input
+                    type="text"
+                    value={roster[role]?.player_name || ""}
+                    onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], player_name: e.target.value } }))}
+                    placeholder="Name"
+                    className="w-28 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={roster[role]?.game_name || ""}
+                    onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], game_name: e.target.value } }))}
+                    placeholder="Summoner Name"
+                    className="flex-1 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
+                  />
+                  <span className="text-slate-500 text-sm">#</span>
+                  <input
+                    type="text"
+                    value={roster[role]?.tag_line || ""}
+                    onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], tag_line: e.target.value } }))}
+                    placeholder="TAG"
+                    className="w-20 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
+                  />
+                  <button
+                    onClick={() => handleSaveRole(role)}
+                    disabled={saving === role}
+                    className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all disabled:opacity-50"
+                    title="Save"
+                  >
+                    {saving === role ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  </button>
+                  {roster[role]?._id && (
+                    <button onClick={() => setEditingRole(null)} className="p-2 text-slate-400 hover:text-white rounded-lg transition-all" title="Cancel">
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex-1 flex items-center gap-2 min-w-0">
+                    <span className="text-white text-sm font-medium truncate">{roster[role]?.player_name || roster[role]?.game_name}</span>
+                    <span className="text-slate-500 text-xs truncate">
+                      {roster[role]?.game_name}#{roster[role]?.tag_line}
+                    </span>
+                    {roster[role]?.connected_at && <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" title="Connected" />}
+                  </div>
+                  <button onClick={() => setEditingRole(role)} className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Edit">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteRole(role)}
+                    disabled={saving === role}
+                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50"
+                    title="Remove"
+                  >
+                    {saving === role ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function getPeriodStart(period) {
   const d = new Date()
@@ -51,9 +230,7 @@ export default function SoloQ() {
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState("week")
   const [showEditModal, setShowEditModal] = useState(false)
-  const [roster, setRoster] = useState({})
-  const [teamData, setTeamData] = useState(null)
-  const [saving, setSaving] = useState(null)
+  const initialLoadDone = useRef(false)
   const navigate = useNavigate()
 
   const fetchPlayers = async () => {
@@ -68,11 +245,11 @@ export default function SoloQ() {
     }
   }
 
-  const fetchData = async () => {
+  const fetchData = async (showLoader = false) => {
     const conn = players.filter(p => p.puuid)
     if (!conn.length) return
     const fromDate = period === "all" ? undefined : getPeriodStart(period).toISOString()
-    setLoading(true)
+    if (showLoader) setLoading(true)
     try {
       const allSnapshots = []
       const allMatches = []
@@ -96,8 +273,22 @@ export default function SoloQ() {
   }, [])
 
   useEffect(() => {
-    fetchData()
+    const showLoader = !initialLoadDone.current
+    fetchData(showLoader).then(() => {
+      initialLoadDone.current = true
+    })
   }, [players, period])
+
+  const handleSyncSoloq = async (e, playerId) => {
+    e.stopPropagation()
+    try {
+      const { ok, data, code } = await api.put(`/player/${playerId}/sync-soloq`)
+      if (!ok) return toast.error(code || "Failed to start sync")
+      setPlayers(prev => prev.map(p => (p._id === playerId ? data : p)))
+    } catch (error) {
+      toast.error(error.code || "Failed to start sync")
+    }
+  }
 
   const handleArchive = async (e, playerId) => {
     e.stopPropagation()
@@ -111,52 +302,9 @@ export default function SoloQ() {
     }
   }
 
-  const openEditModal = async e => {
+  const openEditModal = e => {
     e?.stopPropagation()
-    try {
-      const { ok, data } = await api.get(`/team/${user?.team_id}`)
-      if (ok) setTeamData(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch team")
-    }
-    const initial = {}
-    ROLES.forEach(role => {
-      const existing = players.find(p => p.role === role && p.active !== false)
-      initial[role] = existing ? { _id: existing._id, player_name: existing.player_name || "", game_name: existing.game_name || "", tag_line: existing.tag_line || "" } : { player_name: "", game_name: "", tag_line: "" }
-    })
-    setRoster(initial)
     setShowEditModal(true)
-  }
-
-  const handleSaveRole = async role => {
-    const { game_name, tag_line, player_name, _id } = roster[role] || {}
-    if (!game_name?.trim() || !tag_line?.trim()) return toast.error("Summoner name and tag are required")
-    const region = teamData?.region || "euw1"
-    const payload = { game_name: game_name.trim(), tag_line: tag_line.trim(), player_name: player_name?.trim() || "", region, role }
-    setSaving(role)
-    try {
-      const endpoint = _id ? api.put(`/player/${_id}/resync`, payload) : api.post("/player", payload)
-      const { ok, data, code } = await endpoint
-      if (!ok) return toast.error(code || "Riot ID not found")
-      setRoster(prev => ({ ...prev, [role]: { ...prev[role], _id: data._id, connected_at: data.connected_at } }))
-      toast.success(`${ROLE_LABELS[role]} saved`)
-      fetchPlayers()
-    } catch (error) {
-      toast.error(error.code || "Failed to save player")
-    } finally {
-      setSaving(null)
-    }
-  }
-
-  const handleRegionChange = async newRegion => {
-    try {
-      const { ok, code } = await api.put(`/team/${user?.team_id}/region`, { region: newRegion })
-      if (!ok) return toast.error(code || "Failed to update region")
-      setTeamData(prev => ({ ...prev, region: newRegion }))
-      toast.success("Region updated")
-    } catch (error) {
-      toast.error(error.code || "Failed to update region")
-    }
   }
 
   const connected = players.filter(p => p.puuid && p.active !== false).sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role))
@@ -347,6 +495,22 @@ export default function SoloQ() {
                     <span className="text-slate-600 text-[10px]">{periodLabel}</span>
                   </div>
                 )}
+                {p.sync_soloq === "pending" ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-medium">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Syncing…
+                  </div>
+                ) : (
+                  !p.sync_soloq && (
+                    <button
+                      onClick={e => handleSyncSoloq(e, p._id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-all"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Sync SoloQ
+                    </button>
+                  )
+                )}
               </div>
             )
           })}
@@ -378,7 +542,12 @@ export default function SoloQ() {
                     }}
                     itemSorter={a => -a.value}
                   />
-                  <Legend formatter={v => { const pl = connected.find(p => p._id === v); return pl?.player_name || pl?.game_name || v }} />
+                  <Legend
+                    formatter={v => {
+                      const pl = connected.find(p => p._id === v)
+                      return pl?.player_name || pl?.game_name || v
+                    }}
+                  />
                   {connected.map((p, i) => (
                     <Line key={p._id} dataKey={p._id} stroke={CHART_COLORS[i % 5]} strokeWidth={2} dot={false} connectNulls activeDot={{ r: 4, strokeWidth: 2 }} />
                   ))}
@@ -389,78 +558,14 @@ export default function SoloQ() {
         </div>
       </div>
 
-      {/* Edit Roster Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowEditModal(false)}>
-            <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
-              <h2 className="text-white font-semibold">Edit Roster</h2>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400 text-sm">Region</span>
-                  <select
-                    value={teamData?.region || "euw1"}
-                    onChange={e => handleRegionChange(e.target.value)}
-                    className="w-24 px-2 py-1.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none text-sm appearance-none cursor-pointer"
-                  >
-                    {SERVERS.map(s => (
-                      <option key={s.value} value={s.value}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button onClick={() => setShowEditModal(false)} className="p-1 text-slate-400 hover:text-white transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="divide-y divide-slate-700/30">
-              {ROLES.map(role => (
-                <div key={role} className="flex items-center gap-3 px-6 py-3">
-                  <div className="flex items-center gap-2 w-20 shrink-0">
-                    <img src={`/roles/${role}.png`} alt={role} className="w-5 h-5 opacity-70" />
-                    <span className="text-amber-400 font-semibold text-xs uppercase">{ROLE_LABELS[role]}</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={roster[role]?.player_name || ""}
-                    onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], player_name: e.target.value } }))}
-                    placeholder="Name"
-                    className="w-28 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
-                  />
-                  <input
-                    type="text"
-                    value={roster[role]?.game_name || ""}
-                    onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], game_name: e.target.value } }))}
-                    placeholder="Summoner Name"
-                    className="flex-1 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
-                  />
-                  <span className="text-slate-500 text-sm">#</span>
-                  <input
-                    type="text"
-                    value={roster[role]?.tag_line || ""}
-                    onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], tag_line: e.target.value } }))}
-                    placeholder="TAG"
-                    className="w-20 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
-                  />
-                  {roster[role]?.connected_at && (
-                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center" title="Connected">
-                      <Check className="w-3 h-3 text-emerald-400" />
-                    </div>
-                  )}
-                  <button
-                    onClick={() => handleSaveRole(role)}
-                    disabled={saving === role}
-                    className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all disabled:opacity-50"
-                  >
-                    {saving === role ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <EditRosterModal
+          players={players}
+          onClose={() => {
+            setShowEditModal(false)
+            fetchPlayers()
+          }}
+        />
       )}
     </div>
   )
