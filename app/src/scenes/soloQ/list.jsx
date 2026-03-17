@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts"
 import { Loader2, TrendingUp, TrendingDown, Trophy, Zap, Gamepad2, Archive, Pencil, X, Save, Plus, RefreshCw } from "lucide-react"
@@ -230,7 +230,6 @@ export default function SoloQ() {
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState("week")
   const [showEditModal, setShowEditModal] = useState(false)
-  const initialLoadDone = useRef(false)
   const navigate = useNavigate()
 
   const fetchPlayers = async () => {
@@ -240,44 +239,38 @@ export default function SoloQ() {
       setPlayers(data)
     } catch (error) {
       toast.error(error.code || "Failed to fetch players")
-    } finally {
-      setLoading(false)
     }
   }
 
-  const fetchData = async (showLoader = false) => {
-    const conn = players.filter(p => p.puuid)
-    if (!conn.length) return
-    const fromDate = period === "all" ? undefined : getPeriodStart(period).toISOString()
-    if (showLoader) setLoading(true)
+  const fetchSnapshots = async fromDate => {
     try {
-      const allSnapshots = []
-      const allMatches = []
-      for (const p of conn) {
-        const snapshotRes = await api.post("/soloq-snapshot/search", { player_id: p._id, limit: 0, from_date: fromDate })
-        if (snapshotRes.ok) allSnapshots.push(...snapshotRes.data)
-        const matchRes = await api.post("/soloq-match/search", { player_id: p._id, limit: 0, from_date: fromDate })
-        if (matchRes.ok) allMatches.push(...matchRes.data)
-      }
-      setSnapshots(allSnapshots)
-      setMatches(allMatches)
+      const { ok, data, code } = await api.post("/soloq-snapshot/search", { team_id: user?.team_id, limit: 0, from_date: fromDate })
+      if (!ok) return toast.error(code || "Failed to fetch snapshots")
+      setSnapshots(data)
     } catch (error) {
-      toast.error(error.code || "Failed to fetch data")
-    } finally {
-      setLoading(false)
+      toast.error(error.code || "Failed to fetch snapshots")
+    }
+  }
+
+  const fetchMatches = async fromDate => {
+    try {
+      const { ok, data, code } = await api.post("/soloq-match/search", { team_id: user?.team_id, limit: 0, from_date: fromDate })
+      if (!ok) return toast.error(code || "Failed to fetch matches")
+      setMatches(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch matches")
     }
   }
 
   useEffect(() => {
-    fetchPlayers()
-  }, [])
-
-  useEffect(() => {
-    const showLoader = !initialLoadDone.current
-    fetchData(showLoader).then(() => {
-      initialLoadDone.current = true
-    })
-  }, [players, period])
+    const fetch = async () => {
+      setLoading(true)
+      const fromDate = period === "all" ? undefined : getPeriodStart(period).toISOString()
+      await Promise.all([fetchPlayers(), fetchSnapshots(fromDate), fetchMatches(fromDate)])
+      setLoading(false)
+    }
+    fetch()
+  }, [period])
 
   const handleSyncSoloq = async (e, playerId) => {
     e.stopPropagation()
