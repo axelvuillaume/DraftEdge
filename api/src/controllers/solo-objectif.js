@@ -100,7 +100,7 @@ DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
 
     let rule;
     try {
-      const response = await geminiClient.models.generateContent({ model: 'gemini-3-pro-preview', contents: prompt });
+      const response = await geminiClient.models.generateContent({ model: 'gemini-3-flash-preview', contents: prompt });
       const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '';
       rule = JSON.parse(
         text
