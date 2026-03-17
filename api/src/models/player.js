@@ -6,6 +6,10 @@ const Schema = new mongoose.Schema(
   {
     team_id: { type: String, trim: true },
     team_name: { type: String, trim: true },
+    league_id: { type: String, trim: true },
+    league_name: { type: String, trim: true },
+    team_league_id: { type: String, trim: true },
+    team_league_name: { type: String, trim: true },
     player_name: { type: String, trim: true },
     role: { type: String, enum: ['top', 'jungle', 'mid', 'bottom', 'support'] },
 
@@ -34,6 +38,7 @@ const Schema = new mongoose.Schema(
 
     notes: { type: String, default: '' },
 
+    is_league: { type: Boolean, default: false },
     active: { type: Boolean, default: true },
     last_fetched_at: { type: Date },
     connected_at: { type: Date },

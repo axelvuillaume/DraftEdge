@@ -220,6 +220,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     let query = {};
 
     if (req.body.team_id) query.team_id = req.body.team_id;
+    if (req.body.team_league_id) query.team_league_id = req.body.team_league_id;
     if (req.body.active !== undefined) query.active = req.body.active;
     const limit = req.body.limit || 50;
     const skip = req.body.offset || 0;

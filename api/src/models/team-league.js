@@ -17,6 +17,8 @@ const Schema = new mongoose.Schema(
     replacements_ids: [{ type: String }],
     discord_manager: { type: String },
     discord_captain: { type: String },
+    points: { type: Number, default: 0 },
+    total_lp: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

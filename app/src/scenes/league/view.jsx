@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
-import { ArrowLeft, ExternalLink, Users, UserCog, UserPlus } from "lucide-react"
+import { ArrowLeft, ExternalLink, Users, UserCog, UserPlus, Trophy } from "lucide-react"
 import api from "@/services/api"
 
 export default function View() {
@@ -55,38 +55,7 @@ export default function View() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column */}
           <div className="space-y-6">
-            {/* Players */}
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 space-y-4">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-amber-500" />
-                <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">Players ({team.players?.length || 0})</h2>
-              </div>
-              {team.players?.length > 0 ? (
-                <div className="space-y-2">
-                  {team.players.map((player, i) => {
-                    const riotId = team.players_ids?.[i]
-                    const dpmUrl = riotId ? `https://dpm.lol/${encodeURIComponent(riotId.replace("#", "-"))}` : null
-                    return (
-                      <div key={i} className="flex items-center gap-3 px-4 py-2.5 bg-slate-700/30 rounded-lg">
-                        <span className="text-white text-sm flex-1">{player}</span>
-                        {dpmUrl && (
-                          <a
-                            href={dpmUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/80 transition-all flex-shrink-0"
-                          >
-                            <img src="/dpm_full_logo.png" alt="DPM.lol" className="h-4 object-contain" />
-                          </a>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <p className="text-slate-500 text-sm">No players listed</p>
-              )}
-            </div>
+            <PlayersList team={team} />
 
             {/* Replacements */}
             {team.replacements?.length > 0 && (
@@ -164,6 +133,75 @@ export default function View() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+const ROLE_ORDER = { top: 0, jungle: 1, mid: 2, bottom: 3, support: 4 }
+
+function PlayersList({ team }) {
+  const [players, setPlayers] = useState([])
+
+  const fetchPlayers = async () => {
+    try {
+      const { ok, data, code } = await api.post("/player/search", { team_league_id: team._id })
+      if (!ok) return toast.error(code || "Failed to fetch players")
+      setPlayers(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch players")
+    }
+  }
+
+  useEffect(() => {
+    fetchPlayers()
+  }, [team._id])
+
+  return (
+    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users className="w-4 h-4 text-amber-500" />
+          <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">Players ({players.length})</h2>
+        </div>
+        {players.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <Trophy className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-amber-400 text-sm font-medium">{players.reduce((sum, p) => sum + (p.current_lp || 0), 0)} LP</span>
+          </div>
+        )}
+      </div>
+      {players.length > 0 ? (
+        <div className="space-y-2">
+          {[...players]
+            .sort((a, b) => (ROLE_ORDER[a.role] ?? 99) - (ROLE_ORDER[b.role] ?? 99))
+            .map(player => (
+              <div key={player._id} className="flex items-center gap-3 px-4 py-2.5 bg-slate-700/30 rounded-lg">
+                {player.role && <span className="text-xs text-slate-500 uppercase w-14">{player.role}</span>}
+                <span className="text-white text-sm flex-1">{player.player_name || player.game_name || "—"}</span>
+                <div className="flex items-center gap-2 text-xs">
+                  {player.current_tier && (
+                    <span className="text-slate-400">
+                      {player.current_tier} {player.current_rank}
+                    </span>
+                  )}
+                  {player.current_lp != null && <span className="text-amber-400 font-medium">{player.current_lp} LP</span>}
+                </div>
+                {player.game_name && player.tag_line && (
+                  <a
+                    href={`https://dpm.lol/${encodeURIComponent(player.game_name)}-${encodeURIComponent(player.tag_line)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/80 transition-all flex-shrink-0"
+                  >
+                    <img src="/dpm_full_logo.png" alt="DPM.lol" className="h-4 object-contain" />
+                  </a>
+                )}
+              </div>
+            ))}
+        </div>
+      ) : (
+        <p className="text-slate-500 text-sm">No players listed</p>
+      )}
     </div>
   )
 }

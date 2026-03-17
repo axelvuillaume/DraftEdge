@@ -33,7 +33,10 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
   try {
     let query = {};
     if (req.body.league_id) query.league_id = req.body.league_id;
-    const data = await TeamLeague.find(query).sort({ name: 1 });
+    if (req.body.search) query.name = { $regex: req.body.search, $options: 'i' };
+
+    const sortOptions = { lp: { total_lp: -1 }, points: { points: -1 } };
+    const data = await TeamLeague.find(query).sort(sortOptions[req.body.sort] || { name: 1 });
     return res.status(200).send({ ok: true, data });
   } catch (error) {
     capture(error);

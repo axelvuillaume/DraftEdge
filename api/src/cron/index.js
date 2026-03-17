@@ -2,6 +2,7 @@ const cron = require('node-cron');
 
 const { ENVIRONMENT } = require('../config');
 const getElo = require('./getElo');
+const getEloLeague = require('./getEloLeague');
 const fetchSoloQ = require('./fetchSoloQ');
 const scrapeOracleElixir = require('./scrapeOracleElixir');
 
@@ -26,4 +27,5 @@ if (ENVIRONMENT !== 'production') return;
 console.log('Cron jobs initialized');
 cron.schedule('*/15 * * * *', () => run(getElo, 'getElo'));
 cron.schedule('*/15 * * * *', () => run(fetchSoloQ, 'fetchSoloQ'));
+cron.schedule('0 3 * * *', () => run(getEloLeague, 'getEloLeague'));
 // cron.schedule('0 6 * * *', () => run(scrapeOracleElixir, 'scrapeOracleElixir'));

@@ -1,16 +1,15 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
-import { Search, Users, Trophy, Shield, ChevronDown } from "lucide-react"
+import { Search, Trophy, ChevronDown } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import api from "@/services/api"
 import useStore from "@/services/store"
-import { useNavigate } from "react-router-dom"
-
 export default function List() {
   const navigate = useNavigate()
   const { team } = useStore()
   const [teams, setTeams] = useState([])
   const [league, setLeague] = useState(null)
-  const [search, setSearch] = useState("")
+  const [filters, setFilters] = useState({ search: "", sort: "lp" })
 
   const fetchLeague = async () => {
     try {
@@ -24,7 +23,7 @@ export default function List() {
 
   const fetchTeams = async () => {
     try {
-      const { ok, data, code } = await api.post("/team-league/search", { league_id: team.league_id })
+      const { ok, data, code } = await api.post("/team-league/search", { league_id: team.league_id, ...filters })
       if (!ok) return toast.error(code || "Failed to fetch teams")
       setTeams(data)
     } catch (error) {
@@ -33,16 +32,15 @@ export default function List() {
   }
 
   useEffect(() => {
-    if (team?.league_id) {
-      fetchLeague()
-      fetchTeams()
-    }
+    if (team?.league_id) fetchLeague()
   }, [team])
+
+  useEffect(() => {
+    if (team?.league_id) fetchTeams()
+  }, [team, filters])
 
   if (!team?.league_id) return <LeagueSelector />
   if (!league) return null
-
-  const filtered = teams.filter(t => t.name?.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <div className="h-full overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8 flex flex-col">
@@ -68,58 +66,79 @@ export default function List() {
             <input
               type="text"
               placeholder="Search teams..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              value={filters.search}
+              onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
               className="w-64 bg-slate-800/50 border border-slate-700/50 rounded-lg pl-10 pr-4 py-2 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"
             />
           </div>
         </div>
 
-        {/* List */}
+        {/* Sort */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className="text-xs text-slate-500">Sort by:</span>
+          <div className="relative">
+            <select
+              value={filters.sort}
+              onChange={e => setFilters(prev => ({ ...prev, sort: e.target.value }))}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600/50 focus:border-amber-500 focus:outline-none appearance-none pr-8 cursor-pointer"
+            >
+              <option value="">Alphabet</option>
+              <option value="lp">Total LP</option>
+              <option value="points">Points</option>
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          </div>
+        </div>
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden flex-1 min-h-0 flex flex-col">
           <table className="w-full table-fixed">
             <thead className="flex-shrink-0">
               <tr className="border-b border-slate-700/50">
-                <th className="w-[30%] text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Team</th>
-                <th className="w-[20%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Players</th>
-                <th className="w-[20%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Staff</th>
-                <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Manager</th>
-                <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Captain</th>
+                <th className="w-[4%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-2 py-3">#</th>
+                <th className="w-[18%] text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Team</th>
+                <th className="w-[12%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Total LP</th>
+                <th className="w-[10%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Points</th>
+                <th className="w-[10%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Players</th>
+                <th className="w-[10%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Staff</th>
+                <th className="w-[18%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Manager</th>
+                <th className="w-[18%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Captain</th>
               </tr>
             </thead>
           </table>
           <div className="overflow-y-auto flex-1">
             <table className="w-full table-fixed">
               <tbody>
-                {filtered.length === 0 ? (
+                {teams.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center text-slate-500 py-12 text-sm">
-                      {teams.length === 0 ? "No teams in this league yet" : "No teams match your search"}
+                    <td colSpan={8} className="text-center text-slate-500 py-12 text-sm">
+                      {filters.search ? "No teams match your search" : "No teams in this league yet"}
                     </td>
                   </tr>
                 ) : (
-                  filtered.map(team => (
-                    <tr
-                      key={team._id}
-                      onClick={() => navigate(`/league/${team._id}`)}
-                      className="border-b border-slate-700/30 hover:bg-slate-700/20 cursor-pointer transition-colors"
-                    >
-                      <td className="w-[30%] px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <span className="text-white font-medium text-sm truncate">{team.name}</span>
-                        </div>
+                  teams.map((t, i) => (
+                    <tr key={t._id} onClick={() => navigate(`/league/${t._id}`)} className="border-b border-slate-700/30 hover:bg-slate-700/20 cursor-pointer transition-colors">
+                      <td className="w-[4%] px-2 py-4 text-center">
+                        <span className="text-slate-500 text-sm font-medium">{i + 1}</span>
                       </td>
-                      <td className="w-[20%] px-4 py-4 text-center">
-                        <span className="text-slate-400 text-sm">{team.players?.length || 0}</span>
+                      <td className="w-[18%] px-6 py-4">
+                        <span className="text-white font-medium text-sm truncate">{t.name}</span>
                       </td>
-                      <td className="w-[20%] px-4 py-4 text-center">
-                        <span className="text-slate-400 text-sm">{team.staff?.length || 0}</span>
+                      <td className="w-[12%] px-4 py-4 text-center">
+                        <span className="text-amber-400 text-sm font-medium">{t.total_lp || 0}</span>
                       </td>
-                      <td className="w-[15%] px-4 py-4 text-center">
-                        <span className="text-slate-400 text-sm truncate">{team.discord_manager || "—"}</span>
+                      <td className="w-[10%] px-4 py-4 text-center">
+                        <span className="text-amber-400 text-sm font-medium">{t.points || 0}</span>
                       </td>
-                      <td className="w-[15%] px-4 py-4 text-center">
-                        <span className="text-slate-400 text-sm truncate">{team.discord_captain || "—"}</span>
+                      <td className="w-[10%] px-4 py-4 text-center">
+                        <span className="text-slate-400 text-sm">{t.players_ids?.length || 0}</span>
+                      </td>
+                      <td className="w-[10%] px-4 py-4 text-center">
+                        <span className="text-slate-400 text-sm">{t.staff?.length || 0}</span>
+                      </td>
+                      <td className="w-[18%] px-4 py-4 text-center">
+                        <span className="text-slate-400 text-sm truncate">{t.discord_manager || "—"}</span>
+                      </td>
+                      <td className="w-[18%] px-4 py-4 text-center">
+                        <span className="text-slate-400 text-sm truncate">{t.discord_captain || "—"}</span>
                       </td>
                     </tr>
                   ))
