@@ -108,6 +108,9 @@ async function fetchSoloQ() {
             const results = [];
 
             for (const obj of objectives) {
+              if (obj.champions?.length > 0 && !obj.champions.includes(doc.championName)) continue;
+              if (obj.role && obj.role !== doc.teamPosition) continue;
+
               const { metric, operator, value, timing, source } = obj.rule;
               let actual_value = undefined;
 

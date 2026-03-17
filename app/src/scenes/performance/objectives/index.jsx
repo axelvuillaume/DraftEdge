@@ -3,8 +3,8 @@ import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
-import { Plus, Target, TrendingUp, Trophy, AlertTriangle, Trash2, Swords, Gamepad2, ChevronDown, ChevronUp, XCircle, CheckCircle2, User, Users, ToggleLeft } from "lucide-react"
-import { ROLES, ROLE_LABELS } from "@/utils"
+import { Plus, Target, TrendingUp, Trophy, AlertTriangle, Trash2, Swords, Gamepad2, ChevronDown, ChevronUp, XCircle, CheckCircle2, User, Users, ToggleLeft, Search, X } from "lucide-react"
+import { ROLES, ROLE_LABELS, ALL_CHAMPIONS, getChampionIcon } from "@/utils"
 
 const RATING_MAX = 10
 
@@ -673,6 +673,19 @@ function SoloQObjectiveRow({ objective, onDelete }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-white text-sm font-medium truncate">{objective.name}</h3>
+            {objective.role && (
+              <span className="text-xs text-violet-400/80 bg-violet-500/10 px-1.5 py-0.5 rounded font-medium">
+                {SOLOQ_ROLES.find(r => r.value === objective.role)?.label || objective.role}
+              </span>
+            )}
+            {objective.champions?.length > 0 && (
+              <div className="flex items-center gap-0.5">
+                {objective.champions.slice(0, 3).map(c => (
+                  <img key={c} src={getChampionIcon(c)} alt={c} className="w-5 h-5 rounded" title={c} />
+                ))}
+                {objective.champions.length > 3 && <span className="text-xs text-slate-500 ml-0.5">+{objective.champions.length - 3}</span>}
+              </div>
+            )}
             {results.length > 0 && <span className="text-slate-600 text-xs">{results.length} games</span>}
           </div>
           {objective.request && <p className="text-slate-500 text-xs mt-0.5 truncate">{objective.request}</p>}
@@ -740,12 +753,27 @@ function SoloQObjectiveRow({ objective, onDelete }) {
   )
 }
 
+const ROLE_TO_RIOT = { top: "TOP", jungle: "JUNGLE", mid: "MIDDLE", bottom: "BOTTOM", support: "UTILITY" }
+
+const SOLOQ_ROLES = [
+  { value: "", label: "All roles" },
+  { value: "TOP", label: "Top" },
+  { value: "JUNGLE", label: "Jungle" },
+  { value: "MIDDLE", label: "Mid" },
+  { value: "BOTTOM", label: "ADC" },
+  { value: "UTILITY", label: "Support" },
+]
+
 function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
   const [name, setName] = useState("")
   const [request, setRequest] = useState("")
   const [playerId, setPlayerId] = useState("")
   const [players, setPlayers] = useState([])
   const [loading, setLoading] = useState(false)
+  const [role, setRole] = useState("")
+  const [champions, setChampions] = useState([])
+  const [champSearch, setChampSearch] = useState("")
+  const [showChampPicker, setShowChampPicker] = useState(false)
   const { user } = useStore()
 
   const fetchPlayers = async () => {
@@ -763,8 +791,25 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
   }, [isOpen])
 
   useEffect(() => {
-    if (isOpen && players.length > 0 && !playerId) setPlayerId(players[0]._id)
+    if (isOpen && players.length > 0 && !playerId) {
+      setPlayerId(players[0]._id)
+      setRole(ROLE_TO_RIOT[players[0].role] || "")
+    }
   }, [isOpen, players])
+
+  useEffect(() => {
+    if (!isOpen) {
+      setRole("")
+      setChampions([])
+      setChampSearch("")
+      setShowChampPicker(false)
+    }
+  }, [isOpen])
+
+  const handlePlayerChange = (id) => {
+    setPlayerId(id)
+    setRole(ROLE_TO_RIOT[players.find(p => p._id === id)?.role] || "")
+  }
 
   const handleAdd = async () => {
     if (!name.trim() || !playerId) return
@@ -774,11 +819,15 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
         name: name.trim(),
         request: request.trim(),
         player_id: playerId,
-        player_name: players.find(p => p._id === playerId)?.player_name
+        player_name: players.find(p => p._id === playerId)?.player_name,
+        champions,
+        role: role || null,
       })
       if (!ok) return toast.error(code || "Failed to add objective")
       setName("")
       setRequest("")
+      setChampions([])
+      setRole("")
       onClose()
       onSuccess()
     } catch (error) {
@@ -789,7 +838,7 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-md bg-slate-800 p-6">
+    <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-lg bg-slate-800 p-6">
       <div className="space-y-4">
         <h2 className="text-white font-semibold text-lg">New SoloQ Objective</h2>
         <div className="space-y-3">
@@ -797,15 +846,89 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
             <label className="text-slate-400 text-xs font-medium mb-1.5 block">Player</label>
             <select
               value={playerId}
-              onChange={e => setPlayerId(e.target.value)}
+              onChange={e => handlePlayerChange(e.target.value)}
               className="w-full bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-violet-500 rounded-lg px-3 py-2.5 text-white text-sm"
             >
               {players.map(p => (
                 <option key={p._id} value={p._id}>
-                  {ROLE_LABELS[p.role] || p.role} - {p.player_name}
+                  {ROLE_LABELS[p.role] || p.role} - {p.player_name || p.game_name}
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="text-slate-400 text-xs font-medium mb-1.5 block">Role filter (optional)</label>
+            <div className="flex gap-1.5">
+              {SOLOQ_ROLES.map(r => (
+                <button
+                  key={r.value}
+                  onClick={() => setRole(r.value)}
+                  className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    role === r.value ? "bg-violet-500/20 text-violet-400 ring-1 ring-violet-500/50" : "bg-slate-700/50 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-slate-400 text-xs font-medium mb-1.5 block">Champions filter (optional)</label>
+            {champions.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {champions.map(c => (
+                  <span key={c} className="flex items-center gap-1.5 bg-violet-500/10 text-violet-400 px-2 py-1 rounded-lg text-xs font-medium">
+                    <img src={getChampionIcon(c)} alt={c} className="w-4 h-4 rounded" />
+                    {c}
+                    <button onClick={() => setChampions(prev => prev.filter(x => x !== c))} className="hover:text-red-400 transition-colors">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {showChampPicker ? (
+              <div className="bg-slate-700/50 rounded-lg overflow-hidden">
+                <div className="relative p-2">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search champion..."
+                    value={champSearch}
+                    onChange={e => setChampSearch(e.target.value)}
+                    className="w-full bg-slate-600/50 border-0 outline-none rounded-md pl-9 pr-3 py-1.5 text-white placeholder-slate-400 text-sm"
+                    autoFocus
+                  />
+                </div>
+                <div className="p-2 max-h-48 overflow-y-auto grid grid-cols-6 gap-1">
+                  {ALL_CHAMPIONS.filter(c => c.toLowerCase().includes(champSearch.toLowerCase())).map(c => (
+                    <button
+                      key={c}
+                      onClick={() => {
+                        if (!champions.includes(c)) setChampions(prev => [...prev, c])
+                      }}
+                      disabled={champions.includes(c)}
+                      className={`flex flex-col items-center p-1 rounded-lg transition-colors ${champions.includes(c) ? "opacity-30" : "hover:bg-slate-600/50"}`}
+                    >
+                      <img src={getChampionIcon(c)} alt={c} className="w-8 h-8 rounded-lg" />
+                      <span className="text-[10px] text-slate-400 truncate w-full text-center mt-0.5">{c}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="p-2 border-t border-slate-600/50">
+                  <button onClick={() => setShowChampPicker(false)} className="text-xs text-slate-400 hover:text-white transition-colors">
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowChampPicker(true)}
+                className="w-full bg-slate-700/50 rounded-lg px-3 py-2 text-slate-500 text-sm text-left hover:text-slate-300 transition-colors"
+              >
+                {champions.length === 0 ? "All champions (click to filter)" : "Add more champions..."}
+              </button>
+            )}
           </div>
           <div>
             <label className="text-slate-400 text-xs font-medium mb-1.5 block">Objective</label>
@@ -816,7 +939,6 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
               onChange={e => setName(e.target.value)}
               className="w-full bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-violet-500 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 text-sm"
               onKeyDown={e => e.key === "Enter" && handleAdd()}
-              autoFocus
             />
           </div>
           <div>

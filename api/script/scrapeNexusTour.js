@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const { MONGODB_ENDPOINT } = require("../src/config.js");
 const TeamLeague = require("../src/models/team-league.js");
 
-const BASE_URL = "https://www.opentourfrance.fr/fr/tournaments/2367625949264826367/participants/";
+const BASE_URL = "https://www.opentourfrance.fr/fr/tournaments/2367635103485327359/participants/";
 const LEAGUE_ID = "69b19b7b9453d5bb395b88fe";
 const LEAGUE_NAME = "Nexus Tour LFL3";
 
@@ -137,6 +137,12 @@ async function scrape() {
 
         return { players, players_ids, staff, staff_ids, replacements, replacements_ids, discord_captain, discord_manager };
       });
+
+      // Skip update if roster is empty (page likely didn't load properly)
+      if (data.players.length === 0) {
+        console.log(`  -> Skipped (empty roster)`);
+        continue;
+      }
 
       // Save to MongoDB via TeamLeague model (upsert by name + league_id)
       await TeamLeague.findOneAndUpdate(
