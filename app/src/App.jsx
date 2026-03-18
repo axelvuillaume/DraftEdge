@@ -18,6 +18,7 @@ import SoloQ from "@/scenes/soloQ"
 import Opponents from "@/scenes/opponents"
 import Performance from "@/scenes/stats"
 import League from "@/scenes/league"
+import Website from "@/scenes/website"
 
 if (environment === "production") {
   Sentry.init({ dsn: SENTRY_URL, environment: "app" })
@@ -59,6 +60,7 @@ export default function App() {
     <BrowserRouter>
       <PostHogPageView />
       <Routes>
+        <Route path="/website" element={<Website />} />
         <Route element={<AuthLayout />}>
           <Route path="/auth/*" element={<Auth />} />
         </Route>
