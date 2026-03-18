@@ -16,8 +16,8 @@ export default function Website() {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
+      entries => {
+        entries.forEach(entry => {
           if (entry.isIntersecting) {
             entry.target.classList.add("visible")
             observer.unobserve(entry.target)
@@ -26,7 +26,7 @@ export default function Website() {
       },
       { threshold: 0.08, rootMargin: "0px 0px -40px 0px" }
     )
-    document.querySelectorAll(".scroll-reveal").forEach((el) => observer.observe(el))
+    document.querySelectorAll(".scroll-reveal").forEach(el => observer.observe(el))
     return () => observer.disconnect()
   }, [])
 
@@ -48,7 +48,14 @@ export default function Website() {
       {/* Navigation */}
       <nav className={`ws-navbar${navScrolled ? " scrolled" : ""}`} ref={navRef}>
         <div className="ws-container nav-container">
-          <a href="#" className="nav-logo" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }) }}>
+          <a
+            href="#"
+            className="nav-logo"
+            onClick={e => {
+              e.preventDefault()
+              window.scrollTo({ top: 0, behavior: "smooth" })
+            }}
+          >
             <div className="logo-shield">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
@@ -57,16 +64,30 @@ export default function Website() {
             <span className="logo-text">DraftEdge</span>
           </a>
           <div className={`nav-links${menuOpen ? " open" : ""}`}>
-            <a href="#training" onClick={(e) => scrollTo(e, "training")}>Training</a>
-            <a href="#stats" onClick={(e) => scrollTo(e, "stats")}>Stats</a>
-            <a href="#players" onClick={(e) => scrollTo(e, "players")}>Players</a>
-            <a href="#league" onClick={(e) => scrollTo(e, "league")}>League</a>
-            <a href="#manager" onClick={(e) => scrollTo(e, "manager")}>Manager</a>
+            <a href="#training" onClick={e => scrollTo(e, "training")}>
+              Training
+            </a>
+            <a href="#stats" onClick={e => scrollTo(e, "stats")}>
+              Stats
+            </a>
+            <a href="#players" onClick={e => scrollTo(e, "players")}>
+              Players
+            </a>
+            <a href="#league" onClick={e => scrollTo(e, "league")}>
+              League
+            </a>
+            <a href="#manager" onClick={e => scrollTo(e, "manager")}>
+              Manager
+            </a>
           </div>
           <div className="nav-actions">
-            <button className="btn btn-primary" onClick={() => navigate("/auth")}>Commencer</button>
+            <button className="btn btn-primary" onClick={() => navigate("/auth")}>
+              Commencer
+            </button>
             <button className="mobile-menu-btn" aria-label="Menu" onClick={() => setMenuOpen(!menuOpen)}>
-              <span /><span /><span />
+              <span />
+              <span />
+              <span />
             </button>
           </div>
         </div>
@@ -91,10 +112,16 @@ export default function Website() {
         <div className="ws-container hero-container">
           <div className="hero-content">
             <h1 className="hero-title">
-              <span className="anim-up" style={{ "--delay": 1 }}>Prenez</span>
-              <span className="anim-up hero-title-accent" style={{ "--delay": 2 }}>l'avantage.</span>
+              <span className="anim-up" style={{ "--delay": 1 }}>
+                Prenez
+              </span>
+              <span className="anim-up hero-title-accent" style={{ "--delay": 2 }}>
+                l'avantage.
+              </span>
             </h1>
-            <p className="hero-sub anim-up" style={{ "--delay": 3 }}>Training, stats avancees, tracking SoloQ, gestion de ligue et import de replays — une seule plateforme pour dominer.</p>
+            <p className="hero-sub anim-up" style={{ "--delay": 3 }}>
+              Training, stats avancees, tracking SoloQ, gestion de ligue et import de replays — une seule plateforme pour dominer.
+            </p>
             <div className="hero-actions anim-up" style={{ "--delay": 4 }}>
               <button className="btn btn-primary btn-lg" onClick={() => navigate("/auth")}>
                 Creer mon equipe
@@ -103,23 +130,35 @@ export default function Website() {
                   <path d="m12 5 7 7-7 7" />
                 </svg>
               </button>
-              <a href="#training" className="btn btn-outline btn-lg" onClick={(e) => scrollTo(e, "training")}>Explorer</a>
+              <a href="#training" className="btn btn-outline btn-lg" onClick={e => scrollTo(e, "training")}>
+                Explorer
+              </a>
             </div>
           </div>
         </div>
         <div className="hero-ticker">
           <div className="ticker-inner">
-            {[1, 2].map((r) => (
+            {[1, 2].map(r => (
               <span key={r} style={{ display: "contents" }}>
-                <span className="ticker-item" style={{ "--c": "#f97316" }}>TOP LANE</span>
+                <span className="ticker-item" style={{ "--c": "#f97316" }}>
+                  TOP LANE
+                </span>
                 <span className="ticker-sep">/</span>
-                <span className="ticker-item" style={{ "--c": "#10b981" }}>JUNGLE</span>
+                <span className="ticker-item" style={{ "--c": "#10b981" }}>
+                  JUNGLE
+                </span>
                 <span className="ticker-sep">/</span>
-                <span className="ticker-item" style={{ "--c": "#3b82f6" }}>MID LANE</span>
+                <span className="ticker-item" style={{ "--c": "#3b82f6" }}>
+                  MID LANE
+                </span>
                 <span className="ticker-sep">/</span>
-                <span className="ticker-item" style={{ "--c": "#ef4444" }}>BOT LANE</span>
+                <span className="ticker-item" style={{ "--c": "#ef4444" }}>
+                  BOT LANE
+                </span>
                 <span className="ticker-sep">/</span>
-                <span className="ticker-item" style={{ "--c": "#06b6d4" }}>SUPPORT</span>
+                <span className="ticker-item" style={{ "--c": "#06b6d4" }}>
+                  SUPPORT
+                </span>
                 <span className="ticker-sep">/</span>
               </span>
             ))}
@@ -137,8 +176,14 @@ export default function Website() {
           </div>
           <div className="training-hero">
             <div className="training-left">
-              <h2 className="big-heading scroll-reveal">Entrainement<br /><span className="text-amber">pilote par l'IA.</span></h2>
-              <p className="body-text scroll-reveal">Definissez des objectifs en langage naturel — DraftEdge les transforme en metriques mesurables et suit chaque game automatiquement.</p>
+              <h2 className="big-heading scroll-reveal">
+                Entrainement
+                <br />
+                <span className="text-amber">pilote par l'IA.</span>
+              </h2>
+              <p className="body-text scroll-reveal">
+                Definissez des objectifs en langage naturel — DraftEdge les transforme en metriques mesurables et suit chaque game automatiquement.
+              </p>
             </div>
             <div className="training-right scroll-reveal">
               <div className="ai-demo-card">
@@ -228,8 +273,14 @@ export default function Website() {
           </div>
           <div className="stats-layout">
             <div className="stats-left">
-              <h2 className="big-heading scroll-reveal">Comparez-vous<br /><span className="text-amber">aux meilleurs.</span></h2>
-              <p className="body-text scroll-reveal">Vision, CS, degats, KDA — analysez chaque metrique en spider chart et comparez vos performances directement avec des joueurs pro comme Faker.</p>
+              <h2 className="big-heading scroll-reveal">
+                Comparez-vous
+                <br />
+                <span className="text-amber">aux meilleurs.</span>
+              </h2>
+              <p className="body-text scroll-reveal">
+                Vision, CS, degats, KDA — analysez chaque metrique en spider chart et comparez vos performances directement avec des joueurs pro comme Faker.
+              </p>
               <div className="compare-modes scroll-reveal">
                 <div className="compare-mode">
                   <div className="compare-mode-icon amber">
@@ -355,22 +406,44 @@ export default function Website() {
                     <circle cx="205" cy="215" r="4" fill="#f59e0b" />
                     <circle cx="88" cy="210" r="4" fill="#f59e0b" />
                     <circle cx="52" cy="88" r="4" fill="#f59e0b" />
-                    <polygon className="spider-shape spider-shape-team" points="150,65 220,105 185,195 108,188 72,98" fill="rgba(16,185,129,.1)" stroke="#10b981" strokeWidth="1.8" />
+                    <polygon
+                      className="spider-shape spider-shape-team"
+                      points="150,65 220,105 185,195 108,188 72,98"
+                      fill="rgba(16,185,129,.1)"
+                      stroke="#10b981"
+                      strokeWidth="1.8"
+                    />
                     <circle cx="150" cy="65" r="4" fill="#10b981" />
                     <circle cx="220" cy="105" r="4" fill="#10b981" />
                     <circle cx="185" cy="195" r="4" fill="#10b981" />
                     <circle cx="108" cy="188" r="4" fill="#10b981" />
                     <circle cx="72" cy="98" r="4" fill="#10b981" />
-                    <text x="150" y="20" fill="rgba(255,255,255,.5)" fontSize="11" fontWeight="600" textAnchor="middle" fontFamily="Syne">Vision Score / min</text>
-                    <text x="278" y="88" fill="rgba(255,255,255,.5)" fontSize="11" fontWeight="600" textAnchor="start" fontFamily="Syne">Wards Placed</text>
-                    <text x="228" y="238" fill="rgba(255,255,255,.5)" fontSize="11" fontWeight="600" textAnchor="start" fontFamily="Syne">Wards Killed</text>
-                    <text x="72" y="238" fill="rgba(255,255,255,.5)" fontSize="11" fontWeight="600" textAnchor="end" fontFamily="Syne">Control Wards</text>
-                    <text x="22" y="88" fill="rgba(255,255,255,.5)" fontSize="11" fontWeight="600" textAnchor="end" fontFamily="Syne">Ward Clear %</text>
+                    <text x="150" y="20" fill="rgba(255,255,255,.5)" fontSize="11" fontWeight="600" textAnchor="middle" fontFamily="Syne">
+                      Vision Score / min
+                    </text>
+                    <text x="278" y="88" fill="rgba(255,255,255,.5)" fontSize="11" fontWeight="600" textAnchor="start" fontFamily="Syne">
+                      Wards Placed
+                    </text>
+                    <text x="228" y="238" fill="rgba(255,255,255,.5)" fontSize="11" fontWeight="600" textAnchor="start" fontFamily="Syne">
+                      Wards Killed
+                    </text>
+                    <text x="72" y="238" fill="rgba(255,255,255,.5)" fontSize="11" fontWeight="600" textAnchor="end" fontFamily="Syne">
+                      Control Wards
+                    </text>
+                    <text x="22" y="88" fill="rgba(255,255,255,.5)" fontSize="11" fontWeight="600" textAnchor="end" fontFamily="Syne">
+                      Ward Clear %
+                    </text>
                   </svg>
                 </div>
                 <div className="spider-legend">
-                  <div className="legend-item"><span className="legend-dot" style={{ background: "#10b981" }} />Team <span className="spider-games">12 games</span></div>
-                  <div className="legend-item"><span className="legend-dot" style={{ background: "#f59e0b" }} />Faker <span className="spider-games">23 games</span></div>
+                  <div className="legend-item">
+                    <span className="legend-dot" style={{ background: "#10b981" }} />
+                    Team <span className="spider-games">12 games</span>
+                  </div>
+                  <div className="legend-item">
+                    <span className="legend-dot" style={{ background: "#f59e0b" }} />
+                    Faker <span className="spider-games">23 games</span>
+                  </div>
                 </div>
                 <div className="spider-tabs">
                   <span className="spider-tab">vs Scrim</span>
@@ -413,41 +486,124 @@ export default function Website() {
                     <line x1="436" y1="24" x2="436" y2="300" stroke="rgba(255,255,255,.04)" strokeWidth="1" />
                     <line x1="564" y1="24" x2="564" y2="300" stroke="rgba(255,255,255,.04)" strokeWidth="1" />
                     <line x1="690" y1="24" x2="690" y2="300" stroke="rgba(255,255,255,.04)" strokeWidth="1" />
-                    <text x="46" y="34" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="end" fontFamily="DM Sans">1500 LP</text>
-                    <text x="46" y="96" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="end" fontFamily="DM Sans">1250 LP</text>
-                    <text x="46" y="158" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="end" fontFamily="DM Sans">1000 LP</text>
-                    <text x="46" y="220" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="end" fontFamily="DM Sans">750 LP</text>
-                    <text x="46" y="282" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="end" fontFamily="DM Sans">500 LP</text>
-                    <text x="52" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">Mar 11</text>
-                    <text x="180" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">Mar 12</text>
-                    <text x="308" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">Mar 13</text>
-                    <text x="436" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">Mar 15</text>
-                    <text x="564" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">Mar 17</text>
-                    <text x="690" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">Mar 18</text>
-                    <polyline className="chart-line line-1" fill="none" stroke="#f97316" strokeWidth="2" points="52,42 90,40 130,38 170,36 200,34 240,32 280,34 308,32 350,30 400,32 436,34 480,32 520,30 560,44 590,34 630,32 660,30 690,32" />
-                    <polyline className="chart-line line-2" fill="none" stroke="#10b981" strokeWidth="2" points="52,62 80,64 110,68 150,78 180,82 210,72 250,68 290,76 308,70 340,66 380,68 420,64 450,68 480,72 510,66 540,70 570,64 600,74 630,68 660,64 690,72" />
-                    <polyline className="chart-line line-3" fill="none" stroke="#3b82f6" strokeWidth="2" points="52,138 80,136 120,140 160,134 200,130 240,128 280,132 308,126 340,124 380,128 420,122 450,120 480,124 510,118 540,116 570,120 600,114 640,116 670,112 690,110" />
-                    <polyline className="chart-line line-4" fill="none" stroke="#ef4444" strokeWidth="2" points="52,188 90,186 130,188 170,184 200,180 240,174 280,170 308,168 340,164 380,166 410,160 436,156 470,154 500,150 530,148 564,144 590,148 620,142 650,140 690,138" />
-                    <polyline className="chart-line line-5" fill="none" stroke="#06b6d4" strokeWidth="2" points="52,258 80,264 110,260 140,262 170,256 200,260 240,258 270,244 308,228 340,214 370,220 400,208 436,196 470,188 500,180 530,176 564,168 590,184 620,172 650,162 690,156" />
+                    <text x="46" y="34" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="end" fontFamily="DM Sans">
+                      1500 LP
+                    </text>
+                    <text x="46" y="96" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="end" fontFamily="DM Sans">
+                      1250 LP
+                    </text>
+                    <text x="46" y="158" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="end" fontFamily="DM Sans">
+                      1000 LP
+                    </text>
+                    <text x="46" y="220" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="end" fontFamily="DM Sans">
+                      750 LP
+                    </text>
+                    <text x="46" y="282" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="end" fontFamily="DM Sans">
+                      500 LP
+                    </text>
+                    <text x="52" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">
+                      Mar 11
+                    </text>
+                    <text x="180" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">
+                      Mar 12
+                    </text>
+                    <text x="308" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">
+                      Mar 13
+                    </text>
+                    <text x="436" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">
+                      Mar 15
+                    </text>
+                    <text x="564" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">
+                      Mar 17
+                    </text>
+                    <text x="690" y="318" fill="rgba(255,255,255,.25)" fontSize="10" textAnchor="middle" fontFamily="DM Sans">
+                      Mar 18
+                    </text>
+                    <polyline
+                      className="chart-line line-1"
+                      fill="none"
+                      stroke="#f97316"
+                      strokeWidth="2"
+                      points="52,42 90,40 130,38 170,36 200,34 240,32 280,34 308,32 350,30 400,32 436,34 480,32 520,30 560,44 590,34 630,32 660,30 690,32"
+                    />
+                    <polyline
+                      className="chart-line line-2"
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="2"
+                      points="52,62 80,64 110,68 150,78 180,82 210,72 250,68 290,76 308,70 340,66 380,68 420,64 450,68 480,72 510,66 540,70 570,64 600,74 630,68 660,64 690,72"
+                    />
+                    <polyline
+                      className="chart-line line-3"
+                      fill="none"
+                      stroke="#3b82f6"
+                      strokeWidth="2"
+                      points="52,138 80,136 120,140 160,134 200,130 240,128 280,132 308,126 340,124 380,128 420,122 450,120 480,124 510,118 540,116 570,120 600,114 640,116 670,112 690,110"
+                    />
+                    <polyline
+                      className="chart-line line-4"
+                      fill="none"
+                      stroke="#ef4444"
+                      strokeWidth="2"
+                      points="52,188 90,186 130,188 170,184 200,180 240,174 280,170 308,168 340,164 380,166 410,160 436,156 470,154 500,150 530,148 564,144 590,148 620,142 650,140 690,138"
+                    />
+                    <polyline
+                      className="chart-line line-5"
+                      fill="none"
+                      stroke="#06b6d4"
+                      strokeWidth="2"
+                      points="52,258 80,264 110,260 140,262 170,256 200,260 240,258 270,244 308,228 340,214 370,220 400,208 436,196 470,188 500,180 530,176 564,168 590,184 620,172 650,162 690,156"
+                    />
                   </svg>
                   <div className="lp-chart-legend">
-                    <div className="legend-item"><span className="legend-dot" style={{ background: "#f97316" }} />Top</div>
-                    <div className="legend-item"><span className="legend-dot" style={{ background: "#10b981" }} />Jungle</div>
-                    <div className="legend-item"><span className="legend-dot" style={{ background: "#3b82f6" }} />Mid</div>
-                    <div className="legend-item"><span className="legend-dot" style={{ background: "#ef4444" }} />ADC</div>
-                    <div className="legend-item"><span className="legend-dot" style={{ background: "#06b6d4" }} />Support</div>
+                    <div className="legend-item">
+                      <span className="legend-dot" style={{ background: "#f97316" }} />
+                      Top
+                    </div>
+                    <div className="legend-item">
+                      <span className="legend-dot" style={{ background: "#10b981" }} />
+                      Jungle
+                    </div>
+                    <div className="legend-item">
+                      <span className="legend-dot" style={{ background: "#3b82f6" }} />
+                      Mid
+                    </div>
+                    <div className="legend-item">
+                      <span className="legend-dot" style={{ background: "#ef4444" }} />
+                      ADC
+                    </div>
+                    <div className="legend-item">
+                      <span className="legend-dot" style={{ background: "#06b6d4" }} />
+                      Support
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
             <div className="players-text">
-              <h2 className="big-heading scroll-reveal">Suivez chaque<br /><span className="text-amber">joueur.</span></h2>
+              <h2 className="big-heading scroll-reveal">
+                Suivez chaque
+                <br />
+                <span className="text-amber">joueur.</span>
+              </h2>
               <p className="body-text scroll-reveal">Synchronisation auto toutes les 15 minutes. LP, rank, matchs, champion pool par tier — tout est la, en temps reel.</p>
               <ul className="check-list scroll-reveal">
-                <li><span className="ck" />&nbsp;Progression LP &amp; historique de rank</li>
-                <li><span className="ck" />&nbsp;Champion pool tiers S / A / B</li>
-                <li><span className="ck" />&nbsp;Profils joueurs &amp; snapshots quotidiens</li>
-                <li><span className="ck" />&nbsp;Objectifs SoloQ personnalises</li>
+                <li>
+                  <span className="ck" />
+                  &nbsp;Progression LP &amp; historique de rank
+                </li>
+                <li>
+                  <span className="ck" />
+                  &nbsp;Champion pool tiers S / A / B
+                </li>
+                <li>
+                  <span className="ck" />
+                  &nbsp;Profils joueurs &amp; snapshots quotidiens
+                </li>
+                <li>
+                  <span className="ck" />
+                  &nbsp;Objectifs SoloQ personnalises
+                </li>
               </ul>
             </div>
           </div>
@@ -464,12 +620,25 @@ export default function Website() {
           </div>
           <div className="league-layout">
             <div className="league-text">
-              <h2 className="big-heading scroll-reveal">Votre ligue,<br /><span className="text-amber">centralisee.</span></h2>
+              <h2 className="big-heading scroll-reveal">
+                Votre ligue,
+                <br />
+                <span className="text-amber">centralisee.</span>
+              </h2>
               <p className="body-text scroll-reveal">Classement LP agrege, fiches adverses, multi OP.GG automatique et standings mis a jour quotidiennement.</p>
               <ul className="check-list scroll-reveal">
-                <li><span className="ck" />&nbsp;Classement LP total par equipe</li>
-                <li><span className="ck" />&nbsp;Fiches joueurs adverses</li>
-                <li><span className="ck" />&nbsp;Synchronisation LP quotidienne</li>
+                <li>
+                  <span className="ck" />
+                  &nbsp;Classement LP total par equipe
+                </li>
+                <li>
+                  <span className="ck" />
+                  &nbsp;Fiches joueurs adverses
+                </li>
+                <li>
+                  <span className="ck" />
+                  &nbsp;Synchronisation LP quotidienne
+                </li>
               </ul>
             </div>
             <div className="league-visual scroll-reveal">
@@ -531,7 +700,11 @@ export default function Website() {
             <span className="label-text">Manager</span>
           </div>
           <div className="manager-layout">
-            <h2 className="big-heading scroll-reveal">L'espace<br /><span className="text-amber">du manager.</span></h2>
+            <h2 className="big-heading scroll-reveal">
+              L'espace
+              <br />
+              <span className="text-amber">du manager.</span>
+            </h2>
             <div className="manager-grid scroll-reveal">
               <div className="mgr-card">
                 <div className="mgr-icon">
@@ -599,7 +772,14 @@ export default function Website() {
       <footer className="ws-footer">
         <div className="ws-container footer-inner">
           <div className="footer-left">
-            <a href="#" className="nav-logo" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }) }}>
+            <a
+              href="#"
+              className="nav-logo"
+              onClick={e => {
+                e.preventDefault()
+                window.scrollTo({ top: 0, behavior: "smooth" })
+              }}
+            >
               <div className="logo-shield small">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
@@ -612,22 +792,36 @@ export default function Website() {
           <div className="footer-cols">
             <div className="footer-col">
               <h5>Produit</h5>
-              <a href="#training" onClick={(e) => scrollTo(e, "training")}>Training</a>
-              <a href="#stats" onClick={(e) => scrollTo(e, "stats")}>Stats</a>
-              <a href="#players" onClick={(e) => scrollTo(e, "players")}>Players</a>
+              <a href="#training" onClick={e => scrollTo(e, "training")}>
+                Training
+              </a>
+              <a href="#stats" onClick={e => scrollTo(e, "stats")}>
+                Stats
+              </a>
+              <a href="#players" onClick={e => scrollTo(e, "players")}>
+                Players
+              </a>
             </div>
             <div className="footer-col">
               <h5>Equipe</h5>
-              <a href="#league" onClick={(e) => scrollTo(e, "league")}>League</a>
-              <a href="#manager" onClick={(e) => scrollTo(e, "manager")}>Manager</a>
-              <a href="#cta" onClick={(e) => scrollTo(e, "cta")}>Commencer</a>
+              <a href="#league" onClick={e => scrollTo(e, "league")}>
+                League
+              </a>
+              <a href="#manager" onClick={e => scrollTo(e, "manager")}>
+                Manager
+              </a>
+              <a href="#cta" onClick={e => scrollTo(e, "cta")}>
+                Commencer
+              </a>
             </div>
           </div>
         </div>
         <div className="ws-container">
           <div className="footer-bottom">
             <p>&copy; 2026 DraftEdge. Tous droits reserves.</p>
-            <p className="footer-riot">DraftEdge n'est pas endorse par Riot Games et ne reflete pas les vues de Riot Games ou de toute personne impliquee dans la production de League of Legends.</p>
+            <p className="footer-riot">
+              DraftEdge n'est pas endorse par Riot Games et ne reflete pas les vues de Riot Games ou de toute personne impliquee dans la production de League of Legends.
+            </p>
           </div>
         </div>
       </footer>
