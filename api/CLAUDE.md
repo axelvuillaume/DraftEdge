@@ -13,6 +13,22 @@ const team = await Team.findById(id).lean();
 const team = await Team.findById(id).select("name league");
 ```
 
+## No else
+
+NEVER use `else` or `else if`. Use early returns, guard clauses, or separate `if` statements instead.
+
+```js
+// BAD
+if (operator === '>') success = current > value;
+else if (operator === '>=') success = current >= value;
+else if (operator === '<') success = current < value;
+
+// GOOD
+if (operator === '>') return current > value;
+if (operator === '>=') return current >= value;
+if (operator === '<') return current < value;
+```
+
 ## No Unnecessary Variables
 
 NEVER create intermediate `const` variables for simple derived values. Inline them directly in the JS.

@@ -64,8 +64,15 @@ router.post('/', passport.authenticate(['admin', 'user'], { session: false, fail
 Les noms de metrics doivent correspondre EXACTEMENT aux champs de l'API Riot Games. Pour les champs nestés, utilise la dot notation (ex: "damageStats.totalDamageDoneToChampions").
 On ne gère que les stats du joueur lui-même, pas celles des adversaires ou coéquipiers.
 
+IL EXISTE 3 TYPES D'OBJECTIFS:
+
+1. "per_game" — évalué sur chaque match individuellement (ex: "moins de 3 deaths", "CS > 100 à 10min")
+2. "aggregate" — compter/sommer/moyenner sur une période (ex: "jouer 5 games par jour", "win 3 games cette semaine", "average 7 kills par semaine")
+3. "streak" — condition remplie sur N games consécutives (ex: "win 3 games d'affilée", "0 deaths 2 games de suite")
+
 METRICS ENDGAME (source: "endgame", timing: null) — champs du match:
 - kills, deaths, assists
+- win (boolean: true/false, utilise value 1 pour true, 0 pour false)
 - totalMinionsKilled (CS lane), neutralMinionsKilled (CS jungle)
 - goldEarned, goldSpent
 - totalDamageDealtToChampions, physicalDamageDealtToChampions, magicDamageDealtToChampions, trueDamageDealtToChampions
@@ -76,6 +83,11 @@ METRICS ENDGAME (source: "endgame", timing: null) — champs du match:
 - doubleKills, tripleKills, pentaKills
 - totalHealsOnTeammates, totalDamageShieldedOnTeammates
 - damageDealtToTurrets, damageDealtToObjectives
+- challenges.kda, challenges.killParticipation, challenges.damagePerMinute, challenges.goldPerMinute, challenges.visionScorePerMinute
+
+METRICS CALCULÉES (source: "endgame", timing: null):
+- cs_per_min (CS/min = totalMinionsKilled + neutralMinionsKilled / durée)
+- kda ((kills+assists) / max(1, deaths))
 
 METRICS TIMELINE (source: "timeline", timing: N minutes):
 Champs participantFrames:
@@ -95,28 +107,44 @@ Comptés via events (aussi disponibles en timeline):
 - deaths (morts à X min)
 - assists (assists à X min)
 
+METRICS SPÉCIALES POUR AGGREGATE:
+- games_played (nombre de games jouées — utilisé avec fn "count" sans filtre)
+
+FORMAT DE RÉPONSE — un seul objet JSON:
+{
+  "type": "per_game" | "aggregate" | "streak",
+  "rule": { "metric": "...", "operator": "...", "value": N, "timing": N|null, "source": "endgame"|"timeline" },
+  "aggregate": { "fn": "count"|"sum"|"avg", "period": "daily"|"weekly", "minGames": N|null },
+  "streak_count": N
+}
+
 RÈGLES:
+- Pour per_game: rule obligatoire, aggregate et streak à null
+- Pour aggregate avec fn "count": rule.metric = la metric à filtrer (ex: "win" pour compter les wins), rule.operator et rule.value = le seuil à atteindre sur le count. Si on compte juste les games jouées, rule.metric = "games_played"
+- Pour aggregate avec fn "sum"/"avg": rule.metric = la stat à sommer/moyenner, rule.operator et rule.value = le seuil
+- Pour streak: rule = la condition par game, streak_count = nombre de games consécutives
 - operator: ">", ">=", "<", "<=", "=="
 - timing: nombre de minutes (null si fin de partie)
 - source: "timeline" si timing précis, "endgame" si fin de partie
 - Réponds UNIQUEMENT avec le JSON, rien d'autre
 
 EXEMPLES:
-"CS supérieur à 100 à 10min" → {"metric":"minionsKilled","operator":">=","value":100,"timing":10,"source":"timeline"}
-"Moins de 3 deaths" → {"metric":"deaths","operator":"<=","value":3,"timing":null,"source":"endgame"}
-"Vision score au dessus de 40" → {"metric":"visionScore","operator":">=","value":40,"timing":null,"source":"endgame"}
-"Plus de 8k gold à 15 min" → {"metric":"totalGold","operator":">=","value":8000,"timing":15,"source":"timeline"}
-"Plus de 3k dégâts aux champions à 10min" → {"metric":"damageStats.totalDamageDoneToChampions","operator":">=","value":3000,"timing":10,"source":"timeline"}
-"Moins de 3 morts à 10min" → {"metric":"deaths","operator":"<=","value":3,"timing":10,"source":"timeline"}
-"Plus de 2 kills à 15min" → {"metric":"kills","operator":">=","value":2,"timing":15,"source":"timeline"}
+"CS supérieur à 100 à 10min" → {"type":"per_game","rule":{"metric":"minionsKilled","operator":">=","value":100,"timing":10,"source":"timeline"},"aggregate":null,"streak_count":null}
+"Moins de 3 deaths" → {"type":"per_game","rule":{"metric":"deaths","operator":"<=","value":3,"timing":null,"source":"endgame"},"aggregate":null,"streak_count":null}
+"Jouer 5 games par jour" → {"type":"aggregate","rule":{"metric":"games_played","operator":">=","value":5,"timing":null,"source":"endgame"},"aggregate":{"fn":"count","period":"daily","minGames":null},"streak_count":null}
+"Win 3 games par jour" → {"type":"aggregate","rule":{"metric":"win","operator":">=","value":3,"timing":null,"source":"endgame"},"aggregate":{"fn":"count","period":"daily","minGames":null},"streak_count":null}
+"Moyenne de kills > 7 par semaine" → {"type":"aggregate","rule":{"metric":"kills","operator":">=","value":7,"timing":null,"source":"endgame"},"aggregate":{"fn":"avg","period":"weekly","minGames":3},"streak_count":null}
+"Win 3 games d'affilée" → {"type":"streak","rule":{"metric":"win","operator":"==","value":1,"timing":null,"source":"endgame"},"aggregate":null,"streak_count":3}
+"0 deaths pendant 2 games de suite" → {"type":"streak","rule":{"metric":"deaths","operator":"==","value":0,"timing":null,"source":"endgame"},"aggregate":null,"streak_count":2}
+"Juste win" → {"type":"per_game","rule":{"metric":"win","operator":"==","value":1,"timing":null,"source":"endgame"},"aggregate":null,"streak_count":null}
 
 DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
 
-    let rule;
+    let parsed;
     try {
       const response = await geminiClient.models.generateContent({ model: 'gemini-3-flash-preview', contents: prompt });
       const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      rule = JSON.parse(
+      parsed = JSON.parse(
         text
           .replace(/```json\n?/g, '')
           .replace(/```\n?/g, '')
@@ -127,15 +155,44 @@ DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
       return res.status(422).send({ ok: false, code: ERROR_CODES.RULE_GENERATION_FAILED });
     }
 
+    // --- Validation & correction ---
     const VALID_OPERATORS = ['>', '>=', '<', '<=', '=='];
-    if (!rule || !rule.metric || !VALID_OPERATORS.includes(rule.operator) || rule.value == null || !rule.source) {
+    const VALID_TYPES = ['per_game', 'aggregate', 'streak'];
+
+    if (!parsed?.rule?.metric || !VALID_OPERATORS.includes(parsed.rule.operator) || parsed.rule.value == null) {
       return res.status(422).send({ ok: false, code: ERROR_CODES.RULE_GENERATION_FAILED });
     }
+
+    // Force type si absent
+    if (!parsed.type || !VALID_TYPES.includes(parsed.type)) parsed.type = 'per_game';
+
+    // Si metric = games_played, force aggregate count
+    if (parsed.rule.metric === 'games_played' && parsed.type !== 'aggregate') {
+      parsed.type = 'aggregate';
+      parsed.aggregate = { fn: 'count', period: parsed.aggregate?.period || 'daily', minGames: null };
+    }
+
+    // Si aggregate mais pas de fn/period, corriger
+    if (parsed.type === 'aggregate') {
+      if (!parsed.aggregate?.fn) parsed.aggregate = { ...parsed.aggregate, fn: 'count' };
+      if (!parsed.aggregate?.period) parsed.aggregate = { ...parsed.aggregate, period: 'daily' };
+    }
+
+    // Si streak mais pas de count, corriger
+    if (parsed.type === 'streak') {
+      if (!parsed.streak_count || parsed.streak_count < 2) parsed.streak_count = parsed.streak?.count || 2;
+    }
+
+    // Force source si absent
+    if (!parsed.rule.source) parsed.rule.source = parsed.rule.timing ? 'timeline' : 'endgame';
 
     const soloObjectif = await SoloObjectif.create({
       name,
       request,
-      rule,
+      type: parsed.type,
+      rule: parsed.rule,
+      ...(parsed.type === 'aggregate' && { aggregate: parsed.aggregate }),
+      ...(parsed.type === 'streak' && { streak_count: parsed.streak_count }),
       champions: champions || [],
       role: role || null,
       player_id,

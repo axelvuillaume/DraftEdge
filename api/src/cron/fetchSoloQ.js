@@ -11,6 +11,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Metrics basées sur les events timeline (pas dispo dans participantFrames)
 const EVENT_METRICS = new Set(['kills', 'deaths', 'assists']);
 
+// Metrics calculées à partir des stats endgame
+const COMPUTED_METRICS = {
+  cs_per_min: (doc) => (doc.totalMinionsKilled + doc.neutralMinionsKilled) / (doc.gameDuration / 60),
+  kda: (doc) => (doc.kills + doc.assists) / Math.max(1, doc.deaths),
+};
+
+// Booleans Riot qui doivent être castés en 0/1
+const BOOLEAN_METRICS = new Set(['win', 'firstBloodKill', 'firstBloodAssist', 'firstTowerKill', 'firstTowerAssist', 'gameEndedInSurrender', 'gameEndedInEarlySurrender']);
+
 function getEventBasedMetric(timeline, participantId, metric, maxTimestamp) {
   let count = 0;
   for (const frame of timeline.info.frames) {
@@ -36,10 +45,26 @@ function evaluate(operator, actual, target) {
   return false;
 }
 
+function resolveMetric(doc, metric) {
+  // Computed metrics
+  if (COMPUTED_METRICS[metric]) return COMPUTED_METRICS[metric](doc);
+
+  // Endgame: dot notation
+  let val = metric.split('.').reduce((o, key) => o?.[key], doc);
+
+  // Cast booleans to 0/1
+  if (typeof val === 'boolean' || BOOLEAN_METRICS.has(metric.split('.')[0])) val = val ? 1 : 0;
+
+  return val;
+}
+
 function evaluateObjectives(objectives, doc, timeline, participantId, matchId, player) {
   const results = [];
 
   for (const obj of objectives) {
+    // Skip aggregate objectives — they are evaluated via API, not per-match
+    if (obj.type === 'aggregate') continue;
+    if (!obj.active) continue;
     if (obj.champions?.length > 0 && !obj.champions.includes(doc.championName)) continue;
     if (obj.role && obj.role !== doc.teamPosition) continue;
 
@@ -47,7 +72,7 @@ function evaluateObjectives(objectives, doc, timeline, participantId, matchId, p
     let actual_value = undefined;
 
     if (source === 'endgame') {
-      actual_value = metric.split('.').reduce((o, key) => o?.[key], doc);
+      actual_value = resolveMetric(doc, metric);
     }
 
     if (source === 'timeline' && timeline && participantId != null) {
@@ -87,6 +112,54 @@ function evaluateObjectives(objectives, doc, timeline, participantId, matchId, p
   return results;
 }
 
+async function evaluateStreaks(streakObjectives, player, matchId, smurfPuuid) {
+  const results = [];
+
+  for (const obj of streakObjectives) {
+    if (!obj.active) continue;
+
+    // Check if we already have a result for this match + objective (avoid duplicates)
+    const existing = await SoloObjectifResult.findOne({ solo_objectif_id: obj._id.toString(), matchId });
+    if (existing) continue;
+
+    const { metric, operator, value } = obj.rule;
+    const count = obj.streak_count || 2;
+
+    // Fetch the last N matches for this player, sorted by date desc
+    const query = { player_id: player._id.toString(), queueId: QUEUE_ID };
+    if (smurfPuuid) query.puuid = smurfPuuid;
+    else query.puuid = player.puuid;
+    if (obj.champions?.length > 0) query.championName = { $in: obj.champions };
+    if (obj.role) query.teamPosition = obj.role;
+
+    const recentMatches = await SoloqMatch.find(query).sort({ gameDate: -1 }).limit(count);
+
+    if (recentMatches.length < count) continue;
+
+    // Check if all N matches pass the condition
+    const allPass = recentMatches.every((m) => {
+      let val = resolveMetric(m, metric);
+      return evaluate(operator, val, value);
+    });
+
+    results.push({
+      solo_objectif_id: obj._id.toString(),
+      solo_objectif_name: obj.name,
+      matchId,
+      actual_value: count,
+      success: allPass,
+      game_date: recentMatches[0].gameDate,
+      champion: recentMatches[0].championName,
+      player_id: player._id.toString(),
+      player_name: player.game_name,
+      team_id: player.team_id,
+      team_name: player.team_name,
+    });
+  }
+
+  return results;
+}
+
 async function fetchSoloQ() {
   const players = await Player.find({ puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null } });
   const validPlayers = players.filter((p) => p.puuid && p.puuid.trim() !== '');
@@ -98,7 +171,7 @@ async function fetchSoloQ() {
   for (const player of validPlayers) {
     try {
       const platform = player.region || 'euw1';
-      const matchIds = await getMatchIdsByPuuid(player.puuid, { queue: QUEUE_ID, count: 10, platform });
+      const matchIds = await getMatchIdsByPuuid(player.puuid, { queue: QUEUE_ID, count: 3, platform });
 
       if (!matchIds || matchIds.length === 0) continue;
 
@@ -113,8 +186,11 @@ async function fetchSoloQ() {
         player_id: player._id.toString(),
         'rule.metric': { $exists: true },
         'account.puuid': { $exists: false },
+        active: { $ne: false },
       });
-      const needsTimeline = objectives.some((o) => o.rule.source === 'timeline');
+      const perGameAndStreakObjs = objectives.filter((o) => o.type !== 'aggregate');
+      const streakObjs = objectives.filter((o) => o.type === 'streak');
+      const needsTimeline = perGameAndStreakObjs.some((o) => o.rule.source === 'timeline');
 
       for (let i = 0; i < newIds.length; i++) {
         try {
@@ -160,8 +236,14 @@ async function fetchSoloQ() {
               }
             }
 
-            const results = evaluateObjectives(objectives, doc, timeline, participantId, newIds[i], player);
+            const results = evaluateObjectives(perGameAndStreakObjs, doc, timeline, participantId, newIds[i], player);
             if (results.length > 0) await SoloObjectifResult.insertMany(results);
+
+            // Évaluer les streaks après insertion du match
+            if (streakObjs.length > 0) {
+              const streakResults = await evaluateStreaks(streakObjs, player, newIds[i]);
+              if (streakResults.length > 0) await SoloObjectifResult.insertMany(streakResults);
+            }
           }
         } catch (err) {
           console.error(`  [soloq-cron] ${player.game_name} ${newIds[i]}: ${err.message}`);
@@ -175,6 +257,7 @@ async function fetchSoloQ() {
         player_id: player._id.toString(),
         'rule.metric': { $exists: true },
         'account.puuid': { $exists: true, $ne: null },
+        active: { $ne: false },
       });
 
       // Grouper les objectifs smurf par puuid
@@ -196,17 +279,16 @@ async function fetchSoloQ() {
 
           if (!smurfMatchIds || smurfMatchIds.length === 0) continue;
 
-          // Checker les matchIds déjà traités via SoloObjectifResult
-          const existingResults = await SoloObjectifResult.find({
-            matchId: { $in: smurfMatchIds },
-            solo_objectif_id: { $in: smurfObjs.map((o) => o._id.toString()) },
-          });
-          const processedSet = new Set(existingResults.map((r) => r.matchId));
-          const newSmurfIds = smurfMatchIds.filter((id) => !processedSet.has(id));
+          // Checker via SoloqMatch (comme le main)
+          const existingSmurf = await SoloqMatch.find({ matchId: { $in: smurfMatchIds }, puuid }, { matchId: 1 });
+          const smurfExistingSet = new Set(existingSmurf.map((d) => d.matchId));
+          const newSmurfIds = smurfMatchIds.filter((id) => !smurfExistingSet.has(id));
 
           if (newSmurfIds.length === 0) continue;
 
-          const smurfNeedsTimeline = smurfObjs.some((o) => o.rule.source === 'timeline');
+          const smurfPerGameAndStreakObjs = smurfObjs.filter((o) => o.type !== 'aggregate');
+          const smurfStreakObjs = smurfObjs.filter((o) => o.type === 'streak');
+          const smurfNeedsTimeline = smurfPerGameAndStreakObjs.some((o) => o.rule.source === 'timeline');
 
           for (let i = 0; i < newSmurfIds.length; i++) {
             try {
@@ -236,6 +318,9 @@ async function fetchSoloQ() {
                 teamBans: team?.bans,
               };
 
+              // Sauvegarder le match smurf dans SoloqMatch
+              await SoloqMatch.updateOne({ matchId: doc.matchId, puuid: doc.puuid }, { $set: doc }, { upsert: true });
+
               let timeline = null;
               let participantId = null;
 
@@ -248,8 +333,14 @@ async function fetchSoloQ() {
                 }
               }
 
-              const results = evaluateObjectives(smurfObjs, doc, timeline, participantId, newSmurfIds[i], player);
+              const results = evaluateObjectives(smurfPerGameAndStreakObjs, doc, timeline, participantId, newSmurfIds[i], player);
               if (results.length > 0) await SoloObjectifResult.insertMany(results);
+
+              // Évaluer les streaks smurf
+              if (smurfStreakObjs.length > 0) {
+                const streakResults = await evaluateStreaks(smurfStreakObjs, player, newSmurfIds[i], puuid);
+                if (streakResults.length > 0) await SoloObjectifResult.insertMany(streakResults);
+              }
             } catch (err) {
               console.error(`  [soloq-cron] ${player.game_name} smurf ${account.game_name} ${newSmurfIds[i]}: ${err.message}`);
             }

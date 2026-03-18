@@ -644,7 +644,74 @@ function SoloQStatsPanel({ objectives }) {
   )
 }
 
+const TYPE_BADGES = {
+  per_game: { label: "Per Game", className: "text-violet-400/80 bg-violet-500/10" },
+  aggregate: { label: "Aggregate", className: "text-amber-400/80 bg-amber-500/10" },
+  streak: { label: "Streak", className: "text-cyan-400/80 bg-cyan-500/10" },
+}
+
 function SoloQObjectiveRow({ objective, onDelete, onEdit }) {
+  if (objective.type === "aggregate") return <AggregateObjectiveRow objective={objective} onDelete={onDelete} onEdit={onEdit} />
+  return <PerGameObjectiveRow objective={objective} onDelete={onDelete} onEdit={onEdit} />
+}
+
+function ObjectiveRowHeader({ objective, onDelete, onEdit, expanded, setExpanded, rightContent }) {
+  return (
+    <div className="px-5 py-3 hover:bg-slate-800/40 transition-colors flex items-center gap-4 cursor-pointer" onClick={() => setExpanded(e => !e)}>
+      <button className="p-0.5">{expanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}</button>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <h3 className="text-white text-sm font-medium truncate">{objective.name}</h3>
+          {TYPE_BADGES[objective.type || "per_game"] && objective.type !== "per_game" && (
+            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${TYPE_BADGES[objective.type].className}`}>
+              {TYPE_BADGES[objective.type].label}
+            </span>
+          )}
+          {objective.account?.game_name && (
+            <span className="text-xs text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium">
+              {objective.account.game_name}#{objective.account.tag_line}
+            </span>
+          )}
+          {objective.role && (
+            <span className="text-xs text-violet-400/80 bg-violet-500/10 px-1.5 py-0.5 rounded font-medium">
+              {SOLOQ_ROLES.find(r => r.value === objective.role)?.label || objective.role}
+            </span>
+          )}
+          {objective.champions?.length > 0 && (
+            <div className="flex items-center gap-0.5">
+              {objective.champions.slice(0, 3).map(c => (
+                <img key={c} src={getChampionIcon(c)} alt={c} className="w-5 h-5 rounded" title={c} />
+              ))}
+              {objective.champions.length > 3 && <span className="text-xs text-slate-500 ml-0.5">+{objective.champions.length - 3}</span>}
+            </div>
+          )}
+        </div>
+        {objective.request && <p className="text-slate-500 text-xs mt-0.5 truncate">{objective.request}</p>}
+      </div>
+      {rightContent}
+      <button
+        onClick={e => {
+          e.stopPropagation()
+          onEdit(objective)
+        }}
+        className="p-1.5 rounded-lg text-slate-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors opacity-0 group-hover:opacity-100"
+      >
+        <Pencil className="w-3.5 h-3.5" />
+      </button>
+      <button
+        onClick={e => {
+          e.stopPropagation()
+          onDelete(objective._id)
+        }}
+        className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  )
+}
+
+function PerGameObjectiveRow({ objective, onDelete, onEdit }) {
   const [results, setResults] = useState([])
   const [expanded, setExpanded] = useState(false)
 
@@ -668,69 +735,32 @@ function SoloQObjectiveRow({ objective, onDelete, onEdit }) {
 
   return (
     <div className="group">
-      <div className="px-5 py-3 hover:bg-slate-800/40 transition-colors flex items-center gap-4 cursor-pointer" onClick={() => setExpanded(e => !e)}>
-        <button className="p-0.5">{expanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}</button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-white text-sm font-medium truncate">{objective.name}</h3>
-            {objective.account?.game_name && (
-              <span className="text-xs text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium">
-                {objective.account.game_name}#{objective.account.tag_line}
-              </span>
-            )}
-            {objective.role && (
-              <span className="text-xs text-violet-400/80 bg-violet-500/10 px-1.5 py-0.5 rounded font-medium">
-                {SOLOQ_ROLES.find(r => r.value === objective.role)?.label || objective.role}
-              </span>
-            )}
-            {objective.champions?.length > 0 && (
-              <div className="flex items-center gap-0.5">
-                {objective.champions.slice(0, 3).map(c => (
-                  <img key={c} src={getChampionIcon(c)} alt={c} className="w-5 h-5 rounded" title={c} />
-                ))}
-                {objective.champions.length > 3 && <span className="text-xs text-slate-500 ml-0.5">+{objective.champions.length - 3}</span>}
+      <ObjectiveRowHeader
+        objective={objective}
+        onDelete={onDelete}
+        onEdit={onEdit}
+        expanded={expanded}
+        setExpanded={setExpanded}
+        rightContent={
+          <div className="w-32 hidden sm:block">
+            {rate != null ? (
+              <div className="space-y-1">
+                <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full ${getSuccessRateBg(rate)}`} style={{ width: `${rate}%` }} />
+                </div>
+                <div className="text-right">
+                  <span className={`text-xs font-bold tabular-nums ${getSuccessRateColor(rate)}`}>{rate}%</span>
+                  <span className="text-slate-600 text-xs ml-1">
+                    {successCount}/{results.length}
+                  </span>
+                </div>
               </div>
+            ) : (
+              <span className="text-slate-600 text-xs">No data</span>
             )}
-            {results.length > 0 && <span className="text-slate-600 text-xs">{results.length} games</span>}
           </div>
-          {objective.request && <p className="text-slate-500 text-xs mt-0.5 truncate">{objective.request}</p>}
-        </div>
-        <div className="w-32 hidden sm:block">
-          {rate != null ? (
-            <div className="space-y-1">
-              <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full ${getSuccessRateBg(rate)}`} style={{ width: `${rate}%` }} />
-              </div>
-              <div className="text-right">
-                <span className={`text-xs font-bold tabular-nums ${getSuccessRateColor(rate)}`}>{rate}%</span>
-                <span className="text-slate-600 text-xs ml-1">
-                  {successCount}/{results.length}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <span className="text-slate-600 text-xs">No data</span>
-          )}
-        </div>
-        <button
-          onClick={e => {
-            e.stopPropagation()
-            onEdit(objective)
-          }}
-          className="p-1.5 rounded-lg text-slate-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors opacity-0 group-hover:opacity-100"
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={e => {
-            e.stopPropagation()
-            onDelete(objective._id)
-          }}
-          className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
+        }
+      />
 
       {expanded && (
         <div className="border-t border-slate-700/50 px-5 py-3 space-y-2">
@@ -740,6 +770,7 @@ function SoloQObjectiveRow({ objective, onDelete, onEdit }) {
                 {objective.rule.metric} {objective.rule.operator} {objective.rule.value}
                 {objective.rule.timing != null && ` @ ${objective.rule.timing}min`}
               </span>
+              {objective.type === "streak" && <span className="text-xs text-cyan-400/80 bg-cyan-500/10 px-2 py-0.5 rounded font-medium">{objective.streak_count || 2}x in a row</span>}
             </div>
           )}
           {results.length === 0 ? (
@@ -760,6 +791,84 @@ function SoloQObjectiveRow({ objective, onDelete, onEdit }) {
                 {result.game_date && <span className="text-xs text-slate-600 shrink-0">{new Date(result.game_date).toLocaleDateString()}</span>}
               </div>
             ))
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AggregateObjectiveRow({ objective, onDelete, onEdit }) {
+  const [aggData, setAggData] = useState(null)
+  const [expanded, setExpanded] = useState(false)
+
+  const fetchAggregate = async () => {
+    try {
+      const { ok, data, code } = await api.post("/solo-objectif-result/aggregate", { solo_objectif_id: objective._id })
+      if (!ok) return toast.error(code || "Failed to fetch aggregate")
+      setAggData(data[0] || null)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch aggregate")
+    }
+  }
+
+  useEffect(() => {
+    fetchAggregate()
+  }, [objective._id])
+
+  return (
+    <div className="group">
+      <ObjectiveRowHeader
+        objective={objective}
+        onDelete={onDelete}
+        onEdit={onEdit}
+        expanded={expanded}
+        setExpanded={setExpanded}
+        rightContent={
+          <div className="w-36 hidden sm:block">
+            {aggData ? (
+              <div className="space-y-1">
+                <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${aggData.success ? "bg-emerald-500" : "bg-amber-500"}`}
+                    style={{ width: `${Math.min(100, ((aggData.current || 0) / aggData.target) * 100)}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-bold tabular-nums ${aggData.success ? "text-emerald-400" : "text-amber-400"}`}>
+                    {aggData.current ?? 0}/{aggData.target}
+                  </span>
+                  <span className="text-slate-600 text-xs">{objective.aggregate?.period === "weekly" ? "week" : "today"}</span>
+                </div>
+              </div>
+            ) : (
+              <span className="text-slate-600 text-xs">No data</span>
+            )}
+          </div>
+        }
+      />
+
+      {expanded && (
+        <div className="border-t border-slate-700/50 px-5 py-3 space-y-2">
+          <div className="flex items-center gap-2">
+            {objective.rule && (
+              <span className="text-xs text-slate-500 bg-slate-700/50 px-2 py-0.5 rounded font-mono">
+                {objective.aggregate?.fn}({objective.rule.metric}) {objective.rule.operator} {objective.rule.value}
+              </span>
+            )}
+            <span className="text-xs text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded font-medium">
+              {objective.aggregate?.period === "weekly" ? "Weekly" : "Daily"}
+            </span>
+          </div>
+          {aggData ? (
+            <div className="flex items-center gap-3 py-2">
+              {aggData.success ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Target className="w-4 h-4 text-amber-400" />}
+              <span className={`text-sm ${aggData.success ? "text-emerald-400/70" : "text-amber-400/70"}`}>
+                {aggData.success ? "Objective completed!" : `${aggData.current ?? 0}/${aggData.target} — ${aggData.total_games} games played`}
+              </span>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500 text-center py-2">No data for this period.</p>
           )}
         </div>
       )}
