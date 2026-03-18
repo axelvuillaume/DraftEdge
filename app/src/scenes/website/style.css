@@ -190,7 +190,7 @@
 
 .hero-title {
   font-family: var(--font-display);
-  font-size: clamp(4rem, 8vw, 6.5rem);
+  font-size: clamp(5rem, 12vw, 9rem);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -.04em;
@@ -867,7 +867,7 @@
   .mobile-menu-btn { display: flex; }
 
   .hero-container { padding-top: 110px; }
-  .hero-title { font-size: 2.8rem; }
+  .hero-title { font-size: 3.5rem; }
   .hero-actions { flex-direction: column; align-items: center; }
   .hero-stats { flex-direction: column; align-items: center; gap: 16px; }
 
@@ -882,6 +882,6 @@
 }
 
 @media (max-width: 480px) {
-  .hero-title { font-size: 2.2rem; }
+  .hero-title { font-size: 2.8rem; }
   .big-heading { font-size: 1.6rem; }
 }
