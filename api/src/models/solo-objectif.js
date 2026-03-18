@@ -19,6 +19,12 @@ const Schema = new mongoose.Schema(
     team_name: { type: String },
     player_id: { type: String },
     player_name: { type: String },
+    account: {
+      puuid: { type: String },
+      game_name: { type: String },
+      tag_line: { type: String },
+      region: { type: String },
+    },
   },
   { timestamps: true },
 );

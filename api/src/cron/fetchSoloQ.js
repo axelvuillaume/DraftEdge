@@ -36,6 +36,57 @@ function evaluate(operator, actual, target) {
   return false;
 }
 
+function evaluateObjectives(objectives, doc, timeline, participantId, matchId, player) {
+  const results = [];
+
+  for (const obj of objectives) {
+    if (obj.champions?.length > 0 && !obj.champions.includes(doc.championName)) continue;
+    if (obj.role && obj.role !== doc.teamPosition) continue;
+
+    const { metric, operator, value, timing, source } = obj.rule;
+    let actual_value = undefined;
+
+    if (source === 'endgame') {
+      actual_value = metric.split('.').reduce((o, key) => o?.[key], doc);
+    }
+
+    if (source === 'timeline' && timeline && participantId != null) {
+      const targetMs = timing * 60 * 1000;
+      const baseMetric = metric.split('.')[0];
+
+      if (EVENT_METRICS.has(baseMetric)) {
+        actual_value = getEventBasedMetric(timeline, participantId, baseMetric, targetMs);
+      } else {
+        const frame = timeline.info.frames.find((f) => f.timestamp >= targetMs);
+        if (frame) {
+          const pFrame = frame.participantFrames[String(participantId)];
+          if (pFrame) {
+            actual_value = metric.split('.').reduce((o, key) => o?.[key], pFrame);
+          }
+        }
+      }
+    }
+
+    if (actual_value === undefined) continue;
+
+    results.push({
+      solo_objectif_id: obj._id.toString(),
+      solo_objectif_name: obj.name,
+      matchId,
+      actual_value: Math.round(actual_value * 100) / 100,
+      success: evaluate(operator, actual_value, value),
+      game_date: doc.gameDate,
+      champion: doc.championName,
+      player_id: player._id.toString(),
+      player_name: player.game_name,
+      team_id: player.team_id,
+      team_name: player.team_name,
+    });
+  }
+
+  return results;
+}
+
 async function fetchSoloQ() {
   const players = await Player.find({ puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null } });
   const validPlayers = players.filter((p) => p.puuid && p.puuid.trim() !== '');
@@ -51,14 +102,18 @@ async function fetchSoloQ() {
 
       if (!matchIds || matchIds.length === 0) continue;
 
-      const existing = await SoloqMatch.find({ matchId: { $in: matchIds }, puuid: player.puuid }, { matchId: 1 }).lean();
+      const existing = await SoloqMatch.find({ matchId: { $in: matchIds }, puuid: player.puuid }, { matchId: 1 });
       const existingSet = new Set(existing.map((d) => d.matchId));
       const newIds = matchIds.filter((id) => !existingSet.has(id));
 
       if (newIds.length === 0) continue;
 
-      // Charger les objectifs du joueur une seule fois
-      const objectives = await SoloObjectif.find({ player_id: player._id.toString(), 'rule.metric': { $exists: true } }).lean();
+      // Charger les objectifs du joueur (compte principal uniquement)
+      const objectives = await SoloObjectif.find({
+        player_id: player._id.toString(),
+        'rule.metric': { $exists: true },
+        'account.puuid': { $exists: false },
+      });
       const needsTimeline = objectives.some((o) => o.rule.source === 'timeline');
 
       for (let i = 0; i < newIds.length; i++) {
@@ -105,53 +160,7 @@ async function fetchSoloQ() {
               }
             }
 
-            const results = [];
-
-            for (const obj of objectives) {
-              if (obj.champions?.length > 0 && !obj.champions.includes(doc.championName)) continue;
-              if (obj.role && obj.role !== doc.teamPosition) continue;
-
-              const { metric, operator, value, timing, source } = obj.rule;
-              let actual_value = undefined;
-
-              if (source === 'endgame') {
-                actual_value = metric.split('.').reduce((o, key) => o?.[key], doc);
-              }
-
-              if (source === 'timeline' && timeline && participantId != null) {
-                const targetMs = timing * 60 * 1000;
-                const baseMetric = metric.split('.')[0];
-
-                if (EVENT_METRICS.has(baseMetric)) {
-                  actual_value = getEventBasedMetric(timeline, participantId, baseMetric, targetMs);
-                } else {
-                  const frame = timeline.info.frames.find((f) => f.timestamp >= targetMs);
-                  if (frame) {
-                    const pFrame = frame.participantFrames[String(participantId)];
-                    if (pFrame) {
-                      actual_value = metric.split('.').reduce((o, key) => o?.[key], pFrame);
-                    }
-                  }
-                }
-              }
-
-              if (actual_value === undefined) continue;
-
-              results.push({
-                solo_objectif_id: obj._id.toString(),
-                solo_objectif_name: obj.name,
-                matchId: newIds[i],
-                actual_value: Math.round(actual_value * 100) / 100,
-                success: evaluate(operator, actual_value, value),
-                game_date: doc.gameDate,
-                champion: doc.championName,
-                player_id: player._id.toString(),
-                player_name: player.game_name,
-                team_id: player.team_id,
-                team_name: player.team_name,
-              });
-            }
-
+            const results = evaluateObjectives(objectives, doc, timeline, participantId, newIds[i], player);
             if (results.length > 0) await SoloObjectifResult.insertMany(results);
           }
         } catch (err) {
@@ -159,6 +168,95 @@ async function fetchSoloQ() {
         }
 
         if (i < newIds.length - 1) await sleep(DELAY_MS);
+      }
+
+      // Traiter les objectifs smurf de ce joueur
+      const smurfObjectives = await SoloObjectif.find({
+        player_id: player._id.toString(),
+        'rule.metric': { $exists: true },
+        'account.puuid': { $exists: true, $ne: null },
+      });
+
+      // Grouper les objectifs smurf par puuid
+      const smurfsByPuuid = {};
+      for (const obj of smurfObjectives) {
+        if (!smurfsByPuuid[obj.account.puuid]) {
+          smurfsByPuuid[obj.account.puuid] = { account: obj.account, objectives: [] };
+        }
+        smurfsByPuuid[obj.account.puuid].objectives.push(obj);
+      }
+
+      for (const puuid of Object.keys(smurfsByPuuid)) {
+        try {
+          const { account, objectives: smurfObjs } = smurfsByPuuid[puuid];
+          const smurfPlatform = account.region || platform;
+
+          await sleep(DELAY_MS);
+          const smurfMatchIds = await getMatchIdsByPuuid(puuid, { queue: QUEUE_ID, count: 3, platform: smurfPlatform });
+
+          if (!smurfMatchIds || smurfMatchIds.length === 0) continue;
+
+          // Checker les matchIds déjà traités via SoloObjectifResult
+          const existingResults = await SoloObjectifResult.find({
+            matchId: { $in: smurfMatchIds },
+            solo_objectif_id: { $in: smurfObjs.map((o) => o._id.toString()) },
+          });
+          const processedSet = new Set(existingResults.map((r) => r.matchId));
+          const newSmurfIds = smurfMatchIds.filter((id) => !processedSet.has(id));
+
+          if (newSmurfIds.length === 0) continue;
+
+          const smurfNeedsTimeline = smurfObjs.some((o) => o.rule.source === 'timeline');
+
+          for (let i = 0; i < newSmurfIds.length; i++) {
+            try {
+              await sleep(DELAY_MS);
+              const matchData = await getMatchById(newSmurfIds[i], smurfPlatform);
+              if (!matchData) continue;
+
+              if (matchData.info.queueId !== QUEUE_ID) continue;
+
+              const p = matchData.info.participants.find((x) => x.puuid === puuid);
+              if (!p) continue;
+
+              const { participants, teams, ...infoRest } = matchData.info;
+              const team = teams.find((t) => t.teamId === p.teamId);
+
+              const doc = {
+                ...matchData.metadata,
+                ...infoRest,
+                ...p,
+                gameDate: matchData.info.gameStartTimestamp ? new Date(matchData.info.gameStartTimestamp) : undefined,
+                player_id: player._id.toString(),
+                player_name: player.game_name,
+                team_id: player.team_id,
+                team_name: player.team_name,
+                side: p.teamId === 100 ? 'blue' : 'red',
+                teamObjectives: team?.objectives,
+                teamBans: team?.bans,
+              };
+
+              let timeline = null;
+              let participantId = null;
+
+              if (smurfNeedsTimeline) {
+                await sleep(DELAY_MS);
+                timeline = await getTimelineById(newSmurfIds[i], smurfPlatform);
+                if (timeline?.info?.participants) {
+                  const tlP = timeline.info.participants.find((x) => x.puuid === puuid);
+                  participantId = tlP?.participantId;
+                }
+              }
+
+              const results = evaluateObjectives(smurfObjs, doc, timeline, participantId, newSmurfIds[i], player);
+              if (results.length > 0) await SoloObjectifResult.insertMany(results);
+            } catch (err) {
+              console.error(`  [soloq-cron] ${player.game_name} smurf ${account.game_name} ${newSmurfIds[i]}: ${err.message}`);
+            }
+          }
+        } catch (err) {
+          console.error(`  [soloq-cron] ${player.game_name} smurf error: ${err.message}`);
+        }
       }
     } catch (err) {
       console.error(`  [soloq-cron] Error for ${player.game_name}: ${err.message}`);

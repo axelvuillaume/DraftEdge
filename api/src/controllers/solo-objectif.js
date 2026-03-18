@@ -5,6 +5,7 @@ const SoloObjectif = require('../models/solo-objectif');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const { client: geminiClient } = require('../services/gemini');
+const { getPuuidByRiotId } = require('../services/riotgames');
 
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
@@ -42,9 +43,22 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
   }
 });
 
+router.post('/check-account', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const { game_name, tag_line, region } = req.body;
+    if (!game_name || !tag_line) return res.status(400).send({ ok: false, code: 'MISSING_RIOT_ID' });
+    const puuid = await getPuuidByRiotId(game_name, tag_line, region || 'euw1');
+    if (!puuid) return res.status(404).send({ ok: false, code: 'ACCOUNT_NOT_FOUND' });
+    return res.status(200).send({ ok: true, data: { puuid, game_name, tag_line, region: region || 'euw1' } });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 router.post('/', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const { name, request, player_id, player_name, champions, role } = req.body;
+    const { name, request, player_id, player_name, champions, role, account } = req.body;
 
     const prompt = `Tu es un parser d'objectifs League of Legends. Transforme la demande du coach en règle structurée JSON.
 Les noms de metrics doivent correspondre EXACTEMENT aux champs de l'API Riot Games. Pour les champs nestés, utilise la dot notation (ex: "damageStats.totalDamageDoneToChampions").
@@ -128,6 +142,7 @@ DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
       player_name,
       team_id: req.user.team_id,
       team_name: req.user.team_name,
+      ...(account?.puuid && { account }),
     });
 
     return res.status(200).send({ ok: true, data: soloObjectif });

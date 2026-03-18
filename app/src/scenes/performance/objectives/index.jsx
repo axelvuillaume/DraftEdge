@@ -3,7 +3,7 @@ import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
-import { Plus, Target, TrendingUp, Trophy, AlertTriangle, Trash2, Swords, Gamepad2, ChevronDown, ChevronUp, XCircle, CheckCircle2, User, Users, ToggleLeft, Search, X } from "lucide-react"
+import { Plus, Target, TrendingUp, Trophy, AlertTriangle, Trash2, Swords, Gamepad2, ChevronDown, ChevronUp, XCircle, CheckCircle2, User, Users, ToggleLeft, Search, X, Pencil } from "lucide-react"
 import { ROLES, ROLE_LABELS, ALL_CHAMPIONS, getChampionIcon } from "@/utils"
 
 const RATING_MAX = 10
@@ -459,7 +459,7 @@ function SoloQObjectives() {
   const [objectives, setObjectives] = useState([])
   const [players, setPlayers] = useState([])
   const { user } = useStore()
-  const [showAddModal, setShowAddModal] = useState(false)
+  const [editingObjective, setEditingObjective] = useState(null)
 
   const fetchObjectives = async () => {
     try {
@@ -506,7 +506,7 @@ function SoloQObjectives() {
     <>
       <div className="flex items-center justify-end">
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => setEditingObjective({})}
           className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-lg transition-colors text-sm"
         >
           <Plus className="w-4 h-4" />
@@ -548,7 +548,7 @@ function SoloQObjectives() {
               ) : (
                 <div className="divide-y divide-slate-700/30">
                   {(objectivesByPlayer[player._id] || []).map(obj => (
-                    <SoloQObjectiveRow key={obj._id} objective={obj} onDelete={handleDelete} />
+                    <SoloQObjectiveRow key={obj._id} objective={obj} onDelete={handleDelete} onEdit={setEditingObjective} />
                   ))}
                 </div>
               )}
@@ -557,7 +557,7 @@ function SoloQObjectives() {
         </div>
       )}
 
-      <AddSoloObjectifModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSuccess={fetchObjectives} />
+      <SoloObjectifModal isOpen={!!editingObjective} objective={editingObjective} onClose={() => setEditingObjective(null)} onSuccess={fetchObjectives} />
     </>
   )
 }
@@ -644,7 +644,7 @@ function SoloQStatsPanel({ objectives }) {
   )
 }
 
-function SoloQObjectiveRow({ objective, onDelete }) {
+function SoloQObjectiveRow({ objective, onDelete, onEdit }) {
   const [results, setResults] = useState([])
   const [expanded, setExpanded] = useState(false)
 
@@ -673,6 +673,11 @@ function SoloQObjectiveRow({ objective, onDelete }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-white text-sm font-medium truncate">{objective.name}</h3>
+            {objective.account?.game_name && (
+              <span className="text-xs text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium">
+                {objective.account.game_name}#{objective.account.tag_line}
+              </span>
+            )}
             {objective.role && (
               <span className="text-xs text-violet-400/80 bg-violet-500/10 px-1.5 py-0.5 rounded font-medium">
                 {SOLOQ_ROLES.find(r => r.value === objective.role)?.label || objective.role}
@@ -707,6 +712,15 @@ function SoloQObjectiveRow({ objective, onDelete }) {
             <span className="text-slate-600 text-xs">No data</span>
           )}
         </div>
+        <button
+          onClick={e => {
+            e.stopPropagation()
+            onEdit(objective)
+          }}
+          className="p-1.5 rounded-lg text-slate-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors opacity-0 group-hover:opacity-100"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+        </button>
         <button
           onClick={e => {
             e.stopPropagation()
@@ -764,7 +778,7 @@ const SOLOQ_ROLES = [
   { value: "UTILITY", label: "Support" },
 ]
 
-function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
+function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
   const [name, setName] = useState("")
   const [request, setRequest] = useState("")
   const [playerId, setPlayerId] = useState("")
@@ -774,6 +788,8 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
   const [champions, setChampions] = useState([])
   const [champSearch, setChampSearch] = useState("")
   const [showChampPicker, setShowChampPicker] = useState(false)
+  const [smurfAccount, setSmurfAccount] = useState(null)
+  const [checkingAccount, setCheckingAccount] = useState(false)
   const { user } = useStore()
 
   const fetchPlayers = async () => {
@@ -791,47 +807,78 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
   }, [isOpen])
 
   useEffect(() => {
-    if (isOpen && players.length > 0 && !playerId) {
+    if (!isOpen || players.length === 0) return
+    if (objective?._id) {
+      setName(objective.name || "")
+      setRequest(objective.request || "")
+      setPlayerId(objective.player_id || "")
+      setRole(objective.role || "")
+      setChampions(objective.champions || [])
+      setSmurfAccount(objective.account?.puuid ? objective.account : null)
+    } else {
+      setName("")
+      setRequest("")
       setPlayerId(players[0]._id)
       setRole(ROLE_TO_RIOT[players[0].role] || "")
-    }
-  }, [isOpen, players])
-
-  useEffect(() => {
-    if (!isOpen) {
-      setRole("")
       setChampions([])
-      setChampSearch("")
-      setShowChampPicker(false)
+      setSmurfAccount(null)
     }
-  }, [isOpen])
+    setChampSearch("")
+    setShowChampPicker(false)
+  }, [isOpen, players])
 
   const handlePlayerChange = (id) => {
     setPlayerId(id)
     setRole(ROLE_TO_RIOT[players.find(p => p._id === id)?.role] || "")
   }
 
-  const handleAdd = async () => {
+  const handleCheckAccount = async () => {
+    if (!smurfAccount?.game_name?.trim() || !smurfAccount?.tag_line?.trim()) return
+    setCheckingAccount(true)
+    try {
+      const { ok, data, code } = await api.post("/solo-objectif/check-account", { game_name: smurfAccount.game_name.trim(), tag_line: smurfAccount.tag_line.trim(), region: smurfAccount.region })
+      if (!ok) return toast.error(code || "Account not found")
+      setSmurfAccount(data)
+      toast.success(`Account found: ${data.game_name}#${data.tag_line}`)
+    } catch (error) {
+      toast.error(error.code || "Account not found")
+    } finally {
+      setCheckingAccount(false)
+    }
+  }
+
+  const handleSubmit = async () => {
     if (!name.trim() || !playerId) return
+    if (smurfAccount && !smurfAccount.puuid) return toast.error("Check the smurf account first")
     setLoading(true)
     try {
-      const { ok, code } = await api.post("/solo-objectif", {
-        name: name.trim(),
-        request: request.trim(),
-        player_id: playerId,
-        player_name: players.find(p => p._id === playerId)?.player_name,
-        champions,
-        role: role || null,
-      })
-      if (!ok) return toast.error(code || "Failed to add objective")
-      setName("")
-      setRequest("")
-      setChampions([])
-      setRole("")
+      if (objective?._id) {
+        const { ok, code } = await api.put(`/solo-objectif/${objective._id}`, {
+          name: name.trim(),
+          request: request.trim(),
+          player_id: playerId,
+          player_name: players.find(p => p._id === playerId)?.player_name,
+          champions,
+          role: role || null,
+          account: smurfAccount?.puuid ? smurfAccount : null,
+        })
+        if (!ok) return toast.error(code || "Failed to update objective")
+      } else {
+        const { ok, code } = await api.post("/solo-objectif", {
+          name: name.trim(),
+          request: request.trim(),
+          player_id: playerId,
+          player_name: players.find(p => p._id === playerId)?.player_name,
+          champions,
+          role: role || null,
+          ...(smurfAccount?.puuid && { account: smurfAccount }),
+        })
+        if (!ok) return toast.error(code || "Failed to add objective")
+      }
       onClose()
       onSuccess()
     } catch (error) {
-      toast.error(error.code || "Failed to add objective")
+      toast.error(error.code || "Failed to save objective")
     } finally {
       setLoading(false)
     }
@@ -840,7 +887,7 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-lg bg-slate-800 p-6">
       <div className="space-y-4">
-        <h2 className="text-white font-semibold text-lg">New SoloQ Objective</h2>
+        <h2 className="text-white font-semibold text-lg">{objective?._id ? "Edit SoloQ Objective" : "New SoloQ Objective"}</h2>
         <div className="space-y-3">
           <div>
             <label className="text-slate-400 text-xs font-medium mb-1.5 block">Player</label>
@@ -856,6 +903,65 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
               ))}
             </select>
           </div>
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!smurfAccount}
+                onChange={e => setSmurfAccount(e.target.checked ? { game_name: "", tag_line: "", region: "euw1" } : null)}
+                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-violet-500 focus:ring-violet-500 focus:ring-offset-0"
+              />
+              <span className="text-slate-400 text-xs font-medium">Use smurf account</span>
+            </label>
+          </div>
+          {smurfAccount && (
+            <div className="space-y-2 bg-slate-700/30 rounded-lg p-3">
+              <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+                <input
+                  type="text"
+                  placeholder="Game Name"
+                  value={smurfAccount.game_name}
+                  onChange={e => setSmurfAccount(prev => ({ ...prev, game_name: e.target.value, puuid: undefined }))}
+                  className="bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-violet-500 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm"
+                />
+                <input
+                  type="text"
+                  placeholder="Tag"
+                  value={smurfAccount.tag_line}
+                  onChange={e => setSmurfAccount(prev => ({ ...prev, tag_line: e.target.value, puuid: undefined }))}
+                  className="w-20 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-violet-500 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm"
+                />
+                <select
+                  value={smurfAccount.region}
+                  onChange={e => setSmurfAccount(prev => ({ ...prev, region: e.target.value, puuid: undefined }))}
+                  className="bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-violet-500 rounded-lg px-2 py-2 text-white text-sm"
+                >
+                  <option value="euw1">EUW</option>
+                  <option value="eun1">EUNE</option>
+                  <option value="na1">NA</option>
+                  <option value="kr">KR</option>
+                </select>
+              </div>
+              <button
+                onClick={handleCheckAccount}
+                disabled={!smurfAccount.game_name?.trim() || !smurfAccount.tag_line?.trim() || checkingAccount}
+                className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  smurfAccount.puuid
+                    ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/50"
+                    : "bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                }`}
+              >
+                {checkingAccount ? (
+                  <div className="w-4 h-4 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" />
+                ) : smurfAccount.puuid ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <Search className="w-4 h-4" />
+                )}
+                {checkingAccount ? "Checking..." : smurfAccount.puuid ? `Verified: ${smurfAccount.game_name}#${smurfAccount.tag_line}` : "Check Account"}
+              </button>
+            </div>
+          )}
           <div>
             <label className="text-slate-400 text-xs font-medium mb-1.5 block">Role filter (optional)</label>
             <div className="flex gap-1.5">
@@ -938,7 +1044,7 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
               value={name}
               onChange={e => setName(e.target.value)}
               className="w-full bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-violet-500 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 text-sm"
-              onKeyDown={e => e.key === "Enter" && handleAdd()}
+              onKeyDown={e => e.key === "Enter" && handleSubmit()}
             />
           </div>
           <div>
@@ -949,18 +1055,18 @@ function AddSoloObjectifModal({ isOpen, onClose, onSuccess }) {
               value={request}
               onChange={e => setRequest(e.target.value)}
               className="w-full bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-violet-500 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 text-sm"
-              onKeyDown={e => e.key === "Enter" && handleAdd()}
+              onKeyDown={e => e.key === "Enter" && handleSubmit()}
             />
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <button
-            onClick={handleAdd}
+            onClick={handleSubmit}
             disabled={!name.trim() || !playerId || loading}
             className="px-5 py-2 bg-violet-500 hover:bg-violet-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors text-sm flex items-center gap-2"
           >
             {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-            {loading ? "Adding..." : "Add"}
+            {loading ? "Saving..." : objective?._id ? "Save" : "Add"}
           </button>
         </div>
       </div>
