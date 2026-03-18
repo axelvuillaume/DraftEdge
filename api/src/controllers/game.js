@@ -176,6 +176,9 @@ router.put('/:id', passport.authenticate(['admin', 'user'], { session: false, fa
   try {
     const game = await Game.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+    if (req.body.official !== undefined) {
+      await PlayerStats.updateMany({ game_id: game._id }, { game_official: req.body.official });
+    }
     return res.status(200).send({ ok: true, data: game });
   } catch (error) {
     capture(error);

@@ -561,12 +561,13 @@ function EditGameModal({ game, isOpen, onClose, onSaved }) {
     name: game.name || "",
     opponent_name: game.opponent_name || "",
     date: game.date ? new Date(game.date).toISOString().slice(0, 10) : "",
-    draft_url: game.source_url || ""
+    draft_url: game.source_url || "",
+    official: game.official || false
   })
 
   const handleEdit = async () => {
     try {
-      const { ok, code } = await api.put(`/game/${game._id}`, editForm)
+      const { ok, code } = await api.put(`/game/${game._id}`, { name: editForm.name, opponent_name: editForm.opponent_name, date: editForm.date, official: editForm.official })
       if (!ok) return toast.error(code || "Failed to update game")
 
       if (editForm.draft_url.trim() !== (game.source_url || "") && editForm.draft_url.trim()) {
@@ -588,7 +589,8 @@ function EditGameModal({ game, isOpen, onClose, onSaved }) {
         name: game.name || "",
         opponent_name: game.opponent_name || "",
         date: game.date ? new Date(game.date).toISOString().slice(0, 10) : "",
-        draft_url: game.source_url || ""
+        draft_url: game.source_url || "",
+        official: game.official || false
       })
     }
   }, [isOpen])
@@ -628,6 +630,21 @@ function EditGameModal({ game, isOpen, onClose, onSaved }) {
               onChange={e => setEditForm({ ...editForm, draft_url: e.target.value })}
               className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-all duration-200"
             />
+          </div>
+          <div>
+            <label
+              onClick={() => setEditForm(prev => ({ ...prev, official: !prev.official }))}
+              className="flex items-center gap-3 cursor-pointer group"
+            >
+              <div
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                  editForm.official ? "bg-amber-500 border-amber-500" : "border-slate-500 group-hover:border-slate-400"
+                }`}
+              >
+                {editForm.official && <Check className="w-3 h-3 text-white" />}
+              </div>
+              <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">Official game</span>
+            </label>
           </div>
           <div className="flex items-center justify-end gap-3 pt-4">
             <button
