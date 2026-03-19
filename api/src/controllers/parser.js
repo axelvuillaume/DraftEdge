@@ -6,19 +6,32 @@ const Game = require('../models/game');
 const Team = require('../models/team');
 const PlayerStats = require('../models/player-stats');
 const AIFeedBack = require('../models/ai-feedback');
+const CONFIG = require('../config');
 const { client: geminiClient } = require('../services/gemini');
 
 const { fetchAndSaveDraft } = require('../utils/parserDraft');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
-const { PLATFORM_TO_REGIONAL, apiFetch, getPuuidByRiotId } = require('../services/riotgames');
+const RIOT_API_KEY = CONFIG.RIOT_API_KEY;
+const { PLATFORM_TO_REGIONAL } = require('../services/riotgames');
 
 async function fetchRiotPuuid(gameName, tagLine, platform = 'euw1') {
+  if (!RIOT_API_KEY) return null;
   if (!gameName || !tagLine) return null;
 
   try {
-    return await getPuuidByRiotId(gameName, tagLine, platform);
+    const regional = PLATFORM_TO_REGIONAL[platform] || 'europe';
+    const url = `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${RIOT_API_KEY}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.warn(`Riot API error for ${gameName}#${tagLine}: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.puuid || null;
   } catch (error) {
     console.error(`Error fetching PUUID for ${gameName}#${tagLine}:`, error.message);
     return null;
@@ -26,11 +39,19 @@ async function fetchRiotPuuid(gameName, tagLine, platform = 'euw1') {
 }
 
 async function fetchRiotRank(puuid, platform = 'euw1') {
+  if (!RIOT_API_KEY) return null;
   if (!puuid) return null;
 
   try {
-    const url = `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}`;
-    const data = await apiFetch(url);
+    const url = `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}?api_key=${RIOT_API_KEY}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.warn(`Riot League API error for ${puuid}: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
 
     const soloQueue = data.find((entry) => entry.queueType === 'RANKED_SOLO_5x5');
 
@@ -721,7 +742,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
 router.get('/', (req, res) => {
   res.json({
     status: 'ok',
-    riotApiConfigured: true,
+    riotApiConfigured: !!RIOT_API_KEY,
     routes: {
       'POST /parse': 'Parse un ROFL et retourne les données (preview)',
       'POST /import': 'Parse, enrichit avec API Riot, et sauvegarde en DB',
