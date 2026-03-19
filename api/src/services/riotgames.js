@@ -1,6 +1,13 @@
 const CONFIG = require('../config');
 
-const RIOT_API_KEY = CONFIG.RIOT_API_KEY;
+const RIOT_API_KEYS = CONFIG.RIOT_API_KEYS;
+let keyIndex = 0;
+
+function getNextKey() {
+  const key = RIOT_API_KEYS[keyIndex % RIOT_API_KEYS.length];
+  keyIndex++;
+  return key;
+}
 
 const PLATFORM_TO_REGIONAL = {
   euw1: 'europe',
@@ -45,7 +52,7 @@ const SERVERS = [
 const MAX_RETRIES = 4;
 
 async function apiFetch(url, retries = 0) {
-  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}api_key=${RIOT_API_KEY}`);
+  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}api_key=${getNextKey()}`);
 
   if (res.status === 429) {
     if (retries >= MAX_RETRIES) throw new Error('Rate limit: max retries exceeded');
