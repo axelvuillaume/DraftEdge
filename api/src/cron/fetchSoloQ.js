@@ -67,6 +67,7 @@ function evaluateObjectives(objectives, doc, timeline, participantId, matchId, p
     if (!obj.active) continue;
     if (obj.champions?.length > 0 && !obj.champions.includes(doc.championName)) continue;
     if (obj.role && obj.role !== doc.teamPosition) continue;
+    if (obj.side && obj.side !== doc.side) continue;
 
     const { metric, operator, value, timing, source } = obj.rule;
     let actual_value = undefined;
@@ -131,6 +132,7 @@ async function evaluateStreaks(streakObjectives, player, matchId, smurfPuuid) {
     else query.puuid = player.puuid;
     if (obj.champions?.length > 0) query.championName = { $in: obj.champions };
     if (obj.role) query.teamPosition = obj.role;
+    if (obj.side) query.side = obj.side;
 
     const recentMatches = await SoloqMatch.find(query).sort({ gameDate: -1 }).limit(count);
 

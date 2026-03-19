@@ -120,6 +120,7 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
       if (obj.account?.puuid) matchQuery.puuid = obj.account.puuid;
       if (obj.champions?.length > 0) matchQuery.championName = { $in: obj.champions };
       if (obj.role) matchQuery.teamPosition = obj.role;
+      if (obj.side) matchQuery.side = obj.side;
 
       const matches = await SoloqMatch.find(matchQuery).sort({ gameDate: -1 });
 

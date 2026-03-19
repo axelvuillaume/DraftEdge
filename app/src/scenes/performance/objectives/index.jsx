@@ -677,6 +677,11 @@ function ObjectiveRowHeader({ objective, onDelete, onEdit, expanded, setExpanded
               {SOLOQ_ROLES.find(r => r.value === objective.role)?.label || objective.role}
             </span>
           )}
+          {objective.side && (
+            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${objective.side === "blue" ? "text-blue-400/80 bg-blue-500/10" : "text-red-400/80 bg-red-500/10"}`}>
+              {objective.side === "blue" ? "Blue" : "Red"}
+            </span>
+          )}
           {objective.champions?.length > 0 && (
             <div className="flex items-center gap-0.5">
               {objective.champions.slice(0, 3).map(c => (
@@ -894,6 +899,7 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
   const [players, setPlayers] = useState([])
   const [loading, setLoading] = useState(false)
   const [role, setRole] = useState("")
+  const [side, setSide] = useState("")
   const [champions, setChampions] = useState([])
   const [champSearch, setChampSearch] = useState("")
   const [showChampPicker, setShowChampPicker] = useState(false)
@@ -922,6 +928,7 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
       setRequest(objective.request || "")
       setPlayerId(objective.player_id || "")
       setRole(objective.role || "")
+      setSide(objective.side || "")
       setChampions(objective.champions || [])
       setSmurfAccount(objective.account?.puuid ? objective.account : null)
     } else {
@@ -929,6 +936,7 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
       setRequest("")
       setPlayerId(players[0]._id)
       setRole(ROLE_TO_RIOT[players[0].role] || "")
+      setSide("")
       setChampions([])
       setSmurfAccount(null)
     }
@@ -969,6 +977,7 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
           player_name: players.find(p => p._id === playerId)?.player_name,
           champions,
           role: role || null,
+          side: side || null,
           account: smurfAccount?.puuid ? smurfAccount : null,
         })
         if (!ok) return toast.error(code || "Failed to update objective")
@@ -980,6 +989,7 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
           player_name: players.find(p => p._id === playerId)?.player_name,
           champions,
           role: role || null,
+          side: side || null,
           ...(smurfAccount?.puuid && { account: smurfAccount }),
         })
         if (!ok) return toast.error(code || "Failed to add objective")
@@ -1083,6 +1093,22 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
                   }`}
                 >
                   {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-slate-400 text-xs font-medium mb-1.5 block">Side filter (optional)</label>
+            <div className="flex gap-1.5">
+              {[{ value: "", label: "Both sides" }, { value: "blue", label: "Blue" }, { value: "red", label: "Red" }].map(s => (
+                <button
+                  key={s.value}
+                  onClick={() => setSide(s.value)}
+                  className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    side === s.value ? "bg-violet-500/20 text-violet-400 ring-1 ring-violet-500/50" : "bg-slate-700/50 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {s.label}
                 </button>
               ))}
             </div>

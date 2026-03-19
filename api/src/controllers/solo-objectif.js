@@ -58,7 +58,7 @@ router.post('/check-account', passport.authenticate(['admin', 'user'], { session
 
 router.post('/', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
-    const { name, request, player_id, player_name, champions, role, account } = req.body;
+    const { name, request, player_id, player_name, champions, role, side, account } = req.body;
 
     const prompt = `Tu es un parser d'objectifs League of Legends. Transforme la demande du coach en règle structurée JSON.
 Les noms de metrics doivent correspondre EXACTEMENT aux champs de l'API Riot Games. Pour les champs nestés, utilise la dot notation (ex: "damageStats.totalDamageDoneToChampions").
@@ -195,6 +195,7 @@ DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
       ...(parsed.type === 'streak' && { streak_count: parsed.streak_count }),
       champions: champions || [],
       role: role || null,
+      side: side || null,
       player_id,
       player_name,
       team_id: req.user.team_id,

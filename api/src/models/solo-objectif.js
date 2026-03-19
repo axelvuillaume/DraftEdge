@@ -23,6 +23,7 @@ const Schema = new mongoose.Schema(
     streak_count: { type: Number, default: null },
     champions: [{ type: String }],
     role: { type: String, enum: ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY', null], default: null },
+    side: { type: String, enum: ['blue', 'red', null], default: null },
     team_id: { type: String },
     team_name: { type: String },
     player_id: { type: String },
