@@ -29,4 +29,4 @@ cron.schedule('*/15 * * * *', () => run(getElo, 'getElo'));
 cron.schedule('*/25 * * * *', () => run(fetchSoloQ, 'fetchSoloQ'));
 cron.schedule('0 3 * * *', () => run(getEloLeague, 'getEloLeague'));
 
-// cron.schedule('0 6 * * *', () => run(scrapeOracleElixir, 'scrapeOracleElixir'));
+cron.schedule('0 5 * * *', () => run(scrapeOracleElixir, 'scrapeOracleElixir'));
