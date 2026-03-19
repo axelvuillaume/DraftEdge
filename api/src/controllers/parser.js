@@ -14,79 +14,44 @@ const { fetchAndSaveDraft } = require('../utils/parserDraft');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 const RIOT_API_KEY = CONFIG.RIOT_API_KEY;
-const { PLATFORM_TO_REGIONAL } = require('../services/riotgames');
+const { getPuuidByRiotId, getRankByPuuid } = require('../services/riotgames');
 
-async function fetchRiotPuuid(gameName, tagLine, platform = 'euw1') {
-  if (!RIOT_API_KEY) return null;
-  if (!gameName || !tagLine) return null;
+async function enrichPlayersInBackground(savedPlayers, platform) {
+  if (!RIOT_API_KEY) return;
+  console.log('[import] Enriching', savedPlayers.length, 'players with Riot data on', platform, '...');
 
-  try {
-    const regional = PLATFORM_TO_REGIONAL[platform] || 'europe';
-    const url = `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${RIOT_API_KEY}`;
-    const response = await fetch(url);
+  for (let i = 0; i < savedPlayers.length; i++) {
+    const player = savedPlayers[i];
+    if (!player.summoner_name || !player.riot_tag) continue;
 
-    if (!response.ok) {
-      console.warn(`Riot API error for ${gameName}#${tagLine}: ${response.status}`);
-      return null;
+    try {
+      await new Promise((resolve) => setTimeout(resolve, i * 100));
+
+      const puuid = await getPuuidByRiotId(player.summoner_name, player.riot_tag, platform);
+      if (!puuid) continue;
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const soloQueue = await getRankByPuuid(puuid, platform);
+
+      const update = { puuid };
+      if (soloQueue) {
+        update.tier = soloQueue.tier;
+        update.rank = soloQueue.rank;
+        update.league_points = soloQueue.leaguePoints;
+        update.wins = soloQueue.wins;
+        update.losses = soloQueue.losses;
+        update.total_games = soloQueue.wins + soloQueue.losses;
+        update.win_rate = Math.round((soloQueue.wins / (soloQueue.wins + soloQueue.losses)) * 100);
+      }
+
+      await PlayerStats.updateOne({ _id: player._id }, { $set: update });
+    } catch (err) {
+      console.error(`[import] Failed to enrich ${player.summoner_name}#${player.riot_tag}:`, err.message);
     }
-
-    const data = await response.json();
-    return data.puuid || null;
-  } catch (error) {
-    console.error(`Error fetching PUUID for ${gameName}#${tagLine}:`, error.message);
-    return null;
-  }
-}
-
-async function fetchRiotRank(puuid, platform = 'euw1') {
-  if (!RIOT_API_KEY) return null;
-  if (!puuid) return null;
-
-  try {
-    const url = `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}?api_key=${RIOT_API_KEY}`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      console.warn(`Riot League API error for ${puuid}: ${response.status}`);
-      return null;
-    }
-
-    const data = await response.json();
-
-    const soloQueue = data.find((entry) => entry.queueType === 'RANKED_SOLO_5x5');
-
-    if (!soloQueue) return null;
-
-    return {
-      tier: soloQueue.tier,
-      rank: soloQueue.rank,
-      league_points: soloQueue.leaguePoints,
-      wins: soloQueue.wins,
-      losses: soloQueue.losses,
-      total_games: soloQueue.wins + soloQueue.losses,
-      win_rate: Math.round((soloQueue.wins / (soloQueue.wins + soloQueue.losses)) * 100),
-    };
-  } catch (error) {
-    console.error(`Error fetching rank for ${puuid}:`, error.message);
-    return null;
-  }
-}
-
-async function enrichPlayerWithRiotData(player, index, platform = 'euw1') {
-  // Délai pour éviter rate limit (100ms entre chaque joueur)
-  await new Promise((resolve) => setTimeout(resolve, index * 100));
-
-  const puuid = await fetchRiotPuuid(player.summoner_name, player.riot_tag, platform);
-
-  if (!puuid) {
-    return { ...player, puuid: null };
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 50));
-
-  const rankData = await fetchRiotRank(puuid, platform);
-
-  return { ...player, puuid, ...(rankData || {}) };
+  console.log('[import] Background enrichment done');
 }
 
 function parseRoflBuffer(buffer) {
@@ -691,14 +656,9 @@ router.post('/import', upload.single('replay'), async (req, res) => {
       if (teamDoc?.region) platform = teamDoc.region;
     }
 
-    // Enrichir les joueurs avec l'API Riot (PUUID + Rank)
-    console.log('Fetching Riot data for', data.players.length, 'players on', platform, '...');
-
-    const enrichedPlayers = await Promise.all(data.players.map((player, index) => enrichPlayerWithRiotData(player, index, platform)));
-
-    // Ajouter les infos team/game
+    // Sauvegarder les joueurs sans enrichissement Riot (pour répondre vite)
     const isOfficial = official === 'true';
-    const playersToSave = enrichedPlayers.map((p) => {
+    const playersToSave = data.players.map((p) => {
       const isAllyTeam = p.side === team_side;
       return {
         ...p,
@@ -725,6 +685,9 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     }
 
     res.json({ ok: true, data: { game: finalGame, players: savedPlayers } });
+
+    // Enrichir les joueurs avec l'API Riot en background (PUUID + Rank)
+    enrichPlayersInBackground(savedPlayers, platform).catch((err) => console.error('[import] Background enrichment failed:', err));
   } catch (error) {
     console.error('Erreur import ROFL:', error);
 

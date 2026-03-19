@@ -171,7 +171,7 @@ async function fetchSoloQ() {
   for (const player of validPlayers) {
     try {
       const platform = player.region || 'euw1';
-      const matchIds = await getMatchIdsByPuuid(player.puuid, { queue: QUEUE_ID, count: 3, platform });
+      const matchIds = await getMatchIdsByPuuid(player.puuid, { queue: QUEUE_ID, count: 4, platform });
 
       if (!matchIds || matchIds.length === 0) continue;
 
@@ -275,7 +275,7 @@ async function fetchSoloQ() {
           const smurfPlatform = account.region || platform;
 
           await sleep(DELAY_MS);
-          const smurfMatchIds = await getMatchIdsByPuuid(puuid, { queue: QUEUE_ID, count: 3, platform: smurfPlatform });
+          const smurfMatchIds = await getMatchIdsByPuuid(puuid, { queue: QUEUE_ID, count: 4, platform: smurfPlatform });
 
           if (!smurfMatchIds || smurfMatchIds.length === 0) continue;
 

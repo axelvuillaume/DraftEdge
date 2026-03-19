@@ -25,7 +25,7 @@ const run = async (fn, id) => {
 if (ENVIRONMENT !== 'production') return;
 
 console.log('Cron jobs initialized');
-cron.schedule('*/15 * * * *', () => run(getElo, 'getElo'));
+cron.schedule('*/20 * * * *', () => run(getElo, 'getElo'));
 cron.schedule('*/20 * * * *', () => run(fetchSoloQ, 'fetchSoloQ'));
 cron.schedule('0 3 * * *', () => run(getEloLeague, 'getEloLeague'));
 
