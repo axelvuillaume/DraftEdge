@@ -82,7 +82,7 @@ export default function Website() {
           </div>
           <div className="nav-actions">
             <button className="btn btn-primary" onClick={() => navigate("/auth")}>
-              Commencer
+              Get Started
             </button>
             <button className="mobile-menu-btn" aria-label="Menu" onClick={() => setMenuOpen(!menuOpen)}>
               <span />
@@ -113,25 +113,25 @@ export default function Website() {
           <div className="hero-content">
             <h1 className="hero-title">
               <span className="anim-up" style={{ "--delay": 1 }}>
-                Prenez
+                Take the
               </span>
               <span className="anim-up hero-title-accent" style={{ "--delay": 2 }}>
-                l'avantage.
+                edge.
               </span>
             </h1>
             <p className="hero-sub anim-up" style={{ "--delay": 3 }}>
-              Training, stats avancees, tracking SoloQ, gestion de ligue et import de replays — une seule plateforme pour dominer.
+              Training, advanced stats, SoloQ tracking, league management and replay imports — one platform to dominate.
             </p>
             <div className="hero-actions anim-up" style={{ "--delay": 4 }}>
               <button className="btn btn-primary btn-lg" onClick={() => navigate("/auth")}>
-                Creer mon equipe
+                Create my team
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M5 12h14" />
                   <path d="m12 5 7 7-7 7" />
                 </svg>
               </button>
               <a href="#training" className="btn btn-outline btn-lg" onClick={e => scrollTo(e, "training")}>
-                Explorer
+                Explore
               </a>
             </div>
           </div>
@@ -177,53 +177,21 @@ export default function Website() {
           <div className="training-hero">
             <div className="training-left">
               <h2 className="big-heading scroll-reveal">
-                Entrainement
+                Measurable
                 <br />
-                <span className="text-amber">pilote par l'IA.</span>
+                <span className="text-amber">objectives.</span>
               </h2>
               <p className="body-text scroll-reveal">
-                Definissez des objectifs en langage naturel — DraftEdge les transforme en metriques mesurables et suit chaque game automatiquement.
+                Set objectives for your scrims and your players' SoloQ. Track progress with ratings, success rates and filters by champion, role and side.
               </p>
             </div>
             <div className="training-right scroll-reveal">
-              <div className="ai-demo-card">
-                <div className="ai-demo-top">
-                  <span className="ai-badge coach">Coach</span>
-                  <p className="ai-prompt">"Au moins 8 CS/min a 15 min et 65% kill participation sur les 20 prochaines games"</p>
-                </div>
-                <div className="ai-demo-arrow">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 5v14" />
-                    <path d="m19 12-7 7-7-7" />
-                  </svg>
-                </div>
-                <div className="ai-demo-bottom">
-                  <span className="ai-badge ai">DraftEdge AI</span>
-                  <div className="ai-tags">
-                    <span className="ai-tag">cs_per_min &gt;= 8</span>
-                    <span className="ai-tag">at: 15min</span>
-                    <span className="ai-tag">kill_part &gt;= 65%</span>
-                    <span className="ai-tag">games: 20</span>
-                  </div>
-                </div>
-              </div>
+              <TrainingDemoCard />
             </div>
           </div>
           <div className="feature-strip scroll-reveal">
             <div className="strip-item">
               <div className="strip-icon amber">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="m9 12 2 2 4-4" />
-                </svg>
-              </div>
-              <div>
-                <h4>Objectifs SoloQ IA</h4>
-                <p>Parsing automatique du langage naturel en metriques trackables</p>
-              </div>
-            </div>
-            <div className="strip-item">
-              <div className="strip-icon blue">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 20V10" />
                   <path d="M18 20V4" />
@@ -231,32 +199,45 @@ export default function Website() {
                 </svg>
               </div>
               <div>
-                <h4>Objectifs scrims equipe</h4>
-                <p>Notation et suivi scrim par scrim avec rating</p>
-              </div>
-            </div>
-            <div className="strip-item">
-              <div className="strip-icon emerald">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect width="18" height="18" x="3" y="3" rx="2" />
-                  <path d="M3 9h18" />
-                  <path d="M9 21V9" />
-                </svg>
-              </div>
-              <div>
-                <h4>Scenarios de draft</h4>
-                <p>Simulation et preparation des picks/bans par role</p>
+                <h4>Scrim Objectives</h4>
+                <p>Rating /10 or done/not done, per team or per player, tracked scrim by scrim</p>
               </div>
             </div>
             <div className="strip-item">
               <div className="strip-icon purple">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="m9 12 2 2 4-4" />
                 </svg>
               </div>
               <div>
-                <h4>Feedback IA par role</h4>
-                <p>Analyse automatique et recommandations personnalisees</p>
+                <h4>SoloQ Objectives</h4>
+                <p>Auto-filled after every game — champion, role and side filters</p>
+              </div>
+            </div>
+            <div className="strip-item">
+              <div className="strip-icon emerald">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                </svg>
+              </div>
+              <div>
+                <h4>Success Rate</h4>
+                <p>Real-time progress, averages and stats per objective</p>
+              </div>
+            </div>
+            <div className="strip-item">
+              <div className="strip-icon blue">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+              <div>
+                <h4>Smurf Accounts</h4>
+                <p>Assign objectives to your players' secondary accounts</p>
               </div>
             </div>
           </div>
@@ -274,12 +255,12 @@ export default function Website() {
           <div className="stats-layout">
             <div className="stats-left">
               <h2 className="big-heading scroll-reveal">
-                Comparez-vous
+                Compare yourself
                 <br />
-                <span className="text-amber">aux meilleurs.</span>
+                <span className="text-amber">to the best.</span>
               </h2>
               <p className="body-text scroll-reveal">
-                Vision, CS, degats, KDA — analysez chaque metrique en spider chart et comparez vos performances directement avec des joueurs pro comme Faker.
+                Vision, CS, damage, KDA — analyze every metric on spider charts and compare your performance directly with pro players like Faker.
               </p>
               <div className="compare-modes scroll-reveal">
                 <div className="compare-mode">
@@ -295,7 +276,7 @@ export default function Website() {
                   </div>
                   <div>
                     <h4>vs Pro</h4>
-                    <p>Compare avec Faker, Caps, Chovy...</p>
+                    <p>Compare with Faker, Caps, Chovy...</p>
                   </div>
                 </div>
                 <div className="compare-mode">
@@ -307,7 +288,7 @@ export default function Website() {
                   </div>
                   <div>
                     <h4>vs Scrim</h4>
-                    <p>Compare avec tes adversaires de scrims</p>
+                    <p>Compare with your scrim opponents</p>
                   </div>
                 </div>
                 <div className="compare-mode">
@@ -321,7 +302,7 @@ export default function Website() {
                   </div>
                   <div>
                     <h4>vs SoloQ</h4>
-                    <p>Compare avec ta moyenne SoloQ</p>
+                    <p>Compare with your SoloQ average</p>
                   </div>
                 </div>
                 <div className="compare-mode">
@@ -333,8 +314,8 @@ export default function Website() {
                     </svg>
                   </div>
                   <div>
-                    <h4>Offi vs Non-Offi</h4>
-                    <p>Officiel vs non-officiel</p>
+                    <h4>Official vs Unofficial</h4>
+                    <p>Official vs non-official matches</p>
                   </div>
                 </div>
               </div>
@@ -449,7 +430,7 @@ export default function Website() {
                   <span className="spider-tab">vs Scrim</span>
                   <span className="spider-tab active">vs Pro</span>
                   <span className="spider-tab">vs SoloQ</span>
-                  <span className="spider-tab">Offi vs Non-Offi</span>
+                  <span className="spider-tab">Official vs Unofficial</span>
                 </div>
               </div>
             </div>
@@ -582,15 +563,15 @@ export default function Website() {
             </div>
             <div className="players-text">
               <h2 className="big-heading scroll-reveal">
-                Suivez chaque
+                Track every
                 <br />
-                <span className="text-amber">joueur.</span>
+                <span className="text-amber">player.</span>
               </h2>
-              <p className="body-text scroll-reveal">Synchronisation auto toutes les 15 minutes. LP, rank, matchs, champion pool par tier — tout est la, en temps reel.</p>
+              <p className="body-text scroll-reveal">Auto-sync every 15 minutes. LP, rank, matches, champion pool by tier — everything in real time.</p>
               <ul className="check-list scroll-reveal">
                 <li>
                   <span className="ck" />
-                  &nbsp;Progression LP &amp; historique de rank
+                  &nbsp;LP progression &amp; rank history
                 </li>
                 <li>
                   <span className="ck" />
@@ -598,11 +579,11 @@ export default function Website() {
                 </li>
                 <li>
                   <span className="ck" />
-                  &nbsp;Profils joueurs &amp; snapshots quotidiens
+                  &nbsp;Player profiles &amp; daily snapshots
                 </li>
                 <li>
                   <span className="ck" />
-                  &nbsp;Objectifs SoloQ personnalises
+                  &nbsp;Custom SoloQ objectives
                 </li>
               </ul>
             </div>
@@ -621,23 +602,23 @@ export default function Website() {
           <div className="league-layout">
             <div className="league-text">
               <h2 className="big-heading scroll-reveal">
-                Votre ligue,
+                Your league,
                 <br />
-                <span className="text-amber">centralisee.</span>
+                <span className="text-amber">centralized.</span>
               </h2>
-              <p className="body-text scroll-reveal">Classement LP agrege, fiches adverses, multi OP.GG automatique et standings mis a jour quotidiennement.</p>
+              <p className="body-text scroll-reveal">Aggregated LP standings, opponent scouting, auto multi OP.GG and standings updated daily.</p>
               <ul className="check-list scroll-reveal">
                 <li>
                   <span className="ck" />
-                  &nbsp;Classement LP total par equipe
+                  &nbsp;Total LP standings per team
                 </li>
                 <li>
                   <span className="ck" />
-                  &nbsp;Fiches joueurs adverses
+                  &nbsp;Opponent player scouting
                 </li>
                 <li>
                   <span className="ck" />
-                  &nbsp;Synchronisation LP quotidienne
+                  &nbsp;Daily LP sync
                 </li>
               </ul>
             </div>
@@ -701,9 +682,9 @@ export default function Website() {
           </div>
           <div className="manager-layout">
             <h2 className="big-heading scroll-reveal">
-              L'espace
+              The manager
               <br />
-              <span className="text-amber">du manager.</span>
+              <span className="text-amber">hub.</span>
             </h2>
             <div className="manager-grid scroll-reveal">
               <div className="mgr-card">
@@ -714,7 +695,7 @@ export default function Website() {
                   </svg>
                 </div>
                 <h4>Import Replays .rofl</h4>
-                <p>Drag &amp; drop vos fichiers replay. Le parser extrait toutes les stats et enrichit les donnees via l'API Riot.</p>
+                <p>Drag &amp; drop your replay files. The parser extracts all stats and enriches data via the Riot API.</p>
               </div>
               <div className="mgr-card">
                 <div className="mgr-icon">
@@ -725,8 +706,8 @@ export default function Website() {
                     <line x1="22" x2="16" y1="11" y2="11" />
                   </svg>
                 </div>
-                <h4>Gestion Roster</h4>
-                <p>Invitations, roles, activation/desactivation des joueurs, tout le roster management en un seul endroit.</p>
+                <h4>Roster Management</h4>
+                <p>Invitations, roles, player activation — all roster management in one place.</p>
               </div>
               <div className="mgr-card">
                 <div className="mgr-icon">
@@ -735,8 +716,8 @@ export default function Website() {
                     <circle cx="12" cy="12" r="3" />
                   </svg>
                 </div>
-                <h4>Adversaires &amp; Scrims</h4>
-                <p>Creez des fiches adversaires, organisez vos sessions de scrim, classez par dossiers et analysez match par match.</p>
+                <h4>Opponents &amp; Scrims</h4>
+                <p>Create opponent profiles, organize scrim sessions, sort by folders and analyze match by match.</p>
               </div>
             </div>
           </div>
@@ -754,10 +735,10 @@ export default function Website() {
                   <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
                 </svg>
               </div>
-              <h2 className="cta-heading">Pret a prendre l'avantage ?</h2>
-              <p className="cta-sub">Creez votre equipe gratuitement. Setup en 2 minutes. Aucune carte requise.</p>
+              <h2 className="cta-heading">Ready to take the edge?</h2>
+              <p className="cta-sub">Create your team for free. Setup in 2 minutes. No credit card required.</p>
               <button className="btn btn-primary btn-xl" onClick={() => navigate("/auth")}>
-                Commencer maintenant
+                Get started now
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M5 12h14" />
                   <path d="m12 5 7 7-7 7" />
@@ -787,11 +768,11 @@ export default function Website() {
               </div>
               <span className="logo-text">DraftEdge</span>
             </a>
-            <p className="footer-sub">L'intelligence esport pour League of Legends.</p>
+            <p className="footer-sub">Esport intelligence for League of Legends.</p>
           </div>
           <div className="footer-cols">
             <div className="footer-col">
-              <h5>Produit</h5>
+              <h5>Product</h5>
               <a href="#training" onClick={e => scrollTo(e, "training")}>
                 Training
               </a>
@@ -803,7 +784,7 @@ export default function Website() {
               </a>
             </div>
             <div className="footer-col">
-              <h5>Equipe</h5>
+              <h5>Team</h5>
               <a href="#league" onClick={e => scrollTo(e, "league")}>
                 League
               </a>
@@ -811,20 +792,134 @@ export default function Website() {
                 Manager
               </a>
               <a href="#cta" onClick={e => scrollTo(e, "cta")}>
-                Commencer
+                Get Started
               </a>
             </div>
           </div>
         </div>
         <div className="ws-container">
           <div className="footer-bottom">
-            <p>&copy; 2026 DraftEdge. Tous droits reserves.</p>
+            <p>&copy; 2026 DraftEdge. All rights reserved.</p>
             <p className="footer-riot">
-              DraftEdge n'est pas endorse par Riot Games et ne reflete pas les vues de Riot Games ou de toute personne impliquee dans la production de League of Legends.
+              DraftEdge is not endorsed by Riot Games and does not reflect the views of Riot Games or anyone involved in the production of League of Legends.
             </p>
           </div>
         </div>
       </footer>
+    </div>
+  )
+}
+
+function TrainingDemoCard() {
+  const [tab, setTab] = useState("scrim")
+
+  return (
+    <div className="ai-demo-card">
+      <div className="ai-demo-tabs">
+        <button onClick={() => setTab("scrim")} className={`ai-demo-tab${tab === "scrim" ? " active amber" : ""}`}>
+          Scrim
+        </button>
+        <button onClick={() => setTab("soloq")} className={`ai-demo-tab${tab === "soloq" ? " active purple" : ""}`}>
+          SoloQ
+        </button>
+      </div>
+      {tab === "scrim" ? (
+        <div className="ai-demo-scrim">
+          <div className="scrim-stats-row">
+<div className="scrim-stat-card">
+              <div className="scrim-stat-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+                <span>Avg Score</span>
+              </div>
+              <div className="scrim-stat-inline">
+                <span className="scrim-stat-val amber">5.4</span>
+                <span className="scrim-stat-sub">/10</span>
+              </div>
+            </div>
+            <div className="scrim-stat-card">
+              <div className="scrim-stat-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>
+                <span>Best</span>
+              </div>
+              <span className="scrim-stat-val emerald">6.2</span>
+              <span className="scrim-stat-name">Setup Drake</span>
+            </div>
+            <div className="scrim-stat-card">
+              <div className="scrim-stat-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                <span>Needs Work</span>
+              </div>
+              <span className="scrim-stat-val red">0.3</span>
+              <span className="scrim-stat-name">Wave management</span>
+            </div>
+          </div>
+          <div className="scrim-obj-list">
+            <div className="scrim-obj-row">
+              <div className="scrim-obj-info">
+                <span className="scrim-obj-name">Setup Drake</span>
+                <span className="scrim-obj-badge team">Team</span>
+              </div>
+              <div className="scrim-obj-bar-wrap">
+                <div className="ai-progress-bar"><div className="ai-progress-fill emerald" style={{ width: "62%" }} /></div>
+                <div className="scrim-obj-score"><span className="emerald">6.2</span>/10</div>
+              </div>
+            </div>
+            <div className="scrim-obj-row">
+              <div className="scrim-obj-info">
+                <span className="scrim-obj-name">Prio bot pre-15</span>
+                <span className="scrim-obj-badge player">Maty</span>
+              </div>
+              <div className="scrim-obj-bar-wrap">
+                <div className="ai-progress-bar"><div className="ai-progress-fill amber" style={{ width: "54%" }} /></div>
+                <div className="scrim-obj-score"><span className="amber">5.4</span>/10</div>
+              </div>
+            </div>
+            <div className="scrim-obj-row">
+              <div className="scrim-obj-info">
+                <span className="scrim-obj-name">Wave management</span>
+                <span className="scrim-obj-badge team">Team</span>
+                <span className="scrim-obj-evals">3 evals</span>
+              </div>
+              <div className="scrim-obj-bar-wrap">
+                <div className="ai-progress-bar"><div className="ai-progress-fill red" style={{ width: "3%" }} /></div>
+                <div className="scrim-obj-score"><span className="red">0.3</span>/10</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="ai-demo-top">
+            <span className="ai-badge coach">Coach</span>
+            <p className="ai-prompt">"At least 8 CS/min at 15 min and 65% kill participation over the next 20 games"</p>
+          </div>
+          <div className="ai-demo-bottom">
+            <span className="ai-badge ai">Progression</span>
+            <div className="ai-demo-progress-list">
+              <div className="ai-demo-progress-row">
+                <div className="ai-progress-label">
+                  <span className="ai-progress-name">CS/min &gt;= 8 @ 15min</span>
+                  <span className="ai-progress-rate emerald">75%</span>
+                </div>
+                <div className="ai-progress-bar">
+                  <div className="ai-progress-fill emerald" style={{ width: "75%" }} />
+                </div>
+                <span className="ai-progress-detail">15/20 games</span>
+              </div>
+              <div className="ai-demo-progress-row">
+                <div className="ai-progress-label">
+                  <span className="ai-progress-name">Kill part &gt;= 65%</span>
+                  <span className="ai-progress-rate amber">55%</span>
+                </div>
+                <div className="ai-progress-bar">
+                  <div className="ai-progress-fill amber" style={{ width: "55%" }} />
+                </div>
+                <span className="ai-progress-detail">11/20 games</span>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
