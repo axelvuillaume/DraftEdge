@@ -94,7 +94,7 @@ export default function View() {
 
   const selectChampionFromModal = champion => {
     const key = modal.type === "ban" ? (modal.side === "blue" ? "blueBans" : "redBans") : modal.side === "blue" ? "bluePicks" : "redPicks"
-    save({ ...scenario, [key]: scenario[key].map((slot, i) => (i === modal.index ? champion : slot)) })
+    save({ ...scenario, [key]: Array.from({ length: 5 }, (_, i) => (i === modal.index ? champion : scenario[key]?.[i] || null)) })
     setModal(null)
   }
 
@@ -133,9 +133,11 @@ export default function View() {
                 <div>
                   <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">BANS</p>
                   <div className="flex gap-2">
-                    {scenario.blueBans.map((ban, idx) => (
+                    {[0, 1, 2, 3, 4].map(idx => (
                       <div key={`blue-ban-${idx}`}>
-                        {renderSlot(ban, "ban", "blue", idx, () => save({ ...scenario, blueBans: scenario.blueBans.map((b, i) => (i === idx ? null : b)) }))}
+                        {renderSlot(scenario.blueBans?.[idx] || null, "ban", "blue", idx, () =>
+                          save({ ...scenario, blueBans: Array.from({ length: 5 }, (_, i) => (i === idx ? null : scenario.blueBans?.[i] || null)) })
+                        )}
                       </div>
                     ))}
                   </div>
@@ -143,9 +145,11 @@ export default function View() {
                 <div>
                   <p className="text-slate-400 text-xs uppercase tracking-wider mb-2 text-right">BANS</p>
                   <div className="flex gap-2">
-                    {scenario.redBans.map((ban, idx) => (
+                    {[0, 1, 2, 3, 4].map(idx => (
                       <div key={`red-ban-${idx}`}>
-                        {renderSlot(ban, "ban", "red", idx, () => save({ ...scenario, redBans: scenario.redBans.map((b, i) => (i === idx ? null : b)) }))}
+                        {renderSlot(scenario.redBans?.[idx] || null, "ban", "red", idx, () =>
+                          save({ ...scenario, redBans: Array.from({ length: 5 }, (_, i) => (i === idx ? null : scenario.redBans?.[i] || null)) })
+                        )}
                       </div>
                     ))}
                   </div>
@@ -158,7 +162,9 @@ export default function View() {
                   <div className="space-y-2">
                     {["TOP", "JGL", "MID", "ADC", "SUP"].map((role, idx) => (
                       <div key={role} className="flex items-center gap-3">
-                        {renderSlot(scenario.bluePicks[idx], "pick", "blue", idx, () => save({ ...scenario, bluePicks: scenario.bluePicks.map((p, i) => (i === idx ? null : p)) }))}
+                        {renderSlot(scenario.bluePicks?.[idx] || null, "pick", "blue", idx, () =>
+                          save({ ...scenario, bluePicks: Array.from({ length: 5 }, (_, i) => (i === idx ? null : scenario.bluePicks?.[i] || null)) })
+                        )}
                         <span className="text-slate-500 text-xs uppercase">{role}</span>
                       </div>
                     ))}
@@ -175,7 +181,9 @@ export default function View() {
                     {["TOP", "JGL", "MID", "ADC", "SUP"].map((role, idx) => (
                       <div key={role} className="flex items-center gap-3 justify-end">
                         <span className="text-slate-500 text-xs uppercase">{role}</span>
-                        {renderSlot(scenario.redPicks[idx], "pick", "red", idx, () => save({ ...scenario, redPicks: scenario.redPicks.map((p, i) => (i === idx ? null : p)) }))}
+                        {renderSlot(scenario.redPicks?.[idx] || null, "pick", "red", idx, () =>
+                          save({ ...scenario, redPicks: Array.from({ length: 5 }, (_, i) => (i === idx ? null : scenario.redPicks?.[i] || null)) })
+                        )}
                       </div>
                     ))}
                   </div>
