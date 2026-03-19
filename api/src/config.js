@@ -14,7 +14,7 @@ const S3_SECRETACCESSKEY = process.env.S3_SECRETACCESSKEY || '';
 
 const BREVO_KEY = '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';
 
-const RIOT_API_KEYS = ['RGAPI-4262b941-2677-4e42-a8c7-f89750638407', 'RGAPI-0555a5a8-e83c-4fd9-98f6-11d02cf1b395', 'RGAPI-99488f2e-a6d1-4c9d-8150-d52bb77f2a8c'].filter(Boolean);
+const RIOT_API_KEYS = ['RGAPI-0555a5a8-e83c-4fd9-98f6-11d02cf1b395', 'RGAPI-99488f2e-a6d1-4c9d-8150-d52bb77f2a8c'].filter(Boolean);
 
 const POSTHOG_API_KEY = 'phc_ytErKBckHNz5Rs3qW4sJqVbCiMLRBj6BTFZ1a5fVNrU';
 const POSTHOG_HOST = 'https://eu.i.posthog.com';
