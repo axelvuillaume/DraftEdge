@@ -59,6 +59,7 @@ export default function List() {
                 {league.tier && <span className="text-xs text-slate-500">Tier: {league.tier}</span>}
                 <span className="text-xs text-slate-500">{teams.length} teams</span>
               </div>
+              <span className="text-xs text-slate-500">Updated every morning</span>
             </div>
           </div>
           <div className="relative">
