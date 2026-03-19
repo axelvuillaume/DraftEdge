@@ -33,27 +33,30 @@ export default function Home() {
   const [readyUpMode, setReadyUpMode] = useState(null)
 
   return (
-    <div className="min-h-[calc(100vh-65px)] bg-slate-900 p-5 lg:p-6 overflow-y-auto">
-      <div className="space-y-5">
+    <div className="h-[calc(100vh-65px)] bg-slate-900 p-4 overflow-hidden">
+      <div className="space-y-3 h-full flex flex-col">
         {/* ── Header + Mini Stats ── */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4 shrink-0">
           <div>
             <p className="text-slate-500 text-xs mb-1">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
             <h1 className="text-4xl font-extrabold bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 bg-clip-text text-transparent leading-tight tracking-tight">
               {user?.team_name || "DraftEdge"}
             </h1>
           </div>
-          <MiniStats />
+          <div className="flex items-center gap-3">
+            <PatchCard />
+            <MiniStats />
+          </div>
         </div>
 
         {/* ── Quick Actions ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 shrink-0">
           <button
             onClick={() => {
               setReadyUpMode("session")
               setReadyUpOpen(true)
             }}
-            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 hover:border-blue-400/40 p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 hover:border-blue-400/40 p-2.5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-blue-500/10 transition-colors" />
             <Swords className="w-5 h-5 text-blue-400 mb-2" />
@@ -65,7 +68,7 @@ export default function Home() {
               setReadyUpMode("import")
               setReadyUpOpen(true)
             }}
-            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 hover:border-amber-400/40 p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 hover:border-amber-400/40 p-2.5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-amber-500/10 transition-colors" />
             <Upload className="w-5 h-5 text-amber-400 mb-2" />
@@ -74,7 +77,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => navigate("/scrim-hub/draft")}
-            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-rose-500/10 to-rose-600/5 border border-rose-500/20 hover:border-rose-400/40 p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-rose-500/10 to-rose-600/5 border border-rose-500/20 hover:border-rose-400/40 p-2.5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-rose-500/10 transition-colors" />
             <Target className="w-5 h-5 text-rose-400 mb-2" />
@@ -83,7 +86,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => navigate("/performance/stats")}
-            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 hover:border-emerald-400/40 p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 hover:border-emerald-400/40 p-2.5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-emerald-500/10 transition-colors" />
             <BarChart className="w-5 h-5 text-emerald-400 mb-2" />
@@ -92,7 +95,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => navigate("/soloq")}
-            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 hover:border-purple-400/40 p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 hover:border-purple-400/40 p-2.5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-purple-500/10 transition-colors" />
             <Zap className="w-5 h-5 text-purple-400 mb-2" />
@@ -102,24 +105,35 @@ export default function Home() {
         </div>
 
         {/* ── Main Grid: 3 columns ── */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-          {/* Left column: SoloQ Today + Objectives + League */}
-          <div className="xl:col-span-4 space-y-4">
-            <SoloQToday />
-            <ObjectivesScore />
-            <LeagueRanking />
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 flex-1 min-h-0">
+          {/* Left column: Recent Games + Scrim Calendar */}
+          <div className="xl:col-span-5 flex flex-col gap-3 min-h-0">
+            <div className="shrink-0">
+              <RecentGames />
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ScrimCalendar />
+            </div>
           </div>
 
-          {/* Center column: Recent Games */}
-          <div className="xl:col-span-4">
-            <RecentGames />
+          {/* Center column: SoloQ Today + Objectives */}
+          <div className="xl:col-span-4 flex flex-col gap-3 min-h-0">
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <SoloQToday />
+            </div>
+            <div className="shrink-0">
+              <ObjectivesScore />
+            </div>
           </div>
 
-          {/* Right column: Patch + Scrim Calendar + Notes */}
-          <div className="xl:col-span-4 space-y-4">
-            <PatchCard />
-            <ScrimCalendar />
-            <TeamNotes />
+          {/* Right column: League + Notes */}
+          <div className="xl:col-span-3 flex flex-col gap-3 min-h-0">
+            <div className="shrink-0">
+              <LeagueRanking />
+            </div>
+            <div className="flex-1 min-h-0">
+              <TeamNotes />
+            </div>
           </div>
         </div>
       </div>
@@ -232,7 +246,10 @@ function SoloQToday() {
                   <span className={`text-white font-semibold truncate block ${i === 0 ? "text-base" : "text-sm"}`}>{player.game_name}</span>
                   {player.games > 0 && (
                     <span className={`text-slate-600 ${i === 0 ? "text-xs" : "text-[10px]"}`}>
-                      {player.games} game{player.games > 1 ? "s" : ""}
+                      <span className="text-emerald-400">{player.wins || 0}W</span>
+                      <span className="mx-0.5">-</span>
+                      <span className="text-red-400">{player.losses || 0}L</span>
+                      <span className="text-slate-600 ml-0.5">({player.games})</span>
                     </span>
                   )}
                 </div>
@@ -397,35 +414,30 @@ function RecentGames() {
   }, [user?.team_id])
 
   return (
-    <div className="rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60">
+    <div className="rounded-xl overflow-hidden bg-slate-800/30">
+      <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex items-center gap-2">
-          <Swords className="w-4 h-4 text-blue-400" />
-          <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Recent Form</h3>
+          <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Recent Games</h3>
         </div>
-        <span className="text-[9px] text-slate-600">Last {games.length} games</span>
-      </div>
 
-      <div className="bg-slate-800/30 px-4 py-5">
         {!games.length ? (
-          <p className="text-slate-600 text-sm text-center py-4">No games imported yet</p>
+          <p className="text-slate-600 text-xs">No games yet</p>
         ) : (
           <>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center gap-1.5">
               {games.map(game => (
-                <div key={game._id} className="flex flex-col items-center gap-1.5">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${game.win ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}
-                  >
-                    {game.win ? "W" : "L"}
-                  </div>
-                  <span className="text-[8px] text-slate-600 truncate max-w-[40px]">{game.opponent_name || "—"}</span>
+                <div
+                  key={game._id}
+                  className={`w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold ${game.win ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}
+                  title={game.opponent_name || ""}
+                >
+                  {game.win ? "W" : "L"}
                 </div>
               ))}
             </div>
-            <div className="flex items-center justify-center gap-3 mt-3 text-xs">
+            <div className="text-xs">
               <span className="text-emerald-400 font-semibold">{games.filter(g => g.win).length}W</span>
-              <span className="text-slate-600">-</span>
+              <span className="text-slate-600 mx-0.5">-</span>
               <span className="text-red-400 font-semibold">{games.filter(g => !g.win).length}L</span>
             </div>
           </>
@@ -433,9 +445,9 @@ function RecentGames() {
 
         <button
           onClick={() => navigate("/performance/games")}
-          className="w-full mt-4 py-2.5 rounded-lg bg-slate-700/40 hover:bg-blue-500/15 border border-slate-700/30 hover:border-blue-500/30 text-slate-300 hover:text-blue-400 text-sm font-medium transition-all flex items-center justify-center gap-1.5"
+          className="ml-auto text-xs px-2.5 py-1 rounded-lg bg-slate-700/40 text-slate-400 hover:text-blue-400 hover:bg-slate-700/60 transition-all flex items-center gap-1 font-medium"
         >
-          View all games <ChevronRight className="w-3.5 h-3.5" />
+          View all <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>
@@ -447,9 +459,6 @@ function PatchCard() {
   return (
     <div className="rounded-xl overflow-hidden cursor-pointer hover:scale-[1.01] transition-all">
       <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 hover:border-amber-400/40 px-4 py-4 flex items-center gap-3 transition-colors">
-        <div className="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
-          <Zap className="w-5 h-5 text-amber-400" />
-        </div>
         <div>
           <p className="text-[9px] text-slate-500 uppercase tracking-wider">Current Patch</p>
           <p className="text-lg font-extrabold text-amber-400 tabular-nums leading-tight">25.6</p>
@@ -563,7 +572,7 @@ function ScrimCalendar() {
         {/* Day headers */}
         <div className="grid grid-cols-7 mb-1">
           {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map(d => (
-            <div key={d} className="text-[9px] text-slate-600 text-center font-medium py-1">
+            <div key={d} className="text-[11px] text-slate-600 text-center font-medium py-1">
               {d}
             </div>
           ))}
@@ -587,7 +596,7 @@ function ScrimCalendar() {
                 onClick={() => handleDayClick(day, daySess)}
                 onMouseEnter={() => setHoveredDay(day)}
                 onMouseLeave={() => setHoveredDay(null)}
-                className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs transition-all relative group/day
+                className={`aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-medium transition-all relative group/day
                   ${isSelected ? "bg-blue-500/20 ring-1 ring-blue-500/40" : "hover:bg-slate-700/30"}
                   ${isToday ? "text-amber-400 font-bold" : "text-slate-400"}
                 `}
@@ -598,14 +607,14 @@ function ScrimCalendar() {
                   <>
                     {day}
                     {daySess && (
-                      <div className="flex items-center gap-0.5 mt-0.5">
+                      <div className="absolute bottom-1 flex items-center gap-0.5">
                         {!isPast ? (
-                          <div className="w-1 h-1 rounded-full bg-blue-400" />
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                         ) : (
                           <>
-                            <span className="text-[9px] font-bold text-emerald-400">{daySess.reduce((sum, s) => sum + (s.win || 0), 0)}</span>
-                            <span className="text-[9px] text-slate-600">-</span>
-                            <span className="text-[9px] font-bold text-red-400">{daySess.reduce((sum, s) => sum + (s.loss || 0), 0)}</span>
+                            <span className="text-[11px] font-bold text-emerald-400">{daySess.reduce((sum, s) => sum + (s.win || 0), 0)}</span>
+                            <span className="text-[11px] text-slate-600">-</span>
+                            <span className="text-[11px] font-bold text-red-400">{daySess.reduce((sum, s) => sum + (s.loss || 0), 0)}</span>
                           </>
                         )}
                       </div>
@@ -621,13 +630,13 @@ function ScrimCalendar() {
         <div className="flex items-center gap-3 mt-2 pt-2 border-t border-slate-700/30">
           <div className="flex items-center gap-1">
             <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-            <span className="text-[9px] text-slate-600">Upcoming</span>
+            <span className="text-[11px] text-slate-600">Upcoming</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-[8px] font-bold text-emerald-400">2</span>
-            <span className="text-[9px] text-slate-600">-</span>
-            <span className="text-[8px] font-bold text-red-400">1</span>
-            <span className="text-[9px] text-slate-600">W - L</span>
+            <span className="text-[11px] font-bold text-emerald-400">2</span>
+            <span className="text-[11px] text-slate-600">-</span>
+            <span className="text-[11px] font-bold text-red-400">1</span>
+            <span className="text-[11px] text-slate-600">W - L</span>
           </div>
         </div>
 
@@ -1254,22 +1263,21 @@ function TeamNotes() {
   }
 
   return (
-    <div className="rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60">
+    <div className="rounded-xl overflow-hidden h-full flex flex-col">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60 shrink-0">
         <div className="flex items-center gap-2">
           <StickyNote className="w-4 h-4 text-amber-400" />
           <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Notes</h3>
         </div>
         <span className="text-[9px] text-slate-700">Auto-saved</span>
       </div>
-      <div className="bg-slate-800/30 p-3">
+      <div className="bg-slate-800/30 p-3 flex-1 min-h-0 flex">
         <textarea
           value={notes}
           onChange={e => setNotes(e.target.value)}
           onBlur={save}
           placeholder="Strats, reminders..."
-          rows={10}
-          className="w-full bg-slate-900/60 border rounded-lg p-3 text-sm text-slate-300 placeholder-slate-700 resize-none focus:outline-none transition-colors border-slate-700/30"
+          className="w-full h-full bg-slate-900/60 border rounded-lg p-3 text-sm text-slate-300 placeholder-slate-700 resize-none focus:outline-none transition-colors border-slate-700/30"
         />
       </div>
     </div>
