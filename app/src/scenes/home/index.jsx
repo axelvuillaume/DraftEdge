@@ -593,21 +593,20 @@ function ScrimCalendar() {
                 `}
               >
                 {!daySess && hoveredDay === day ? (
-                  <Plus className="w-3 h-3 text-blue-400" />
+                  <Plus className="w-8 h-8 text-orange-500/50" />
                 ) : (
                   <>
                     {day}
                     {daySess && (
-                      <div className="flex gap-0.5 mt-0.5">
-                        {daySess.length <= 3 ? (
-                          daySess.map((s, j) => (
-                            <div
-                              key={j}
-                              className={`w-1 h-1 rounded-full ${!isPast ? "bg-blue-400" : s.win > (s.loss || 0) ? "bg-emerald-400" : s.loss > 0 ? "bg-red-400" : "bg-slate-500"}`}
-                            />
-                          ))
+                      <div className="flex items-center gap-0.5 mt-0.5">
+                        {!isPast ? (
+                          <div className="w-1 h-1 rounded-full bg-blue-400" />
                         ) : (
-                          <div className="text-[8px] text-blue-400 font-bold">{daySess.length}</div>
+                          <>
+                            <span className="text-[9px] font-bold text-emerald-400">{daySess.reduce((sum, s) => sum + (s.win || 0), 0)}</span>
+                            <span className="text-[9px] text-slate-600">-</span>
+                            <span className="text-[9px] font-bold text-red-400">{daySess.reduce((sum, s) => sum + (s.loss || 0), 0)}</span>
+                          </>
                         )}
                       </div>
                     )}
@@ -625,12 +624,10 @@ function ScrimCalendar() {
             <span className="text-[9px] text-slate-600">Upcoming</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span className="text-[9px] text-slate-600">Win</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
-            <span className="text-[9px] text-slate-600">Loss</span>
+            <span className="text-[8px] font-bold text-emerald-400">2</span>
+            <span className="text-[9px] text-slate-600">-</span>
+            <span className="text-[8px] font-bold text-red-400">1</span>
+            <span className="text-[9px] text-slate-600">W - L</span>
           </div>
         </div>
 
