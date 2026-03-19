@@ -70,6 +70,8 @@ router.post('/today-leaderboard', passport.authenticate(['admin', 'user'], { ses
         current_tier: player.current_tier,
         lpChange: toLP(playerSnaps.at(-1).tier, playerSnaps.at(-1).rank, playerSnaps.at(-1).league_points) - toLP(playerSnaps[0].tier, playerSnaps[0].rank, playerSnaps[0].league_points),
         games: (playerSnaps.at(-1).wins + playerSnaps.at(-1).losses) - (playerSnaps[0].wins + playerSnaps[0].losses),
+        wins: playerSnaps.at(-1).wins - playerSnaps[0].wins,
+        losses: playerSnaps.at(-1).losses - playerSnaps[0].losses,
       });
     }
 
