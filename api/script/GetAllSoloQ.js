@@ -235,8 +235,9 @@ async function processPlayer(player) {
 // =====================================================================
 
 (async () => {
-  // ⬇️ Mettre un team_id ici pour filtrer sur une seule équipe, ou null pour tout récupérer
-  const TEAM_ID = "694a62d976604af5522a5a32";
+  // ⬇️ Filtres optionnels — mettre null pour ignorer
+  const TEAM_ID = null;
+  const PLAYER_ID = "69b9dc42d9ca99911fa96cc8"; // ex: "69b9dc42d9ca99911fa96cc8"
 
   console.log("Connecting to MongoDB…");
   await mongoose.connect(MONGODB_ENDPOINT, MONGO_OPTIONS);
@@ -244,15 +245,14 @@ async function processPlayer(player) {
 
   try {
     const query = { puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null } };
+    if (PLAYER_ID) query._id = PLAYER_ID;
     if (TEAM_ID) query.team_id = TEAM_ID;
 
     const players = await Player.find(query).lean();
-    // Filter out empty strings (lean doesn't apply $ne to empty string well)
     const validPlayers = players.filter((p) => p.puuid && p.puuid.trim() !== "");
 
-    if (TEAM_ID) {
-      console.log(`Filtering on team_id: ${TEAM_ID}`);
-    }
+    if (PLAYER_ID) console.log(`Filtering on player_id: ${PLAYER_ID}`);
+    if (TEAM_ID) console.log(`Filtering on team_id: ${TEAM_ID}`);
     console.log(`Found ${validPlayers.length} players with a puuid\n`);
 
     if (validPlayers.length === 0) {
