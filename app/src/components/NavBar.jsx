@@ -29,8 +29,8 @@ import Modal from "@/components/modal"
 const getMenu = user => [
   { title: "Home", to: "/", icon: LayoutDashboard },
   { title: "Players", to: "/soloq", icon: Users },
-  { title: "Stats Team", to: "/performance", icon: BarChart3 },
   { title: "Performance", to: "/scrim-hub", icon: Target },
+  { title: "Stats Team", to: "/performance", icon: BarChart3 },
   { title: "Manager space", to: "/opponents", icon: Briefcase },
   { title: "My League", to: "/league", icon: Trophy }
 ]
