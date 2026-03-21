@@ -298,6 +298,119 @@ router.post('/header-stats', passport.authenticate(['admin', 'user'], { session:
   }
 });
 
+// Draft slot stats with win rates per champion per position
+router.post('/draft-slot-stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team_id = req.body.team_id || req.user.team_id;
+    if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const filters = extractFilters(req.body);
+    const { gameQuery } = await buildGameFilters({ team_id, ...filters });
+
+    const games = await Game.find({ team_id, ...gameQuery }, { bluePicks: 1, redPicks: 1, blueBans: 1, redBans: 1, win: 1, team_side: 1 });
+
+    const picks = { blue: {}, red: {} };
+    const bans = { blue: {}, red: {} };
+    const sideRecord = { blue: { wins: 0, total: 0 }, red: { wins: 0, total: 0 } };
+
+    for (const game of games) {
+      if (!game.team_side) continue;
+      sideRecord[game.team_side].total++;
+      if (game.win) sideRecord[game.team_side].wins++;
+
+      const ourSide = game.team_side;
+      const theirSide = ourSide === 'blue' ? 'red' : 'blue';
+
+      // Our picks
+      const ourPicks = ourSide === 'blue' ? game.bluePicks : game.redPicks;
+      if (ourPicks) {
+        for (let i = 0; i < ourPicks.length; i++) {
+          if (!ourPicks[i]) continue;
+          if (!picks[ourSide][i]) picks[ourSide][i] = {};
+          if (!picks[ourSide][i][ourPicks[i]]) picks[ourSide][i][ourPicks[i]] = { games: 0, wins: 0 };
+          picks[ourSide][i][ourPicks[i]].games++;
+          if (game.win) picks[ourSide][i][ourPicks[i]].wins++;
+        }
+      }
+
+      // Enemy picks
+      const theirPicks = theirSide === 'blue' ? game.bluePicks : game.redPicks;
+      if (theirPicks) {
+        for (let i = 0; i < theirPicks.length; i++) {
+          if (!theirPicks[i]) continue;
+          if (!picks[theirSide][i]) picks[theirSide][i] = {};
+          if (!picks[theirSide][i][theirPicks[i]]) picks[theirSide][i][theirPicks[i]] = { games: 0, wins: 0 };
+          picks[theirSide][i][theirPicks[i]].games++;
+          if (!game.win) picks[theirSide][i][theirPicks[i]].wins++;
+        }
+      }
+
+      // Our bans
+      const ourBans = ourSide === 'blue' ? game.blueBans : game.redBans;
+      if (ourBans) {
+        for (let i = 0; i < ourBans.length; i++) {
+          if (!ourBans[i]) continue;
+          if (!bans[ourSide][i]) bans[ourSide][i] = {};
+          if (!bans[ourSide][i][ourBans[i]]) bans[ourSide][i][ourBans[i]] = { games: 0, wins: 0 };
+          bans[ourSide][i][ourBans[i]].games++;
+          if (game.win) bans[ourSide][i][ourBans[i]].wins++;
+        }
+      }
+
+      // Enemy bans
+      const theirBans = theirSide === 'blue' ? game.blueBans : game.redBans;
+      if (theirBans) {
+        for (let i = 0; i < theirBans.length; i++) {
+          if (!theirBans[i]) continue;
+          if (!bans[theirSide][i]) bans[theirSide][i] = {};
+          if (!bans[theirSide][i][theirBans[i]]) bans[theirSide][i][theirBans[i]] = { games: 0, wins: 0 };
+          bans[theirSide][i][theirBans[i]].games++;
+          if (!game.win) bans[theirSide][i][theirBans[i]].wins++;
+        }
+      }
+    }
+
+    // Merge multiple slot indices into one rotation
+    const mergeSlots = (slotObj, indices) => {
+      const merged = {};
+      for (const idx of indices) {
+        if (!slotObj[idx]) continue;
+        for (const [name, s] of Object.entries(slotObj[idx])) {
+          if (!merged[name]) merged[name] = { games: 0, wins: 0 };
+          merged[name].games += s.games;
+          merged[name].wins += s.wins;
+        }
+      }
+      return Object.entries(merged)
+        .map(([name, s]) => ({ name, games: s.games, wins: s.wins, wr: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0 }))
+        .sort((a, b) => b.games - a.games)
+        .slice(0, 5);
+    };
+
+    // Blue rotations: Rota1=[0], Rota2=[1,2], Rota3=[3,4]
+    // Red rotations:  Rota1=[0,1], Rota2=[2,3], Rota3=[4]
+    const blueRotations = [[0], [1, 2], [3, 4]].map((indices) => mergeSlots(picks.blue, indices));
+    const redRotations = [[0, 1], [2, 3], [4]].map((indices) => mergeSlots(picks.red, indices));
+
+    // Bans: Phase1=[0,1,2], Phase2=[3,4]
+    const blueBanPhases = [[0, 1, 2], [3, 4]].map((indices) => mergeSlots(bans.blue, indices));
+    const redBanPhases = [[0, 1, 2], [3, 4]].map((indices) => mergeSlots(bans.red, indices));
+
+    return res.status(200).send({
+      ok: true,
+      data: {
+        rotations: { blue: blueRotations, red: redRotations },
+        bans: { blue: blueBanPhases, red: redBanPhases },
+        sideRecord,
+        totalGames: games.length,
+      },
+    });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 // Draft averages for my team (pick/ban position stats)
 router.post('/draft-averages', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
