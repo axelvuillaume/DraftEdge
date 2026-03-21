@@ -29,10 +29,11 @@ export default function Overview() {
 function MostPlayedPanel() {
   const { globalFilters } = useStore()
   const [data, setData] = useState(null)
+  const [side, setSide] = useState(null)
 
   const fetchData = async () => {
     try {
-      const { ok, data, code } = await api.post("/playerstats/most-played", { ...globalFilters, limit: 5 })
+      const { ok, data, code } = await api.post("/playerstats/most-played", { ...globalFilters, limit: 5, side })
       if (!ok) return toast.error(code || "Failed to fetch most played")
       setData(data)
     } catch (error) {
@@ -42,13 +43,32 @@ function MostPlayedPanel() {
 
   useEffect(() => {
     fetchData()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id, side])
 
   if (!data) return null
 
   return (
     <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
-      <h3 className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-5">Most Played by Role</h3>
+      <div className="flex items-center gap-3 mb-5">
+        <h3 className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Most Played by Role</h3>
+        <div className="flex items-center gap-1 bg-slate-700/30 rounded-lg p-0.5">
+          {[
+            { value: null, label: "All" },
+            { value: "blue", label: "Blue" },
+            { value: "red", label: "Red" }
+          ].map(opt => (
+            <button
+              key={opt.label}
+              onClick={() => setSide(opt.value)}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors ${
+                side === opt.value ? "bg-slate-600/60 text-white" : "text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-5">
         {DRAFT_ROLES.map((role, idx) => (
           <div key={role} className={`flex flex-col gap-3 px-5 ${idx < DRAFT_ROLES.length - 1 ? "border-r border-dashed border-slate-700/50" : ""}`}>

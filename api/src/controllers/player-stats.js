@@ -1093,12 +1093,7 @@ router.post('/top-champions', passport.authenticate(['admin', 'user'], { session
     const { gameIdFilter } = await buildGameFilters({ team_id, ...filters });
     const query = { team_id, opponent: false, ...gameIdFilter };
 
-    const stats = await PlayerStats.aggregate([
-      { $match: query },
-      { $group: { _id: '$champion', games: { $sum: 1 }, wins: { $sum: { $cond: ['$game_win', 1, 0] } } } },
-      { $sort: { games: -1 } },
-      { $limit: req.body.limit || 3 },
-    ]);
+    const stats = await PlayerStats.aggregate([{ $match: query }, { $group: { _id: '$champion', games: { $sum: 1 }, wins: { $sum: { $cond: ['$game_win', 1, 0] } } } }, { $sort: { games: -1 } }, { $limit: req.body.limit || 3 }]);
 
     return res.status(200).send({
       ok: true,
@@ -1121,6 +1116,7 @@ router.post('/most-played', passport.authenticate(['admin', 'user'], { session: 
     const filters = extractFilters(req.body);
     const { gameIdFilter } = await buildGameFilters({ team_id, ...filters });
     const query = { team_id, opponent: false, ...gameIdFilter };
+    if (req.body.side) query.side = req.body.side;
 
     // Count total unique games for PR calculation
     const totalGamesAgg = await PlayerStats.aggregate([{ $match: query }, { $group: { _id: '$game_id' } }, { $count: 'total' }]);
