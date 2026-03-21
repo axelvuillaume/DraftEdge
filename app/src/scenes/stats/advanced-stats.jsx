@@ -5,6 +5,7 @@ import useStore from "@/services/store"
 import { getChampionIcon } from "@/utils"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
 import { ChevronLeft, ChevronDown, Radar, Table2, Search } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 const ROLE_TO_POSITION = { top: "top", jungle: "jng", mid: "mid", bottom: "bot", support: "sup" }
 
@@ -16,6 +17,7 @@ const CATEGORIES = [
 ]
 
 export default function StatsV2() {
+  const navigate = useNavigate()
   const { searchNavigation, setSearchNavigation, globalFilters } = useStore()
   const [teamData, setTeamData] = useState(null)
   const [activePlayer, setActivePlayer] = useState(null)
@@ -428,29 +430,43 @@ export default function StatsV2() {
             <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
               <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">Team Players</h2>
               <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
-              {!teamData.players || teamData.players.length === 0 ? (
-                <div className="text-slate-500 text-center py-8">No players available</div>
-              ) : (
-                <div className="space-y-2">
-                  {teamData.players.map((player, idx) => (
+              <div className="space-y-2">
+                {["top", "jungle", "mid", "bottom", "support"].map((role) => {
+                  const player = (teamData.players || []).find(p => p.role === role)
+                  if (player) return (
                     <div
-                      key={idx}
+                      key={role}
                       onClick={() => setActivePlayer(player)}
                       className="bg-slate-900/40 border border-slate-700/40 rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-700/40 hover:border-emerald-500/40 transition-all group"
                     >
                       <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                        <img src={`/roles/${player.role}.png`} alt={player.role} className="w-5 h-5" onError={e => (e.target.style.display = "none")} />
+                        <img src={`/roles/${role}.png`} alt={role} className="w-5 h-5" onError={e => (e.target.style.display = "none")} />
                       </div>
                       <div className="flex-1">
                         <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">{player.name}</span>
                       </div>
+                      <span className="text-slate-400 text-xs">{player.games || 0}G</span>
                       <span className={`font-bold text-sm ${player.score >= 70 ? "text-emerald-400" : player.score >= 50 ? "text-amber-400" : "text-red-400"}`}>
                         {player.score || 0}
                       </span>
                     </div>
-                  ))}
-                </div>
-              )}
+                  )
+                  return (
+                    <div
+                      key={role}
+                      onClick={() => navigate("/soloq")}
+                      className="bg-slate-900/40 border border-slate-700/40 border-dashed rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-700/40 hover:border-emerald-500/40 transition-all group"
+                    >
+                      <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">
+                        <img src={`/roles/${role}.png`} alt={role} className="w-5 h-5" onError={e => (e.target.style.display = "none")} />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-slate-500 group-hover:text-emerald-400 transition-colors">Add a player</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 

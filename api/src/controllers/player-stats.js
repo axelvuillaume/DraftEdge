@@ -690,10 +690,13 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
     const activePuuids = new Set(activePlayers.map((p) => p.puuid).filter(Boolean));
 
     const playersById = {};
+    activePlayers.forEach((p) => {
+      if (!p.puuid) return;
+      playersById[p.puuid] = { stats: [], name: p.player_name || p.game_name || '', role: p.role, riot_tag: p.tag_line || '' };
+    });
     playerStats.forEach((stat) => {
       if (!stat.puuid) return;
-      if (!activePuuids.has(stat.puuid)) return;
-      if (!playersById[stat.puuid]) playersById[stat.puuid] = { stats: [], name: stat.summoner_name, role: stat.role, riot_tag: stat.riot_tag };
+      if (!playersById[stat.puuid]) return;
       playersById[stat.puuid].stats.push(stat);
       playersById[stat.puuid].name = stat.summoner_name;
       if (stat.role) playersById[stat.puuid].role = stat.role;
