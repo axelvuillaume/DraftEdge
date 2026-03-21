@@ -49,9 +49,9 @@ function MostPlayedPanel() {
   return (
     <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
       <h3 className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-5">Most Played by Role</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-5 gap-6">
-        {DRAFT_ROLES.map(role => (
-          <div key={role} className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-5">
+        {DRAFT_ROLES.map((role, idx) => (
+          <div key={role} className={`flex flex-col gap-3 px-5 ${idx < DRAFT_ROLES.length - 1 ? "border-r border-dashed border-slate-700/50" : ""}`}>
             <div className="flex items-center gap-2 mb-1">
               <img src={ROLE_ICONS[role]} alt={role} className="w-5 h-5 opacity-60" />
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{role}</span>
@@ -309,7 +309,9 @@ function DurationChart() {
         </div>
         <div className="flex gap-0.5 mt-1 w-fit mx-auto">
           {["<20", "20-25", "25-30", "30-35", "35+"].map(label => (
-            <span key={label} className="w-8 text-center text-[8px] text-slate-600">{label}</span>
+            <span key={label} className="w-8 text-center text-[8px] text-slate-600">
+              {label}
+            </span>
           ))}
         </div>
       </div>
