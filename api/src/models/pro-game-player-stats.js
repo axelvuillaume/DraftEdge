@@ -28,7 +28,7 @@ const Schema = new mongoose.Schema(
     teamid: { type: String },
 
     // Player champion
-    champion: { type: String },
+    champion: { type: String, trim: true },
 
     // Game info
     gamelength: { type: Number },
