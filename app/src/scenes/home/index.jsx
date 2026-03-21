@@ -5,7 +5,7 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
 import OpponentDropdown from "@/components/OpponentDropdown"
-import { RANK_ICON_TIERS } from "@/utils"
+import { RANK_ICON_TIERS, getChampionIcon } from "@/utils"
 import {
   Calendar,
   BarChart,
@@ -111,15 +111,16 @@ export default function Home() {
             <div className="shrink-0">
               <RecentGames />
             </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <ScrimCalendar />
             </div>
           </div>
 
           {/* Center column: SoloQ Today + Objectives */}
           <div className="xl:col-span-4 flex flex-col gap-3 min-h-0">
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-3">
               <SoloQToday />
+              <TopScrimChampions />
             </div>
             <div className="shrink-0">
               <ObjectivesScore />
@@ -232,7 +233,7 @@ function SoloQToday() {
           </div>
         ) : (
           <div className="divide-y divide-slate-700/20">
-            {players.map((player, i) => (
+            {players.slice(0, 3).map((player, i) => (
               <div
                 key={player.game_name}
                 className={`flex items-center gap-3 px-4 hover:bg-slate-700/20 transition-colors ${i === 0 ? "py-5 bg-gradient-to-r from-amber-500/5 to-transparent" : "py-3"}`}
@@ -275,17 +276,64 @@ function SoloQToday() {
   )
 }
 
+// Top Scrim Champions
+function TopScrimChampions() {
+  const { user } = useStore()
+  const [champions, setChampions] = useState([])
+
+  const fetchData = async () => {
+    try {
+      const { ok, data, code } = await api.post("/playerstats/top-champions", { team_id: user.team_id, limit: 3 })
+      if (!ok) return toast.error(code || "Failed to fetch champions")
+      setChampions(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch champions")
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [user?.team_id])
+
+  if (champions.length === 0) return null
+
+  return (
+    <div className="rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60">
+        <div className="flex items-center gap-2">
+          <Swords className="w-4 h-4 text-amber-400" />
+          <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Top Scrim Champions</h3>
+        </div>
+      </div>
+      <div className="bg-slate-800/30 px-4 py-3 flex items-center justify-around">
+        {champions.map((champ, i) => (
+          <div key={champ.name} className="flex flex-col items-center gap-1.5">
+            <div className={`rounded-full overflow-hidden border-2 ${i === 0 ? "w-12 h-12 border-amber-500/50" : "w-10 h-10 border-slate-700"}`}>
+              <img src={getChampionIcon(champ.name)} alt={champ.name} className="w-full h-full object-cover" />
+            </div>
+            <span className="text-[11px] text-white font-medium">{champ.name}</span>
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <span className="text-slate-400">{champ.games}G</span>
+              <span className={champ.wr >= 50 ? "text-emerald-400" : "text-red-400"}>{champ.wr}%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // Objectives Score
 function ObjectivesScore() {
   const { user } = useStore()
   const navigate = useNavigate()
-  const [avg, setAvg] = useState(null)
+  const [stats, setStats] = useState(null)
 
   const fetchData = async () => {
     try {
-      const { ok, data, code } = await api.post("/scrim-objectif-result/average-score", { team_id: user.team_id })
+      const { ok, data, code } = await api.post("/scrim-objectif-result/stats", { team_id: user.team_id })
       if (!ok) return toast.error(code || "Failed to fetch score")
-      setAvg(data)
+      setStats(data)
     } catch (error) {
       toast.error(error.code || "Failed to fetch score")
     }
@@ -307,24 +355,28 @@ function ObjectivesScore() {
         </button>
       </div>
 
-      <div className="bg-slate-800/30 px-4 py-5">
-        <div className="flex items-center justify-center gap-4">
-          <div className="text-center">
-            <p className="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Avg Score</p>
-            <div className="flex items-baseline justify-center gap-0.5">
-              <span className={`text-3xl font-extrabold tabular-nums ${avg >= 7 ? "text-emerald-400" : avg >= 5 ? "text-amber-400" : "text-red-400"}`}>
-                {avg != null ? Number(avg).toFixed(1) : "–"}
-              </span>
-              <span className="text-slate-600 text-sm font-medium">/10</span>
-            </div>
+      <div className="bg-slate-800/30">
+        {stats?.best && (
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-700/20">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+            <span className="text-[9px] text-emerald-400/60 uppercase tracking-wider shrink-0">Best</span>
+            <span className="text-xs text-white font-semibold truncate flex-1">{stats.best.obj?.name}</span>
+            <span className="text-sm font-bold text-emerald-400 tabular-nums shrink-0">{Number(stats.best.avg).toFixed(1)}/10</span>
           </div>
-        </div>
-        <div className="mt-3 h-2 bg-slate-700/50 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${avg >= 7 ? "bg-emerald-500" : avg >= 5 ? "bg-amber-500" : "bg-red-500"}`}
-            style={{ width: `${(avg / 10) * 100}%` }}
-          />
-        </div>
+        )}
+        {stats?.worst && (
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+            <span className="text-[9px] text-red-400/60 uppercase tracking-wider shrink-0">Worst</span>
+            <span className="text-xs text-white font-semibold truncate flex-1">{stats.worst.obj?.name}</span>
+            <span className="text-sm font-bold text-red-400 tabular-nums shrink-0">{Number(stats.worst.avg).toFixed(1)}/10</span>
+          </div>
+        )}
+        {!stats?.best && !stats?.worst && (
+          <div className="px-4 py-6 text-center">
+            <p className="text-slate-600 text-sm">No objectives rated yet</p>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -388,6 +440,15 @@ function LeagueRanking() {
             </div>
           ))}
         </div>
+        {teams.findIndex(t => t.name === team.name) >= 0 && (
+          <div className="border-t border-slate-700/40 px-4 py-2.5 flex items-center justify-between bg-slate-800/40">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Your rank</span>
+            <span className="text-xs font-bold text-amber-400">
+              #{teams.findIndex(t => t.name === team.name) + 1}
+              <span className="text-slate-500 font-normal ml-1">/ {teams.length}</span>
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )

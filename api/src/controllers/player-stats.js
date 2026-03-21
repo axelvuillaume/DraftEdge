@@ -1083,6 +1083,33 @@ router.post('/team_performance', passport.authenticate(['admin', 'user'], { sess
   }
 });
 
+// Top N most played champions across all roles (for home widget)
+router.post('/top-champions', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team_id = req.body.team_id || req.user.team_id;
+    if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const filters = extractFilters(req.body);
+    const { gameIdFilter } = await buildGameFilters({ team_id, ...filters });
+    const query = { team_id, opponent: false, ...gameIdFilter };
+
+    const stats = await PlayerStats.aggregate([
+      { $match: query },
+      { $group: { _id: '$champion', games: { $sum: 1 }, wins: { $sum: { $cond: ['$game_win', 1, 0] } } } },
+      { $sort: { games: -1 } },
+      { $limit: req.body.limit || 3 },
+    ]);
+
+    return res.status(200).send({
+      ok: true,
+      data: stats.map((s) => ({ name: s._id, games: s.games, wr: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0 })),
+    });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 // Most played champions per role for my team (from scrims/ranked data)
 const ROLE_DISPLAY = { top: 'TOP', jungle: 'JGL', mid: 'MID', bottom: 'ADC', support: 'SUP' };
 
