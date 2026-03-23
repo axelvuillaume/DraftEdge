@@ -405,8 +405,12 @@ function MultiOpggLink({ session }) {
 function ObjectivesSection({ session, games, onSessionAvg }) {
   const { user } = useStore()
   const [allObjectives, setAllObjectives] = useState([])
-  const [activeObjectifIds, setActiveObjectifIds] = useState([])
+  const [activeObjectifIds, setActiveObjectifIds] = useState(session?.objectif_ids || [])
   const [showObjectiveModal, setShowObjectiveModal] = useState(false)
+
+  useEffect(() => {
+    if (session?.objectif_ids) setActiveObjectifIds(session.objectif_ids)
+  }, [session?._id])
 
   useEffect(() => {
     if (user?.team_id) fetchObjectives()
@@ -419,6 +423,15 @@ function ObjectivesSection({ session, games, onSessionAvg }) {
       setAllObjectives(data)
     } catch (error) {
       toast.error(error.code || "Failed to fetch objectives")
+    }
+  }
+
+  const saveActiveIds = async (ids) => {
+    try {
+      const { ok, code } = await api.put(`/scrim-session/${session._id}`, { ...session, objectif_ids: ids })
+      if (!ok) return toast.error(code || "Failed to save objectives")
+    } catch (error) {
+      toast.error(error.code || "Failed to save objectives")
     }
   }
 
@@ -442,8 +455,16 @@ function ObjectivesSection({ session, games, onSessionAvg }) {
         session={session}
         games={games}
         objectives={allObjectives.filter(o => activeObjectifIds.includes(o._id))}
-        onAddActiveIds={ids => setActiveObjectifIds(prev => [...new Set([...prev, ...ids])])}
-        onToggleObjective={objId => setActiveObjectifIds(prev => (prev.includes(objId) ? prev.filter(oid => oid !== objId) : [...prev, objId]))}
+        onAddActiveIds={ids => {
+          const next = [...new Set([...activeObjectifIds, ...ids])]
+          setActiveObjectifIds(next)
+          saveActiveIds(next)
+        }}
+        onToggleObjective={objId => {
+          const next = activeObjectifIds.includes(objId) ? activeObjectifIds.filter(oid => oid !== objId) : [...activeObjectifIds, objId]
+          setActiveObjectifIds(next)
+          saveActiveIds(next)
+        }}
         onSessionAvg={onSessionAvg}
       />
 
@@ -452,10 +473,16 @@ function ObjectivesSection({ session, games, onSessionAvg }) {
         onClose={() => setShowObjectiveModal(false)}
         allObjectives={allObjectives}
         activeObjectifIds={activeObjectifIds}
-        onToggle={objId => setActiveObjectifIds(prev => (prev.includes(objId) ? prev.filter(oid => oid !== objId) : [...prev, objId]))}
+        onToggle={objId => {
+          const next = activeObjectifIds.includes(objId) ? activeObjectifIds.filter(oid => oid !== objId) : [...activeObjectifIds, objId]
+          setActiveObjectifIds(next)
+          saveActiveIds(next)
+        }}
         onCreated={newObj => {
           setAllObjectives(prev => [newObj, ...prev])
-          setActiveObjectifIds(prev => [...prev, newObj._id])
+          const next = [...activeObjectifIds, newObj._id]
+          setActiveObjectifIds(next)
+          saveActiveIds(next)
         }}
       />
     </div>

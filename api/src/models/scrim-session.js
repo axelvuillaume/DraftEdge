@@ -17,6 +17,7 @@ const Schema = new mongoose.Schema(
     win: { type: Number },
     loss: { type: Number },
     winrate: { type: Number },
+    objectif_ids: { type: [String], default: [] },
   },
   { timestamps: true },
 );
