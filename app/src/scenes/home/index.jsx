@@ -111,7 +111,7 @@ export default function Home() {
             <div className="shrink-0">
               <RecentGames />
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="flex-1 min-h-0">
               <ScrimCalendar />
             </div>
           </div>
@@ -610,8 +610,8 @@ function ScrimCalendar() {
   }
 
   return (
-    <div className="rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60">
+    <div className="rounded-xl overflow-hidden h-full flex flex-col">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60 shrink-0">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-blue-400" />
           <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Scrim Calendar</h3>
@@ -627,9 +627,9 @@ function ScrimCalendar() {
         </div>
       </div>
 
-      <div className="bg-slate-800/30 p-3">
+      <div className="bg-slate-800/30 p-3 flex-1 min-h-0 flex flex-col">
         {/* Day headers */}
-        <div className="grid grid-cols-7 mb-1">
+        <div className="grid grid-cols-7 mb-1 shrink-0">
           {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map(d => (
             <div key={d} className="text-[11px] text-slate-600 text-center font-medium py-1">
               {d}
@@ -638,9 +638,9 @@ function ScrimCalendar() {
         </div>
 
         {/* Calendar grid */}
-        <div className="grid grid-cols-7">
+        <div className="grid grid-cols-7 flex-1 min-h-0 auto-rows-fr">
           {Array.from({ length: (firstDay + 6) % 7 }).map((_, i) => (
-            <div key={`empty-${i}`} className="aspect-square" />
+            <div key={`empty-${i}`} />
           ))}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1
@@ -655,7 +655,7 @@ function ScrimCalendar() {
                 onClick={() => handleDayClick(day, daySess)}
                 onMouseEnter={() => setHoveredDay(day)}
                 onMouseLeave={() => setHoveredDay(null)}
-                className={`aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-medium transition-all relative group/day
+                className={`flex flex-col items-center justify-center rounded-lg text-sm font-medium transition-all relative group/day
                   ${isSelected ? "bg-blue-500/20 ring-1 ring-blue-500/40" : "hover:bg-slate-700/30"}
                   ${isToday ? "text-amber-400 font-bold" : "text-slate-400"}
                 `}
