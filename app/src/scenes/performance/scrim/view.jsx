@@ -29,6 +29,7 @@ import {
 import Modal from "@/components/modal"
 import DebounceInput from "@/components/debounceInput"
 import OpponentDropdown from "@/components/OpponentDropdown"
+import { ExpandedContent } from "@/scenes/stats/games"
 
 const RATING_MAX = 10
 
@@ -78,6 +79,7 @@ export default function View() {
   const [games, setGames] = useState([])
   const [showImportModal, setShowImportModal] = useState(false)
   const [sessionAvg, setSessionAvg] = useState(null)
+  const [selectedGame, setSelectedGame] = useState(null)
 
   useEffect(() => {
     if (!id) return
@@ -164,32 +166,27 @@ export default function View() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 lg:p-6">
       <div className="max-w-[1600px] mx-auto space-y-5">
         {/* Header Card */}
-        <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/30 rounded-2xl p-5">
-          {/* Top: Back + Session Name */}
-          <div className="flex items-center gap-3 mb-4">
-            <button onClick={() => navigate("/scrim-hub/scrims")} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all">
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <DebounceInput
-              type="text"
-              placeholder="Session name..."
-              value={session.name || ""}
-              onChange={e => updateSession("name", e.target.value)}
-              className="bg-transparent border-0 outline-none ring-0 focus:ring-0 text-white text-lg font-semibold placeholder-slate-500 w-72"
-            />
-          </div>
-
-          {/* Bottom: Metadata + Stats */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-2 flex-wrap">
+        <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/30 rounded-2xl px-5 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button onClick={() => navigate("/scrim-hub/scrims")} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all">
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <DebounceInput
+                type="text"
+                placeholder="Session name..."
+                value={session.name || ""}
+                onChange={e => updateSession("name", e.target.value)}
+                className="bg-transparent border-0 outline-none ring-0 focus:ring-0 text-white text-base font-semibold placeholder-slate-500 w-40"
+              />
               <input
                 type="date"
                 value={formatDateInput(session.date)}
                 onChange={e => updateSession("date", e.target.value)}
-                className="bg-slate-700/40 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500/50 rounded-lg px-3 py-1.5 text-white text-sm"
+                className="bg-slate-700/40 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500/50 rounded-lg px-2.5 py-1.5 text-white text-sm"
               />
               {session.patch && (
-                <span className="px-2.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-mono font-medium text-emerald-400">
+                <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-mono font-medium text-emerald-400">
                   {getPatchPrefix(session.patch)}
                 </span>
               )}
@@ -263,7 +260,8 @@ export default function View() {
                   {games.map((game, idx) => (
                     <div
                       key={game._id}
-                      className={`group/game flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition-all border-l-[3px] ${
+                      onClick={() => setSelectedGame(game)}
+                      className={`group/game flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition-all border-l-[3px] cursor-pointer ${
                         game.win ? "border-l-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10" : "border-l-red-400 bg-red-500/5 hover:bg-red-500/10"
                       }`}
                     >
@@ -307,7 +305,7 @@ export default function View() {
                         </div>
                       </div>
 
-                      <button onClick={() => removeGame(game)} className="p-1 text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover/game:opacity-100 shrink-0">
+                      <button onClick={e => { e.stopPropagation(); removeGame(game) }} className="p-1 text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover/game:opacity-100 shrink-0">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -348,6 +346,26 @@ export default function View() {
           fetchGames()
         }}
       />
+
+      <Modal isOpen={!!selectedGame} onClose={() => setSelectedGame(null)} className="w-full max-w-7xl !bg-slate-900 border border-slate-700/50 shadow-xl">
+        {selectedGame && (
+          <div className="p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-1.5 h-8 rounded-full ${selectedGame.win ? "bg-emerald-500" : "bg-red-500"}`} />
+              <span className="text-white font-semibold">{selectedGame.name || `Game ${selectedGame.game_id}`}</span>
+              {selectedGame.team_side && (
+                <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${selectedGame.team_side === "blue" ? "bg-blue-500/15 text-blue-400" : "bg-red-500/15 text-red-400"}`}>
+                  {selectedGame.team_side} side
+                </span>
+              )}
+              {selectedGame.duration && (
+                <span className="text-slate-500 text-sm">{Math.floor(selectedGame.duration / 60)}:{String(selectedGame.duration % 60).padStart(2, "0")}</span>
+              )}
+            </div>
+            <ExpandedContent game={selectedGame} onDelete={fetchGames} />
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
@@ -694,20 +712,14 @@ function ObjectivesTable({ session, games, objectives, onAddActiveIds, onToggleO
     onSessionAvg(allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : null)
   }, [rowRatings])
 
-  if (objectives.length === 0 || games.length === 0) {
+  if (objectives.length === 0) {
     return (
       <div className="text-center py-16">
         <div className="w-14 h-14 rounded-2xl bg-slate-700/30 flex items-center justify-center mx-auto mb-4">
           <Target className="w-7 h-7 text-slate-600" />
         </div>
-        <p className="text-slate-400 text-sm font-medium mb-1">
-          {games.length === 0 && objectives.length === 0
-            ? "Add games and objectives to start"
-            : games.length === 0
-              ? "Import games to start reviewing"
-              : "Select objectives to review"}
-        </p>
-        <p className="text-slate-600 text-xs">{games.length === 0 ? "Import .rofl replays or pick from your game history" : "Use the Add Objective button above"}</p>
+        <p className="text-slate-400 text-sm font-medium mb-1">Select objectives to review</p>
+        <p className="text-slate-600 text-xs">Use the Manage Objectives button above</p>
       </div>
     )
   }

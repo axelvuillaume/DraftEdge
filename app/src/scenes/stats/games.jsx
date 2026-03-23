@@ -660,7 +660,7 @@ function EditGameModal({ game, isOpen, onClose, onSaved }) {
   )
 }
 
-function ExpandedContent({ game, onDelete }) {
+export function ExpandedContent({ game, onDelete }) {
   const [playerStats, setPlayerStats] = useState([])
   const [activeTab, setActiveTab] = useState("advanced")
 
