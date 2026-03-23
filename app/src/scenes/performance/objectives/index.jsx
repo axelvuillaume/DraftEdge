@@ -77,7 +77,7 @@ export default function Objectives() {
 function ScrimObjectives() {
   const [objectifs, setObjectifs] = useState([])
   const { user } = useStore()
-  const [showAddModal, setShowAddModal] = useState(false)
+  const [editingObjective, setEditingObjective] = useState(null)
 
   const fetchObjectifs = async () => {
     try {
@@ -107,7 +107,7 @@ function ScrimObjectives() {
     <>
       <div className="flex items-center justify-end">
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => setEditingObjective({})}
           className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors text-sm"
         >
           <Plus className="w-4 h-4" />
@@ -127,13 +127,13 @@ function ScrimObjectives() {
         ) : (
           <div className="divide-y divide-slate-700/30">
             {objectifs.map(objectif => (
-              <ScrimObjectiveRow key={objectif._id} objectif={objectif} onDelete={handleDelete} />
+              <ScrimObjectiveRow key={objectif._id} objectif={objectif} onDelete={handleDelete} onEdit={setEditingObjective} />
             ))}
           </div>
         )}
       </div>
 
-      <AddScrimObjectifModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSuccess={fetchObjectifs} />
+      <ScrimObjectifModal isOpen={!!editingObjective} objective={editingObjective} onClose={() => setEditingObjective(null)} onSuccess={fetchObjectifs} />
     </>
   )
 }
@@ -216,7 +216,7 @@ function ScrimStatsPanel({ objectifs }) {
   )
 }
 
-function ScrimObjectiveRow({ objectif, onDelete }) {
+function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
   const [results, setResults] = useState([])
 
   const fetchResults = async () => {
@@ -288,6 +288,12 @@ function ScrimObjectiveRow({ objectif, onDelete }) {
           )}
         </div>
         <button
+          onClick={() => onEdit(objectif)}
+          className="p-1.5 rounded-lg text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors opacity-0 group-hover:opacity-100"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+        </button>
+        <button
           onClick={() => onDelete(objectif._id)}
           className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
         >
@@ -298,7 +304,7 @@ function ScrimObjectiveRow({ objectif, onDelete }) {
   )
 }
 
-function AddScrimObjectifModal({ isOpen, onClose, onSuccess }) {
+function ScrimObjectifModal({ isOpen, objective, onClose, onSuccess }) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [assignTo, setAssignTo] = useState("team")
@@ -322,37 +328,57 @@ function AddScrimObjectifModal({ isOpen, onClose, onSuccess }) {
   }, [isOpen])
 
   useEffect(() => {
-    if (isOpen && players.length > 0 && !playerId) setPlayerId(players[0]._id)
-  }, [isOpen, players])
-
-  const handleAdd = async () => {
-    if (!name.trim()) return
-    try {
-      const selectedPlayer = players.find(p => p._id === playerId)
-      const { ok, code } = await api.post("/scrim-objectif", {
-        name,
-        description,
-        team_id: user?.team_id,
-        team_name: user?.team_name,
-        rating_type: ratingType,
-        ...(assignTo === "player" && playerId && { player_id: playerId, player_name: selectedPlayer?.player_name || selectedPlayer?.game_name })
-      })
-      if (!ok) return toast.error(code || "Failed to add objective")
+    if (!isOpen || players.length === 0) return
+    if (objective?._id) {
+      setName(objective.name || "")
+      setDescription(objective.description || "")
+      setAssignTo(objective.player_id ? "player" : "team")
+      setPlayerId(objective.player_id || players[0]._id)
+      setRatingType(objective.rating_type || "rating")
+    } else {
       setName("")
       setDescription("")
       setAssignTo("team")
+      setPlayerId(players[0]._id)
       setRatingType("rating")
+    }
+  }, [isOpen, players])
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return
+    try {
+      const selectedPlayer = players.find(p => p._id === playerId)
+      if (objective?._id) {
+        const { ok, code } = await api.put(`/scrim-objectif/${objective._id}`, {
+          name,
+          description,
+          rating_type: ratingType,
+          player_id: assignTo === "player" && playerId ? playerId : null,
+          player_name: assignTo === "player" && playerId ? selectedPlayer?.player_name || selectedPlayer?.game_name : null,
+        })
+        if (!ok) return toast.error(code || "Failed to update objective")
+      } else {
+        const { ok, code } = await api.post("/scrim-objectif", {
+          name,
+          description,
+          team_id: user?.team_id,
+          team_name: user?.team_name,
+          rating_type: ratingType,
+          ...(assignTo === "player" && playerId && { player_id: playerId, player_name: selectedPlayer?.player_name || selectedPlayer?.game_name }),
+        })
+        if (!ok) return toast.error(code || "Failed to add objective")
+      }
       onClose()
       onSuccess()
     } catch (error) {
-      toast.error(error.code || "Failed to add objective")
+      toast.error(error.code || "Failed to save objective")
     }
   }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-md bg-slate-800 p-6">
       <div className="space-y-4">
-        <h2 className="text-white font-semibold text-lg">New Scrim Objective</h2>
+        <h2 className="text-white font-semibold text-lg">{objective?._id ? "Edit Scrim Objective" : "New Scrim Objective"}</h2>
         <div className="space-y-3">
           <div>
             <label className="text-slate-400 text-xs font-medium mb-1.5 block">Assign to</label>
@@ -401,7 +427,7 @@ function AddScrimObjectifModal({ isOpen, onClose, onSuccess }) {
               value={name}
               onChange={e => setName(e.target.value)}
               className="w-full bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 text-sm"
-              onKeyDown={e => e.key === "Enter" && handleAdd()}
+              onKeyDown={e => e.key === "Enter" && handleSubmit()}
               autoFocus
             />
           </div>
@@ -413,7 +439,7 @@ function AddScrimObjectifModal({ isOpen, onClose, onSuccess }) {
               value={description}
               onChange={e => setDescription(e.target.value)}
               className="w-full bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 text-sm"
-              onKeyDown={e => e.key === "Enter" && handleAdd()}
+              onKeyDown={e => e.key === "Enter" && handleSubmit()}
             />
           </div>
           <div>
@@ -442,11 +468,11 @@ function AddScrimObjectifModal({ isOpen, onClose, onSuccess }) {
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <button
-            onClick={handleAdd}
+            onClick={handleSubmit}
             disabled={!name.trim()}
             className="px-5 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg transition-colors text-sm"
           >
-            Add
+            {objective?._id ? "Save" : "Add"}
           </button>
         </div>
       </div>
