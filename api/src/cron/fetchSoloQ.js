@@ -163,7 +163,7 @@ async function evaluateStreaks(streakObjectives, player, matchId, smurfPuuid) {
 }
 
 async function fetchSoloQ() {
-  const players = await Player.find({ puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null } });
+  const players = await Player.find({ puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null }, active: { $ne: false } });
   const validPlayers = players.filter((p) => p.puuid && p.puuid.trim() !== '');
 
   if (validPlayers.length === 0) return;
