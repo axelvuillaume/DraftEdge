@@ -198,7 +198,68 @@ export default function StatsV2() {
           <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white font-semibold text-sm uppercase tracking-wider">Performance by Category</h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
+                <button
+                  onClick={() => setViewMode("spider")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    viewMode === "spider" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <Radar className="w-3.5 h-3.5" />
+                  Spider
+                </button>
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    viewMode === "table" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <Table2 className="w-3.5 h-3.5" />
+                  Table
+                </button>
+              </div>
+            </div>
+            <div className="h-px bg-slate-700/50 -mx-5 mb-3" />
+
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
+                <button
+                  onClick={() => setCompareMode("scrim")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    compareMode === "scrim" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  vs Scrim
+                </button>
+                <button
+                  onClick={() => setCompareMode("pro")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    compareMode === "pro" ? "bg-amber-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  vs Pro
+                </button>
+                <button
+                  onClick={() => setCompareMode("soloq")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    compareMode === "soloq" ? "bg-cyan-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  vs SoloQ
+                </button>
+                <button
+                  onClick={() => setCompareMode("offi")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    compareMode === "offi" ? "bg-violet-500/90 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Offi vs Non-Offi
+                </button>
+              </div>
+            </div>
+
+            {compareMode === "pro" && (
+              <div className="mb-3">
                 <ProSearchBar
                   selectedLeagues={selectedLeagues}
                   selectedProTeam={selectedProTeam}
@@ -236,29 +297,9 @@ export default function StatsV2() {
                     setSelectedLeagues([])
                   }}
                 />
-                <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
-                  <button
-                    onClick={() => setViewMode("spider")}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      viewMode === "spider" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    <Radar className="w-3.5 h-3.5" />
-                    Spider
-                  </button>
-                  <button
-                    onClick={() => setViewMode("table")}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      viewMode === "table" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    <Table2 className="w-3.5 h-3.5" />
-                    Table
-                  </button>
-                </div>
               </div>
-            </div>
-            <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
+            )}
+
             <CategoryTabs categories={CATEGORIES} activeCategory={activeCategory} onCategoryChange={setActiveCategory} data={currentData} />
             {(() => {
               const round1 = v => Math.round(v * 10) / 10
@@ -289,47 +330,9 @@ export default function StatsV2() {
 
                 if (noCompareData) {
                   return (
-                    <>
-                      <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-                        <p className="text-sm font-medium">No data</p>
-                      </div>
-                      <div className="flex justify-end mt-4">
-                        <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
-                          <button
-                            onClick={() => setCompareMode("scrim")}
-                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                              compareMode === "scrim" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                            }`}
-                          >
-                            vs Scrim
-                          </button>
-                          <button
-                            onClick={() => setCompareMode("pro")}
-                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                              compareMode === "pro" ? "bg-amber-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
-                            }`}
-                          >
-                            vs Pro
-                          </button>
-                          <button
-                            onClick={() => setCompareMode("soloq")}
-                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                              compareMode === "soloq" ? "bg-cyan-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
-                            }`}
-                          >
-                            vs SoloQ
-                          </button>
-                          <button
-                            onClick={() => setCompareMode("offi")}
-                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                              compareMode === "offi" ? "bg-violet-500/90 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                            }`}
-                          >
-                            Offi vs Non-Offi
-                          </button>
-                        </div>
-                      </div>
-                    </>
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                      <p className="text-sm font-medium">No data for this comparison mode</p>
+                    </div>
                   )
                 }
 
@@ -343,72 +346,15 @@ export default function StatsV2() {
                         : currentData.metrics?.[activeCategory] || []
 
                 return (
-                  <>
-                    <SpiderChart
-                      metrics={spiderMetrics}
-                      isEnemyChampion={!!activeEnemyChampion}
-                      compareMode={compareMode}
-                      proLabel={compareMode === "soloq" ? "SoloQ" : compareMode === "offi" ? "Non-Offi" : proCompareLabel}
-                      teamLabel={compareMode === "offi" ? "Official" : undefined}
-                    />
-                    <div className="flex justify-center gap-4 mt-2 text-[10px] text-slate-500">
-                      {compareMode === "scrim" && currentData.games != null && <span>Scrim: {currentData.games} games</span>}
-                      {compareMode === "pro" && (
-                        <>
-                          {currentData.games != null && <span>Scrim: {currentData.games} games</span>}
-                          <span>Pro: {proGames} games</span>
-                        </>
-                      )}
-                      {compareMode === "soloq" && (
-                        <>
-                          {currentData.games != null && <span>Scrim: {currentData.games} games</span>}
-                          <span>SoloQ: {soloqGames} games</span>
-                        </>
-                      )}
-                      {compareMode === "offi" && officialSplitStats && (
-                        <>
-                          <span>Official: {officialSplitStats.officialGames} games</span>
-                          <span>Non-Official: {officialSplitStats.nonOfficialGames} games</span>
-                        </>
-                      )}
-                    </div>
-                    <div className="flex justify-end mt-4">
-                      <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
-                        <button
-                          onClick={() => setCompareMode("scrim")}
-                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                            compareMode === "scrim" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          vs Scrim
-                        </button>
-                        <button
-                          onClick={() => setCompareMode("pro")}
-                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                            compareMode === "pro" ? "bg-amber-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          vs Pro
-                        </button>
-                        <button
-                          onClick={() => setCompareMode("soloq")}
-                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                            compareMode === "soloq" ? "bg-cyan-500/90 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          vs SoloQ
-                        </button>
-                        <button
-                          onClick={() => setCompareMode("offi")}
-                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                            compareMode === "offi" ? "bg-violet-500/90 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          Offi vs Non-Offi
-                        </button>
-                      </div>
-                    </div>
-                  </>
+                  <SpiderChart
+                    metrics={spiderMetrics}
+                    isEnemyChampion={!!activeEnemyChampion}
+                    compareMode={compareMode}
+                    proLabel={compareMode === "soloq" ? "SoloQ" : compareMode === "offi" ? "Non-Offi" : proCompareLabel}
+                    teamLabel={compareMode === "offi" ? "Official" : undefined}
+                    teamGames={compareMode === "offi" ? officialSplitStats?.officialGames : currentData.games}
+                    compareGames={compareMode === "pro" ? proGames : compareMode === "soloq" ? soloqGames : compareMode === "offi" ? officialSplitStats?.nonOfficialGames : null}
+                  />
                 )
               }
 
@@ -431,26 +377,27 @@ export default function StatsV2() {
               <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">Team Players</h2>
               <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
               <div className="space-y-2">
-                {["top", "jungle", "mid", "bottom", "support"].map((role) => {
+                {["top", "jungle", "mid", "bottom", "support"].map(role => {
                   const player = (teamData.players || []).find(p => p.role === role)
-                  if (player) return (
-                    <div
-                      key={role}
-                      onClick={() => setActivePlayer(player)}
-                      className="bg-slate-900/40 border border-slate-700/40 rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-700/40 hover:border-emerald-500/40 transition-all group"
-                    >
-                      <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                        <img src={`/roles/${role}.png`} alt={role} className="w-5 h-5" onError={e => (e.target.style.display = "none")} />
+                  if (player)
+                    return (
+                      <div
+                        key={role}
+                        onClick={() => setActivePlayer(player)}
+                        className="bg-slate-900/40 border border-slate-700/40 rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-700/40 hover:border-emerald-500/40 transition-all group"
+                      >
+                        <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">
+                          <img src={`/roles/${role}.png`} alt={role} className="w-5 h-5" onError={e => (e.target.style.display = "none")} />
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">{player.name}</span>
+                        </div>
+                        <span className="text-slate-400 text-xs">{player.games || 0}G</span>
+                        <span className={`font-bold text-sm ${player.score >= 70 ? "text-emerald-400" : player.score >= 50 ? "text-amber-400" : "text-red-400"}`}>
+                          {player.score || 0}
+                        </span>
                       </div>
-                      <div className="flex-1">
-                        <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">{player.name}</span>
-                      </div>
-                      <span className="text-slate-400 text-xs">{player.games || 0}G</span>
-                      <span className={`font-bold text-sm ${player.score >= 70 ? "text-emerald-400" : player.score >= 50 ? "text-amber-400" : "text-red-400"}`}>
-                        {player.score || 0}
-                      </span>
-                    </div>
-                  )
+                    )
                   return (
                     <div
                       key={role}
@@ -664,7 +611,7 @@ function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats
   )
 }
 
-function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel, teamLabel }) {
+function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel, teamLabel, teamGames, compareGames }) {
   const [hoveredIndex, setHoveredIndex] = useState(null)
 
   if (!metrics || metrics.length === 0) {
@@ -841,12 +788,14 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel, teamLabe
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-emerald-500" />
           <span className="text-slate-400 text-xs">{displayTeamLabel}</span>
+          {teamGames != null && <span className="text-slate-600 text-[10px]">{teamGames}G</span>}
         </div>
         <div className="flex items-center gap-2">
           <div
             className={`w-3 h-3 rounded-full ${compareMode === "offi" ? "bg-violet-500" : compareMode === "soloq" ? "bg-cyan-500" : compareMode === "pro" ? "bg-amber-500" : "bg-red-500"}`}
           />
           <span className="text-slate-400 text-xs">{enemyLabel}</span>
+          {compareGames != null && <span className="text-slate-600 text-[10px]">{compareGames}G</span>}
         </div>
       </div>
     </div>
@@ -964,7 +913,7 @@ function ProSearchBar({
       </div>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 w-[260px]">
+        <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 w-[300px]">
           <div className="p-2 border-b border-slate-700">
             <input
               autoFocus
@@ -974,34 +923,70 @@ function ProSearchBar({
               className="w-full bg-slate-900/60 border border-slate-600 rounded-md px-2.5 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-amber-500/60 transition-colors"
             />
           </div>
-          <div className="max-h-64 overflow-y-auto">
+          <div className="max-h-72 overflow-y-auto">
             {!q ? (
-              <div className="p-3">
-                <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-2">Active Leagues</p>
-                <button
-                  onClick={onClearLeagues}
-                  className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedLeagues.length === 0 && proSubMode === "avg" ? "text-amber-400" : "text-white"}`}
-                >
-                  All Leagues (Pro Avg)
-                </button>
-                {leagues.map(l => (
+              <div className="p-2 space-y-3">
+                <div>
+                  <p className="text-slate-500 text-[10px] uppercase tracking-wider px-1 mb-1">Leagues</p>
                   <button
-                    key={l}
-                    onClick={() => onSelectLeague(l)}
-                    className="w-full text-left px-2 py-1.5 text-xs hover:bg-slate-700 transition-colors flex items-center gap-2 rounded"
+                    onClick={onClearLeagues}
+                    className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedLeagues.length === 0 && proSubMode === "avg" ? "text-amber-400 font-medium" : "text-white"}`}
                   >
-                    <div
-                      className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${selectedLeagues.includes(l) ? "bg-amber-500 border-amber-500" : "border-slate-500"}`}
-                    >
-                      {selectedLeagues.includes(l) && (
-                        <svg className="w-2 h-2 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-white">{l}</span>
+                    All Leagues (Pro Avg)
                   </button>
-                ))}
+                  {["LEC", "LCK", "LPL"].filter(l => leagues.includes(l)).map(l => (
+                    <button
+                      key={l}
+                      onClick={() => onSelectLeague(l)}
+                      className="w-full text-left px-2 py-1.5 text-xs hover:bg-slate-700 transition-colors flex items-center gap-2 rounded"
+                    >
+                      <div
+                        className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${selectedLeagues.includes(l) ? "bg-amber-500 border-amber-500" : "border-slate-500"}`}
+                      >
+                        {selectedLeagues.includes(l) && (
+                          <svg className="w-2 h-2 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-white">{l}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t border-slate-700/50 pt-2">
+                  <p className="text-slate-500 text-[10px] uppercase tracking-wider px-1 mb-1">Teams</p>
+                  {["T1", "G2 Esports", "Gen.G"].filter(t => teams.includes(t)).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => {
+                        onSelectTeam(t)
+                        setSearchInput("")
+                        setIsOpen(false)
+                      }}
+                      className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedProTeam === t ? "text-amber-400 font-medium" : "text-white"}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t border-slate-700/50 pt-2">
+                  <p className="text-slate-500 text-[10px] uppercase tracking-wider px-1 mb-1">Players</p>
+                  {["Faker", "Caps", "Chovy"].map(n => players.find(p => p.name === n)).filter(Boolean).map(p => (
+                    <button
+                      key={p.name}
+                      onClick={() => {
+                        onSelectPlayer(p)
+                        setSearchInput("")
+                        setIsOpen(false)
+                      }}
+                      className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedProPlayer?.name === p.name ? "text-amber-400 font-medium" : "text-white"}`}
+                    >
+                      <span>{p.name}</span>
+                      {p.team && <span className="text-slate-500 ml-1.5">{p.team}</span>}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-slate-600 text-[10px] text-center pt-1">Type to search more...</p>
               </div>
             ) : filteredLeagues.length === 0 && filteredTeams.length === 0 && filteredPlayers.length === 0 ? (
               <div className="text-slate-500 text-xs text-center py-4">No results</div>
