@@ -934,57 +934,64 @@ function ProSearchBar({
                   >
                     All Leagues (Pro Avg)
                   </button>
-                  {["LEC", "LCK", "LPL"].filter(l => leagues.includes(l)).map(l => (
-                    <button
-                      key={l}
-                      onClick={() => onSelectLeague(l)}
-                      className="w-full text-left px-2 py-1.5 text-xs hover:bg-slate-700 transition-colors flex items-center gap-2 rounded"
-                    >
-                      <div
-                        className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${selectedLeagues.includes(l) ? "bg-amber-500 border-amber-500" : "border-slate-500"}`}
+                  {["LEC", "LCK", "LPL"]
+                    .filter(l => leagues.includes(l))
+                    .map(l => (
+                      <button
+                        key={l}
+                        onClick={() => onSelectLeague(l)}
+                        className="w-full text-left px-2 py-1.5 text-xs hover:bg-slate-700 transition-colors flex items-center gap-2 rounded"
                       >
-                        {selectedLeagues.includes(l) && (
-                          <svg className="w-2 h-2 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="text-white">{l}</span>
-                    </button>
-                  ))}
+                        <div
+                          className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${selectedLeagues.includes(l) ? "bg-amber-500 border-amber-500" : "border-slate-500"}`}
+                        >
+                          {selectedLeagues.includes(l) && (
+                            <svg className="w-2 h-2 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-white">{l}</span>
+                      </button>
+                    ))}
                 </div>
                 <div className="border-t border-slate-700/50 pt-2">
                   <p className="text-slate-500 text-[10px] uppercase tracking-wider px-1 mb-1">Teams</p>
-                  {["T1", "G2 Esports", "Gen.G"].filter(t => teams.includes(t)).map(t => (
-                    <button
-                      key={t}
-                      onClick={() => {
-                        onSelectTeam(t)
-                        setSearchInput("")
-                        setIsOpen(false)
-                      }}
-                      className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedProTeam === t ? "text-amber-400 font-medium" : "text-white"}`}
-                    >
-                      {t}
-                    </button>
-                  ))}
+                  {["T1", "G2 Esports", "Gen.G"]
+                    .filter(t => teams.includes(t))
+                    .map(t => (
+                      <button
+                        key={t}
+                        onClick={() => {
+                          onSelectTeam(t)
+                          setSearchInput("")
+                          setIsOpen(false)
+                        }}
+                        className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedProTeam === t ? "text-amber-400 font-medium" : "text-white"}`}
+                      >
+                        {t}
+                      </button>
+                    ))}
                 </div>
                 <div className="border-t border-slate-700/50 pt-2">
                   <p className="text-slate-500 text-[10px] uppercase tracking-wider px-1 mb-1">Players</p>
-                  {["Faker", "Caps", "Chovy"].map(n => players.find(p => p.name === n)).filter(Boolean).map(p => (
-                    <button
-                      key={p.name}
-                      onClick={() => {
-                        onSelectPlayer(p)
-                        setSearchInput("")
-                        setIsOpen(false)
-                      }}
-                      className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedProPlayer?.name === p.name ? "text-amber-400 font-medium" : "text-white"}`}
-                    >
-                      <span>{p.name}</span>
-                      {p.team && <span className="text-slate-500 ml-1.5">{p.team}</span>}
-                    </button>
-                  ))}
+                  {["Faker", "Caps", "Chovy"]
+                    .map(n => players.find(p => p.name === n))
+                    .filter(Boolean)
+                    .map(p => (
+                      <button
+                        key={p.name}
+                        onClick={() => {
+                          onSelectPlayer(p)
+                          setSearchInput("")
+                          setIsOpen(false)
+                        }}
+                        className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-700 transition-colors ${selectedProPlayer?.name === p.name ? "text-amber-400 font-medium" : "text-white"}`}
+                      >
+                        <span>{p.name}</span>
+                        {p.team && <span className="text-slate-500 ml-1.5">{p.team}</span>}
+                      </button>
+                    ))}
                 </div>
                 <p className="text-slate-600 text-[10px] text-center pt-1">Type to search more...</p>
               </div>
