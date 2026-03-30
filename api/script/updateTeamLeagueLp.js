@@ -13,8 +13,8 @@ async function main() {
   console.log(`Found ${teams.length} team-leagues\n`);
 
   for (const team of teams) {
-    const players = await Player.find({ team_league_id: team._id.toString(), is_league: true, current_tier: { $in: MASTER_TIERS } });
-    const totalLp = players.reduce((sum, p) => sum + (p.current_lp || 0), 0);
+    const players = await Player.find({ team_league_id: team._id.toString(), is_league: true, active: true, current_tier: { $in: MASTER_TIERS } });
+    const totalLp = players.sort((a, b) => (b.current_lp || 0) - (a.current_lp || 0)).slice(0, 5).reduce((sum, p) => sum + (p.current_lp || 0), 0);
     await TeamLeague.findByIdAndUpdate(team._id, { total_lp: totalLp });
     console.log(`${team.name}: ${totalLp} LP (${players.length} master+ players)`);
     for (const p of players) {

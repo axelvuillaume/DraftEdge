@@ -8,7 +8,7 @@ async function main() {
   await mongoose.connect(MONGODB_ENDPOINT);
   console.log("MongoDB Connected\n");
 
-  const teamLeagues = await TeamLeague.find({ players_ids: { $exists: true, $ne: [] } });
+  const teamLeagues = await TeamLeague.find({ players: { $exists: true, $ne: [] } });
   console.log(`Found ${teamLeagues.length} team-leagues with players\n`);
 
   let created = 0;
@@ -17,9 +17,9 @@ async function main() {
   for (const teamLeague of teamLeagues) {
     console.log(`\n--- ${teamLeague.name} (${teamLeague.league_name || "no league"}) ---`);
 
-    for (let i = 0; i < teamLeague.players_ids.length; i++) {
-      const riotId = teamLeague.players_ids[i];
-      const playerName = teamLeague.players?.[i] || riotId;
+    for (let i = 0; i < teamLeague.players.length; i++) {
+      const riotId = teamLeague.players[i].riot_id;
+      const playerName = teamLeague.players[i].name || riotId;
 
       if (!riotId || !riotId.includes("#")) {
         console.log(`  Skipping invalid riot id: ${riotId}`);

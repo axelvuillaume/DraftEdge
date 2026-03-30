@@ -94,14 +94,12 @@ export default function List() {
           <table className="w-full table-fixed">
             <thead className="flex-shrink-0">
               <tr className="border-b border-slate-700/50">
-                <th className="w-[4%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-2 py-3">#</th>
-                <th className="w-[18%] text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Team</th>
-                <th className="w-[12%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Total LP</th>
-                <th className="w-[10%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Points</th>
-                <th className="w-[10%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Players</th>
-                <th className="w-[10%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Staff</th>
-                <th className="w-[18%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Manager</th>
-                <th className="w-[18%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Captain</th>
+                <th className="w-[5%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-2 py-3">#</th>
+                <th className="w-[25%] text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Team</th>
+                <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Total LP</th>
+                <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Points</th>
+                <th className="w-[20%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Captain</th>
+                <th className="w-[20%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Manager</th>
               </tr>
             </thead>
           </table>
@@ -110,36 +108,30 @@ export default function List() {
               <tbody>
                 {teams.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center text-slate-500 py-12 text-sm">
+                    <td colSpan={6} className="text-center text-slate-500 py-12 text-sm">
                       {filters.search ? "No teams match your search" : "No teams in this league yet"}
                     </td>
                   </tr>
                 ) : (
                   teams.map((t, i) => (
                     <tr key={t._id} onClick={() => navigate(`/league/${t._id}`)} className="border-b border-slate-700/30 hover:bg-slate-700/20 cursor-pointer transition-colors">
-                      <td className="w-[4%] px-2 py-4 text-center">
+                      <td className="w-[5%] px-2 py-4 text-center">
                         <span className="text-slate-500 text-sm font-medium">{i + 1}</span>
                       </td>
-                      <td className="w-[18%] px-6 py-4">
+                      <td className="w-[25%] px-6 py-4">
                         <span className="text-white font-medium text-sm truncate">{t.name}</span>
                       </td>
-                      <td className="w-[12%] px-4 py-4 text-center">
+                      <td className="w-[15%] px-4 py-4 text-center">
                         <span className="text-amber-400 text-sm font-medium">{t.total_lp || 0}</span>
                       </td>
-                      <td className="w-[10%] px-4 py-4 text-center">
+                      <td className="w-[15%] px-4 py-4 text-center">
                         <span className="text-amber-400 text-sm font-medium">{t.points || 0}</span>
                       </td>
-                      <td className="w-[10%] px-4 py-4 text-center">
-                        <span className="text-slate-400 text-sm">{t.players_ids?.length || 0}</span>
+                      <td className="w-[20%] px-4 py-4 text-center">
+                        <span className="text-slate-400 text-sm truncate">{t.contacts?.find((c) => c.role === "Captain")?.name || t.contacts?.find((c) => c.role === "Captain")?.discord || "—"}</span>
                       </td>
-                      <td className="w-[10%] px-4 py-4 text-center">
-                        <span className="text-slate-400 text-sm">{t.staff?.length || 0}</span>
-                      </td>
-                      <td className="w-[18%] px-4 py-4 text-center">
-                        <span className="text-slate-400 text-sm truncate">{t.discord_manager || "—"}</span>
-                      </td>
-                      <td className="w-[18%] px-4 py-4 text-center">
-                        <span className="text-slate-400 text-sm truncate">{t.discord_captain || "—"}</span>
+                      <td className="w-[20%] px-4 py-4 text-center">
+                        <span className="text-slate-400 text-sm truncate">{t.contacts?.find((c) => c.role === "Manager")?.name || t.contacts?.find((c) => c.role === "Manager")?.discord || "—"}</span>
                       </td>
                     </tr>
                   ))
