@@ -44,7 +44,9 @@ export default function SoloQOverviewTab({ player, soloqOverview }) {
           <>
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex flex-col">
               <span className="text-slate-500 text-xs uppercase tracking-wider">KDA (SoloQ)</span>
-              <span className={`text-2xl font-bold mt-1 ${soloqOverview.overall.kda >= 3 ? "text-emerald-400" : soloqOverview.overall.kda >= 2 ? "text-amber-400" : "text-red-400"}`}>
+              <span
+                className={`text-2xl font-bold mt-1 ${soloqOverview.overall.kda >= 3 ? "text-emerald-400" : soloqOverview.overall.kda >= 2 ? "text-amber-400" : "text-red-400"}`}
+              >
                 {soloqOverview.overall.kda.toFixed(1)}
               </span>
               <span className="text-slate-500 text-xs mt-0.5">

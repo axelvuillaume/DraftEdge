@@ -14,6 +14,67 @@ const PERIODS = [
   { value: "all", label: "All Time" }
 ]
 
+function ArchivedPlayersModal({ players, onClose, onRestore }) {
+  const archived = players.filter(p => p.active === false)
+  const activeRoles = players.filter(p => p.active !== false).map(p => p.role)
+
+  if (archived.length === 0)
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-lg mx-4 shadow-2xl p-8 text-center" onClick={e => e.stopPropagation()}>
+          <Archive className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+          <p className="text-slate-400">No archived players</p>
+          <button onClick={onClose} className="mt-4 px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    )
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-lg mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
+          <h2 className="text-white font-semibold flex items-center gap-2">
+            <Archive className="w-4 h-4 text-slate-400" />
+            Archived Players
+          </h2>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-white transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="divide-y divide-slate-700/30">
+          {archived.map(p => (
+            <div key={p._id} className="flex items-center gap-3 px-6 py-3">
+              <img src={`/roles/${p.role}.png`} alt={p.role} className="w-5 h-5 opacity-50" />
+              <span className="text-amber-400 font-semibold text-xs uppercase w-16">{ROLE_LABELS[p.role]}</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-white text-sm font-medium truncate">{p.player_name || p.game_name}</span>
+                <span className="text-slate-500 text-xs ml-2">
+                  {p.game_name}#{p.tag_line}
+                </span>
+              </div>
+              {p.current_tier && (
+                <span className="text-xs text-slate-400">
+                  {p.current_tier} {p.current_rank || ""} {p.current_lp ?? 0} LP
+                </span>
+              )}
+              {!activeRoles.includes(p.role) && (
+                <button
+                  onClick={() => onRestore(p._id)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-all"
+                >
+                  Restore
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function EditRosterModal({ players, onClose }) {
   const { user, team, setTeam } = useStore()
   const [roster, setRoster] = useState({})
@@ -231,6 +292,7 @@ export default function SoloQ() {
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState("week")
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showArchivedModal, setShowArchivedModal] = useState(false)
   const navigate = useNavigate()
 
   const fetchPlayers = async () => {
@@ -297,6 +359,17 @@ export default function SoloQ() {
     }
   }
 
+  const handleRestore = async playerId => {
+    try {
+      const { ok, code } = await api.put(`/player/${playerId}`, { active: true })
+      if (!ok) return toast.error(code || "Failed to restore player")
+      await fetchPlayers()
+      toast.success("Player restored")
+    } catch (error) {
+      toast.error(error.code || "Failed to restore player")
+    }
+  }
+
   const openEditModal = e => {
     e?.stopPropagation()
     setShowEditModal(true)
@@ -343,7 +416,8 @@ export default function SoloQ() {
           (() => {
             const teamStats = connected.reduce((acc, p) => ({ w: acc.w + getMatchStats(p._id).w, l: acc.l + getMatchStats(p._id).l }), { w: 0, l: 0 })
             return (
-              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl px-6 py-3 flex items-center gap-10">
+              <div className="flex items-center gap-3">
+              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl px-6 py-3 flex items-center gap-10 flex-1">
                 <div className="flex items-center gap-10 flex-1 justify-center">
                   <div className="flex items-center gap-2">
                     <Zap className="w-3.5 h-3.5 text-amber-400" />
@@ -401,6 +475,11 @@ export default function SoloQ() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <button onClick={() => setShowArchivedModal(true)} className="flex items-center gap-1.5 text-slate-500 text-xs hover:text-slate-300 transition-colors shrink-0">
+                <Archive className="w-3.5 h-3.5" />
+                Archived
+              </button>
               </div>
             )
           })()}
@@ -562,6 +641,8 @@ export default function SoloQ() {
           }}
         />
       )}
+
+      {showArchivedModal && <ArchivedPlayersModal players={players} onClose={() => setShowArchivedModal(false)} onRestore={handleRestore} />}
     </div>
   )
 }
