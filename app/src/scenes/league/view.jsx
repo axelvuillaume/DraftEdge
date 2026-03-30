@@ -220,9 +220,10 @@ function PlayersList({ team }) {
           <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">Players ({players.length})</h2>
         </div>
         {players.length > 0 && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <Trophy className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-amber-400 text-sm font-medium">{players.reduce((sum, p) => sum + (p.current_lp || 0), 0)} LP</span>
+            <span className="text-slate-500 text-xs">Best of 5</span>
           </div>
         )}
       </div>
