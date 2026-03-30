@@ -419,7 +419,10 @@ export default function StatsV2() {
 
           {activePlayer && !activeChampion && !activeEnemyChampion && (
             <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
-              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">Champions</h2>
+              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+                <img src={`/roles/${activePlayer.role}.png`} alt={activePlayer.role} className="w-5 h-5 opacity-60" onError={e => (e.target.style.display = "none")} />
+                {activePlayer.name} Champions
+              </h2>
               <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
               <Matchups data={activePlayer} onChampionClick={setActiveChampion} />
             </div>
@@ -427,7 +430,10 @@ export default function StatsV2() {
 
           {activeChampion && !activeEnemyChampion && (
             <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
-              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">Matchup Details</h2>
+              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+                <img src={getChampionIcon(activeChampion.name)} alt={activeChampion.name} className="w-6 h-6 rounded-full" onError={e => (e.target.style.display = "none")} />
+                {activeChampion.name} <span className="text-slate-500">vs</span>
+              </h2>
               <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
               <Matchups data={activeChampion} readOnly />
             </div>
@@ -496,8 +502,8 @@ function Breadcrumb({ teamData, activePlayer, activeChampion, activeEnemyChampio
       {activeEnemyChampion && (
         <>
           <span className="text-slate-600">/</span>
-          <span className="text-red-400 font-medium flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-red-500" />
+          <span className="text-red-400 font-medium flex items-center gap-1.5">
+            <img src={getChampionIcon(activeEnemyChampion.name)} alt={activeEnemyChampion.name} className="w-5 h-5 rounded-full" onError={e => (e.target.style.display = "none")} />
             {activeEnemyChampion.name}
           </span>
         </>
