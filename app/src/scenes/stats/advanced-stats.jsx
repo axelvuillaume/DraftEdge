@@ -3,7 +3,7 @@ import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import { getChampionIcon } from "@/utils"
-import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon } from "@/components/icons/performance-icons"
+import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon, PingsIcon } from "@/components/icons/performance-icons"
 import { ChevronLeft, ChevronDown, Radar, Table2, Search } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
@@ -13,7 +13,8 @@ const CATEGORIES = [
   { id: "Vision", icon: PatternIcon, color: "#0ea5e9" },
   { id: "Income", icon: ScalingIcon, color: "#a855f7" },
   { id: "Combat", icon: CombatIcon, color: "#3b82f6" },
-  { id: "Objectives", icon: ObjectivesIcon, color: "#f97316" }
+  { id: "Objectives", icon: ObjectivesIcon, color: "#f97316" },
+  { id: "Pings", icon: PingsIcon, color: "#ec4899" }
 ]
 
 export default function StatsV2() {
@@ -326,7 +327,8 @@ export default function StatsV2() {
                 const noCompareData =
                   (compareMode === "pro" && !proGames) ||
                   (compareMode === "soloq" && !soloqGames) ||
-                  (compareMode === "offi" && (!officialSplitStats || !officialSplitStats.officialGames))
+                  (compareMode === "offi" && (!officialSplitStats || !officialSplitStats.officialGames)) ||
+                  (compareMode === "pro" && proStats?.[activeCategory] === "No data")
 
                 if (noCompareData) {
                   return (

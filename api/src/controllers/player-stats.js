@@ -43,6 +43,11 @@ const aggregateStats = (stats) => {
       acc.enemy_jungle += curr.farm?.enemy_jungle || 0;
       acc.gold_from_turret_plates += curr.gold_from_turret_plates || 0;
       acc.gold_from_shutdowns += curr.gold_from_shutdowns || 0;
+      acc.ping_on_my_way += curr.pings?.on_my_way || 0;
+      acc.ping_danger += curr.pings?.danger || 0;
+      acc.ping_enemy_missing += curr.pings?.enemy_missing || 0;
+      acc.ping_basic += curr.pings?.basic || 0;
+      acc.ping_enemy_vision += curr.pings?.enemy_vision || 0;
       acc.games += 1;
       return acc;
     },
@@ -72,6 +77,11 @@ const aggregateStats = (stats) => {
       enemy_jungle: 0,
       gold_from_turret_plates: 0,
       gold_from_shutdowns: 0,
+      ping_on_my_way: 0,
+      ping_danger: 0,
+      ping_enemy_missing: 0,
+      ping_basic: 0,
+      ping_enemy_vision: 0,
       games: 0,
     },
   );
@@ -122,6 +132,15 @@ const getMetrics = (t, e, category) => {
       { name: 'Plates Gold / game', team: round1(getAvg(t.gold_from_turret_plates, t.games)), enemies: round1(getAvg(e.gold_from_turret_plates, e.games)) },
     ];
   }
+  if (category === 'Pings') {
+    return [
+      { name: 'On My Way / game', team: round1(getAvg(t.ping_on_my_way, t.games)), enemies: round1(getAvg(e.ping_on_my_way, e.games)) },
+      { name: 'Danger / game', team: round1(getAvg(t.ping_danger, t.games)), enemies: round1(getAvg(e.ping_danger, e.games)) },
+      { name: 'Enemy Missing / game', team: round1(getAvg(t.ping_enemy_missing, t.games)), enemies: round1(getAvg(e.ping_enemy_missing, e.games)) },
+      { name: 'Basic / game', team: round1(getAvg(t.ping_basic, t.games)), enemies: round1(getAvg(e.ping_basic, e.games)) },
+      { name: 'Enemy Vision / game', team: round1(getAvg(t.ping_enemy_vision, t.games)), enemies: round1(getAvg(e.ping_enemy_vision, e.games)) },
+    ];
+  }
   return [];
 };
 
@@ -141,7 +160,7 @@ const calculateScore = (metrics) => {
 
 const getAllMetrics = (teamAgg, enemyAgg) => {
   const result = {};
-  ['Combat', 'Objectives', 'Vision', 'Income'].forEach((cat) => {
+  ['Combat', 'Objectives', 'Vision', 'Income', 'Pings'].forEach((cat) => {
     result[cat] = getMetrics(teamAgg, enemyAgg, cat).map((m) => {
       let diff = m.enemies > 0 ? ((m.team - m.enemies) / m.enemies) * 100 : m.team > 0 ? 100 : 0;
       if (m.invert) diff = -diff;
@@ -831,7 +850,7 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
     const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
 
     const getCategoryScores = (teamAgg, enemyAgg) => {
-      const categories = ['Combat', 'Objectives', 'Vision', 'Income'];
+      const categories = ['Combat', 'Objectives', 'Vision', 'Income', 'Pings'];
       const scores = {};
       categories.forEach((cat) => {
         const metrics = getMetrics(teamAgg, enemyAgg, cat);
@@ -1351,7 +1370,7 @@ router.post('/official_split', passport.authenticate(['admin', 'user'], { sessio
       const t = aggregateStats(tStats);
       const e = aggregateStats(eStats);
       const result = {};
-      ['Combat', 'Objectives', 'Vision', 'Income'].forEach((cat) => {
+      ['Combat', 'Objectives', 'Vision', 'Income', 'Pings'].forEach((cat) => {
         result[cat] = {};
         getMetrics(t, e, cat).forEach((m) => {
           result[cat][m.name] = m.team;

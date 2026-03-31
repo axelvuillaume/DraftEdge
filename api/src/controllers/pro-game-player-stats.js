@@ -202,6 +202,7 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
         'Enemy Jungle / game': '-',
         'Plates Gold / game': '-',
       },
+      Pings: 'No data',
     };
 
     return res.status(200).send({ ok: true, data: result, total: n });

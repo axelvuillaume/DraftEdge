@@ -46,3 +46,5 @@ export const CombatIcon = () => (
     <path d="M26.9999 27V22.5L21.4999 17.5641L17.564 21.5L22.4999 27H26.9999Z" fill="#cbd5e1"></path>
   </svg>
 )
+
+export const PingsIcon = () => <img src="/icons/Generic_ping.png" alt="pings" className="size-3.5 z-20 opacity-50 brightness-0 invert" />
