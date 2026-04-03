@@ -199,7 +199,16 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     if (req.body.patch) query.patch = { $regex: `^${req.body.patch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` };
     if (req.body.opponent_id) query.opponent_id = req.body.opponent_id;
     if (req.body.official === true) query.official = true;
-    else if (req.body.official === false) query.official = { $ne: true };
+    if (req.body.official === false) query.official = { $ne: true };
+    if (req.body.search) {
+      const s = req.body.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.$or = [
+        { name: { $regex: s, $options: 'i' } },
+        { opponent_name: { $regex: s, $options: 'i' } },
+        { patch: { $regex: s, $options: 'i' } },
+        { game_id: { $regex: s, $options: 'i' } },
+      ];
+    }
     const limit = req.body.limit || 50;
     const skip = req.body.offset || 0;
     const total = await Game.countDocuments(query);

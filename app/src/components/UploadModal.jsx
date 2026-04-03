@@ -43,7 +43,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
   const [newFolderName, setNewFolderName] = useState("")
 
   const [historyGames, setHistoryGames] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
+  const [historyFilters, setHistoryFilters] = useState({ search: "" })
   const [selectedHistoryIds, setSelectedHistoryIds] = useState([])
   const [addingGames, setAddingGames] = useState(false)
 
@@ -56,21 +56,27 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
     }
   }, [isOpen, session?.opponent_name, session?.folder_id])
 
-  useEffect(() => {
-    if (isOpen && user?.team_id) {
-      api.post("/folder/search", { team_id: user.team_id }).then(({ ok, data }) => {
-        if (ok) setFolders(data)
-      })
+  const fetchFolders = async () => {
+    try {
+      const { ok, data, code } = await api.post("/folder/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code || "Failed to fetch folders")
+      setFolders(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch folders")
     }
+  }
+
+  useEffect(() => {
+    if (isOpen && user?.team_id) fetchFolders()
   }, [isOpen, user?.team_id])
 
   useEffect(() => {
     if (isOpen && activeTab === "history" && user?.team_id && session) fetchHistoryGames()
-  }, [isOpen, activeTab, user?.team_id])
+  }, [isOpen, activeTab, user?.team_id, historyFilters])
 
   const fetchHistoryGames = async () => {
     try {
-      const { ok, data, code } = await api.post("/game/search", { team_id: user?.team_id, limit: 100, session_id: null })
+      const { ok, data, code } = await api.post("/game/search", { team_id: user?.team_id, limit: 100, session_id: null, patch: getPatchPrefix(session?.patch), ...historyFilters })
       if (!ok) return toast.error(code || "Failed to fetch games")
       setHistoryGames(data)
     } catch (error) {
@@ -200,25 +206,11 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
     setRoflConfig({ team_side: "", opponent: null, name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "" })
     setActiveTab("import")
     setSelectedHistoryIds([])
-    setSearchQuery("")
+    setHistoryFilters({ search: "" })
     setShowFolderDropdown(false)
     setNewFolderName("")
     onClose()
   }
-
-  const hasPatchMismatch = session?.patch && roflPreview && !patchesMatch(session.patch, roflPreview.game?.patch)
-
-  const filteredHistoryGames = historyGames.filter(g => {
-    if (session?.patch && !patchesMatch(session.patch, g.patch)) return false
-    if (!searchQuery.trim()) return true
-    const q = searchQuery.toLowerCase()
-    return (
-      (g.name && g.name.toLowerCase().includes(q)) ||
-      (g.opponent_name && g.opponent_name.toLowerCase().includes(q)) ||
-      (g.patch && g.patch.toLowerCase().includes(q)) ||
-      (g.game_id && g.game_id.toLowerCase().includes(q))
-    )
-  })
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl w-full max-h-[90vh] overflow-y-auto bg-slate-800 border border-slate-700">
@@ -274,7 +266,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
               <div className="space-y-4">
                 {roflPreview && <RoflPreview roflPreview={roflPreview} />}
 
-                {hasPatchMismatch && (
+                {session?.patch && roflPreview && !patchesMatch(session.patch, roflPreview.game?.patch) && (
                   <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
                     <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
                     <p className="text-red-400 text-sm">
@@ -522,7 +514,14 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
             <div className="flex justify-end mt-6">
               <button
                 onClick={handleUpload}
-                disabled={!file || uploading || parsing || !roflConfig.team_side || (!session && !roflConfig.opponent?.name) || hasPatchMismatch}
+                disabled={
+                  !file ||
+                  uploading ||
+                  parsing ||
+                  !roflConfig.team_side ||
+                  (!session && !roflConfig.opponent?.name) ||
+                  (session?.patch && roflPreview && !patchesMatch(session.patch, roflPreview.game?.patch))
+                }
                 className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
               >
                 {uploading ? (
@@ -548,22 +547,22 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
               <input
                 type="text"
                 placeholder="Search by name, opponent, patch..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                value={historyFilters.search}
+                onChange={e => setHistoryFilters(prev => ({ ...prev, search: e.target.value }))}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-600/50 bg-slate-700/30 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all text-sm"
               />
             </div>
 
-            {filteredHistoryGames.length === 0 ? (
+            {historyGames.length === 0 ? (
               <div className="text-center py-14">
                 <div className="w-14 h-14 rounded-2xl bg-slate-700/30 flex items-center justify-center mx-auto mb-4">
                   <Gamepad2 className="w-7 h-7 text-slate-600" />
                 </div>
-                <p className="text-slate-400 text-sm">{searchQuery ? "No games match your search" : "No games found for your team"}</p>
+                <p className="text-slate-400 text-sm">{historyFilters.search ? "No games match your search" : "No games found for your team"}</p>
               </div>
             ) : (
               <div className="max-h-[400px] overflow-y-auto space-y-1.5 pr-1">
-                {filteredHistoryGames.map(game => (
+                {historyGames.map(game => (
                   <HistoryGameRow
                     key={game._id}
                     game={game}
