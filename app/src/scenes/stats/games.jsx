@@ -5,7 +5,7 @@ import api from "@/services/api"
 import { Clock, Swords, Trash2, MoreVertical, Folder, Plus, Check, FolderInput, X, Pencil, ImagePlus } from "lucide-react"
 import Modal from "@/components/modal"
 import OpponentDropdown from "@/components/OpponentDropdown"
-import { UploadModal } from "@/components/NavBar"
+import UploadModal from "@/components/UploadModal"
 import useStore from "@/services/store"
 import { getChampionIcon, getItemIcon, getSummonerSpellIcon, getRuneIcon, ROLES, ROLE_LABELS, ROLE_ICON_COLORS, TIER_SHORT, TIER_COLOR } from "@/utils"
 
@@ -179,7 +179,6 @@ export default function Games() {
       <UploadModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
-        user={user}
         onSuccess={() => {
           setShowImportModal(false)
           fetchGames()
