@@ -33,11 +33,11 @@ export default function SoloQOverviewTab({ player, soloqOverview }) {
         </div>
 
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex flex-col">
-          <span className="text-slate-500 text-xs uppercase tracking-wider">W / L</span>
+          <span className="text-slate-500 text-xs uppercase tracking-wider">Win Rate</span>
           <span className={`text-2xl font-bold mt-1 ${rankedWR && parseFloat(rankedWR) >= 50 ? "text-emerald-400" : "text-red-400"}`}>
-            {totalRanked > 0 ? `${player.current_wins || 0} / ${player.current_losses || 0}` : "-"}
+            {rankedWR ? `${rankedWR}%` : "-"}
           </span>
-          {rankedWR && <span className="text-slate-500 text-xs mt-0.5">{rankedWR}% WR</span>}
+          {totalRanked > 0 && <span className="text-slate-500 text-xs mt-0.5">{player.current_wins || 0}W {player.current_losses || 0}L</span>}
         </div>
 
         {soloqOverview?.overall && (
@@ -54,9 +54,8 @@ export default function SoloQOverviewTab({ player, soloqOverview }) {
               </span>
             </div>
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex flex-col">
-              <span className="text-slate-500 text-xs uppercase tracking-wider">Games analyzed</span>
-              <span className="text-2xl font-bold mt-1 text-violet-400">{soloqOverview.overall.games}</span>
-              <span className="text-slate-500 text-xs mt-0.5">{soloqOverview.overall.winRate}% WR</span>
+              <span className="text-slate-500 text-xs uppercase tracking-wider">Pinks / game</span>
+              <span className="text-2xl font-bold mt-1 text-pink-400">{soloqOverview.overall.controlWardsPerGame}</span>
             </div>
           </>
         )}

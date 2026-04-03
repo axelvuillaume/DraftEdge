@@ -215,10 +215,11 @@ function aggregateSoloQ(matches) {
       acc.gold += m.goldEarned || 0;
       acc.damage += m.totalDamageDealtToChampions || 0;
       acc.visionScore += m.visionScore || 0;
+      acc.controlWards += m.visionWardsBoughtInGame || 0;
       acc.duration += m.gameDuration || 0;
       return acc;
     },
-    { wins: 0, kills: 0, deaths: 0, assists: 0, cs: 0, gold: 0, damage: 0, visionScore: 0, duration: 0 },
+    { wins: 0, kills: 0, deaths: 0, assists: 0, cs: 0, gold: 0, damage: 0, visionScore: 0, controlWards: 0, duration: 0 },
   );
 
   const durationMin = totals.duration / 60;
@@ -234,6 +235,7 @@ function aggregateSoloQ(matches) {
     dmgPerMin: Math.round(durationMin > 0 ? totals.damage / durationMin : 0),
     goldPerMin: Math.round(durationMin > 0 ? totals.gold / durationMin : 0),
     visionScorePerMin: round2(durationMin > 0 ? totals.visionScore / durationMin : 0),
+    controlWardsPerGame: round1(totals.controlWards / n),
   };
 }
 
