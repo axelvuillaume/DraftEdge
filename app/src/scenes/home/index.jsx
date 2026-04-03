@@ -758,9 +758,12 @@ function ReadyUpModal({ isOpen, onClose }) {
     if (!sessionForm.opponent?._id) return toast.error("Select an opponent")
     setCreatingSession(true)
     try {
-      const body = { name: sessionForm.name.trim(), opponent_id: sessionForm.opponent._id, opponent_name: sessionForm.opponent.name }
-      if (sessionForm.date) body.date = new Date(sessionForm.date).toISOString()
-      const { ok, data, code } = await api.post("/scrim-session", body)
+      const { ok, data, code } = await api.post("/scrim-session", {
+        name: sessionForm.name.trim(),
+        opponent_id: sessionForm.opponent._id,
+        opponent_name: sessionForm.opponent.name,
+        ...(sessionForm.date && { date: new Date(sessionForm.date).toISOString() })
+      })
       if (!ok) return toast.error(code || "Failed to create session")
       handleClose()
       navigate(`/scrim-hub/scrims/${data._id}`)
