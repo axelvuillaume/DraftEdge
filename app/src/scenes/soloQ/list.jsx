@@ -418,69 +418,69 @@ export default function SoloQ() {
             const teamStats = connected.reduce((acc, p) => ({ w: acc.w + getMatchStats(p._id).w, l: acc.l + getMatchStats(p._id).l }), { w: 0, l: 0 })
             return (
               <div className="flex items-center gap-3">
-              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl px-6 py-3 flex items-center gap-10 flex-1">
-                <div className="flex items-center gap-10 flex-1 justify-center">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-slate-400 text-xs uppercase tracking-wider">Team LP</span>
-                    <span className="text-white font-bold text-lg tabular-nums">
-                      {connected
-                        .filter(p => ["MASTER", "GRANDMASTER", "CHALLENGER"].includes(p.current_tier))
-                        .reduce((s, p) => s + (p.current_lp ?? 0), 0)
-                        .toLocaleString()}
-                    </span>
+                <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl px-6 py-3 flex items-center gap-10 flex-1">
+                  <div className="flex items-center gap-10 flex-1 justify-center">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-slate-400 text-xs uppercase tracking-wider">Team LP</span>
+                      <span className="text-white font-bold text-lg tabular-nums">
+                        {connected
+                          .filter(p => ["MASTER", "GRANDMASTER", "CHALLENGER"].includes(p.current_tier))
+                          .reduce((s, p) => s + (p.current_lp ?? 0), 0)
+                          .toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="w-px h-5 bg-slate-700" />
+                    <div className="flex items-center gap-2">
+                      <Gamepad2 className="w-3.5 h-3.5 text-blue-400" />
+                      <span className="text-slate-400 text-xs uppercase tracking-wider">Total Games</span>
+                      <span className="text-white font-bold text-lg tabular-nums">{teamStats.w + teamStats.l}</span>
+                    </div>
+                    <div className="w-px h-5 bg-slate-700" />
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-slate-400 text-xs uppercase tracking-wider">Win Rate</span>
+                      <span
+                        className={`font-bold text-lg tabular-nums ${teamStats.w + teamStats.l > 0 ? (Math.round((teamStats.w / (teamStats.w + teamStats.l)) * 100) >= 50 ? "text-emerald-400" : "text-red-400") : "text-slate-400"}`}
+                      >
+                        {teamStats.w + teamStats.l > 0 ? Math.round((teamStats.w / (teamStats.w + teamStats.l)) * 100) : 0}%
+                      </span>
+                      <span className="text-slate-500 text-xs">
+                        {teamStats.w}W {teamStats.l}L
+                      </span>
+                    </div>
+                    <div className="w-px h-5 bg-slate-700" />
+                    <div className="flex items-center gap-2">
+                      {connected.reduce((s, p) => s + getLPChange(p), 0) >= 0 ? (
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : (
+                        <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+                      )}
+                      <span className="text-slate-400 text-xs uppercase tracking-wider">LP Change {periodLabel}</span>
+                      <span
+                        className={`font-bold text-lg tabular-nums ${connected.reduce((s, p) => s + getLPChange(p), 0) > 0 ? "text-emerald-400" : connected.reduce((s, p) => s + getLPChange(p), 0) < 0 ? "text-red-400" : "text-slate-400"}`}
+                      >
+                        {connected.reduce((s, p) => s + getLPChange(p), 0) > 0 ? "+" : ""}
+                        {connected.reduce((s, p) => s + getLPChange(p), 0)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="w-px h-5 bg-slate-700" />
-                  <div className="flex items-center gap-2">
-                    <Gamepad2 className="w-3.5 h-3.5 text-blue-400" />
-                    <span className="text-slate-400 text-xs uppercase tracking-wider">Total Games</span>
-                    <span className="text-white font-bold text-lg tabular-nums">{teamStats.w + teamStats.l}</span>
-                  </div>
-                  <div className="w-px h-5 bg-slate-700" />
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-slate-400 text-xs uppercase tracking-wider">Win Rate</span>
-                    <span
-                      className={`font-bold text-lg tabular-nums ${teamStats.w + teamStats.l > 0 ? (Math.round((teamStats.w / (teamStats.w + teamStats.l)) * 100) >= 50 ? "text-emerald-400" : "text-red-400") : "text-slate-400"}`}
-                    >
-                      {teamStats.w + teamStats.l > 0 ? Math.round((teamStats.w / (teamStats.w + teamStats.l)) * 100) : 0}%
-                    </span>
-                    <span className="text-slate-500 text-xs">
-                      {teamStats.w}W {teamStats.l}L
-                    </span>
-                  </div>
-                  <div className="w-px h-5 bg-slate-700" />
-                  <div className="flex items-center gap-2">
-                    {connected.reduce((s, p) => s + getLPChange(p), 0) >= 0 ? (
-                      <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                    ) : (
-                      <TrendingDown className="w-3.5 h-3.5 text-red-400" />
-                    )}
-                    <span className="text-slate-400 text-xs uppercase tracking-wider">LP Change {periodLabel}</span>
-                    <span
-                      className={`font-bold text-lg tabular-nums ${connected.reduce((s, p) => s + getLPChange(p), 0) > 0 ? "text-emerald-400" : connected.reduce((s, p) => s + getLPChange(p), 0) < 0 ? "text-red-400" : "text-slate-400"}`}
-                    >
-                      {connected.reduce((s, p) => s + getLPChange(p), 0) > 0 ? "+" : ""}
-                      {connected.reduce((s, p) => s + getLPChange(p), 0)}
-                    </span>
-                  </div>
+                  <select
+                    value={period}
+                    onChange={e => setPeriod(e.target.value)}
+                    className="bg-slate-700/50 border border-slate-600 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-400/50 cursor-pointer"
+                  >
+                    {PERIODS.map(p => (
+                      <option key={p.value} value={p.value}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <select
-                  value={period}
-                  onChange={e => setPeriod(e.target.value)}
-                  className="bg-slate-700/50 border border-slate-600 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-400/50 cursor-pointer"
-                >
-                  {PERIODS.map(p => (
-                    <option key={p.value} value={p.value}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button onClick={() => setShowArchivedModal(true)} className="flex items-center gap-1.5 text-slate-500 text-xs hover:text-slate-300 transition-colors shrink-0">
-                <Archive className="w-3.5 h-3.5" />
-                Archived
-              </button>
+                <button onClick={() => setShowArchivedModal(true)} className="flex items-center gap-1.5 text-slate-500 text-xs hover:text-slate-300 transition-colors shrink-0">
+                  <Archive className="w-3.5 h-3.5" />
+                  Archived
+                </button>
               </div>
             )
           })()}
@@ -592,7 +592,7 @@ export default function SoloQ() {
         </div>
 
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
-          <div className="p-6">
+          <div className="p-6 [&_.recharts-wrapper]:!outline-none [&_.recharts-surface]:!outline-none">
             {chartData.length === 0 ? (
               <div className="flex items-center justify-center h-64 text-slate-500">No data yet. Snapshots will appear after the first cron run.</div>
             ) : (
