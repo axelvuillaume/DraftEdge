@@ -29,6 +29,8 @@ import {
 import Modal from "@/components/modal"
 import DebounceInput from "@/components/debounceInput"
 import OpponentDropdown from "@/components/OpponentDropdown"
+import DraftScenarioSelect from "@/components/DraftScenarioSelect"
+import StratMapSelect from "@/components/StratMapSelect"
 import { ExpandedContent } from "@/scenes/stats/games"
 
 const RATING_MAX = 10
@@ -517,6 +519,10 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
   const [newAssignTo, setNewAssignTo] = useState("team")
   const [players, setPlayers] = useState([])
   const [newPlayerId, setNewPlayerId] = useState("")
+  const [newDraftScenarioId, setNewDraftScenarioId] = useState(null)
+  const [newDraftScenarioName, setNewDraftScenarioName] = useState(null)
+  const [newStratMapId, setNewStratMapId] = useState(null)
+  const [newStratMapName, setNewStratMapName] = useState(null)
 
   const fetchPlayers = async () => {
     try {
@@ -544,7 +550,9 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
         name: newName,
         description: newDescription,
         rating_type: newRatingType,
-        ...(newAssignTo === "player" && newPlayerId && { player_id: newPlayerId, player_name: selectedPlayer?.player_name || selectedPlayer?.game_name })
+        ...(newAssignTo === "player" && newPlayerId && { player_id: newPlayerId, player_name: selectedPlayer?.player_name || selectedPlayer?.game_name }),
+        ...(newDraftScenarioId && { draft_scenario_id: newDraftScenarioId, draft_scenario_name: newDraftScenarioName }),
+        ...(newStratMapId && { strat_map_id: newStratMapId, strat_map_name: newStratMapName })
       })
       if (!ok) return toast.error(code || "Failed to create objective")
       onCreated(data)
@@ -552,6 +560,10 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
       setNewDescription("")
       setNewRatingType("rating")
       setNewAssignTo("team")
+      setNewDraftScenarioId(null)
+      setNewDraftScenarioName(null)
+      setNewStratMapId(null)
+      setNewStratMapName(null)
       setShowCreateForm(false)
     } catch (error) {
       toast.error(error.code || "Failed to create objective")
@@ -564,6 +576,10 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
     setNewDescription("")
     setNewRatingType("rating")
     setNewAssignTo("team")
+    setNewDraftScenarioId(null)
+    setNewDraftScenarioName(null)
+    setNewStratMapId(null)
+    setNewStratMapName(null)
     onClose()
   }
 
@@ -679,6 +695,26 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
                 </select>
               </div>
             )}
+            <div>
+              <label className="text-slate-400 text-xs font-medium mb-1.5 block">Draft scenario (optional)</label>
+              <DraftScenarioSelect
+                value={newDraftScenarioId}
+                onChange={(id, name) => {
+                  setNewDraftScenarioId(id)
+                  setNewDraftScenarioName(name)
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-slate-400 text-xs font-medium mb-1.5 block">Strat map (optional)</label>
+              <StratMapSelect
+                value={newStratMapId}
+                onChange={(id, name) => {
+                  setNewStratMapId(id)
+                  setNewStratMapName(name)
+                }}
+              />
+            </div>
             <button
               onClick={handleCreate}
               disabled={!newName.trim()}
@@ -690,47 +726,49 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
         )}
 
         {/* Objectives list */}
-        <div className="space-y-1">
-          {allObjectives.length === 0 ? (
-            <div className="text-center py-8">
-              <Target className="w-8 h-8 text-slate-700 mx-auto mb-2" />
-              <p className="text-slate-500 text-sm">No objectives yet</p>
-              <p className="text-slate-600 text-xs mt-1">Create your first objective above</p>
-            </div>
-          ) : (
-            allObjectives.map(obj => (
-              <button
-                key={obj._id}
-                onClick={() => onToggle(obj._id)}
-                className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center gap-3 ${
-                  activeObjectifIds.includes(obj._id) ? "bg-amber-500/10 border border-amber-500/20" : "hover:bg-slate-700/40 border border-transparent"
-                }`}
-              >
-                <div
-                  className={`w-4.5 h-4.5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
-                    activeObjectifIds.includes(obj._id) ? "border-amber-500 bg-amber-500" : "border-slate-500"
+        {!showCreateForm && (
+          <div className="space-y-1">
+            {allObjectives.length === 0 ? (
+              <div className="text-center py-8">
+                <Target className="w-8 h-8 text-slate-700 mx-auto mb-2" />
+                <p className="text-slate-500 text-sm">No objectives yet</p>
+                <p className="text-slate-600 text-xs mt-1">Create your first objective above</p>
+              </div>
+            ) : (
+              allObjectives.map(obj => (
+                <button
+                  key={obj._id}
+                  onClick={() => onToggle(obj._id)}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center gap-3 ${
+                    activeObjectifIds.includes(obj._id) ? "bg-amber-500/10 border border-amber-500/20" : "hover:bg-slate-700/40 border border-transparent"
                   }`}
                 >
-                  {activeObjectifIds.includes(obj._id) && <Check className="w-2.5 h-2.5 text-white" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`font-medium truncate ${activeObjectifIds.includes(obj._id) ? "text-white" : "text-slate-300"}`}>{obj.name}</span>
-                    {obj.player_name && <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded-md shrink-0">{obj.player_name}</span>}
+                  <div
+                    className={`w-4.5 h-4.5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                      activeObjectifIds.includes(obj._id) ? "border-amber-500 bg-amber-500" : "border-slate-500"
+                    }`}
+                  >
+                    {activeObjectifIds.includes(obj._id) && <Check className="w-2.5 h-2.5 text-white" />}
                   </div>
-                  {obj.description && <div className="text-xs text-slate-500 mt-0.5 truncate">{obj.description}</div>}
-                </div>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
-                    obj.rating_type === "toggle" ? "bg-violet-500/15 text-violet-400" : "bg-blue-500/15 text-blue-400"
-                  }`}
-                >
-                  {obj.rating_type === "toggle" ? "Pass/Fail" : "/10"}
-                </span>
-              </button>
-            ))
-          )}
-        </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-medium truncate ${activeObjectifIds.includes(obj._id) ? "text-white" : "text-slate-300"}`}>{obj.name}</span>
+                      {obj.player_name && <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded-md shrink-0">{obj.player_name}</span>}
+                    </div>
+                    {obj.description && <div className="text-xs text-slate-500 mt-0.5 truncate">{obj.description}</div>}
+                  </div>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
+                      obj.rating_type === "toggle" ? "bg-violet-500/15 text-violet-400" : "bg-blue-500/15 text-blue-400"
+                    }`}
+                  >
+                    {obj.rating_type === "toggle" ? "Pass/Fail" : "/10"}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   )
