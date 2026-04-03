@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const passport = require('passport');
 const ProGamePlayerstats = require('../models/pro-game-player-stats');
+const ProGame = require('../models/pro-game');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 
@@ -140,10 +141,6 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
           damagetochampions: { $sum: '$damagetochampions' },
           totalgold: { $sum: '$totalgold' },
           dpm: { $avg: '$dpm' },
-          dragons: { $avg: '$dragons' },
-          heralds: { $avg: '$heralds' },
-          barons: { $avg: '$barons' },
-          towers: { $avg: '$towers' },
           vspm: { $avg: '$vspm' },
           wardsplaced: { $avg: '$wardsplaced' },
           wardskilled: { $avg: '$wardskilled' },
@@ -160,6 +157,15 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
 
     const s = agg[0];
     const n = s.n;
+
+    // Objectives from ProGame collection — player stats don't have objective data
+    const objMatch = { matchId: { $in: s.gameIds } };
+    if (req.body.teamname) objMatch.team_name = req.body.teamname;
+    const objAgg = await ProGame.aggregate([
+      { $match: objMatch },
+      { $group: { _id: null, dragons: { $avg: '$dragons' }, barons: { $avg: '$barons' }, towers: { $avg: '$towers' } } },
+    ]);
+    const obj = objAgg[0] || {};
 
     // Ward Clear %: wardskilled / enemy wardsplaced
     let wardClearPct = 0;
@@ -184,10 +190,11 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
         'DMG / Gold': round2(s.totalgold > 0 ? s.damagetochampions / s.totalgold : 0),
       },
       Objectives: {
-        'Dragons / game': round1(s.dragons),
-        'Heralds / game': round1(s.heralds),
-        'Barons / game': round1(s.barons),
-        'Turrets / game': round1(s.towers),
+        'Dragons / game': round1(obj.dragons || 0),
+        'Heralds / game': '-',
+        'Barons / game': round1(obj.barons || 0),
+        'Turrets / game': round1(obj.towers || 0),
+        'Objective DMG / game': '-',
       },
       Vision: {
         'Vision Score / min': round1(s.vspm),
@@ -199,6 +206,7 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
       Income: {
         'Gold / min': round1(s.earned_gpm),
         'CS / min': round1(s.cspm),
+        'Level / game': '-',
         'Enemy Jungle / game': '-',
         'Plates Gold / game': '-',
       },

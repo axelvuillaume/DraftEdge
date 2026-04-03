@@ -308,7 +308,8 @@ export default function StatsV2() {
               const getCompareMetrics = (source, metrics) =>
                 metrics.map(m => {
                   const val = source?.[m.name]
-                  if (val == null || val === "-") return m
+                  if (val === "-") return { ...m, unavailable: true }
+                  if (val == null) return m
                   return { ...m, enemies: val, diff: round1(val > 0 ? ((m.team - val) / val) * 100 : m.team > 0 ? 100 : 0) }
                 })
 
@@ -652,6 +653,7 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel, teamLabe
       .join(" ")
 
   const teamValues = metrics.map(m => {
+    if (m.unavailable) return 50
     const diff = parseFloat(m.diff) || 0
     const clampedDiff = Math.max(-100, Math.min(100, diff))
     const sign = clampedDiff >= 0 ? 1 : -1
@@ -660,6 +662,7 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel, teamLabe
   })
 
   const enemyValues = metrics.map(m => {
+    if (m.unavailable) return 50
     const diff = parseFloat(m.diff) || 0
     const clampedDiff = Math.max(-100, Math.min(100, diff))
     const sign = clampedDiff >= 0 ? 1 : -1
@@ -768,23 +771,29 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel, teamLabe
             <div className="bg-slate-900/80 border border-slate-600/50 rounded-lg p-3">
               <p className="text-white text-xs font-semibold mb-2 truncate">{metrics[hoveredIndex].name}</p>
               <div className="h-px bg-slate-700/50 mb-2" />
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-slate-400 text-[10px]">{displayTeamLabel}</span>
-                <span className="text-emerald-400 text-xs font-medium">{metrics[hoveredIndex].team}</span>
-              </div>
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-slate-400 text-[10px]">{enemyLabel}</span>
-                <span
-                  className={`text-xs font-medium ${compareMode === "offi" ? "text-violet-400" : compareMode === "soloq" ? "text-cyan-400" : compareMode === "pro" ? "text-amber-400" : "text-red-400"}`}
-                >
-                  {metrics[hoveredIndex].enemies}
-                </span>
-              </div>
-              <div className="h-px bg-slate-700/50 mb-2" />
-              <p className={`text-center text-sm font-bold ${metrics[hoveredIndex].diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                {metrics[hoveredIndex].diff >= 0 ? "+" : ""}
-                {metrics[hoveredIndex].diff}%
-              </p>
+              {metrics[hoveredIndex].unavailable ? (
+                <p className="text-slate-500 text-[10px] text-center">Not available</p>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-slate-400 text-[10px]">{displayTeamLabel}</span>
+                    <span className="text-emerald-400 text-xs font-medium">{metrics[hoveredIndex].team}</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-slate-400 text-[10px]">{enemyLabel}</span>
+                    <span
+                      className={`text-xs font-medium ${compareMode === "offi" ? "text-violet-400" : compareMode === "soloq" ? "text-cyan-400" : compareMode === "pro" ? "text-amber-400" : "text-red-400"}`}
+                    >
+                      {metrics[hoveredIndex].enemies}
+                    </span>
+                  </div>
+                  <div className="h-px bg-slate-700/50 mb-2" />
+                  <p className={`text-center text-sm font-bold ${metrics[hoveredIndex].diff >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                    {metrics[hoveredIndex].diff >= 0 ? "+" : ""}
+                    {metrics[hoveredIndex].diff}%
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <div className="text-slate-600 text-[10px] text-center">Hover a metric</div>
