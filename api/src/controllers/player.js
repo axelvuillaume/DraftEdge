@@ -240,6 +240,9 @@ router.post('/', passport.authenticate(['admin', 'user'], { session: false, fail
     const puuid = await getPuuidByRiotId(req.body.game_name, req.body.tag_line, region);
     if (!puuid) return res.status(400).send({ ok: false, code: 'Riot ID not found' });
 
+    const existing = await Player.findOne({ puuid, team_id: req.user.team_id, active: true });
+    if (existing) return res.status(200).send({ ok: true, data: existing });
+
     const playerData = { ...req.body, region, active: true, team_id: req.user.team_id, team_name: req.user.team_name, puuid };
 
     const rank = await getRankByPuuid(puuid, region);

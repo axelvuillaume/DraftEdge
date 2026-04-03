@@ -100,6 +100,7 @@ function EditRosterModal({ players, onClose }) {
 
   const handleSaveRole = async role => {
     if (!roster[role]?.game_name?.trim() || !roster[role]?.tag_line?.trim()) return toast.error("Summoner name and tag are required")
+    if (saving) return
     setSaving(role)
     try {
       const { ok, data, code } = roster[role]?._id
