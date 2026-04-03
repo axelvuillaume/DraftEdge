@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
@@ -360,61 +361,75 @@ function FirstPickPanel() {
   return (
     <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-3 flex-shrink-0 min-w-[420px] flex flex-col">
       <p className="text-[8px] text-slate-600 font-semibold uppercase tracking-wider mb-2">Draft Rotations</p>
-      <div className="grid grid-cols-2 gap-3 flex-1">
-        {[
-          {
-            side: "blue",
-            label: "Blue Side",
-            color: "text-blue-400",
-            bg: "bg-blue-500/5 border-blue-500/20",
-            rotations: [
-              { rota: 0, desc: "First Pick" },
-              { rota: 1, desc: "B2 + B3" }
-            ]
-          },
-          {
-            side: "red",
-            label: "Red Side",
-            color: "text-red-400",
-            bg: "bg-red-500/5 border-red-500/20",
-            rotations: [
-              { rota: 0, desc: "R1 + R2" },
-              { rota: 1, desc: "R3" }
-            ]
-          }
-        ].map(s => (
-          <div key={s.side} className={`rounded-xl border p-2.5 flex flex-col gap-2 ${s.bg}`}>
-            <p className={`text-[10px] font-bold uppercase tracking-wide ${s.color}`}>{s.label}</p>
-            {s.rotations.map(r => (
-              <div key={r.rota}>
-                <p className="text-[8px] text-slate-600 mb-1">
-                  Rota {r.rota + 1} — {r.desc}
-                </p>
-                <div className="flex flex-col gap-0.5">
-                  {(data?.rotations?.[s.side]?.[r.rota] || []).slice(0, 3).map(champ => (
-                    <div key={champ.name} className="flex items-center gap-1.5 px-1 py-1 rounded-lg hover:bg-slate-700/30 transition-colors">
-                      <div className="w-6 h-6 rounded overflow-hidden bg-slate-700 flex-shrink-0">
-                        <img
-                          src={getChampionIcon(champ.name)}
-                          alt={champ.name}
-                          className="w-full h-full object-cover"
-                          onError={e => {
-                            e.target.style.display = "none"
-                          }}
-                        />
+      {data && !(data.rotations?.blue?.some(r => r?.length) || data.rotations?.red?.some(r => r?.length)) ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-8 px-4">
+          <Swords className="w-8 h-8 text-slate-600 mb-3" />
+          <p className="text-sm text-slate-400 mb-1">No draft has been added to games</p>
+          <p className="text-xs text-slate-500">
+            You can edit games{" "}
+            <Link to="/performance/games" className="text-amber-400 hover:text-amber-300 underline">
+              here
+            </Link>{" "}
+            or add the draft link during import.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 flex-1">
+          {[
+            {
+              side: "blue",
+              label: "Blue Side",
+              color: "text-blue-400",
+              bg: "bg-blue-500/5 border-blue-500/20",
+              rotations: [
+                { rota: 0, desc: "First Pick" },
+                { rota: 1, desc: "B2 + B3" }
+              ]
+            },
+            {
+              side: "red",
+              label: "Red Side",
+              color: "text-red-400",
+              bg: "bg-red-500/5 border-red-500/20",
+              rotations: [
+                { rota: 0, desc: "R1 + R2" },
+                { rota: 1, desc: "R3" }
+              ]
+            }
+          ].map(s => (
+            <div key={s.side} className={`rounded-xl border p-2.5 flex flex-col gap-2 ${s.bg}`}>
+              <p className={`text-[10px] font-bold uppercase tracking-wide ${s.color}`}>{s.label}</p>
+              {s.rotations.map(r => (
+                <div key={r.rota}>
+                  <p className="text-[8px] text-slate-600 mb-1">
+                    Rota {r.rota + 1} — {r.desc}
+                  </p>
+                  <div className="flex flex-col gap-0.5">
+                    {(data?.rotations?.[s.side]?.[r.rota] || []).slice(0, 3).map(champ => (
+                      <div key={champ.name} className="flex items-center gap-1.5 px-1 py-1 rounded-lg hover:bg-slate-700/30 transition-colors">
+                        <div className="w-6 h-6 rounded overflow-hidden bg-slate-700 flex-shrink-0">
+                          <img
+                            src={getChampionIcon(champ.name)}
+                            alt={champ.name}
+                            className="w-full h-full object-cover"
+                            onError={e => {
+                              e.target.style.display = "none"
+                            }}
+                          />
+                        </div>
+                        <span className="text-[11px] text-slate-200 font-medium flex-1 truncate">{champ.name}</span>
+                        <span className="text-[8px] text-slate-600">{champ.games}G</span>
+                        <span className={`text-[10px] font-bold ${champ.wr >= 50 ? "text-emerald-400" : "text-red-400"}`}>{champ.wr}%</span>
                       </div>
-                      <span className="text-[11px] text-slate-200 font-medium flex-1 truncate">{champ.name}</span>
-                      <span className="text-[8px] text-slate-600">{champ.games}G</span>
-                      <span className={`text-[10px] font-bold ${champ.wr >= 50 ? "text-emerald-400" : "text-red-400"}`}>{champ.wr}%</span>
-                    </div>
-                  ))}
-                  {(!data?.rotations?.[s.side]?.[r.rota] || data.rotations[s.side][r.rota].length === 0) && <span className="text-slate-600 text-xs">—</span>}
+                    ))}
+                    {(!data?.rotations?.[s.side]?.[r.rota] || data.rotations[s.side][r.rota].length === 0) && <span className="text-slate-600 text-xs">—</span>}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -454,38 +469,52 @@ function BansPanel() {
   return (
     <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-3 flex-1 flex flex-col">
       <p className="text-[8px] text-slate-600 font-semibold uppercase tracking-wider mb-2">Most Banned</p>
-      <div className="grid grid-cols-2 gap-3 flex-1">
-        {[
-          { side: "blue", label: "Our Bans", color: "text-blue-400", bg: "bg-blue-500/5 border-blue-500/20" },
-          { side: "red", label: "Enemy Bans", color: "text-red-400", bg: "bg-red-500/5 border-red-500/20" }
-        ].map(row => (
-          <div key={row.side} className={`rounded-xl border p-2.5 flex flex-col ${row.bg}`}>
-            <p className={`text-[10px] font-bold uppercase tracking-wide mb-1.5 ${row.color}`}>{row.label}</p>
-            <div className="flex flex-col gap-1">
-              {mergeBans(row.side).map(champ => (
-                <div key={champ.name} className="flex items-center gap-2 px-1 py-1 rounded-lg hover:bg-slate-700/30 transition-colors">
-                  <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0 ring-1 ring-slate-600/50">
-                    <img
-                      src={getChampionIcon(champ.name)}
-                      alt={champ.name}
-                      className="w-full h-full object-cover grayscale"
-                      onError={e => {
-                        e.target.style.display = "none"
-                      }}
-                    />
+      {data && !(data.bans?.blue?.some(p => p?.length) || data.bans?.red?.some(p => p?.length)) ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-8 px-4">
+          <Swords className="w-8 h-8 text-slate-600 mb-3" />
+          <p className="text-sm text-slate-400 mb-1">No draft has been added to games</p>
+          <p className="text-xs text-slate-500">
+            You can edit games{" "}
+            <Link to="/performance/games" className="text-amber-400 hover:text-amber-300 underline">
+              here
+            </Link>{" "}
+            or add the draft link during import.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 flex-1">
+          {[
+            { side: "blue", label: "Our Bans", color: "text-blue-400", bg: "bg-blue-500/5 border-blue-500/20" },
+            { side: "red", label: "Enemy Bans", color: "text-red-400", bg: "bg-red-500/5 border-red-500/20" }
+          ].map(row => (
+            <div key={row.side} className={`rounded-xl border p-2.5 flex flex-col ${row.bg}`}>
+              <p className={`text-[10px] font-bold uppercase tracking-wide mb-1.5 ${row.color}`}>{row.label}</p>
+              <div className="flex flex-col gap-1">
+                {mergeBans(row.side).map(champ => (
+                  <div key={champ.name} className="flex items-center gap-2 px-1 py-1 rounded-lg hover:bg-slate-700/30 transition-colors">
+                    <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0 ring-1 ring-slate-600/50">
+                      <img
+                        src={getChampionIcon(champ.name)}
+                        alt={champ.name}
+                        className="w-full h-full object-cover grayscale"
+                        onError={e => {
+                          e.target.style.display = "none"
+                        }}
+                      />
+                    </div>
+                    <span className="text-[11px] text-slate-200 font-medium flex-1 truncate">{champ.name}</span>
+                    <span className="text-[8px] text-slate-600">{champ.games}G</span>
+                    <span className={`text-[10px] font-bold ${champ.games > 0 && Math.round((champ.wins / champ.games) * 100) >= 50 ? "text-emerald-400" : "text-red-400"}`}>
+                      {champ.games > 0 ? Math.round((champ.wins / champ.games) * 100) : 0}%
+                    </span>
                   </div>
-                  <span className="text-[11px] text-slate-200 font-medium flex-1 truncate">{champ.name}</span>
-                  <span className="text-[8px] text-slate-600">{champ.games}G</span>
-                  <span className={`text-[10px] font-bold ${champ.games > 0 && Math.round((champ.wins / champ.games) * 100) >= 50 ? "text-emerald-400" : "text-red-400"}`}>
-                    {champ.games > 0 ? Math.round((champ.wins / champ.games) * 100) : 0}%
-                  </span>
-                </div>
-              ))}
-              {mergeBans(row.side).length === 0 && <span className="text-slate-600 text-xs">—</span>}
+                ))}
+                {mergeBans(row.side).length === 0 && <span className="text-slate-600 text-xs">—</span>}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
