@@ -251,9 +251,17 @@ export default function View() {
               </div>
 
               {games.length === 0 ? (
-                <div className="text-center py-8">
-                  <Gamepad2 className="w-8 h-8 text-slate-700 mx-auto mb-2" />
-                  <p className="text-slate-500 text-xs">No games imported yet</p>
+                <div className="flex flex-col items-center justify-center py-10 px-4">
+                  <button onClick={() => setShowImportModal(true)} className="relative mb-4 group cursor-pointer">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/15 to-amber-600/5 border border-amber-500/20 group-hover:border-amber-500/40 group-hover:from-amber-500/20 flex items-center justify-center transition-all">
+                      <Gamepad2 className="w-7 h-7 text-amber-500/70 group-hover:text-amber-500 transition-colors" />
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+                      <Plus className="w-3 h-3 text-amber-400" />
+                    </div>
+                  </button>
+                  <p className="text-white text-sm font-semibold mb-1">Import your first game</p>
+                  <p className="text-slate-500 text-xs text-center max-w-[180px]">Upload a .rofl replay or pick from your game history</p>
                 </div>
               ) : (
                 <div className="space-y-1.5">
@@ -305,7 +313,13 @@ export default function View() {
                         </div>
                       </div>
 
-                      <button onClick={e => { e.stopPropagation(); removeGame(game) }} className="p-1 text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover/game:opacity-100 shrink-0">
+                      <button
+                        onClick={e => {
+                          e.stopPropagation()
+                          removeGame(game)
+                        }}
+                        className="p-1 text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover/game:opacity-100 shrink-0"
+                      >
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -354,12 +368,16 @@ export default function View() {
               <div className={`w-1.5 h-8 rounded-full ${selectedGame.win ? "bg-emerald-500" : "bg-red-500"}`} />
               <span className="text-white font-semibold">{selectedGame.name || `Game ${selectedGame.game_id}`}</span>
               {selectedGame.team_side && (
-                <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${selectedGame.team_side === "blue" ? "bg-blue-500/15 text-blue-400" : "bg-red-500/15 text-red-400"}`}>
+                <span
+                  className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${selectedGame.team_side === "blue" ? "bg-blue-500/15 text-blue-400" : "bg-red-500/15 text-red-400"}`}
+                >
                   {selectedGame.team_side} side
                 </span>
               )}
               {selectedGame.duration && (
-                <span className="text-slate-500 text-sm">{Math.floor(selectedGame.duration / 60)}:{String(selectedGame.duration % 60).padStart(2, "0")}</span>
+                <span className="text-slate-500 text-sm">
+                  {Math.floor(selectedGame.duration / 60)}:{String(selectedGame.duration % 60).padStart(2, "0")}
+                </span>
               )}
             </div>
             <ExpandedContent game={selectedGame} onDelete={fetchGames} />
@@ -426,7 +444,7 @@ function ObjectivesSection({ session, games, onSessionAvg }) {
     }
   }
 
-  const saveActiveIds = async (ids) => {
+  const saveActiveIds = async ids => {
     try {
       const { ok, code } = await api.put(`/scrim-session/${session._id}`, { ...session, objectif_ids: ids })
       if (!ok) return toast.error(code || "Failed to save objectives")
@@ -466,6 +484,7 @@ function ObjectivesSection({ session, games, onSessionAvg }) {
           saveActiveIds(next)
         }}
         onSessionAvg={onSessionAvg}
+        onOpenManage={() => setShowObjectiveModal(true)}
       />
 
       <ObjectivePickerModal
@@ -551,7 +570,7 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
   return (
     <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg w-full max-h-[85vh] overflow-y-auto bg-slate-800 border border-slate-700/50">
       <div className="p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3 mb-4">
           <h2 className="text-white font-bold text-lg">Objectives</h2>
           <button
             onClick={() => setShowCreateForm(!showCreateForm)}
@@ -717,7 +736,7 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
   )
 }
 
-function ObjectivesTable({ session, games, objectives, onAddActiveIds, onToggleObjective, onSessionAvg }) {
+function ObjectivesTable({ session, games, objectives, onAddActiveIds, onToggleObjective, onSessionAvg, onOpenManage }) {
   const [rowRatings, setRowRatings] = useState({})
 
   const fetchActiveIds = async () => {
@@ -741,12 +760,33 @@ function ObjectivesTable({ session, games, objectives, onAddActiveIds, onToggleO
 
   if (objectives.length === 0) {
     return (
-      <div className="text-center py-16">
-        <div className="w-14 h-14 rounded-2xl bg-slate-700/30 flex items-center justify-center mx-auto mb-4">
-          <Target className="w-7 h-7 text-slate-600" />
+      <div className="flex flex-col items-center justify-center py-14 px-6">
+        <button onClick={onOpenManage} className="relative mb-5 group cursor-pointer">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/15 to-amber-600/5 border border-amber-500/20 group-hover:border-amber-500/40 group-hover:from-amber-500/20 flex items-center justify-center transition-all">
+            <Target className="w-8 h-8 text-amber-500/70 group-hover:text-amber-500 transition-colors" />
+          </div>
+          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+            <Plus className="w-3 h-3 text-amber-400" />
+          </div>
+        </button>
+        <h3 className="text-white font-semibold text-base mb-1.5">Prepare your objectives</h3>
+        <p className="text-slate-400 text-sm text-center max-w-xs mb-5">Define what your team should focus on this scrim and rate each objective per game.</p>
+        <div className="flex items-center gap-6 text-slate-500 text-xs">
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-md bg-slate-700/50 flex items-center justify-center text-[10px] font-bold text-amber-500/70">1</div>
+            <span>Add objectives</span>
+          </div>
+          <ChevronDown className="w-3 h-3 -rotate-90 text-slate-700" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-md bg-slate-700/50 flex items-center justify-center text-[10px] font-bold text-amber-500/70">2</div>
+            <span>Import games</span>
+          </div>
+          <ChevronDown className="w-3 h-3 -rotate-90 text-slate-700" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-md bg-slate-700/50 flex items-center justify-center text-[10px] font-bold text-amber-500/70">3</div>
+            <span>Rate per game</span>
+          </div>
         </div>
-        <p className="text-slate-400 text-sm font-medium mb-1">Select objectives to review</p>
-        <p className="text-slate-600 text-xs">Use the Manage Objectives button above</p>
       </div>
     )
   }
