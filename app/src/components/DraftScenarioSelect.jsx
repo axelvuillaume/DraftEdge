@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
@@ -20,6 +21,16 @@ export default function DraftScenarioSelect({ value, onChange }) {
   useEffect(() => {
     fetchItems()
   }, [user?.team_id])
+
+  if (items.length === 0)
+    return (
+      <p className="text-slate-500 text-xs py-1">
+        No draft scenarios yet.{" "}
+        <Link to="/scrim-hub/draft" className="text-amber-400 hover:text-amber-300 transition-colors">
+          Create one here
+        </Link>
+      </p>
+    )
 
   return (
     <select

@@ -141,10 +141,20 @@ function ScrimObjectives() {
 
       <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl overflow-hidden">
         {objectifs.length === 0 ? (
-          <div className="p-12 text-center">
-            <Target className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">No objectives yet</p>
-            <p className="text-slate-600 text-xs mt-1">Add objectives to track your team&apos;s improvement</p>
+          <div className="relative py-16 px-6 flex flex-col items-center text-center overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 via-transparent to-transparent pointer-events-none" />
+            <div className="relative flex items-center justify-center w-16 h-16 mb-5 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/20">
+              <Target className="w-7 h-7 text-amber-500/80" />
+            </div>
+            <h3 className="text-white text-base font-semibold mb-1.5">No objectives yet</h3>
+            <p className="text-slate-400 text-sm max-w-xs mb-5">Create objectives to track and measure your team&apos;s progress across scrims</p>
+            <button
+              onClick={() => setEditingObjective({})}
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Create your first objective
+            </button>
           </div>
         ) : (
           <div className="divide-y divide-slate-700/30">
@@ -363,8 +373,11 @@ function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
           )}
           {results.length === 0 ? (
             <div className="px-5 py-8 text-center">
-              <Target className="w-8 h-8 text-slate-700 mx-auto mb-2" />
+              <div className="flex items-center justify-center w-10 h-10 mx-auto mb-2.5 rounded-xl bg-slate-800/80 ring-1 ring-slate-700/50">
+                <Target className="w-5 h-5 text-slate-600" />
+              </div>
               <p className="text-slate-500 text-sm">No evaluations yet</p>
+              <p className="text-slate-600 text-xs mt-0.5">Rate this objective during scrims to track progress</p>
             </div>
           ) : (
             <div className="px-5 py-3 space-y-1">
@@ -692,10 +705,15 @@ function SoloQObjectives() {
       <SoloQStatsPanel objectives={objectives} />
 
       {players.length === 0 ? (
-        <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-12 text-center">
-          <User className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-          <p className="text-slate-500 text-sm">No active players</p>
-          <p className="text-slate-600 text-xs mt-1">Add players to your roster to create SoloQ objectives</p>
+        <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl overflow-hidden">
+          <div className="relative py-16 px-6 flex flex-col items-center text-center overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-violet-500/5 via-transparent to-transparent pointer-events-none" />
+            <div className="relative flex items-center justify-center w-16 h-16 mb-5 rounded-2xl bg-gradient-to-br from-violet-500/20 to-violet-600/10 ring-1 ring-violet-500/20">
+              <User className="w-7 h-7 text-violet-400/80" />
+            </div>
+            <h3 className="text-white text-base font-semibold mb-1.5">No active players</h3>
+            <p className="text-slate-400 text-sm max-w-xs">Add players to your roster to create SoloQ objectives</p>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -717,7 +735,8 @@ function SoloQObjectives() {
               </div>
 
               {!(objectivesByPlayer[player._id] || []).length ? (
-                <div className="p-6 text-center">
+                <div className="py-6 text-center">
+                  <Target className="w-5 h-5 text-slate-700 mx-auto mb-1.5" />
                   <p className="text-slate-600 text-xs">No objectives for this player</p>
                 </div>
               ) : (
