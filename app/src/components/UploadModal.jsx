@@ -314,7 +314,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
                     )}
 
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-slate-400 mb-1">Draft URL</label>
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Draft URL (optional)</label>
                       <input
                         type="text"
                         value={roflConfig.draft_url}
@@ -326,7 +326,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1">Game Name</label>
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Game Name (optional)</label>
                       <input
                         type="text"
                         value={roflConfig.name}
@@ -348,7 +348,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
                       </div>
                     ) : (
                       <div className="relative">
-                        <label className="block text-sm font-medium text-slate-400 mb-1">Folder</label>
+                        <label className="block text-sm font-medium text-slate-400 mb-1">Folder (optional)</label>
                         <button
                           type="button"
                           onClick={() => setShowFolderDropdown(!showFolderDropdown)}
