@@ -150,6 +150,7 @@ function MostPlayedPanel() {
             <div className="flex items-center gap-2 mb-1">
               <img src={ROLE_ICONS[role]} alt={role} className="w-5 h-5 opacity-60" />
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{role}</span>
+              {data.players?.[role] && <span className="text-[9px] text-slate-600 truncate">{data.players[role]}</span>}
             </div>
             <div className="flex flex-col gap-2">
               {(data[role] || []).map((champ, i) => (

@@ -1137,7 +1137,10 @@ router.post('/most-played', passport.authenticate(['admin', 'user'], { session: 
 
     const filters = extractFilters(req.body);
     const { gameIdFilter } = await buildGameFilters({ team_id, ...filters });
-    const query = { team_id, opponent: false, ...gameIdFilter };
+
+    const activePlayers = await Player.find({ team_id, active: true });
+    const activePuuids = activePlayers.map((p) => p.puuid).filter(Boolean);
+    const query = { team_id, opponent: false, puuid: { $in: activePuuids }, ...gameIdFilter };
     if (req.body.side) query.side = req.body.side;
 
     // Count total unique games for PR calculation
@@ -1160,6 +1163,7 @@ router.post('/most-played', passport.authenticate(['admin', 'user'], { session: 
 
     const topN = req.body.limit || 3;
     const result = {};
+    const players = {};
     for (const [roleKey, displayName] of Object.entries(ROLE_DISPLAY)) {
       result[displayName] = stats
         .filter((s) => s._id.role === roleKey)
@@ -1170,9 +1174,11 @@ router.post('/most-played', passport.authenticate(['admin', 'user'], { session: 
           pr: Math.round((s.games / totalGames) * 100),
           wr: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0,
         }));
+      const player = activePlayers.find((p) => p.role === roleKey);
+      if (player) players[displayName] = player.game_name ? `${player.game_name}#${player.tag_line || ''}` : player.player_name || '';
     }
 
-    return res.status(200).send({ ok: true, data: result, totalGames });
+    return res.status(200).send({ ok: true, data: { ...result, players }, totalGames });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
