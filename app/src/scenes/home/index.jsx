@@ -1,36 +1,19 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import { useNavigate } from "react-router-dom"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
+import UploadModal from "@/components/UploadModal"
 import OpponentDropdown from "@/components/OpponentDropdown"
 import { RANK_ICON_TIERS, getChampionIcon } from "@/utils"
-import {
-  Calendar,
-  BarChart,
-  Swords,
-  Plus,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  StickyNote,
-  Flame,
-  Crown,
-  Target,
-  Zap,
-  Upload,
-  FileText,
-  Loader2,
-  FolderOpen,
-  Trophy
-} from "lucide-react"
+import { Calendar, BarChart, Swords, Plus, ChevronLeft, ChevronRight, StickyNote, Flame, Crown, Target, Zap, Upload, Loader2, Trophy } from "lucide-react"
 
 export default function Home() {
   const navigate = useNavigate()
   const { user } = useStore()
   const [readyUpOpen, setReadyUpOpen] = useState(false)
-  const [readyUpMode, setReadyUpMode] = useState(null)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   return (
     <div className="h-[calc(100vh-65px)] bg-slate-900 p-4 overflow-hidden">
@@ -52,10 +35,7 @@ export default function Home() {
         {/* ── Quick Actions ── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 shrink-0">
           <button
-            onClick={() => {
-              setReadyUpMode("session")
-              setReadyUpOpen(true)
-            }}
+            onClick={() => setReadyUpOpen(true)}
             className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 hover:border-blue-400/40 p-2.5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-blue-500/10 transition-colors" />
@@ -64,10 +44,7 @@ export default function Home() {
             <p className="text-blue-400/60 text-[11px] mt-0.5">Create a scrim session</p>
           </button>
           <button
-            onClick={() => {
-              setReadyUpMode("import")
-              setReadyUpOpen(true)
-            }}
+            onClick={() => setShowImportModal(true)}
             className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 hover:border-amber-400/40 p-2.5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-amber-500/10 transition-colors" />
@@ -137,14 +114,8 @@ export default function Home() {
         </div>
       </div>
 
-      <ReadyUpModal
-        isOpen={readyUpOpen}
-        initialMode={readyUpMode}
-        onClose={() => {
-          setReadyUpOpen(false)
-          setReadyUpMode(null)
-        }}
-      />
+      <ReadyUpModal isOpen={readyUpOpen} onClose={() => setReadyUpOpen(false)} />
+      <UploadModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} official onSuccess={() => setShowImportModal(false)} />
     </div>
   )
 }
@@ -771,168 +742,17 @@ function ScrimCalendar() {
   )
 }
 
-// Ready Up Modal
-function ReadyUpModal({ isOpen, onClose, initialMode }) {
-  const { user } = useStore()
+function ReadyUpModal({ isOpen, onClose }) {
   const navigate = useNavigate()
-  const [mode, setMode] = useState(null)
-
-  useEffect(() => {
-    if (isOpen && initialMode) setMode(initialMode)
-  }, [isOpen, initialMode])
-
-  // === Import tab state ===
-  const [file, setFile] = useState(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(null)
-  const [dragActive, setDragActive] = useState(false)
-  const inputRef = useRef(null)
-  const [roflConfig, setRoflConfig] = useState({
-    team_side: "",
-    opponent: null,
-    name: "",
-    draft_url: "",
-    date: new Date().toISOString().slice(0, 10),
-    folder_id: "",
-    folder_name: "",
-    official: true
-  })
-  const [roflPreview, setRoflPreview] = useState(null)
-  const [parsing, setParsing] = useState(false)
-
-  // === Session tab state ===
   const [sessionForm, setSessionForm] = useState({ name: "", opponent: null, date: new Date().toISOString().slice(0, 10) })
   const [creatingSession, setCreatingSession] = useState(false)
 
-  // === Shared state ===
-  const [folders, setFolders] = useState([])
-  const [showFolderDropdown, setShowFolderDropdown] = useState(false)
-  const [newFolderName, setNewFolderName] = useState("")
-
-  useEffect(() => {
-    if (!isOpen || !user?.team_id) return
-    const fetchFolders = async () => {
-      try {
-        const { ok, data, code } = await api.post("/folder/search", { team_id: user.team_id })
-        if (!ok) return toast.error(code || "Failed to fetch folders")
-        setFolders(data)
-      } catch (error) {
-        toast.error(error.code || "Failed to fetch folders")
-      }
-    }
-    fetchFolders()
-  }, [isOpen, user?.team_id])
-
   const handleClose = () => {
-    if (uploading || parsing) return
-    setMode(null)
-    setFile(null)
-    setUploadProgress(null)
-    setRoflPreview(null)
-    setRoflConfig({ team_side: "", opponent: null, name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "", official: true })
-    setShowFolderDropdown(false)
-    setNewFolderName("")
+    if (creatingSession) return
     setSessionForm({ name: "", opponent: null, date: new Date().toISOString().slice(0, 10) })
     onClose()
   }
 
-  const createFolder = async name => {
-    try {
-      const { ok, data, code } = await api.post("/folder", { name })
-      if (!ok) return toast.error(code || "Failed to create folder")
-      setFolders(prev => [data, ...prev])
-      setRoflConfig(prev => ({ ...prev, folder_id: data._id, folder_name: data.name }))
-      setNewFolderName("")
-      setShowFolderDropdown(false)
-    } catch (error) {
-      toast.error(error.code || "Failed to create folder")
-    }
-  }
-
-  // === ROFL import handlers ===
-  const handleFiles = async selectedFiles => {
-    if (!selectedFiles || selectedFiles.length === 0) return
-    const selectedFile = selectedFiles[0]
-    if (!selectedFile.name.endsWith(".rofl")) return toast.error("File must be a .rofl")
-    setFile(selectedFile)
-    setParsing(true)
-    try {
-      const formData = new FormData()
-      formData.append("replay", selectedFile)
-      const { ok, data, code } = await api.postFormData("/parser/parse", formData)
-      if (ok && data) {
-        setRoflPreview(data)
-        toast.success("ROFL file parsed successfully")
-      } else {
-        toast.error(code || "Error during parsing")
-        setFile(null)
-      }
-    } catch (error) {
-      toast.error(error.code || "Error during parsing")
-      setFile(null)
-    } finally {
-      setParsing(false)
-    }
-  }
-
-  const removeFile = () => {
-    setFile(null)
-    setRoflPreview(null)
-    setRoflConfig(prev => ({ ...prev, team_side: "", opponent: null, name: "", draft_url: "", folder_id: "", folder_name: "", official: true }))
-  }
-
-  const handleDrag = e => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true)
-    if (e.type === "dragleave") setDragActive(false)
-  }
-
-  const handleDrop = e => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files)
-  }
-
-  const handleUpload = async () => {
-    if (!file) return
-    if (!roflConfig.team_side) return toast.error("Select your side (Blue/Red)")
-    if (!roflConfig.opponent?.name) return toast.error("Select an opponent team")
-    setUploading(true)
-    setUploadProgress("uploading")
-    try {
-      const formData = new FormData()
-      formData.append("replay", file)
-      formData.append("team_side", roflConfig.team_side)
-      formData.append("team_id", user?.team_id || "")
-      formData.append("team_name", user?.team_name || "")
-      if (roflConfig.opponent?._id) formData.append("opponent_id", roflConfig.opponent._id)
-      formData.append("opponent_name", roflConfig.opponent?.name || "")
-      formData.append("name", roflConfig.name)
-      if (roflConfig.date) formData.append("date", new Date(roflConfig.date).toISOString())
-      if (roflConfig.draft_url) formData.append("draft_url", roflConfig.draft_url)
-      if (roflConfig.folder_id) formData.append("folder_id", roflConfig.folder_id)
-      if (roflConfig.folder_name) formData.append("folder_name", roflConfig.folder_name)
-      formData.append("official", roflConfig.official ? "true" : "false")
-      const { ok, code } = await api.postFormData("/parser/import", formData)
-      if (ok) {
-        setUploadProgress("success")
-        toast.success(roflConfig.draft_url ? "Game & draft imported!" : "Game imported successfully!")
-        setTimeout(() => handleClose(), 1000)
-      } else {
-        toast.error(code || "Error during import")
-        setUploadProgress("error")
-      }
-    } catch (error) {
-      toast.error(error.code || "Error during import")
-      setUploadProgress("error")
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  // === Session creation handler ===
   const handleCreateSession = async () => {
     if (!sessionForm.name.trim()) return toast.error("Session name is required")
     if (!sessionForm.opponent?._id) return toast.error("Select an opponent")
@@ -952,351 +772,52 @@ function ReadyUpModal({ isOpen, onClose, initialMode }) {
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl w-full max-h-[90vh] overflow-y-auto bg-slate-800 border border-slate-700">
+    <Modal isOpen={isOpen} onClose={handleClose} className="max-w-md w-full bg-slate-800 border border-slate-700">
       <div className="p-6">
-        {/* Back button when in a sub-mode */}
-        {mode && (
-          <button
-            onClick={() => {
-              setMode(null)
-              removeFile?.()
-            }}
-            className="flex items-center gap-1 text-slate-400 hover:text-white text-sm mb-4 transition-colors"
-          >
-            <ChevronRight className="w-4 h-4 rotate-180" /> Back
-          </button>
-        )}
+        <h2 className="text-xl font-bold text-white mb-1">Create Scrim Session</h2>
+        <p className="text-slate-400 text-sm mb-6">Set up a new scrim session with opponent details.</p>
 
-        <h2 className="text-xl font-bold text-white mb-1">Ready Up</h2>
-        <p className="text-slate-400 text-sm mb-6">Import an official game replay or create a new scrim session.</p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Session Name *</label>
+            <input
+              type="text"
+              placeholder="e.g. Scrim vs Team B - Week 5"
+              value={sessionForm.name}
+              onChange={e => setSessionForm(f => ({ ...f, name: e.target.value }))}
+              autoFocus
+              className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none transition-all"
+            />
+          </div>
 
-        {/* === MODE PICKER === */}
-        {!mode && (
-          <div className="grid grid-cols-2 gap-4">
+          <OpponentDropdown value={sessionForm.opponent?.name || ""} onChange={v => setSessionForm(f => ({ ...f, opponent: v }))} label="Opponent Team *" />
+
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
+            <input
+              type="date"
+              value={sessionForm.date}
+              onChange={e => setSessionForm(f => ({ ...f, date: e.target.value }))}
+              className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-blue-500 focus:outline-none transition-all [color-scheme:dark]"
+            />
+          </div>
+
+          <div className="flex justify-end pt-2">
             <button
-              onClick={() => setMode("session")}
-              className="group relative overflow-hidden rounded-xl border border-slate-600 hover:border-blue-500/50 bg-slate-700/30 hover:bg-blue-500/5 p-6 text-left transition-all"
+              onClick={handleCreateSession}
+              disabled={creatingSession || !sessionForm.name.trim() || !sessionForm.opponent?._id}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
             >
-              <div className="absolute top-0 right-0 w-28 h-28 bg-blue-500/5 rounded-full -translate-y-10 translate-x-10 group-hover:bg-blue-500/10 transition-colors" />
-              <Calendar className="w-8 h-8 text-blue-400 mb-3" />
-              <p className="text-white font-bold text-sm mb-1">Create Scrim Session</p>
-              <p className="text-slate-500 text-xs leading-relaxed">Set up a new scrim session with opponent details.</p>
-            </button>
-
-            <button
-              onClick={() => setMode("import")}
-              className="group relative overflow-hidden rounded-xl border border-slate-600 hover:border-amber-500/50 bg-slate-700/30 hover:bg-amber-500/5 p-6 text-left transition-all"
-            >
-              <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/5 rounded-full -translate-y-10 translate-x-10 group-hover:bg-amber-500/10 transition-colors" />
-              <Upload className="w-8 h-8 text-amber-400 mb-3" />
-              <p className="text-white font-bold text-sm mb-1">Import Official Game</p>
-              <p className="text-slate-500 text-xs leading-relaxed">Upload a .rofl replay file to automatically extract all stats.</p>
+              {creatingSession ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Creating...
+                </>
+              ) : (
+                "Create Session"
+              )}
             </button>
           </div>
-        )}
-
-        {/* === IMPORT MODE === */}
-        {mode === "import" && (
-          <>
-            {!file ? (
-              <div
-                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-                  dragActive ? "border-amber-500 bg-amber-500/10" : "border-slate-600 hover:border-amber-400 hover:bg-amber-500/5"
-                }`}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-                onClick={() => inputRef.current?.click()}
-              >
-                <input ref={inputRef} type="file" accept=".rofl" onChange={e => handleFiles(e.target.files)} className="hidden" />
-                <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <p className="text-slate-300 font-medium mb-1">Drop your .rofl file here</p>
-                <p className="text-slate-500 text-sm">or click to browse</p>
-                <p className="text-slate-500 text-xs mt-2">Documents/League of Legends/Replays/</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Draft URL */}
-                <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5">
-                  <label className="block text-sm font-semibold text-amber-400 mb-2">Draft URL</label>
-                  <input
-                    type="text"
-                    value={roflConfig.draft_url}
-                    onChange={e => setRoflConfig(prev => ({ ...prev, draft_url: e.target.value }))}
-                    placeholder="https://drafter.lol/draft/... or https://draftlol.dawe.gg/..."
-                    className="w-full px-3 py-2.5 rounded-lg border border-amber-500/30 bg-slate-800 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all"
-                  />
-                  <p className="text-slate-400 text-xs mt-1.5">Paste a drafter.lol or dawe.gg link to import picks order & bans</p>
-                </div>
-
-                {/* ROFL parsed preview */}
-                {roflPreview && (
-                  <div className="p-4 bg-slate-900 rounded-xl text-white">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-slate-400 text-xs">PATCH</p>
-                        <p className="font-mono">{roflPreview.game?.patch}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400 text-xs">DURATION</p>
-                        <p className="font-mono">
-                          {Math.floor(roflPreview.game?.duration / 60)}:{String(roflPreview.game?.duration % 60).padStart(2, "0")}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400 text-xs">GAME ID</p>
-                        <p className="font-mono text-sm">{roflPreview.game?.game_id}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className={`p-3 rounded-lg ${roflPreview.game?.blue_team?.win ? "bg-blue-500/20 border border-blue-500/30" : "bg-slate-800"}`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-blue-400 font-semibold text-sm">BLUE TEAM</span>
-                          {roflPreview.game?.blue_team?.win && <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded">WIN</span>}
-                        </div>
-                        <div className="space-y-1">
-                          {roflPreview.players
-                            ?.filter(p => p.side === "blue")
-                            .map((p, i) => (
-                              <div key={i} className="flex items-center justify-between text-xs">
-                                <span className="text-slate-300">{p.champion}</span>
-                                <span className="text-slate-500">
-                                  {p.kills}/{p.deaths}/{p.assists}
-                                </span>
-                              </div>
-                            ))}
-                        </div>
-                        <div className="mt-2 pt-2 border-t border-slate-700 text-xs text-slate-400">
-                          {roflPreview.game?.blue_team?.kills} kills · {Math.round(roflPreview.game?.blue_team?.gold / 1000)}k gold
-                        </div>
-                      </div>
-                      <div className={`p-3 rounded-lg ${roflPreview.game?.red_team?.win ? "bg-red-500/20 border border-red-500/30" : "bg-slate-800"}`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-red-400 font-semibold text-sm">RED TEAM</span>
-                          {roflPreview.game?.red_team?.win && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded">WIN</span>}
-                        </div>
-                        <div className="space-y-1">
-                          {roflPreview.players
-                            ?.filter(p => p.side === "red")
-                            .map((p, i) => (
-                              <div key={i} className="flex items-center justify-between text-xs">
-                                <span className="text-slate-300">{p.champion}</span>
-                                <span className="text-slate-500">
-                                  {p.kills}/{p.deaths}/{p.assists}
-                                </span>
-                              </div>
-                            ))}
-                        </div>
-                        <div className="mt-2 pt-2 border-t border-slate-700 text-xs text-slate-400">
-                          {roflPreview.game?.red_team?.kills} kills · {Math.round(roflPreview.game?.red_team?.gold / 1000)}k gold
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Config form */}
-                {roflPreview && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1">Your team was *</label>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setRoflConfig(prev => ({ ...prev, team_side: "blue" }))}
-                          className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${roflConfig.team_side === "blue" ? "bg-blue-500 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
-                        >
-                          Blue
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setRoflConfig(prev => ({ ...prev, team_side: "red" }))}
-                          className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${roflConfig.team_side === "red" ? "bg-red-500 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}
-                        >
-                          Red
-                        </button>
-                      </div>
-                    </div>
-
-                    <OpponentDropdown value={roflConfig.opponent?.name || ""} onChange={v => setRoflConfig(prev => ({ ...prev, opponent: v }))} label="Opponent Team *" />
-
-                    {/* Folder */}
-                    <div className="relative">
-                      <label className="block text-sm font-medium text-slate-400 mb-1">Folder</label>
-                      <button
-                        type="button"
-                        onClick={() => setShowFolderDropdown(!showFolderDropdown)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all text-left"
-                      >
-                        <div className="flex items-center gap-2">
-                          <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
-                          <span className={roflConfig.folder_name ? "text-white" : "text-slate-400"}>{roflConfig.folder_name || "Select folder..."}</span>
-                        </div>
-                        <ChevronDown className="w-4 h-4 text-slate-400" />
-                      </button>
-                      {showFolderDropdown && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => setShowFolderDropdown(false)} />
-                          <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
-                            <div className="p-2 border-b border-slate-700/50">
-                              <form
-                                onSubmit={e => {
-                                  e.preventDefault()
-                                  if (newFolderName.trim()) createFolder(newFolderName.trim())
-                                }}
-                                className="flex items-center gap-1.5"
-                              >
-                                <input
-                                  type="text"
-                                  placeholder="New folder..."
-                                  value={newFolderName}
-                                  onChange={e => setNewFolderName(e.target.value)}
-                                  className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
-                                  autoFocus
-                                />
-                                <button
-                                  type="submit"
-                                  disabled={!newFolderName.trim()}
-                                  className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 text-slate-900 rounded-md transition-colors"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </button>
-                              </form>
-                            </div>
-                            <div className="max-h-48 overflow-y-auto p-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRoflConfig(prev => ({ ...prev, folder_id: "", folder_name: "" }))
-                                  setShowFolderDropdown(false)
-                                }}
-                                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!roflConfig.folder_id ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
-                              >
-                                No folder
-                              </button>
-                              {folders.map(folder => (
-                                <button
-                                  key={folder._id}
-                                  type="button"
-                                  onClick={() => {
-                                    setRoflConfig(prev => ({ ...prev, folder_id: folder._id, folder_name: folder.name }))
-                                    setShowFolderDropdown(false)
-                                  }}
-                                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${roflConfig.folder_id === folder._id ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
-                                >
-                                  {folder.name}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1">Game Name (optional)</label>
-                      <input
-                        type="text"
-                        value={roflConfig.name}
-                        onChange={e => setRoflConfig(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="Ex: Scrim Week 5 - Game 1"
-                        className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none transition-all"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
-                      <input
-                        type="date"
-                        value={roflConfig.date}
-                        onChange={e => setRoflConfig(prev => ({ ...prev, date: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none transition-all [color-scheme:dark]"
-                      />
-                    </div>
-
-                    <div className="flex items-end pb-0.5">
-                      <div className="flex items-center gap-2 opacity-60">
-                        <div className="w-5 h-5 rounded border flex items-center justify-center shrink-0 bg-amber-500 border-amber-500">
-                          <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
-                            <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </div>
-                        <span className="text-sm text-slate-300 select-none">Official game</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Import footer */}
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={handleUpload}
-                disabled={!file || uploading || parsing || !roflConfig.team_side || !roflConfig.opponent?.name}
-                className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Importing...
-                  </>
-                ) : parsing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Analyzing...
-                  </>
-                ) : (
-                  "Import Game"
-                )}
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* === SESSION MODE === */}
-        {mode === "session" && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Session Name *</label>
-              <input
-                type="text"
-                placeholder="e.g. Scrim vs Team B - Week 5"
-                value={sessionForm.name}
-                onChange={e => setSessionForm(f => ({ ...f, name: e.target.value }))}
-                autoFocus
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none transition-all"
-              />
-            </div>
-
-            <OpponentDropdown value={sessionForm.opponent?.name || ""} onChange={v => setSessionForm(f => ({ ...f, opponent: v }))} label="Opponent Team *" />
-
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
-              <input
-                type="date"
-                value={sessionForm.date}
-                onChange={e => setSessionForm(f => ({ ...f, date: e.target.value }))}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-blue-500 focus:outline-none transition-all [color-scheme:dark]"
-              />
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={handleCreateSession}
-                disabled={creatingSession || !sessionForm.name.trim() || !sessionForm.opponent?._id}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
-              >
-                {creatingSession ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Creating...
-                  </>
-                ) : (
-                  "Create Session"
-                )}
-              </button>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </Modal>
   )
