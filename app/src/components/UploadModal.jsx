@@ -1,0 +1,755 @@
+import { useState, useEffect, useRef } from "react"
+import { toast } from "react-hot-toast"
+import api from "@/services/api"
+import useStore from "@/services/store"
+import Modal from "@/components/modal"
+import OpponentDropdown from "@/components/OpponentDropdown"
+import { getChampionIcon } from "@/utils"
+import { Upload, FileText, Loader2, Plus, Check, Gamepad2, Search, Clock, AlertTriangle, FolderOpen, ChevronDown } from "lucide-react"
+
+function getPatchPrefix(patch) {
+  if (!patch) return null
+  return patch.split(".").slice(0, 2).join(".")
+}
+
+function patchesMatch(patch1, patch2) {
+  if (!patch1 || !patch2) return true
+  return getPatchPrefix(patch1) === getPatchPrefix(patch2)
+}
+
+export default function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [], official = false }) {
+  const { user } = useStore()
+  const [activeTab, setActiveTab] = useState("import")
+
+  const [file, setFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
+  const inputRef = useRef(null)
+
+  const [roflConfig, setRoflConfig] = useState({
+    team_side: "",
+    opponent: null,
+    name: "",
+    draft_url: "",
+    date: new Date().toISOString().slice(0, 10),
+    folder_id: "",
+    folder_name: ""
+  })
+  const [roflPreview, setRoflPreview] = useState(null)
+  const [parsing, setParsing] = useState(false)
+
+  const [folders, setFolders] = useState([])
+  const [showFolderDropdown, setShowFolderDropdown] = useState(false)
+  const [newFolderName, setNewFolderName] = useState("")
+
+  const [historyGames, setHistoryGames] = useState([])
+  const [historyFilters, setHistoryFilters] = useState({ search: "" })
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState([])
+  const [addingGames, setAddingGames] = useState(false)
+
+  useEffect(() => {
+    if (isOpen && session?.opponent_name) {
+      setRoflConfig(prev => ({ ...prev, opponent: { _id: session.opponent_id, name: session.opponent_name } }))
+    }
+    if (isOpen && session?.folder_id) {
+      setRoflConfig(prev => ({ ...prev, folder_id: session.folder_id, folder_name: session.folder_name }))
+    }
+  }, [isOpen, session?.opponent_name, session?.folder_id])
+
+  const fetchFolders = async () => {
+    try {
+      const { ok, data, code } = await api.post("/folder/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code || "Failed to fetch folders")
+      setFolders(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch folders")
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen && user?.team_id) fetchFolders()
+  }, [isOpen, user?.team_id])
+
+  useEffect(() => {
+    if (isOpen && activeTab === "history" && user?.team_id && session) fetchHistoryGames()
+  }, [isOpen, activeTab, user?.team_id, historyFilters])
+
+  const fetchHistoryGames = async () => {
+    try {
+      const { ok, data, code } = await api.post("/game/search", { team_id: user?.team_id, limit: 100, session_id: null, patch: getPatchPrefix(session?.patch), ...historyFilters })
+      if (!ok) return toast.error(code || "Failed to fetch games")
+      setHistoryGames(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch games")
+    }
+  }
+
+  const createFolder = async name => {
+    try {
+      const { ok, data, code } = await api.post("/folder", { name })
+      if (!ok) return toast.error(code || "Failed to create folder")
+      setFolders(prev => [data, ...prev])
+      setRoflConfig(prev => ({ ...prev, folder_id: data._id, folder_name: data.name }))
+      setNewFolderName("")
+      setShowFolderDropdown(false)
+    } catch (error) {
+      toast.error(error.code || "Failed to create folder")
+    }
+  }
+
+  const handleFiles = async selectedFiles => {
+    if (!selectedFiles || selectedFiles.length === 0) return
+    const selectedFile = selectedFiles[0]
+    if (!selectedFile.name.endsWith(".rofl")) return toast.error("File must be a .rofl")
+    setFile(selectedFile)
+    setParsing(true)
+    try {
+      const formData = new FormData()
+      formData.append("replay", selectedFile)
+      const { ok, data, code } = await api.postFormData("/parser/parse", formData)
+      if (ok && data) {
+        setRoflPreview(data)
+        toast.success("ROFL file parsed successfully")
+      } else {
+        toast.error(code || "Error during parsing")
+        setFile(null)
+      }
+    } catch (error) {
+      toast.error(error.code || "Error during parsing")
+      setFile(null)
+    } finally {
+      setParsing(false)
+    }
+  }
+
+  const handleDrag = e => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true)
+    if (e.type === "dragleave") setDragActive(false)
+  }
+
+  const handleDrop = e => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files)
+  }
+
+  const handleUpload = async () => {
+    if (!file) return
+    if (!roflConfig.team_side) return toast.error("Select your side (Blue/Red)")
+    if (!session && !roflConfig.opponent?.name) return toast.error("Select an opponent team")
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("replay", file)
+      formData.append("team_side", roflConfig.team_side)
+      formData.append("team_id", user?.team_id || "")
+      formData.append("team_name", user?.team_name || "")
+      if (roflConfig.opponent?._id) formData.append("opponent_id", roflConfig.opponent._id)
+      formData.append("opponent_name", roflConfig.opponent?.name || "")
+      formData.append("name", roflConfig.name)
+      if (!session && roflConfig.date) formData.append("date", new Date(roflConfig.date).toISOString())
+      if (roflConfig.draft_url) formData.append("draft_url", roflConfig.draft_url)
+      if (roflConfig.folder_id) formData.append("folder_id", roflConfig.folder_id)
+      if (roflConfig.folder_name) formData.append("folder_name", roflConfig.folder_name)
+      if (session?._id) formData.append("session_id", session._id)
+      if (session?.name) formData.append("session_name", session.name)
+      if (official) formData.append("official", "true")
+      const { ok, code } = await api.postFormData("/parser/import", formData)
+      if (ok) {
+        toast.success(roflConfig.draft_url ? "Game & draft imported!" : "Game imported successfully!")
+        setTimeout(() => {
+          handleClose()
+          onSuccess?.(roflPreview?.game?.patch)
+        }, 1000)
+      } else {
+        toast.error(code || "Error during import")
+      }
+    } catch (error) {
+      toast.error(error.code || "Error during import")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const addSelectedGames = async () => {
+    if (selectedHistoryIds.length === 0 || !session) return
+    setAddingGames(true)
+    try {
+      for (const gameId of selectedHistoryIds) {
+        const { ok, code } = await api.put(`/game/${gameId}`, {
+          session_id: session._id,
+          session_name: session.name,
+          ...(session.opponent_id && { opponent_id: session.opponent_id, opponent_name: session.opponent_name }),
+          ...(roflConfig.folder_id && { folder_id: roflConfig.folder_id, folder_name: roflConfig.folder_name })
+        })
+        if (!ok) return toast.error(code || "Failed to add game")
+      }
+      toast.success(`${selectedHistoryIds.length} game${selectedHistoryIds.length > 1 ? "s" : ""} added to session`)
+      const firstAddedGame = historyGames.find(g => selectedHistoryIds.includes(g._id))
+      setSelectedHistoryIds([])
+      handleClose()
+      onSuccess?.(firstAddedGame?.patch)
+    } catch (error) {
+      toast.error(error.code || "Failed to add games")
+    } finally {
+      setAddingGames(false)
+    }
+  }
+
+  const handleClose = () => {
+    if (uploading || parsing || addingGames) return
+    setFile(null)
+    setRoflPreview(null)
+    setRoflConfig({ team_side: "", opponent: null, name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "" })
+    setActiveTab("import")
+    setSelectedHistoryIds([])
+    setHistoryFilters({ search: "" })
+    setShowFolderDropdown(false)
+    setNewFolderName("")
+    onClose()
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl w-full max-h-[90vh] overflow-y-auto bg-slate-800 border border-slate-700">
+      <div className="p-6">
+        <h2 className="text-xl font-bold text-white mb-1">{session ? "Add a Game" : "Import a Game"}</h2>
+        <p className="text-slate-400 text-sm mb-5">
+          {session ? "Import a new replay or pick from your team's game history." : "Import a replay file (.rofl) to automatically extract all stats."}
+        </p>
+
+        {session && (
+          <div className="flex gap-1 bg-slate-700/30 rounded-xl p-1 mb-5">
+            <button
+              onClick={() => setActiveTab("import")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                activeTab === "import" ? "bg-slate-600/80 text-white shadow-sm" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Upload className="w-4 h-4" />
+              Import .rofl
+            </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                activeTab === "history" ? "bg-slate-600/80 text-white shadow-sm" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Gamepad2 className="w-4 h-4" />
+              Game History
+            </button>
+          </div>
+        )}
+
+        {activeTab === "import" && (
+          <>
+            {!file ? (
+              <div
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
+                  dragActive ? "border-amber-500 bg-amber-500/10" : "border-slate-600 hover:border-amber-400 hover:bg-amber-500/5"
+                }`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+                onClick={() => inputRef.current?.click()}
+              >
+                <input ref={inputRef} type="file" accept=".rofl" onChange={e => handleFiles(e.target.files)} className="hidden" />
+                <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                <p className="text-slate-300 font-medium mb-1">Drop your .rofl file here</p>
+                <p className="text-slate-500 text-sm">or click to browse</p>
+                <p className="text-slate-500 text-xs mt-2">Documents/League of Legends/Replays/</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {roflPreview && <RoflPreview roflPreview={roflPreview} />}
+
+                {session?.patch && roflPreview && !patchesMatch(session.patch, roflPreview.game?.patch) && (
+                  <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                    <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <p className="text-red-400 text-sm">
+                      Patch mismatch: this game is on <span className="font-mono font-medium">{getPatchPrefix(roflPreview.game?.patch)}</span> but the session is on{" "}
+                      <span className="font-mono font-medium">{getPatchPrefix(session?.patch)}</span>
+                    </p>
+                  </div>
+                )}
+
+                {roflPreview && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Your team was *</label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setRoflConfig(prev => ({ ...prev, team_side: "blue" }))}
+                          className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
+                            roflConfig.team_side === "blue" ? "bg-blue-500 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                          }`}
+                        >
+                          Blue
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRoflConfig(prev => ({ ...prev, team_side: "red" }))}
+                          className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
+                            roflConfig.team_side === "red" ? "bg-red-500 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                          }`}
+                        >
+                          Red
+                        </button>
+                      </div>
+                    </div>
+
+                    {session ? (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-1">Opponent</label>
+                        <div className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white text-sm">
+                          {session.opponent_name || <span className="text-slate-500">No opponent set</span>}
+                        </div>
+                      </div>
+                    ) : (
+                      <OpponentDropdown value={roflConfig.opponent?.name || ""} onChange={v => setRoflConfig(prev => ({ ...prev, opponent: v }))} label="Opponent Team *" />
+                    )}
+
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Draft URL (optional)</label>
+                      <input
+                        type="text"
+                        value={roflConfig.draft_url}
+                        onChange={e => setRoflConfig(prev => ({ ...prev, draft_url: e.target.value }))}
+                        placeholder="https://drafter.lol/draft/... or https://draftlol.dawe.gg/..."
+                        className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none transition-all"
+                      />
+                      <p className="text-slate-500 text-xs mt-1">Paste a drafter.lol or dawe.gg link to import picks order & bans</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Game Name (optional)</label>
+                      <input
+                        type="text"
+                        value={roflConfig.name}
+                        onChange={e => setRoflConfig(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="Ex: Scrim Week 5 - Game 1"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none transition-all"
+                      />
+                    </div>
+
+                    {!session ? (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
+                        <input
+                          type="date"
+                          value={roflConfig.date}
+                          onChange={e => setRoflConfig(prev => ({ ...prev, date: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none transition-all [color-scheme:dark]"
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <label className="block text-sm font-medium text-slate-400 mb-1">Folder (optional)</label>
+                        <button
+                          type="button"
+                          onClick={() => setShowFolderDropdown(!showFolderDropdown)}
+                          className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all text-left"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
+                            <span className={roflConfig.folder_name ? "text-white" : "text-slate-400"}>{roflConfig.folder_name || "Select folder..."}</span>
+                          </div>
+                          <ChevronDown className="w-4 h-4 text-slate-400" />
+                        </button>
+
+                        {showFolderDropdown && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setShowFolderDropdown(false)} />
+                            <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+                              <div className="p-2 border-b border-slate-700/50">
+                                <form
+                                  onSubmit={e => {
+                                    e.preventDefault()
+                                    if (newFolderName.trim()) createFolder(newFolderName.trim())
+                                  }}
+                                  className="flex items-center gap-1.5"
+                                >
+                                  <input
+                                    type="text"
+                                    placeholder="New folder..."
+                                    value={newFolderName}
+                                    onChange={e => setNewFolderName(e.target.value)}
+                                    className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
+                                    autoFocus
+                                  />
+                                  <button
+                                    type="submit"
+                                    disabled={!newFolderName.trim()}
+                                    className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </form>
+                              </div>
+                              <div className="max-h-48 overflow-y-auto p-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRoflConfig(prev => ({ ...prev, folder_id: "", folder_name: "" }))
+                                    setShowFolderDropdown(false)
+                                  }}
+                                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!roflConfig.folder_id ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
+                                >
+                                  No folder
+                                </button>
+                                {folders.map(folder => (
+                                  <button
+                                    key={folder._id}
+                                    type="button"
+                                    onClick={() => {
+                                      setRoflConfig(prev => ({ ...prev, folder_id: folder._id, folder_name: folder.name }))
+                                      setShowFolderDropdown(false)
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${roflConfig.folder_id === folder._id ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                                  >
+                                    {folder.name}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {!session && (
+                      <div className="relative">
+                        <label className="block text-sm font-medium text-slate-400 mb-1">Folder</label>
+                        <button
+                          type="button"
+                          onClick={() => setShowFolderDropdown(!showFolderDropdown)}
+                          className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-600 hover:border-slate-500 bg-slate-700/50 transition-all text-left"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
+                            <span className={roflConfig.folder_name ? "text-white" : "text-slate-400"}>{roflConfig.folder_name || "Select folder..."}</span>
+                          </div>
+                          <ChevronDown className="w-4 h-4 text-slate-400" />
+                        </button>
+
+                        {showFolderDropdown && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setShowFolderDropdown(false)} />
+                            <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-20 overflow-hidden">
+                              <div className="p-2 border-b border-slate-700/50">
+                                <form
+                                  onSubmit={e => {
+                                    e.preventDefault()
+                                    if (newFolderName.trim()) createFolder(newFolderName.trim())
+                                  }}
+                                  className="flex items-center gap-1.5"
+                                >
+                                  <input
+                                    type="text"
+                                    placeholder="New folder..."
+                                    value={newFolderName}
+                                    onChange={e => setNewFolderName(e.target.value)}
+                                    className="flex-1 bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-md px-2.5 py-1.5 text-white placeholder-slate-500 text-xs"
+                                    autoFocus
+                                  />
+                                  <button
+                                    type="submit"
+                                    disabled={!newFolderName.trim()}
+                                    className="p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 rounded-md transition-colors"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </form>
+                              </div>
+                              <div className="max-h-48 overflow-y-auto p-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRoflConfig(prev => ({ ...prev, folder_id: "", folder_name: "" }))
+                                    setShowFolderDropdown(false)
+                                  }}
+                                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!roflConfig.folder_id ? "bg-amber-500/20 text-amber-400" : "text-slate-400 hover:bg-slate-700/50"}`}
+                                >
+                                  No folder
+                                </button>
+                                {folders.map(folder => (
+                                  <button
+                                    key={folder._id}
+                                    type="button"
+                                    onClick={() => {
+                                      setRoflConfig(prev => ({ ...prev, folder_id: folder._id, folder_name: folder.name }))
+                                      setShowFolderDropdown(false)
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${roflConfig.folder_id === folder._id ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-slate-700/50"}`}
+                                  >
+                                    {folder.name}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {official && (
+                      <div className="flex items-end pb-0.5">
+                        <div className="flex items-center gap-2 opacity-60">
+                          <div className="w-5 h-5 rounded border flex items-center justify-center shrink-0 bg-amber-500 border-amber-500">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                          <span className="text-sm text-slate-300 select-none">Official game</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={handleUpload}
+                disabled={
+                  !file ||
+                  uploading ||
+                  parsing ||
+                  !roflConfig.team_side ||
+                  (!session && !roflConfig.opponent?.name) ||
+                  (session?.patch && roflPreview && !patchesMatch(session.patch, roflPreview.game?.patch))
+                }
+                className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Importing...
+                  </>
+                ) : parsing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Analyzing...
+                  </>
+                ) : (
+                  "Import Game"
+                )}
+              </button>
+            </div>
+          </>
+        )}
+
+        {activeTab === "history" && session && (
+          <>
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by name, opponent, patch..."
+                value={historyFilters.search}
+                onChange={e => setHistoryFilters(prev => ({ ...prev, search: e.target.value }))}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-600/50 bg-slate-700/30 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all text-sm"
+              />
+            </div>
+
+            {historyGames.length === 0 ? (
+              <div className="text-center py-14">
+                <div className="w-14 h-14 rounded-2xl bg-slate-700/30 flex items-center justify-center mx-auto mb-4">
+                  <Gamepad2 className="w-7 h-7 text-slate-600" />
+                </div>
+                <p className="text-slate-400 text-sm">{historyFilters.search ? "No games match your search" : "No games found for your team"}</p>
+              </div>
+            ) : (
+              <div className="max-h-[400px] overflow-y-auto space-y-1.5 pr-1">
+                {historyGames.map(game => (
+                  <HistoryGameRow
+                    key={game._id}
+                    game={game}
+                    isAlreadyInSession={selectedGames.some(g => g._id === game._id)}
+                    isInOtherSession={!selectedGames.some(g => g._id === game._id) && game.session_id && game.session_id !== session?._id}
+                    isSelected={selectedHistoryIds.includes(game._id)}
+                    onToggle={() => setSelectedHistoryIds(prev => (prev.includes(game._id) ? prev.filter(id => id !== game._id) : [...prev, game._id]))}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between mt-5 pt-4 border-t border-slate-700/30">
+              <span className="text-slate-400 text-sm">
+                {selectedHistoryIds.length > 0 ? `${selectedHistoryIds.length} game${selectedHistoryIds.length > 1 ? "s" : ""} selected` : "Select games to add"}
+              </span>
+              <button
+                onClick={addSelectedGames}
+                disabled={selectedHistoryIds.length === 0 || addingGames}
+                className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
+              >
+                {addingGames ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Adding...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" /> Add to Session
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
+function RoflPreview({ roflPreview }) {
+  return (
+    <div className="p-4 bg-slate-900 rounded-xl text-white">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-slate-400 text-xs">PATCH</p>
+          <p className="font-mono">{roflPreview.game?.patch}</p>
+        </div>
+        <div>
+          <p className="text-slate-400 text-xs">DURATION</p>
+          <p className="font-mono">
+            {Math.floor(roflPreview.game?.duration / 60)}:{String(roflPreview.game?.duration % 60).padStart(2, "0")}
+          </p>
+        </div>
+        <div>
+          <p className="text-slate-400 text-xs">GAME ID</p>
+          <p className="font-mono text-sm">{roflPreview.game?.game_id}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className={`p-3 rounded-lg ${roflPreview.game?.blue_team?.win ? "bg-blue-500/20 border border-blue-500/30" : "bg-slate-800"}`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-blue-400 font-semibold text-sm">BLUE TEAM</span>
+            {roflPreview.game?.blue_team?.win && <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded">WIN</span>}
+          </div>
+          <div className="space-y-1.5">
+            {roflPreview.players
+              ?.filter(p => p.side === "blue")
+              .map((p, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <div className="w-5 h-5 rounded overflow-hidden bg-slate-700 flex-shrink-0">
+                    <img src={getChampionIcon(p.champion)} alt={p.champion} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="text-slate-300 truncate flex-1">
+                    {p.summoner_name}
+                    {p.riot_tag ? `#${p.riot_tag}` : ""}
+                  </span>
+                  <span className="text-slate-500 flex-shrink-0">
+                    {p.kills}/{p.deaths}/{p.assists}
+                  </span>
+                </div>
+              ))}
+          </div>
+          <div className="mt-2 pt-2 border-t border-slate-700 text-xs text-slate-400">
+            {roflPreview.game?.blue_team?.kills} kills · {Math.round(roflPreview.game?.blue_team?.gold / 1000)}k gold
+          </div>
+        </div>
+        <div className={`p-3 rounded-lg ${roflPreview.game?.red_team?.win ? "bg-red-500/20 border border-red-500/30" : "bg-slate-800"}`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-red-400 font-semibold text-sm">RED TEAM</span>
+            {roflPreview.game?.red_team?.win && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded">WIN</span>}
+          </div>
+          <div className="space-y-1.5">
+            {roflPreview.players
+              ?.filter(p => p.side === "red")
+              .map((p, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <div className="w-5 h-5 rounded overflow-hidden bg-slate-700 flex-shrink-0">
+                    <img src={getChampionIcon(p.champion)} alt={p.champion} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="text-slate-300 truncate flex-1">
+                    {p.summoner_name}
+                    {p.riot_tag ? `#${p.riot_tag}` : ""}
+                  </span>
+                  <span className="text-slate-500 flex-shrink-0">
+                    {p.kills}/{p.deaths}/{p.assists}
+                  </span>
+                </div>
+              ))}
+          </div>
+          <div className="mt-2 pt-2 border-t border-slate-700 text-xs text-slate-400">
+            {roflPreview.game?.red_team?.kills} kills · {Math.round(roflPreview.game?.red_team?.gold / 1000)}k gold
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function HistoryGameRow({ game, isAlreadyInSession, isInOtherSession, isSelected, onToggle }) {
+  return (
+    <button
+      onClick={() => !isAlreadyInSession && onToggle()}
+      disabled={isAlreadyInSession}
+      className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+        isAlreadyInSession
+          ? "bg-slate-700/20 border-slate-700/30 opacity-50 cursor-not-allowed"
+          : isSelected
+            ? "bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/30"
+            : "bg-slate-700/20 border-slate-700/30 hover:border-slate-600 hover:bg-slate-700/40"
+      }`}
+    >
+      <div
+        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+          isAlreadyInSession ? "border-slate-600 bg-slate-700" : isSelected ? "border-amber-500 bg-amber-500" : "border-slate-500"
+        }`}
+      >
+        {(isSelected || isAlreadyInSession) && <Check className="w-3 h-3 text-white" />}
+      </div>
+
+      <div className={`w-1 h-8 rounded-full flex-shrink-0 ${game.win ? "bg-emerald-400" : "bg-red-400"}`} />
+
+      {game.champions && game.champions[game.team_side] && (
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          {["top", "jungle", "mid", "bottom", "support"].map(role => {
+            const champ = game.champions[game.team_side]?.[role]
+            return champ ? (
+              <div key={role} className="w-6 h-6 rounded-md overflow-hidden bg-slate-600 border border-slate-500/30" title={champ}>
+                <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div key={role} className="w-6 h-6 rounded-md bg-slate-700 border border-slate-600/30" />
+            )
+          })}
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-white text-sm font-medium truncate">{game.name || `Game ${game.game_id}`}</span>
+          {game.team_side && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${game.team_side === "blue" ? "bg-blue-500/15 text-blue-400" : "bg-red-500/15 text-red-400"}`}>
+              {game.team_side}
+            </span>
+          )}
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${game.win ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
+            {game.win ? "W" : "L"}
+          </span>
+        </div>
+        <div className="flex items-center gap-3 mt-0.5">
+          {game.opponent_name && <span className="text-slate-500 text-xs">vs {game.opponent_name}</span>}
+          {game.patch && <span className="text-slate-500 text-xs font-mono">{game.patch}</span>}
+          {game.duration && (
+            <span className="text-slate-500 text-xs flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {Math.floor(game.duration / 60)}:{String(game.duration % 60).padStart(2, "0")}
+            </span>
+          )}
+          {game.date && <span className="text-slate-500 text-xs">{new Date(game.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}
+        </div>
+      </div>
+
+      {isAlreadyInSession && <span className="text-[10px] text-slate-500 bg-slate-700 px-2 py-1 rounded-md flex-shrink-0">Already added</span>}
+      {isInOtherSession && (
+        <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-2 py-1 rounded-md flex-shrink-0 truncate max-w-[100px]" title={game.session_name}>
+          {game.session_name || "Other session"}
+        </span>
+      )}
+    </button>
+  )
+}

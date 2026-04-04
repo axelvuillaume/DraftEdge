@@ -56,6 +56,7 @@ app.use('/soloq-snapshot', require('./controllers/soloq-snapshot'));
 app.use('/soloq-match', require('./controllers/soloq-match'));
 app.use('/team-league', require('./controllers/team-league'));
 app.use('/league', require('./controllers/league'));
+app.use('/strat-map', require('./controllers/strat-map'));
 
 setupErrorHandler(app);
 require('./services/passport')(app);

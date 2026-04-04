@@ -1,10 +1,32 @@
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
-import { Plus, Target, TrendingUp, Trophy, AlertTriangle, Trash2, Swords, Gamepad2, ChevronDown, ChevronUp, XCircle, CheckCircle2, User, Users, ToggleLeft, Search, X, Pencil } from "lucide-react"
+import {
+  Plus,
+  Target,
+  TrendingUp,
+  Trophy,
+  AlertTriangle,
+  Trash2,
+  Swords,
+  Gamepad2,
+  ChevronDown,
+  ChevronUp,
+  XCircle,
+  CheckCircle2,
+  User,
+  Users,
+  ToggleLeft,
+  Search,
+  X,
+  Pencil
+} from "lucide-react"
 import { ROLES, ROLE_LABELS, ALL_CHAMPIONS, getChampionIcon } from "@/utils"
+import DraftScenarioSelect from "@/components/DraftScenarioSelect"
+import StratMapSelect from "@/components/StratMapSelect"
 
 const RATING_MAX = 10
 
@@ -119,10 +141,20 @@ function ScrimObjectives() {
 
       <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl overflow-hidden">
         {objectifs.length === 0 ? (
-          <div className="p-12 text-center">
-            <Target className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">No objectives yet</p>
-            <p className="text-slate-600 text-xs mt-1">Add objectives to track your team&apos;s improvement</p>
+          <div className="relative py-16 px-6 flex flex-col items-center text-center overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 via-transparent to-transparent pointer-events-none" />
+            <div className="relative flex items-center justify-center w-16 h-16 mb-5 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/20">
+              <Target className="w-7 h-7 text-amber-500/80" />
+            </div>
+            <h3 className="text-white text-base font-semibold mb-1.5">No objectives yet</h3>
+            <p className="text-slate-400 text-sm max-w-xs mb-5">Create objectives to track and measure your team&apos;s progress across scrims</p>
+            <button
+              onClick={() => setEditingObjective({})}
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Create your first objective
+            </button>
           </div>
         ) : (
           <div className="divide-y divide-slate-700/30">
@@ -218,6 +250,8 @@ function ScrimStatsPanel({ objectifs }) {
 
 function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
   const [results, setResults] = useState([])
+  const [expanded, setExpanded] = useState(false)
+  const navigate = useNavigate()
 
   const fetchResults = async () => {
     try {
@@ -238,8 +272,9 @@ function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
   const toggleRate = objectif.rating_type === "toggle" && ratings.length > 0 ? Math.round((ratings.filter(r => r === 1).length / ratings.length) * 100) : null
 
   return (
-    <div className="px-5 py-4 hover:bg-slate-800/40 transition-colors group">
-      <div className="flex items-center gap-4">
+    <div className="group">
+      <div className="px-5 py-4 hover:bg-slate-800/40 transition-colors cursor-pointer flex items-center gap-4" onClick={() => setExpanded(e => !e)}>
+        <button className="p-0.5 shrink-0">{expanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}</button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-white text-sm font-medium truncate">{objectif.name}</h3>
@@ -253,6 +288,28 @@ function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
             )}
             {objectif.rating_type === "toggle" && <ToggleLeft className="w-3.5 h-3.5 text-slate-500 shrink-0" />}
             {ratings.length > 0 && <span className="text-slate-600 text-xs shrink-0">{ratings.length} evals</span>}
+            {objectif.draft_scenario_name && (
+              <span
+                onClick={e => {
+                  e.stopPropagation()
+                  if (objectif.draft_scenario_id) navigate(`/scrim-hub/draft/${objectif.draft_scenario_id}`)
+                }}
+                className={`text-xs text-blue-400/80 bg-blue-500/10 px-1.5 py-0.5 rounded font-medium shrink-0 ${objectif.draft_scenario_id ? "hover:text-blue-300 cursor-pointer" : ""}`}
+              >
+                Draft: {objectif.draft_scenario_name}
+              </span>
+            )}
+            {objectif.strat_map_name && (
+              <span
+                onClick={e => {
+                  e.stopPropagation()
+                  if (objectif.strat_map_id) navigate(`/scrim-hub/map/${objectif.strat_map_id}`)
+                }}
+                className={`text-xs text-teal-400/80 bg-teal-500/10 px-1.5 py-0.5 rounded font-medium shrink-0 ${objectif.strat_map_id ? "hover:text-teal-300 cursor-pointer" : ""}`}
+              >
+                Map: {objectif.strat_map_name}
+              </span>
+            )}
           </div>
           {objectif.description && <p className="text-slate-500 text-xs mt-0.5 truncate">{objectif.description}</p>}
         </div>
@@ -288,18 +345,85 @@ function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
           )}
         </div>
         <button
-          onClick={() => onEdit(objectif)}
+          onClick={e => {
+            e.stopPropagation()
+            onEdit(objectif)
+          }}
           className="p-1.5 rounded-lg text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors opacity-0 group-hover:opacity-100"
         >
           <Pencil className="w-3.5 h-3.5" />
         </button>
         <button
-          onClick={() => onDelete(objectif._id)}
+          onClick={e => {
+            e.stopPropagation()
+            onDelete(objectif._id)
+          }}
           className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {expanded && (
+        <div className="border-t border-slate-700/30 bg-slate-900/20">
+          {objectif.description && (
+            <div className="px-5 pt-3 pb-1">
+              <p className="text-slate-400 text-xs">{objectif.description}</p>
+            </div>
+          )}
+          {results.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <div className="flex items-center justify-center w-10 h-10 mx-auto mb-2.5 rounded-xl bg-slate-800/80 ring-1 ring-slate-700/50">
+                <Target className="w-5 h-5 text-slate-600" />
+              </div>
+              <p className="text-slate-500 text-sm">No evaluations yet</p>
+              <p className="text-slate-600 text-xs mt-0.5">Rate this objective during scrims to track progress</p>
+            </div>
+          ) : (
+            <div className="px-5 py-3 space-y-1">
+              {results.map(r => (
+                <div key={r._id} className="flex items-center gap-3 rounded-lg px-3 py-2 bg-slate-800/30 hover:bg-slate-800/50 transition-colors">
+                  <span className="text-[11px] text-slate-500 shrink-0 w-16 tabular-nums">
+                    {new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </span>
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    {r.session_name && (
+                      <span
+                        onClick={e => {
+                          e.stopPropagation()
+                          if (r.session_id) navigate(`/scrim-hub/scrims/${r.session_id}`)
+                        }}
+                        className={`text-xs bg-slate-700/40 px-1.5 py-0.5 rounded truncate ${r.session_id ? "text-amber-400/80 hover:text-amber-300 cursor-pointer" : "text-slate-300"}`}
+                      >
+                        {r.session_name}
+                      </span>
+                    )}
+                    {r.game_name && <span className="text-xs text-slate-500 truncate">{r.game_name}</span>}
+                  </div>
+                  {r.comment && <span className="text-xs text-slate-500 italic truncate max-w-[200px] hidden lg:block">{r.comment}</span>}
+                  {objectif.rating_type === "toggle" ? (
+                    r.result === 1 ? (
+                      <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium shrink-0">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Done
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-red-400 font-medium shrink-0">
+                        <XCircle className="w-3.5 h-3.5" />
+                        Not done
+                      </span>
+                    )
+                  ) : (
+                    <span className={`text-xs font-bold tabular-nums shrink-0 ${getRatingText(r.result)}`}>
+                      {r.result}/{RATING_MAX}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -310,6 +434,10 @@ function ScrimObjectifModal({ isOpen, objective, onClose, onSuccess }) {
   const [assignTo, setAssignTo] = useState("team")
   const [playerId, setPlayerId] = useState("")
   const [ratingType, setRatingType] = useState("rating")
+  const [draftScenarioId, setDraftScenarioId] = useState(null)
+  const [draftScenarioName, setDraftScenarioName] = useState(null)
+  const [stratMapId, setStratMapId] = useState(null)
+  const [stratMapName, setStratMapName] = useState(null)
   const [players, setPlayers] = useState([])
   const { user } = useStore()
 
@@ -335,12 +463,20 @@ function ScrimObjectifModal({ isOpen, objective, onClose, onSuccess }) {
       setAssignTo(objective.player_id ? "player" : "team")
       setPlayerId(objective.player_id || players[0]._id)
       setRatingType(objective.rating_type || "rating")
+      setDraftScenarioId(objective.draft_scenario_id || null)
+      setDraftScenarioName(objective.draft_scenario_name || null)
+      setStratMapId(objective.strat_map_id || null)
+      setStratMapName(objective.strat_map_name || null)
     } else {
       setName("")
       setDescription("")
       setAssignTo("team")
       setPlayerId(players[0]._id)
       setRatingType("rating")
+      setDraftScenarioId(null)
+      setDraftScenarioName(null)
+      setStratMapId(null)
+      setStratMapName(null)
     }
   }, [isOpen, players])
 
@@ -355,6 +491,10 @@ function ScrimObjectifModal({ isOpen, objective, onClose, onSuccess }) {
           rating_type: ratingType,
           player_id: assignTo === "player" && playerId ? playerId : null,
           player_name: assignTo === "player" && playerId ? selectedPlayer?.player_name || selectedPlayer?.game_name : null,
+          draft_scenario_id: draftScenarioId,
+          draft_scenario_name: draftScenarioName,
+          strat_map_id: stratMapId,
+          strat_map_name: stratMapName
         })
         if (!ok) return toast.error(code || "Failed to update objective")
       } else {
@@ -365,6 +505,8 @@ function ScrimObjectifModal({ isOpen, objective, onClose, onSuccess }) {
           team_name: user?.team_name,
           rating_type: ratingType,
           ...(assignTo === "player" && playerId && { player_id: playerId, player_name: selectedPlayer?.player_name || selectedPlayer?.game_name }),
+          ...(draftScenarioId && { draft_scenario_id: draftScenarioId, draft_scenario_name: draftScenarioName }),
+          ...(stratMapId && { strat_map_id: stratMapId, strat_map_name: stratMapName })
         })
         if (!ok) return toast.error(code || "Failed to add objective")
       }
@@ -465,6 +607,26 @@ function ScrimObjectifModal({ isOpen, objective, onClose, onSuccess }) {
               </button>
             </div>
           </div>
+          <div>
+            <label className="text-slate-400 text-xs font-medium mb-1.5 block">Draft scenario (optional)</label>
+            <DraftScenarioSelect
+              value={draftScenarioId}
+              onChange={(id, n) => {
+                setDraftScenarioId(id)
+                setDraftScenarioName(n)
+              }}
+            />
+          </div>
+          <div>
+            <label className="text-slate-400 text-xs font-medium mb-1.5 block">Strat map (optional)</label>
+            <StratMapSelect
+              value={stratMapId}
+              onChange={(id, n) => {
+                setStratMapId(id)
+                setStratMapName(n)
+              }}
+            />
+          </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <button
@@ -543,10 +705,15 @@ function SoloQObjectives() {
       <SoloQStatsPanel objectives={objectives} />
 
       {players.length === 0 ? (
-        <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-12 text-center">
-          <User className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-          <p className="text-slate-500 text-sm">No active players</p>
-          <p className="text-slate-600 text-xs mt-1">Add players to your roster to create SoloQ objectives</p>
+        <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl overflow-hidden">
+          <div className="relative py-16 px-6 flex flex-col items-center text-center overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-violet-500/5 via-transparent to-transparent pointer-events-none" />
+            <div className="relative flex items-center justify-center w-16 h-16 mb-5 rounded-2xl bg-gradient-to-br from-violet-500/20 to-violet-600/10 ring-1 ring-violet-500/20">
+              <User className="w-7 h-7 text-violet-400/80" />
+            </div>
+            <h3 className="text-white text-base font-semibold mb-1.5">No active players</h3>
+            <p className="text-slate-400 text-sm max-w-xs">Add players to your roster to create SoloQ objectives</p>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -568,7 +735,8 @@ function SoloQObjectives() {
               </div>
 
               {!(objectivesByPlayer[player._id] || []).length ? (
-                <div className="p-6 text-center">
+                <div className="py-6 text-center">
+                  <Target className="w-5 h-5 text-slate-700 mx-auto mb-1.5" />
                   <p className="text-slate-600 text-xs">No objectives for this player</p>
                 </div>
               ) : (
@@ -673,7 +841,7 @@ function SoloQStatsPanel({ objectives }) {
 const TYPE_BADGES = {
   per_game: { label: "Per Game", className: "text-violet-400/80 bg-violet-500/10" },
   aggregate: { label: "Aggregate", className: "text-amber-400/80 bg-amber-500/10" },
-  streak: { label: "Streak", className: "text-cyan-400/80 bg-cyan-500/10" },
+  streak: { label: "Streak", className: "text-cyan-400/80 bg-cyan-500/10" }
 }
 
 function SoloQObjectiveRow({ objective, onDelete, onEdit }) {
@@ -689,9 +857,7 @@ function ObjectiveRowHeader({ objective, onDelete, onEdit, expanded, setExpanded
         <div className="flex items-center gap-2">
           <h3 className="text-white text-sm font-medium truncate">{objective.name}</h3>
           {TYPE_BADGES[objective.type || "per_game"] && objective.type !== "per_game" && (
-            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${TYPE_BADGES[objective.type].className}`}>
-              {TYPE_BADGES[objective.type].label}
-            </span>
+            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${TYPE_BADGES[objective.type].className}`}>{TYPE_BADGES[objective.type].label}</span>
           )}
           {objective.account?.game_name && (
             <span className="text-xs text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium">
@@ -801,7 +967,9 @@ function PerGameObjectiveRow({ objective, onDelete, onEdit }) {
                 {objective.rule.metric} {objective.rule.operator} {objective.rule.value}
                 {objective.rule.timing != null && ` @ ${objective.rule.timing}min`}
               </span>
-              {objective.type === "streak" && <span className="text-xs text-cyan-400/80 bg-cyan-500/10 px-2 py-0.5 rounded font-medium">{objective.streak_count || 2}x in a row</span>}
+              {objective.type === "streak" && (
+                <span className="text-xs text-cyan-400/80 bg-cyan-500/10 px-2 py-0.5 rounded font-medium">{objective.streak_count || 2}x in a row</span>
+              )}
             </div>
           )}
           {results.length === 0 ? (
@@ -887,9 +1055,7 @@ function AggregateObjectiveRow({ objective, onDelete, onEdit }) {
                 {objective.aggregate?.fn}({objective.rule.metric}) {objective.rule.operator} {objective.rule.value}
               </span>
             )}
-            <span className="text-xs text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded font-medium">
-              {objective.aggregate?.period === "weekly" ? "Weekly" : "Daily"}
-            </span>
+            <span className="text-xs text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded font-medium">{objective.aggregate?.period === "weekly" ? "Weekly" : "Daily"}</span>
           </div>
           {aggData ? (
             <div className="flex items-center gap-3 py-2">
@@ -915,7 +1081,7 @@ const SOLOQ_ROLES = [
   { value: "JUNGLE", label: "Jungle" },
   { value: "MIDDLE", label: "Mid" },
   { value: "BOTTOM", label: "ADC" },
-  { value: "UTILITY", label: "Support" },
+  { value: "UTILITY", label: "Support" }
 ]
 
 function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
@@ -970,7 +1136,7 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
     setShowChampPicker(false)
   }, [isOpen, players])
 
-  const handlePlayerChange = (id) => {
+  const handlePlayerChange = id => {
     setPlayerId(id)
     setRole(ROLE_TO_RIOT[players.find(p => p._id === id)?.role] || "")
   }
@@ -979,7 +1145,11 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
     if (!smurfAccount?.game_name?.trim() || !smurfAccount?.tag_line?.trim()) return
     setCheckingAccount(true)
     try {
-      const { ok, data, code } = await api.post("/solo-objectif/check-account", { game_name: smurfAccount.game_name.trim(), tag_line: smurfAccount.tag_line.trim(), region: smurfAccount.region })
+      const { ok, data, code } = await api.post("/solo-objectif/check-account", {
+        game_name: smurfAccount.game_name.trim(),
+        tag_line: smurfAccount.tag_line.trim(),
+        region: smurfAccount.region
+      })
       if (!ok) return toast.error(code || "Account not found")
       setSmurfAccount(data)
       toast.success(`Account found: ${data.game_name}#${data.tag_line}`)
@@ -1004,7 +1174,7 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
           champions,
           role: role || null,
           side: side || null,
-          account: smurfAccount?.puuid ? smurfAccount : null,
+          account: smurfAccount?.puuid ? smurfAccount : null
         })
         if (!ok) return toast.error(code || "Failed to update objective")
       } else {
@@ -1016,7 +1186,7 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
           champions,
           role: role || null,
           side: side || null,
-          ...(smurfAccount?.puuid && { account: smurfAccount }),
+          ...(smurfAccount?.puuid && { account: smurfAccount })
         })
         if (!ok) return toast.error(code || "Failed to add objective")
       }
@@ -1126,7 +1296,11 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
           <div>
             <label className="text-slate-400 text-xs font-medium mb-1.5 block">Side filter (optional)</label>
             <div className="flex gap-1.5">
-              {[{ value: "", label: "Both sides" }, { value: "blue", label: "Blue" }, { value: "red", label: "Red" }].map(s => (
+              {[
+                { value: "", label: "Both sides" },
+                { value: "blue", label: "Blue" },
+                { value: "red", label: "Red" }
+              ].map(s => (
                 <button
                   key={s.value}
                   onClick={() => setSide(s.value)}

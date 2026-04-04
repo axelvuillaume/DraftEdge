@@ -23,6 +23,7 @@ const Schema = new mongoose.Schema(
     forgot_password_reset_expires: { type: Date },
 
     last_login_at: { type: Date, default: Date.now },
+    view_news_at: { type: Date, default: null },
   },
   { timestamps: true },
 );
