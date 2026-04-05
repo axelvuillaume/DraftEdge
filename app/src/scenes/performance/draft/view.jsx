@@ -591,36 +591,39 @@ function MyTeamMostPlayedPanel() {
         <h3 className="text-white font-semibold text-sm">Most played - {user?.team_name || "My Team"}</h3>
       </div>
       <div className="space-y-2">
-        {Object.entries(data || {}).map(([role, champions]) => (
-          <div key={role}>
-            <div className="flex items-center gap-1.5 mb-1">
-              <img src={ROLE_ICONS[role]} alt={role} className="w-4 h-4 opacity-70" />
-              <span className="text-slate-400 text-[10px] font-medium uppercase">{role}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {champions.map(champ => (
-                <div key={champ.name} className="flex items-center gap-1 p-1 rounded-lg">
-                  <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-700 flex-shrink-0">
-                    <img
-                      src={getChampionIcon(champ.name)}
-                      alt={champ.name}
-                      className="w-full h-full object-cover"
-                      onError={e => {
-                        e.target.style.display = "none"
-                      }}
-                    />
+        {Object.entries(data || {}).map(([role, champions]) => {
+          if (!Array.isArray(champions)) return null
+          return (
+            <div key={role}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <img src={ROLE_ICONS[role]} alt={role} className="w-4 h-4 opacity-70" />
+                <span className="text-slate-400 text-[10px] font-medium uppercase">{role}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {champions.map(champ => (
+                  <div key={champ.name} className="flex items-center gap-1 p-1 rounded-lg">
+                    <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-700 flex-shrink-0">
+                      <img
+                        src={getChampionIcon(champ.name)}
+                        alt={champ.name}
+                        className="w-full h-full object-cover"
+                        onError={e => {
+                          e.target.style.display = "none"
+                        }}
+                      />
+                    </div>
+                    <div className="flex flex-col items-start">
+                      <span className="text-slate-400 text-[9px] font-semibold leading-tight">PR {champ.pr}%</span>
+                      <span className={`text-[9px] font-semibold leading-tight ${champ.wr >= 60 ? "text-emerald-400" : champ.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
+                        WR {champ.wr}%
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-slate-400 text-[9px] font-semibold leading-tight">PR {champ.pr}%</span>
-                    <span className={`text-[9px] font-semibold leading-tight ${champ.wr >= 60 ? "text-emerald-400" : champ.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
-                      WR {champ.wr}%
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -649,36 +652,39 @@ function ProMostPlayedPanel({ selectedLeagues }) {
         <h3 className="text-white font-semibold text-sm">Most played - Pro League</h3>
       </div>
       <div className="space-y-2">
-        {Object.entries(data || {}).map(([role, champions]) => (
-          <div key={role}>
-            <div className="flex items-center gap-1.5 mb-1">
-              <img src={ROLE_ICONS[role]} alt={role} className="w-4 h-4 opacity-70" />
-              <span className="text-slate-400 text-[10px] font-medium uppercase">{role}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {champions.map(champ => (
-                <div key={champ.name} className="flex items-center gap-1 p-1 rounded-lg">
-                  <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-700 flex-shrink-0">
-                    <img
-                      src={getChampionIcon(champ.name)}
-                      alt={champ.name}
-                      className="w-full h-full object-cover"
-                      onError={e => {
-                        e.target.style.display = "none"
-                      }}
-                    />
+        {Object.entries(data || {}).map(([role, champions]) => {
+          if (!Array.isArray(champions)) return null
+          return (
+            <div key={role}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <img src={ROLE_ICONS[role]} alt={role} className="w-4 h-4 opacity-70" />
+                <span className="text-slate-400 text-[10px] font-medium uppercase">{role}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {champions.map(champ => (
+                  <div key={champ.name} className="flex items-center gap-1 p-1 rounded-lg">
+                    <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-700 flex-shrink-0">
+                      <img
+                        src={getChampionIcon(champ.name)}
+                        alt={champ.name}
+                        className="w-full h-full object-cover"
+                        onError={e => {
+                          e.target.style.display = "none"
+                        }}
+                      />
+                    </div>
+                    <div className="flex flex-col items-start">
+                      <span className="text-slate-400 text-[9px] font-semibold leading-tight">PR {champ.pr}%</span>
+                      <span className={`text-[9px] font-semibold leading-tight ${champ.wr >= 60 ? "text-emerald-400" : champ.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
+                        WR {champ.wr}%
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-slate-400 text-[9px] font-semibold leading-tight">PR {champ.pr}%</span>
-                    <span className={`text-[9px] font-semibold leading-tight ${champ.wr >= 60 ? "text-emerald-400" : champ.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
-                      WR {champ.wr}%
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
