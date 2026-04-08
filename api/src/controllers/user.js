@@ -86,7 +86,7 @@ router.post('/signup', async (req, res) => {
       teamId = team._id;
     }
 
-    const user = await UserObject.create({ team_name: finalTeamName, password, email, team_id: teamId, name });
+    const user = await UserObject.create({ team_name: finalTeamName, password, email, team_id: teamId, name, role: team_id ? 'user' : 'admin' });
     const token = jwt.sign({ _id: user._id }, config.SECRET, { expiresIn: JWT_MAX_AGE });
     res.cookie('jwt', token, cookieOptions());
 
@@ -351,6 +351,8 @@ router.post('/', passport.authenticate(['admin'], { session: false }), async (re
 //@check
 router.put('/:id', passport.authenticate(['admin', 'user'], { session: false }), async (req, res) => {
   try {
+    if (req.body.role && req.user.role !== 'admin') return res.status(403).send({ ok: false, code: 'FORBIDDEN' });
+
     const user = await UserObject.findById(req.params.id);
     const obj = req.body;
 

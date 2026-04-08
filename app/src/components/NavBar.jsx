@@ -10,7 +10,7 @@ const getMenu = user => [
   { title: "Stats Team", to: "/performance", icon: BarChart3 },
   { title: "Manager space", to: "/opponents", icon: Briefcase },
   { title: "My League", to: "/league", icon: Trophy },
-  { title: "Billings", to: "/billings", icon: CreditCard }
+  ...(user?.role === "admin" ? [{ title: "Billings", to: "/billings", icon: CreditCard }] : [])
 ]
 
 const Navbar = () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
-import { CreditCard, ExternalLink, Check } from "lucide-react"
+import { CreditCard, ExternalLink, Check, Clock } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
 
@@ -54,7 +54,51 @@ export default function Billings() {
         <h1 className="text-2xl font-bold text-white mb-8">Billing</h1>
 
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-8">
-          {subscription?.subscription_status === "cancel_scheduled" ? (
+          {subscription?.subscription_status === "trialing" ? (
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold">Free Trial Active</p>
+                  <p className="text-blue-400 text-sm">Your trial ends on {new Date(subscription.subscription_current_period_end).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
+                <p className="text-blue-300 font-medium mb-1">Pay after the 14-day free trial</p>
+                <p className="text-slate-400 text-sm">You won't be charged until your trial ends. Cancel anytime before.</p>
+              </div>
+
+              <div className="bg-slate-700/30 rounded-lg p-4 mb-6">
+                <p className="text-slate-300">
+                  <span className="text-white font-bold text-2xl">14.99€</span>
+                  <span className="text-slate-400"> / month after trial</span>
+                </p>
+                <p className="text-slate-400 text-sm mt-1">Billed monthly for team {user?.team_name}</p>
+              </div>
+
+              {subscription?.has_payment_method ? (
+                <button
+                  onClick={handleManage}
+                  disabled={loading}
+                  className="flex items-center gap-2 justify-center w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  {loading ? "Loading..." : "Manage Subscription"}
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubscribe}
+                  disabled={loading}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {loading ? "Loading..." : "Add Payment Method"}
+                </button>
+              )}
+            </div>
+          ) : subscription?.subscription_status === "cancel_scheduled" ? (
             <div>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">

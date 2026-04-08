@@ -17,7 +17,7 @@ const Schema = new mongoose.Schema(
     team_league_name: { type: String },
 
     password: String,
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    role: { type: String, enum: ['user', 'admin', 'staff'], default: 'user' },
 
     forgot_password_reset_token: { type: String, default: '' },
     forgot_password_reset_expires: { type: Date },

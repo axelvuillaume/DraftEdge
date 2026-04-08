@@ -11,7 +11,7 @@ const { capture: posthogCapture } = require('../services/posthog');
 const stripe = new Stripe(config.STRIPE_SECRET_KEY);
 
 // Create a Stripe Checkout Session for a team subscription
-router.post('/create-checkout-session', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+router.post('/create-checkout-session', passport.authenticate('admin', { session: false, failWithError: true }), async (req, res) => {
   try {
     const team = await Team.findById(req.user.team_id);
     if (!team) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
@@ -30,7 +30,7 @@ router.post('/create-checkout-session', passport.authenticate(['admin', 'user'],
       await team.save();
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams = {
       customer: customerId,
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -38,7 +38,15 @@ router.post('/create-checkout-session', passport.authenticate(['admin', 'user'],
       success_url: `${config.APP_URL}/team?subscription=success`,
       cancel_url: `${config.APP_URL}/team?subscription=canceled`,
       metadata: { team_id: team._id.toString() },
-    });
+    };
+
+    const trialEnd = new Date(team.subscription_current_period_end);
+    const minTrialEnd = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    if (team.subscription_status === 'trialing' && trialEnd > minTrialEnd) {
+      sessionParams.subscription_data = { trial_end: Math.floor(trialEnd.getTime() / 1000) };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     posthogCapture(req.user._id.toString(), 'stripe_checkout_started', { team_id: team._id.toString() });
 
@@ -50,7 +58,7 @@ router.post('/create-checkout-session', passport.authenticate(['admin', 'user'],
 });
 
 // Create a Stripe Customer Portal session (manage subscription, invoices, cancel)
-router.post('/create-portal-session', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+router.post('/create-portal-session', passport.authenticate('admin', { session: false, failWithError: true }), async (req, res) => {
   try {
     const team = await Team.findById(req.user.team_id);
     if (!team) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
@@ -69,10 +77,16 @@ router.post('/create-portal-session', passport.authenticate(['admin', 'user'], {
 });
 
 // Get subscription status for the current user's team
-router.get('/subscription', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+router.get('/subscription', passport.authenticate('admin', { session: false, failWithError: true }), async (req, res) => {
   try {
     const team = await Team.findById(req.user.team_id);
     if (!team) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+
+    let has_payment_method = false;
+    if (team.stripe_customer_id) {
+      const paymentMethods = await stripe.paymentMethods.list({ customer: team.stripe_customer_id, type: 'card', limit: 1 });
+      has_payment_method = paymentMethods.data.length > 0;
+    }
 
     return res.status(200).send({
       ok: true,
@@ -80,6 +94,7 @@ router.get('/subscription', passport.authenticate(['admin', 'user'], { session: 
         subscription_status: team.subscription_status,
         subscription_current_period_end: team.subscription_current_period_end,
         stripe_customer_id: team.stripe_customer_id,
+        has_payment_method,
       },
     });
   } catch (error) {

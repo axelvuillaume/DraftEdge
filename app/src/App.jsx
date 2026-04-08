@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
-import { Toaster } from "react-hot-toast"
+import { Toaster, toast } from "react-hot-toast"
 import * as Sentry from "@sentry/browser"
 import posthog from "posthog-js"
+import { CreditCard } from "lucide-react"
 
 import Auth from "@/scenes/auth"
 import Home from "@/scenes/home"
@@ -75,13 +76,19 @@ export default function App() {
           <Route path="/performance/*" element={<Performance />} />
           <Route path="/league/*" element={<League />} />
           <Route path="/map/*" element={<StratMap />} />
-          <Route path="/billings" element={<Billings />} />
+          <Route path="/billings" element={<AdminRoute><Billings /></AdminRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
       <Toaster position="top-center" />
     </BrowserRouter>
   )
+}
+
+const AdminRoute = ({ children }) => {
+  const { user } = useStore()
+  if (user?.role !== "admin") return <Navigate to="/" replace={true} />
+  return children
 }
 
 const AuthLayout = () => {
@@ -92,7 +99,8 @@ const AuthLayout = () => {
 
 const UserLayout = () => {
   const [loading, setLoading] = useState(true)
-  const { user, setUser, setTeam } = useStore()
+  const [subscribeLoading, setSubscribeLoading] = useState(false)
+  const { user, setUser, team, setTeam } = useStore()
 
   async function fetchUser() {
     try {
@@ -133,6 +141,18 @@ const UserLayout = () => {
 
   if (!user) return <Navigate to="/auth" replace={true} />
 
+  const handleSubscribe = async () => {
+    setSubscribeLoading(true)
+    try {
+      const { ok, url, code } = await api.post("/stripe/create-checkout-session")
+      if (!ok) return toast.error(code || "Failed to create checkout session")
+      window.location.href = url
+    } catch (error) {
+      toast.error(error.code || "Failed to create checkout session")
+    }
+    setSubscribeLoading(false)
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-900">
       {/* Sidebar */}
@@ -143,8 +163,34 @@ const UserLayout = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         <TopBar />
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto relative">
           <Outlet />
+          {team?.subscription_status === "canceled" && (
+            <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+              <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 max-w-md w-full mx-4 text-center shadow-2xl">
+                <div className="w-14 h-14 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-5">
+                  <CreditCard className="w-7 h-7 text-blue-400" />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">No Active Subscription</h2>
+                <p className="text-slate-400 mb-6">Your subscription has ended. Subscribe to regain full access to DraftEdge.</p>
+                <div className="bg-slate-700/30 rounded-lg p-4 mb-6">
+                  <span className="text-white font-bold text-3xl">14.99€</span>
+                  <span className="text-slate-400"> / month</span>
+                  <p className="text-slate-400 text-sm mt-1">Per team, billed monthly</p>
+                </div>
+                {user?.role === "admin" ? (
+                  <button
+                    onClick={handleSubscribe}
+                    disabled={subscribeLoading}
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors disabled:opacity-50">
+                    {subscribeLoading ? "Loading..." : "Subscribe Now"}
+                  </button>
+                ) : (
+                  <p className="text-slate-500 text-sm">Contact your team admin to resubscribe.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
