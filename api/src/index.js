@@ -24,6 +24,9 @@ app.use(cookieParser());
 
 app.use('/parser', require('./controllers/parser'));
 
+// Stripe webhook must be before bodyParser (needs raw body for signature verification)
+app.use('/stripe/webhook', require('./controllers/stripe-webhook'));
+
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -57,6 +60,7 @@ app.use('/soloq-match', require('./controllers/soloq-match'));
 app.use('/team-league', require('./controllers/team-league'));
 app.use('/league', require('./controllers/league'));
 app.use('/strat-map', require('./controllers/strat-map'));
+app.use('/stripe', require('./controllers/stripe'));
 
 setupErrorHandler(app);
 require('./services/passport')(app);

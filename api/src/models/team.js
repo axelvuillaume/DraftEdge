@@ -17,6 +17,12 @@ const Schema = new mongoose.Schema(
     league_id: { type: String },
     league_name: { type: String },
     notes: { type: String, default: '' },
+
+    // Stripe subscription
+    stripe_customer_id: { type: String },
+    stripe_subscription_id: { type: String },
+    subscription_status: { type: String, enum: ['active', 'canceled', 'past_due', 'incomplete', 'trialing', 'unpaid', null], default: null },
+    subscription_current_period_end: { type: Date },
   },
   { timestamps: true },
 );

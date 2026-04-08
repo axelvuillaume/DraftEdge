@@ -16,6 +16,10 @@ const BREVO_KEY = 'xkeysib-91143ecf197fc297d7e623ef8e18846719af52dddffb408979973
 
 const RIOT_API_KEY = 'RGAPI-99488f2e-a6d1-4c9d-8150-d52bb77f2a8c';
 
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+const STRIPE_PRICE_ID = process.env.STRIPE_PRICE_ID || '';
+
 const POSTHOG_API_KEY = 'phc_ytErKBckHNz5Rs3qW4sJqVbCiMLRBj6BTFZ1a5fVNrU';
 const POSTHOG_HOST = 'https://eu.i.posthog.com';
 
@@ -35,6 +39,9 @@ const CONFIG = {
   RIOT_API_KEY,
   POSTHOG_API_KEY,
   POSTHOG_HOST,
+  STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET,
+  STRIPE_PRICE_ID,
 };
 
 if (ENVIRONMENT === 'development') console.log(CONFIG);
