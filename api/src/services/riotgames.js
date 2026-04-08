@@ -68,7 +68,7 @@ async function getMatchIdsByPuuid(puuid, { count = 20, start = 0, queue, startTi
     const url = `https://${regional}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?${params}`;
     return await apiFetch(url);
   } catch (error) {
-    console.error('Error fetching match IDs:', error.message);
+    console.error(`Error fetching match IDs: ${puuid}:`, error.message);
     return null;
   }
 }
@@ -79,7 +79,7 @@ async function getMatchById(matchId, platform = 'euw1') {
     const url = `https://${regional}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
     return await apiFetch(url);
   } catch (error) {
-    console.error(`Error fetching match ${matchId}:`, error.message);
+    console.error(`Error fetching match: ${matchId}:`, error.message);
     return null;
   }
 }
@@ -90,7 +90,7 @@ async function getTimelineById(matchId, platform = 'euw1') {
     const url = `https://${regional}.api.riotgames.com/lol/match/v5/matches/${matchId}/timeline`;
     return await apiFetch(url);
   } catch (error) {
-    console.error(`Error fetching timeline ${matchId}:`, error.message);
+    console.error(`Error fetching timeline: ${matchId}:`, error.message);
     return null;
   }
 }
@@ -103,7 +103,7 @@ async function getGamesByPuuid(puuid, number = 20, platform = 'euw1') {
     const matches = await Promise.all(matchIds.map((id) => getMatchById(id, platform)));
     return matches.filter(Boolean);
   } catch (error) {
-    console.error('Error fetching games by puuid:', error.message);
+    console.error(`Error fetching games by puuid: ${puuid}:`, error.message);
     return null;
   }
 }
@@ -115,7 +115,7 @@ async function getRankByPuuid(puuid, platform = 'euw1') {
     const soloQueue = data.find((entry) => entry.queueType === 'RANKED_SOLO_5x5');
     return soloQueue || null;
   } catch (error) {
-    console.error('Error fetching rank:', error.message);
+    console.error(`Error fetching rank: ${puuid}:`, error.message);
     return null;
   }
 }
@@ -127,7 +127,7 @@ async function getPuuidByRiotId(gameName, tagLine, platform = 'euw1') {
     const data = await apiFetch(url);
     return data.puuid || null;
   } catch (error) {
-    console.error('Error fetching PUUID:', error.message);
+    console.error(`Error fetching PUUID: ${gameName}#${tagLine}:`, error.message);
     return null;
   }
 }
