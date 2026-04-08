@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import { Toaster } from "react-hot-toast"
+import toast from "react-hot-toast"
 import * as Sentry from "@sentry/browser"
 import posthog from "posthog-js"
 
@@ -12,6 +13,7 @@ import Loader from "@/components/loader"
 import Team from "@/scenes/team"
 import useStore from "@/services/store"
 import api from "@/services/api"
+import Modal from "@/components/modal"
 import PerformancePage from "@/scenes/performance"
 import { environment, SENTRY_URL, POSTHOG_API_KEY, POSTHOG_HOST } from "./config"
 import SoloQ from "@/scenes/soloQ"
@@ -88,6 +90,70 @@ const AuthLayout = () => {
   return <Outlet />
 }
 
+const NEWS_DATE = "2026-04-08"
+const NEWS_CONTENT = [
+  {
+    title: "Strat Map",
+    description: "Visualize and plan your strategies directly on the map. Place wards, draw movements, and coordinate your team's game plan.",
+    link: "/map"
+  },
+  {
+    title: "Scrim Objectives",
+    description: "View results and associated notes for your scrim objectives. You can also link a map and a draft to a scrim objective.",
+    link: "/scrim-hub"
+  }
+]
+
+const NewsModal = ({ user }) => {
+  const { setUser } = useStore()
+  const navigate = useNavigate()
+  const [isOpen, setIsOpen] = useState(!user.view_news_at || new Date(user.view_news_at) < new Date(NEWS_DATE))
+
+  const handleClose = async () => {
+    setIsOpen(false)
+    try {
+      const { ok, data, code } = await api.put("/user", { view_news_at: new Date() })
+      if (!ok) return toast.error(code || "Failed to update")
+      setUser(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to update")
+    }
+  }
+
+  return (
+    <Modal isOpen={isOpen} className="max-w-lg w-full bg-slate-800">
+      <div className="p-8">
+        <h2 className="text-2xl font-bold text-white mb-1">What's new</h2>
+        <p className="text-sm text-slate-400 mb-6">{new Date(NEWS_DATE).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+        <div className="space-y-4">
+          {NEWS_CONTENT.map((item, i) => (
+            <div key={i} className="bg-slate-700/50 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-white font-semibold">{item.title}</h3>
+                {item.link && (
+                  <button
+                    onClick={() => {
+                      handleClose()
+                      navigate(item.link)
+                    }}
+                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    Go to →
+                  </button>
+                )}
+              </div>
+              <p className="text-slate-300 text-sm">{item.description}</p>
+            </div>
+          ))}
+        </div>
+        <button onClick={handleClose} className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-xl transition-colors">
+          Got it
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 const UserLayout = () => {
   const [loading, setLoading] = useState(true)
   const { user, setUser, setTeam } = useStore()
@@ -133,6 +199,7 @@ const UserLayout = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-900">
+      <NewsModal user={user} />
       {/* Sidebar */}
       <nav className="hidden lg:block flex-shrink-0">
         <Navbar />
