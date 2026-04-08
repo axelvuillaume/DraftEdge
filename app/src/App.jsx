@@ -20,6 +20,7 @@ import Performance from "@/scenes/stats"
 import League from "@/scenes/league"
 import Website from "@/scenes/website"
 import StratMap from "@/scenes/performance/strat-map"
+import Billings from "@/scenes/billings"
 
 if (environment === "production") {
   Sentry.init({ dsn: SENTRY_URL, environment: "app" })
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/performance/*" element={<Performance />} />
           <Route path="/league/*" element={<League />} />
           <Route path="/map/*" element={<StratMap />} />
+          <Route path="/billings" element={<Billings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

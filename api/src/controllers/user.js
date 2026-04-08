@@ -74,8 +74,15 @@ router.post('/signup', async (req, res) => {
       const existingTeam = await TeamObject.findById(teamId);
       if (!existingTeam) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
       finalTeamName = existingTeam.name;
-    } else {
-      const team = await TeamObject.create({ name: team_name });
+    }
+    if (!teamId) {
+      const existingTeamByName = await TeamObject.findOne({ name: { $regex: new RegExp(`^${team_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')}$`, 'i') } });
+      if (existingTeamByName) return res.status(409).send({ ok: false, code: ERROR_CODES.TEAM_NAME_ALREADY_EXISTS });
+      const team = await TeamObject.create({
+        name: team_name,
+        subscription_status: 'trialing',
+        subscription_current_period_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      });
       teamId = team._id;
     }
 

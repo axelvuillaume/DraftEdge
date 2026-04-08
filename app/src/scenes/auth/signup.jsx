@@ -13,11 +13,22 @@ export default () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const teamId = searchParams.get("team_id")
-  const teamName = searchParams.get("team_name")
+  const [teamName, setTeamName] = useState("")
+
+  const fetchTeam = async () => {
+    try {
+      const { ok, data } = await api.get(`/team/${teamId}/public`)
+      if (!ok) return
+      setTeamName(data.name)
+      setValues(v => ({ ...v, team_id: teamId }))
+    } catch (error) {
+      toast.error("Team not found")
+    }
+  }
 
   useEffect(() => {
-    if (teamName && teamId) setValues(v => ({ ...v, team_name: teamName, team_id: teamId }))
-  }, [teamId, teamName])
+    if (teamId) fetchTeam()
+  }, [teamId])
 
   const send = async () => {
     try {

@@ -5,6 +5,7 @@ const getElo = require('./getElo');
 const getEloLeague = require('./getEloLeague');
 const fetchSoloQ = require('./fetchSoloQ');
 const scrapeOracleElixir = require('./scrapeOracleElixir');
+const checkTrials = require('./checkTrials');
 
 let running = {};
 
@@ -30,3 +31,4 @@ cron.schedule('*/25 * * * *', () => run(fetchSoloQ, 'fetchSoloQ'));
 cron.schedule('0 4 * * *', () => run(getEloLeague, 'getEloLeague'));
 
 cron.schedule('0 5 * * *', () => run(scrapeOracleElixir, 'scrapeOracleElixir'));
+cron.schedule('0 3 * * *', () => run(checkTrials, 'checkTrials'));

@@ -18,4 +18,5 @@ module.exports = {
   ALREADY_PAID: 'ALREADY_PAID',
   GAME_ALREADY_EXISTS: 'GAME_ALREADY_EXISTS',
   RULE_GENERATION_FAILED: 'RULE_GENERATION_FAILED',
+  TEAM_NAME_ALREADY_EXISTS: 'This team name is already taken. Ask a team member for an invite link to join.',
 };

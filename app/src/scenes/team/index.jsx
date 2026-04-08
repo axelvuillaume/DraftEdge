@@ -23,7 +23,7 @@ export default function Team() {
   }, [])
 
   const copyInvitationLink = () => {
-    const link = `${window.location.origin}/auth/signup?team_id=${user?.team_id}&team_name=${user?.team_name}`
+    const link = `${window.location.origin}/auth/signup?team_id=${user?.team_id}`
     navigator.clipboard.writeText(link)
     toast.success("Invitation link copied to clipboard!")
   }
