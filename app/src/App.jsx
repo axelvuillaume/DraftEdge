@@ -94,12 +94,13 @@ const NEWS_DATE = "2026-04-08"
 const NEWS_CONTENT = [
   {
     title: "Strat Map",
+    highlight: true,
     description: "Visualize and plan your strategies directly on the map. Place wards, draw movements, and coordinate your team's game plan.",
     link: "/map"
   },
   {
     title: "Scrim Objectives",
-    description: "View results and associated notes for your scrim objectives. You can also link a map and a draft to a scrim objective.",
+    items: ["View results and notes for each objective", "Link a map and a draft to an objective"],
     link: "/scrim-hub"
   }
 ]
@@ -127,9 +128,12 @@ const NewsModal = ({ user }) => {
         <p className="text-sm text-slate-400 mb-6">{new Date(NEWS_DATE).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
         <div className="space-y-4">
           {NEWS_CONTENT.map((item, i) => (
-            <div key={i} className="bg-slate-700/50 rounded-xl p-4">
+            <div key={i} className={`rounded-xl p-4 ${item.highlight ? "bg-blue-600/20 border border-blue-500/30" : "bg-slate-700/50"}`}>
               <div className="flex items-center justify-between mb-1">
-                <h3 className="text-white font-semibold">{item.title}</h3>
+                <div className="flex items-center gap-2">
+                  {item.highlight && <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-500 text-white px-2 py-0.5 rounded-full">New Feature</span>}
+                  <h3 className="text-white font-semibold">{item.title}</h3>
+                </div>
                 {item.link && (
                   <button
                     onClick={() => {
@@ -142,7 +146,17 @@ const NewsModal = ({ user }) => {
                   </button>
                 )}
               </div>
-              <p className="text-slate-300 text-sm">{item.description}</p>
+              {item.description && <p className="text-slate-300 text-sm">{item.description}</p>}
+              {item.items && (
+                <ul className="mt-1 space-y-1">
+                  {item.items.map((text, j) => (
+                    <li key={j} className="text-slate-300 text-sm flex items-start gap-2">
+                      <span className="text-blue-400 mt-0.5">•</span>
+                      {text}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ))}
         </div>
