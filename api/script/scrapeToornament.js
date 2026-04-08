@@ -25,7 +25,22 @@ async function createOrUpdatePlayer(riotId, playerName, teamLeague) {
 
   const [gameName, tagLine] = riotId.split("#");
 
-  // Fetch puuid first so we can match by puuid
+  // Check if player already exists — skip Riot API calls if so
+  const existing = await Player.findOne({ team_league_id: teamLeague._id.toString(), riot_id: riotId, is_league: true });
+
+  if (existing) {
+    await Player.findByIdAndUpdate(existing._id, {
+      active: true,
+      riot_id: riotId,
+      game_name: gameName,
+      tag_line: tagLine,
+      player_name: playerName,
+    });
+    console.log(`    Player exists: ${riotId} (skipped)`);
+    return;
+  }
+
+  // New player — fetch puuid and rank
   let puuid = null;
   let rank = null;
 
@@ -36,30 +51,6 @@ async function createOrUpdatePlayer(riotId, playerName, teamLeague) {
     console.log(`    -> Riot API error: ${err.message}`);
   }
 
-  // Check if player already exists for this team (by puuid if available, fallback to riot_id)
-  let existing = null;
-  if (puuid) {
-    existing = await Player.findOne({ team_league_id: teamLeague._id.toString(), puuid, is_league: true });
-  }
-  if (!existing) {
-    existing = await Player.findOne({ team_league_id: teamLeague._id.toString(), riot_id: riotId, is_league: true });
-  }
-
-  if (existing) {
-    // Update riot_id/name if changed, make sure active
-    await Player.findByIdAndUpdate(existing._id, {
-      active: true,
-      riot_id: riotId,
-      game_name: gameName,
-      tag_line: tagLine,
-      player_name: playerName,
-      ...(puuid ? { puuid } : {}),
-    });
-    console.log(`    Player exists: ${riotId} (updated)`);
-    return;
-  }
-
-  // New player — fetch rank
   try {
     if (puuid) {
       rank = await getRankByPuuid(puuid, "euw1");
