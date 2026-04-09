@@ -23,21 +23,20 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
       if (session.mode !== 'subscription') return res.status(200).send({ ok: true });
 
       const subscription = await stripe.subscriptions.retrieve(session.subscription);
-      await Team.findByIdAndUpdate(session.metadata.team_id, {
-        stripe_subscription_id: subscription.id,
-        subscription_status: subscription.status,
-        subscription_current_period_end: new Date(subscription.current_period_end * 1000),
-      });
+      const periodEnd = subscription.items?.data?.[0]?.current_period_end;
+      const update = { stripe_subscription_id: subscription.id, subscription_status: subscription.status };
+      if (periodEnd) update.subscription_current_period_end = new Date(periodEnd * 1000);
+      await Team.findByIdAndUpdate(session.metadata.team_id, update);
     }
 
-    if (event.type === 'customer.subscription.updated') {
+    if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.created') {
       const subscription = event.data.object;
       const team = await Team.findOne({ stripe_customer_id: subscription.customer });
       if (team) {
         team.set({
           stripe_subscription_id: subscription.id,
-          subscription_status: subscription.status,
-          subscription_current_period_end: new Date(subscription.current_period_end * 1000),
+          subscription_status: subscription.cancel_at ? 'cancel_scheduled' : subscription.status,
+          subscription_current_period_end: new Date(subscription.items.data[0].current_period_end * 1000),
         });
         await team.save();
       }
@@ -47,11 +46,7 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
       const subscription = event.data.object;
       const team = await Team.findOne({ stripe_customer_id: subscription.customer });
       if (team) {
-        team.set({
-          subscription_status: 'canceled',
-          stripe_subscription_id: null,
-          subscription_current_period_end: null,
-        });
+        team.set({ subscription_status: 'canceled', stripe_subscription_id: null, subscription_current_period_end: null });
         await team.save();
       }
     }

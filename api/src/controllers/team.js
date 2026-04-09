@@ -6,6 +6,17 @@ const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const Player = require('../models/player');
 
+router.get('/:id/public', async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+    return res.status(200).send({ ok: true, data: { name: team.name } });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const team = await Team.findById(req.params.id);

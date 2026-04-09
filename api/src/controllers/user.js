@@ -74,12 +74,19 @@ router.post('/signup', async (req, res) => {
       const existingTeam = await TeamObject.findById(teamId);
       if (!existingTeam) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
       finalTeamName = existingTeam.name;
-    } else {
-      const team = await TeamObject.create({ name: team_name });
+    }
+    if (!teamId) {
+      const existingTeamByName = await TeamObject.findOne({ name: { $regex: new RegExp(`^${team_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')}$`, 'i') } });
+      if (existingTeamByName) return res.status(409).send({ ok: false, code: ERROR_CODES.TEAM_NAME_ALREADY_EXISTS });
+      const team = await TeamObject.create({
+        name: team_name,
+        subscription_status: 'trialing',
+        subscription_current_period_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      });
       teamId = team._id;
     }
 
-    const user = await UserObject.create({ team_name: finalTeamName, password, email, team_id: teamId, name });
+    const user = await UserObject.create({ team_name: finalTeamName, password, email, team_id: teamId, name, role: team_id ? 'user' : 'admin' });
     const token = jwt.sign({ _id: user._id }, config.SECRET, { expiresIn: JWT_MAX_AGE });
     res.cookie('jwt', token, cookieOptions());
 
@@ -344,6 +351,8 @@ router.post('/', passport.authenticate(['admin'], { session: false }), async (re
 //@check
 router.put('/:id', passport.authenticate(['admin', 'user'], { session: false }), async (req, res) => {
   try {
+    if (req.body.role && req.user.role !== 'admin') return res.status(403).send({ ok: false, code: 'FORBIDDEN' });
+
     const user = await UserObject.findById(req.params.id);
     const obj = req.body;
 

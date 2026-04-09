@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { LayoutDashboard, Shield, BarChart3, Trophy, Target, Briefcase, Users, Settings } from "lucide-react"
+import { LayoutDashboard, Shield, BarChart3, Trophy, Target, Briefcase, Users, Settings, CreditCard } from "lucide-react"
 import useStore from "@/services/store"
 
 const getMenu = user => [
@@ -9,7 +9,8 @@ const getMenu = user => [
   { title: "Performance", to: "/scrim-hub", icon: Target },
   { title: "Stats Team", to: "/performance", icon: BarChart3 },
   { title: "Manager space", to: "/opponents", icon: Briefcase },
-  { title: "My League", to: "/league", icon: Trophy }
+  { title: "My League", to: "/league", icon: Trophy },
+  ...(user?.role === "admin" ? [{ title: "Billings", to: "/billings", icon: CreditCard }] : [])
 ]
 
 const Navbar = () => {

@@ -238,14 +238,16 @@ function EditRosterModal({ players, onClose }) {
                   <button onClick={() => setEditingRole(role)} className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Edit">
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => handleDeleteRole(role)}
-                    disabled={saving === role}
-                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50"
-                    title="Remove"
-                  >
-                    {saving === role ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
-                  </button>
+                  {user?.role !== "user" && (
+                    <button
+                      onClick={() => handleDeleteRole(role)}
+                      disabled={saving === role}
+                      className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50"
+                      title="Remove"
+                    >
+                      {saving === role ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -477,10 +479,12 @@ export default function SoloQ() {
                     ))}
                   </select>
                 </div>
-                <button onClick={() => setShowArchivedModal(true)} className="flex items-center gap-1.5 text-slate-500 text-xs hover:text-slate-300 transition-colors shrink-0">
-                  <Archive className="w-3.5 h-3.5" />
-                  Archived
-                </button>
+                {user?.role !== "user" && (
+                  <button onClick={() => setShowArchivedModal(true)} className="flex items-center gap-1.5 text-slate-500 text-xs hover:text-slate-300 transition-colors shrink-0">
+                    <Archive className="w-3.5 h-3.5" />
+                    Archived
+                  </button>
+                )}
               </div>
             )
           })()}
@@ -492,12 +496,12 @@ export default function SoloQ() {
               return (
                 <div
                   key={role}
-                  onClick={openEditModal}
-                  className="relative bg-slate-800/30 border border-dashed border-slate-700/50 rounded-xl p-5 flex flex-col items-center justify-center gap-3 min-h-[220px] cursor-pointer hover:border-amber-500/40 hover:bg-slate-800/50 transition-all group"
+                  onClick={user?.role !== "user" ? openEditModal : undefined}
+                  className={`relative bg-slate-800/30 border border-dashed border-slate-700/50 rounded-xl p-5 flex flex-col items-center justify-center gap-3 min-h-[220px] ${user?.role !== "user" ? "cursor-pointer hover:border-amber-500/40 hover:bg-slate-800/50" : ""} transition-all group`}
                 >
                   <img src={`/roles/${role}.png`} alt={role} className="w-8 h-8 opacity-30 group-hover:opacity-50 transition-opacity" />
-                  <Plus className="w-5 h-5 text-slate-600 group-hover:text-amber-400 transition-colors" />
-                  <span className="text-slate-600 text-xs group-hover:text-slate-400 transition-colors">Add {ROLE_LABELS[role]}</span>
+                  {user?.role !== "user" && <Plus className="w-5 h-5 text-slate-600 group-hover:text-amber-400 transition-colors" />}
+                  <span className="text-slate-600 text-xs group-hover:text-slate-400 transition-colors">{user?.role !== "user" ? `Add ${ROLE_LABELS[role]}` : "Empty"}</span>
                 </div>
               )
             }
@@ -512,14 +516,16 @@ export default function SoloQ() {
               >
                 <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: CHART_COLORS[i % 5] }} />
                 {/* Connected indicator + actions */}
-                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={openEditModal} className="p-1 rounded bg-slate-700/80 text-slate-400 hover:text-amber-400 transition-colors" title="Edit Roster">
-                    <Pencil className="w-3 h-3" />
-                  </button>
-                  <button onClick={e => handleArchive(e, p._id)} className="p-1 rounded bg-slate-700/80 text-slate-400 hover:text-orange-400 transition-colors" title="Archive">
-                    <Archive className="w-3 h-3" />
-                  </button>
-                </div>
+                {user?.role !== "user" && (
+                  <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={openEditModal} className="p-1 rounded bg-slate-700/80 text-slate-400 hover:text-amber-400 transition-colors" title="Edit Roster">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    <button onClick={e => handleArchive(e, p._id)} className="p-1 rounded bg-slate-700/80 text-slate-400 hover:text-orange-400 transition-colors" title="Archive">
+                      <Archive className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
                 <div className="absolute top-2.5 left-2.5" title={p.connected_at ? "Connected" : "Not connected"}>
                   <div className={`w-2 h-2 rounded-full ${p.connected_at ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" : "bg-slate-600"}`} />
                 </div>
