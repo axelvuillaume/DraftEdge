@@ -409,11 +409,11 @@ function LeagueRanking() {
             </div>
           ))}
         </div>
-        {teams.findIndex(t => t.name === team.name) >= 0 && (
+        {teams.findIndex(t => t.name.replace(/\s/g, "").toLowerCase() === team.name.replace(/\s/g, "").toLowerCase()) >= 0 && (
           <div className="border-t border-slate-700/40 px-4 py-2.5 flex items-center justify-between bg-slate-800/40">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Your rank</span>
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider">{team.name}</span>
             <span className="text-xs font-bold text-amber-400">
-              #{teams.findIndex(t => t.name === team.name) + 1}
+              #{teams.findIndex(t => t.name.replace(/\s/g, "").toLowerCase() === team.name.replace(/\s/g, "").toLowerCase()) + 1}
               <span className="text-slate-500 font-normal ml-1">/ {teams.length}</span>
             </span>
           </div>
