@@ -384,6 +384,11 @@ function GameCard({ game, onDelete, selectionMode, isSelected, onToggleSelect, f
     <div
       className={`bg-slate-800/50 border rounded-xl overflow-visible transition-all duration-200 hover:border-slate-600/50 relative ${isSelected ? "border-amber-500" : "border-slate-700/50"}`}
     >
+      {game.official && (
+        <div className="absolute -top-3.5 left-4 z-10">
+          <span className="text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-amber-400 to-amber-500 bg-clip-text text-transparent">Official</span>
+        </div>
+      )}
       <button
         onClick={e => (e.preventDefault(), selectionMode ? onToggleSelect(game._id) : setExpanded(!expanded))}
         className="w-full p-4 flex items-center justify-between hover:bg-slate-700/20 transition-colors relative"
@@ -631,10 +636,7 @@ function EditGameModal({ game, isOpen, onClose, onSaved }) {
             />
           </div>
           <div>
-            <label
-              onClick={() => setEditForm(prev => ({ ...prev, official: !prev.official }))}
-              className="flex items-center gap-3 cursor-pointer group"
-            >
+            <label onClick={() => setEditForm(prev => ({ ...prev, official: !prev.official }))} className="flex items-center gap-3 cursor-pointer group">
               <div
                 className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                   editForm.official ? "bg-amber-500 border-amber-500" : "border-slate-500 group-hover:border-slate-400"
