@@ -14,7 +14,6 @@ export default function Billings() {
       const { ok, data, code } = await api.get("/stripe/subscription")
       if (!ok) return toast.error(code || "Failed to fetch subscription")
       setSubscription(data)
-      console.log(data)
     } catch (error) {
       toast.error(error.code || "Failed to fetch subscription")
     }
