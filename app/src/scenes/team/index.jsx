@@ -60,6 +60,21 @@ export default function Team() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8">
       <div className="max-w-[1800px] mx-auto">
+        <div className="flex flex-wrap gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1 rounded-lg border text-sm font-medium ${ROLE_COLORS.admin}`}>Admin</span>
+            <span className="text-slate-400 text-sm">Full access</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1 rounded-lg border text-sm font-medium ${ROLE_COLORS.staff}`}>Staff</span>
+            <span className="text-slate-400 text-sm">No access to billings</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1 rounded-lg border text-sm font-medium ${ROLE_COLORS.user}`}>User</span>
+            <span className="text-slate-400 text-sm">No access to archive or modify players & billings</span>
+          </div>
+        </div>
+
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
           <table className="w-full">
             <thead>
@@ -97,7 +112,11 @@ export default function Team() {
                   {user?.role === "admin" && (
                     <td className="px-3 py-4">
                       {member._id !== user?._id && (
-                        <button onClick={() => handleDelete(member._id)} className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all" title="Remove member">
+                        <button
+                          onClick={() => handleDelete(member._id)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                          title="Remove member"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
