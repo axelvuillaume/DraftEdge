@@ -110,7 +110,7 @@ const NEWS_CONTENT = [
   {
     title: "Scrim Objectives",
     highlight: true,
-    description: "You can now select multiple days when creating a scrim objective.",
+    description: "You can now select multiple players when creating a scrim objective.",
     link: "/scrim-hub"
   },
   {
