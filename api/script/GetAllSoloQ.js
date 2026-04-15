@@ -236,15 +236,15 @@ async function processPlayer(player) {
 
 (async () => {
   // ⬇️ Filtres optionnels — mettre null pour ignorer
-  const TEAM_ID = null;
-  const PLAYER_ID = "69b9dc42d9ca99911fa96cc8"; // ex: "69b9dc42d9ca99911fa96cc8"
+  const TEAM_ID = "69cc0f3dcc660bb9ed919dac";
+  const PLAYER_ID = null; // ex: "69b9dc42d9ca99911fa96cc8"
 
   console.log("Connecting to MongoDB…");
   await mongoose.connect(MONGODB_ENDPOINT, MONGO_OPTIONS);
   console.log("✅ Connected\n");
 
   try {
-    const query = { puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null } };
+    const query = { puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null }, active: { $ne: false } };
     if (PLAYER_ID) query._id = PLAYER_ID;
     if (TEAM_ID) query.team_id = TEAM_ID;
 

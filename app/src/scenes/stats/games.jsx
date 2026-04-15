@@ -688,7 +688,8 @@ export function ExpandedContent({ game, onDelete }) {
             { key: "draft", label: "Draft" },
             { key: "damage", label: "Damage" },
             { key: "income", label: "Income" },
-            { key: "vision", label: "Vision" }
+            { key: "vision", label: "Vision" },
+            { key: "runes", label: "Runes" }
           ].map((tab, i, arr) => (
             <Fragment key={tab.key}>
               <button
@@ -709,6 +710,7 @@ export function ExpandedContent({ game, onDelete }) {
         {activeTab === "vision" && <VisionTab playerStats={playerStats} />}
         {activeTab === "advanced" && <AdvancedTab playerStats={playerStats} game={game} />}
         {activeTab === "draft" && <DraftTab game={game} onDraftAdded={onDelete} />}
+        {activeTab === "runes" && <RunesTab playerStats={playerStats} />}
       </div>
     </div>
   )
@@ -858,6 +860,107 @@ function VisionTab({ playerStats }) {
         <div key={idx} className="flex items-center gap-2">
           {renderCard(bluePlayer)}
           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-700 border border-slate-600">
+            <Swords className="w-3 h-3 text-slate-400" />
+          </div>
+          {renderCard(redTeam[idx])}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function RunesTab({ playerStats }) {
+  const blueTeam = sortPlayersByRole(playerStats.filter(p => p.side === "blue"))
+  const redTeam = sortPlayersByRole(playerStats.filter(p => p.side === "red"))
+
+  const formatValue = v => {
+    if (!v && v !== 0) return null
+    if (v >= 1000) return `${(v / 1000).toFixed(1)}k`
+    return Math.round(v).toString()
+  }
+
+  const renderPerk = (perkId, values, size) => (
+    <div className={`${size} relative group/perk flex-shrink-0`}>
+      <div className={`${size} rounded-full overflow-hidden bg-slate-800/50`}>
+        {perkId && <img src={getRuneIcon(perkId)} alt="" className="w-full h-full object-cover" />}
+      </div>
+      {perkId && values && (values.var1 || values.var2 || values.var3) && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl opacity-0 group-hover/perk:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
+          <div className="text-[10px] text-slate-300 space-y-0.5">
+            {values.var1 > 0 && <div>var1: {formatValue(values.var1)}</div>}
+            {values.var2 > 0 && <div>var2: {formatValue(values.var2)}</div>}
+            {values.var3 > 0 && <div>var3: {formatValue(values.var3)}</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  const renderCard = player => {
+    if (!player) return <div className="flex-1" />
+    const perks = player.runes?.perks || []
+    const valuesByPerk = (player.runes?.perk_values || []).reduce((acc, v) => {
+      acc[v.perk_id] = v
+      return acc
+    }, {})
+    const keystoneValues = valuesByPerk[perks[0]]
+    return (
+      <div className={`flex-1 flex items-center gap-3 rounded-lg p-2.5 ${player.side === "red" ? "bg-red-500/5" : "bg-blue-500/5"}`}>
+        <div className="flex items-center gap-2 flex-shrink-0 w-32 min-w-0">
+          <div className="w-9 h-9 rounded-md overflow-hidden bg-slate-700/50 flex-shrink-0">
+            {player.champion && <img src={getChampionIcon(player.champion)} alt={player.champion} className="w-full h-full object-cover" />}
+          </div>
+          <div className="min-w-0">
+            <div className="text-white text-xs font-medium truncate">{player.summoner_name || player.champion}</div>
+            {keystoneValues && keystoneValues.var1 > 0 && <div className="text-amber-400/80 text-[10px] font-semibold">{formatValue(keystoneValues.var1)}</div>}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-1">
+          <div className="relative w-9 h-9 flex-shrink-0 group/perk">
+            <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-800/80 ring-1 ring-amber-500/30">
+              {perks[0] && <img src={getRuneIcon(perks[0])} alt="" className="w-full h-full object-cover" />}
+            </div>
+            {perks[0] && keystoneValues && (keystoneValues.var1 || keystoneValues.var2 || keystoneValues.var3) && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl opacity-0 group-hover/perk:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
+                <div className="text-[10px] text-slate-300 space-y-0.5">
+                  {keystoneValues.var1 > 0 && <div>var1: {formatValue(keystoneValues.var1)}</div>}
+                  {keystoneValues.var2 > 0 && <div>var2: {formatValue(keystoneValues.var2)}</div>}
+                  {keystoneValues.var3 > 0 && <div>var3: {formatValue(keystoneValues.var3)}</div>}
+                </div>
+              </div>
+            )}
+          </div>
+          {[1, 2, 3].map(i => (
+            <Fragment key={i}>{renderPerk(perks[i], valuesByPerk[perks[i]], "w-6 h-6")}</Fragment>
+          ))}
+
+          <div className="w-px h-8 bg-slate-700/60 mx-1" />
+
+          {[4, 5].map(i => (
+            <Fragment key={i}>{renderPerk(perks[i], valuesByPerk[perks[i]], "w-6 h-6")}</Fragment>
+          ))}
+
+          <div className="w-px h-8 bg-slate-700/60 mx-1" />
+
+          <div className="flex items-center gap-1">
+            {["offense", "flex", "defense"].map(key => (
+              <div key={key} className="w-5 h-5 rounded-full overflow-hidden bg-slate-800/50 flex-shrink-0">
+                {player.runes?.stat_perks?.[key] && <img src={getRuneIcon(player.runes.stat_perks[key])} alt="" className="w-full h-full object-cover" />}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {blueTeam.map((bluePlayer, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          {renderCard(bluePlayer)}
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex-shrink-0">
             <Swords className="w-3 h-3 text-slate-400" />
           </div>
           {renderCard(redTeam[idx])}

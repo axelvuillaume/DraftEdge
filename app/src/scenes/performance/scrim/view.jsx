@@ -102,7 +102,7 @@ export default function View() {
 
   const fetchGames = async () => {
     try {
-      const { ok, data, code } = await api.post("/game/search", { session_id: id })
+      const { ok, data, code } = await api.post("/game/search", { session_id: id, sort: { createdAt: 1 } })
       if (!ok) return toast.error(code || "Failed to fetch games")
       setGames(data)
     } catch (error) {
@@ -493,7 +493,7 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
   const [newRatingType, setNewRatingType] = useState("rating")
   const [newAssignTo, setNewAssignTo] = useState("team")
   const [players, setPlayers] = useState([])
-  const [newPlayerId, setNewPlayerId] = useState("")
+  const [newSelectedPlayerIds, setNewSelectedPlayerIds] = useState([])
   const [newDraftScenarioId, setNewDraftScenarioId] = useState(null)
   const [newDraftScenarioName, setNewDraftScenarioName] = useState(null)
   const [newStratMapId, setNewStratMapId] = useState(null)
@@ -513,19 +513,20 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
     if (isOpen && showCreateForm) fetchPlayers()
   }, [isOpen, showCreateForm])
 
-  useEffect(() => {
-    if (players.length > 0 && !newPlayerId) setNewPlayerId(players[0]._id)
-  }, [players])
-
   const handleCreate = async () => {
     if (!newName.trim()) return
     try {
-      const selectedPlayer = players.find(p => p._id === newPlayerId)
       const { ok, data, code } = await api.post("/scrim-objectif", {
         name: newName,
         description: newDescription,
         rating_type: newRatingType,
-        ...(newAssignTo === "player" && newPlayerId && { player_id: newPlayerId, player_name: selectedPlayer?.player_name || selectedPlayer?.game_name }),
+        player:
+          newAssignTo === "player"
+            ? newSelectedPlayerIds.map(id => {
+                const p = players.find(x => x._id === id)
+                return { id, name: p?.player_name || p?.game_name }
+              })
+            : [],
         ...(newDraftScenarioId && { draft_scenario_id: newDraftScenarioId, draft_scenario_name: newDraftScenarioName }),
         ...(newStratMapId && { strat_map_id: newStratMapId, strat_map_name: newStratMapName })
       })
@@ -535,6 +536,7 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
       setNewDescription("")
       setNewRatingType("rating")
       setNewAssignTo("team")
+      setNewSelectedPlayerIds([])
       setNewDraftScenarioId(null)
       setNewDraftScenarioName(null)
       setNewStratMapId(null)
@@ -551,6 +553,7 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
     setNewDescription("")
     setNewRatingType("rating")
     setNewAssignTo("team")
+    setNewSelectedPlayerIds([])
     setNewDraftScenarioId(null)
     setNewDraftScenarioName(null)
     setNewStratMapId(null)
@@ -656,18 +659,29 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
             </div>
             {newAssignTo === "player" && players.length > 0 && (
               <div>
-                <label className="text-slate-400 text-xs font-medium mb-1.5 block">Player</label>
-                <select
-                  value={newPlayerId}
-                  onChange={e => setNewPlayerId(e.target.value)}
-                  className="w-full bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-lg px-3 py-2 text-white text-sm"
-                >
+                <label className="text-slate-400 text-xs font-medium mb-1.5 block">Players</label>
+                <div className="space-y-1 bg-slate-700/30 rounded-lg p-2">
                   {players.map(p => (
-                    <option key={p._id} value={p._id}>
-                      {p.role} - {p.player_name || p.game_name}
-                    </option>
+                    <button
+                      key={p._id}
+                      type="button"
+                      onClick={() => setNewSelectedPlayerIds(prev => (prev.includes(p._id) ? prev.filter(x => x !== p._id) : [...prev, p._id]))}
+                      className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm transition-all ${
+                        newSelectedPlayerIds.includes(p._id) ? "bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/40" : "text-slate-300 hover:bg-slate-700/50"
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                          newSelectedPlayerIds.includes(p._id) ? "border-amber-500 bg-amber-500" : "border-slate-500"
+                        }`}
+                      >
+                        {newSelectedPlayerIds.includes(p._id) && <Check className="w-2.5 h-2.5 text-white" />}
+                      </div>
+                      <span className="text-xs font-bold uppercase text-slate-400">{p.role}</span>
+                      <span>{p.player_name || p.game_name}</span>
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
             )}
             <div>
@@ -728,7 +742,11 @@ function ObjectivePickerModal({ isOpen, onClose, allObjectives, activeObjectifId
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className={`font-medium truncate ${activeObjectifIds.includes(obj._id) ? "text-white" : "text-slate-300"}`}>{obj.name}</span>
-                      {obj.player_name && <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded-md shrink-0">{obj.player_name}</span>}
+                      {obj.player?.map(p => (
+                        <span key={p.id} className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded-md shrink-0">
+                          {p.name}
+                        </span>
+                      ))}
                     </div>
                     {obj.description && <div className="text-xs text-slate-500 mt-0.5 truncate">{obj.description}</div>}
                   </div>
@@ -907,7 +925,11 @@ function ObjectiveRow({ session, games, objective, onToggleObjective, onRatingsC
             <span className="text-white text-sm font-medium truncate max-w-[150px]" title={objective.name}>
               {objective.name}
             </span>
-            {objective.player_name && <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded-md shrink-0">{objective.player_name}</span>}
+            {objective.player?.map(p => (
+              <span key={p.id} className="text-[10px] text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded-md shrink-0">
+                {p.name}
+              </span>
+            ))}
             <span
               className={`text-[9px] px-1 py-0.5 rounded font-medium shrink-0 ${
                 objective.rating_type === "toggle" ? "bg-violet-500/15 text-violet-400" : "bg-blue-500/15 text-blue-400"
@@ -1060,4 +1082,3 @@ function ObjectiveRow({ session, games, objective, onToggleObjective, onRatingsC
     </>
   )
 }
-

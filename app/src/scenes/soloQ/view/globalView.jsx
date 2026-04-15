@@ -148,29 +148,29 @@ function ScrimObjectives({ player }) {
         <h3 className="text-white font-semibold text-sm">Scrim Objectives</h3>
       </div>
       <div className="p-4 space-y-4">
-        {objectives.filter(o => o.player_id === player._id).length > 0 && (
+        {objectives.filter(o => o.player?.some(p => p.id === player._id)).length > 0 && (
           <div className="space-y-2">
             <p className="text-xs text-slate-500 uppercase tracking-wider">Player</p>
             {objectives
-              .filter(o => o.player_id === player._id)
+              .filter(o => o.player?.some(p => p.id === player._id))
               .map(obj => (
                 <ScrimObjItem key={obj._id} objective={obj} />
               ))}
           </div>
         )}
 
-        {objectives.filter(o => !o.player_id).length > 0 && (
+        {objectives.filter(o => !o.player?.length).length > 0 && (
           <div className="space-y-2">
             <p className="text-xs text-slate-500 uppercase tracking-wider">Team</p>
             {objectives
-              .filter(o => !o.player_id)
+              .filter(o => !o.player?.length)
               .map(obj => (
                 <ScrimObjItem key={obj._id} objective={obj} />
               ))}
           </div>
         )}
 
-        {objectives.filter(o => o.player_id === player._id).length === 0 && objectives.filter(o => !o.player_id).length === 0 && (
+        {objectives.filter(o => o.player?.some(p => p.id === player._id)).length === 0 && objectives.filter(o => !o.player?.length).length === 0 && (
           <p className="text-slate-500 text-sm text-center py-4">No scrim objectives defined.</p>
         )}
       </div>

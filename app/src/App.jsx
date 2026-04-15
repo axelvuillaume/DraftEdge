@@ -77,7 +77,14 @@ export default function App() {
           <Route path="/performance/*" element={<Performance />} />
           <Route path="/league/*" element={<League />} />
           <Route path="/map/*" element={<StratMap />} />
-          <Route path="/billings" element={<AdminRoute><Billings /></AdminRoute>} />
+          <Route
+            path="/billings"
+            element={
+              <AdminRoute>
+                <Billings />
+              </AdminRoute>
+            }
+          />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
@@ -98,18 +105,22 @@ const AuthLayout = () => {
   return <Outlet />
 }
 
-const NEWS_DATE = "2026-04-08"
+const NEWS_DATE = "2026-04-15"
 const NEWS_CONTENT = [
   {
-    title: "Strat Map",
+    title: "Scrim Objectives",
     highlight: true,
-    description: "Visualize and plan your strategies directly on the map. Place wards, draw movements, and coordinate your team's game plan.",
-    link: "/map"
+    description: "You can now select multiple days when creating a scrim objective.",
+    link: "/scrim-hub"
   },
   {
-    title: "Scrim Objectives",
-    items: ["View results and notes for each objective", "Link a map and a draft to an objective"],
-    link: "/scrim-hub"
+    title: "Runes Tab",
+    description: "A new Runes tab is available in the game view to inspect each player's runes setup."
+  },
+  {
+    title: "Bug Fixes",
+    small: true,
+    items: ["Imported games are now displayed in the correct order (previously reversed)", "Creating a scrim from the calendar now uses the correct date"]
   }
 ]
 
@@ -136,11 +147,11 @@ const NewsModal = ({ user }) => {
         <p className="text-sm text-slate-400 mb-6">{new Date(NEWS_DATE).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
         <div className="space-y-4">
           {NEWS_CONTENT.map((item, i) => (
-            <div key={i} className={`rounded-xl p-4 ${item.highlight ? "bg-blue-600/20 border border-blue-500/30" : "bg-slate-700/50"}`}>
+            <div key={i} className={`rounded-xl ${item.small ? "p-3" : "p-4"} ${item.highlight ? "bg-blue-600/20 border border-blue-500/30" : "bg-slate-700/50"}`}>
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   {item.highlight && <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-500 text-white px-2 py-0.5 rounded-full">New Feature</span>}
-                  <h3 className="text-white font-semibold">{item.title}</h3>
+                  <h3 className={`text-white font-semibold ${item.small ? "text-sm" : ""}`}>{item.title}</h3>
                 </div>
                 {item.link && (
                   <button
@@ -154,11 +165,11 @@ const NewsModal = ({ user }) => {
                   </button>
                 )}
               </div>
-              {item.description && <p className="text-slate-300 text-sm">{item.description}</p>}
+              {item.description && <p className={`text-slate-300 ${item.small ? "text-xs" : "text-sm"}`}>{item.description}</p>}
               {item.items && (
                 <ul className="mt-1 space-y-1">
                   {item.items.map((text, j) => (
-                    <li key={j} className="text-slate-300 text-sm flex items-start gap-2">
+                    <li key={j} className={`text-slate-300 ${item.small ? "text-xs" : "text-sm"} flex items-start gap-2`}>
                       <span className="text-blue-400 mt-0.5">•</span>
                       {text}
                     </li>
@@ -262,7 +273,8 @@ const UserLayout = () => {
                   <button
                     onClick={handleSubscribe}
                     disabled={subscribeLoading}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors disabled:opacity-50">
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  >
                     {subscribeLoading ? "Loading..." : "Subscribe Now"}
                   </button>
                 ) : (

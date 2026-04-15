@@ -22,7 +22,8 @@ import {
   ToggleLeft,
   Search,
   X,
-  Pencil
+  Pencil,
+  Check
 } from "lucide-react"
 import { ROLES, ROLE_LABELS, ALL_CHAMPIONS, getChampionIcon } from "@/utils"
 import DraftScenarioSelect from "@/components/DraftScenarioSelect"
@@ -278,8 +279,12 @@ function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-white text-sm font-medium truncate">{objectif.name}</h3>
-            {objectif.player_name ? (
-              <span className="text-xs text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium shrink-0">{objectif.player_name}</span>
+            {objectif.player?.length > 0 ? (
+              objectif.player.map(p => (
+                <span key={p.id} className="text-xs text-amber-400/80 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium shrink-0">
+                  {p.name}
+                </span>
+              ))
             ) : (
               <span className="text-xs text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded font-medium shrink-0 flex items-center gap-1">
                 <Users className="w-3 h-3" />
@@ -432,7 +437,7 @@ function ScrimObjectifModal({ isOpen, objective, onClose, onSuccess }) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [assignTo, setAssignTo] = useState("team")
-  const [playerId, setPlayerId] = useState("")
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState([])
   const [ratingType, setRatingType] = useState("rating")
   const [draftScenarioId, setDraftScenarioId] = useState(null)
   const [draftScenarioName, setDraftScenarioName] = useState(null)
@@ -460,56 +465,68 @@ function ScrimObjectifModal({ isOpen, objective, onClose, onSuccess }) {
     if (objective?._id) {
       setName(objective.name || "")
       setDescription(objective.description || "")
-      setAssignTo(objective.player_id ? "player" : "team")
-      setPlayerId(objective.player_id || players[0]._id)
+      setAssignTo(objective.player?.length > 0 ? "player" : "team")
+      setSelectedPlayerIds(objective.player?.map(p => p.id) || [])
       setRatingType(objective.rating_type || "rating")
       setDraftScenarioId(objective.draft_scenario_id || null)
       setDraftScenarioName(objective.draft_scenario_name || null)
       setStratMapId(objective.strat_map_id || null)
       setStratMapName(objective.strat_map_name || null)
-    } else {
-      setName("")
-      setDescription("")
-      setAssignTo("team")
-      setPlayerId(players[0]._id)
-      setRatingType("rating")
-      setDraftScenarioId(null)
-      setDraftScenarioName(null)
-      setStratMapId(null)
-      setStratMapName(null)
+      return
     }
+    setName("")
+    setDescription("")
+    setAssignTo("team")
+    setSelectedPlayerIds([])
+    setRatingType("rating")
+    setDraftScenarioId(null)
+    setDraftScenarioName(null)
+    setStratMapId(null)
+    setStratMapName(null)
   }, [isOpen, players])
+
+  const togglePlayer = id => {
+    setSelectedPlayerIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))
+  }
+
+  const buildPlayerArray = () => {
+    if (assignTo !== "player") return []
+    return selectedPlayerIds.map(id => {
+      const p = players.find(x => x._id === id)
+      return { id, name: p?.player_name || p?.game_name }
+    })
+  }
 
   const handleSubmit = async () => {
     if (!name.trim()) return
     try {
-      const selectedPlayer = players.find(p => p._id === playerId)
       if (objective?._id) {
         const { ok, code } = await api.put(`/scrim-objectif/${objective._id}`, {
           name,
           description,
           rating_type: ratingType,
-          player_id: assignTo === "player" && playerId ? playerId : null,
-          player_name: assignTo === "player" && playerId ? selectedPlayer?.player_name || selectedPlayer?.game_name : null,
+          player: buildPlayerArray(),
           draft_scenario_id: draftScenarioId,
           draft_scenario_name: draftScenarioName,
           strat_map_id: stratMapId,
           strat_map_name: stratMapName
         })
         if (!ok) return toast.error(code || "Failed to update objective")
-      } else {
-        const { ok, code } = await api.post("/scrim-objectif", {
-          name,
-          description,
-          team_id: user?.team_id,
-          team_name: user?.team_name,
-          rating_type: ratingType,
-          ...(assignTo === "player" && playerId && { player_id: playerId, player_name: selectedPlayer?.player_name || selectedPlayer?.game_name }),
-          ...(draftScenarioId && { draft_scenario_id: draftScenarioId, draft_scenario_name: draftScenarioName }),
-          ...(stratMapId && { strat_map_id: stratMapId, strat_map_name: stratMapName })
-        })
-        if (!ok) return toast.error(code || "Failed to add objective")
+        onClose()
+        onSuccess()
+        return
       }
+      const { ok, code } = await api.post("/scrim-objectif", {
+        name,
+        description,
+        team_id: user?.team_id,
+        team_name: user?.team_name,
+        rating_type: ratingType,
+        player: buildPlayerArray(),
+        ...(draftScenarioId && { draft_scenario_id: draftScenarioId, draft_scenario_name: draftScenarioName }),
+        ...(stratMapId && { strat_map_id: stratMapId, strat_map_name: stratMapName })
+      })
+      if (!ok) return toast.error(code || "Failed to add objective")
       onClose()
       onSuccess()
     } catch (error) {
@@ -547,18 +564,29 @@ function ScrimObjectifModal({ isOpen, objective, onClose, onSuccess }) {
           </div>
           {assignTo === "player" && players.length > 0 && (
             <div>
-              <label className="text-slate-400 text-xs font-medium mb-1.5 block">Player</label>
-              <select
-                value={playerId}
-                onChange={e => setPlayerId(e.target.value)}
-                className="w-full bg-slate-700/50 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500 rounded-lg px-3 py-2.5 text-white text-sm"
-              >
+              <label className="text-slate-400 text-xs font-medium mb-1.5 block">Players</label>
+              <div className="space-y-1 bg-slate-700/30 rounded-lg p-2">
                 {players.map(p => (
-                  <option key={p._id} value={p._id}>
-                    {ROLE_LABELS[p.role] || p.role} - {p.player_name || p.game_name}
-                  </option>
+                  <button
+                    key={p._id}
+                    type="button"
+                    onClick={() => togglePlayer(p._id)}
+                    className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm transition-all ${
+                      selectedPlayerIds.includes(p._id) ? "bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/40" : "text-slate-300 hover:bg-slate-700/50"
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                        selectedPlayerIds.includes(p._id) ? "border-amber-500 bg-amber-500" : "border-slate-500"
+                      }`}
+                    >
+                      {selectedPlayerIds.includes(p._id) && <Check className="w-2.5 h-2.5 text-white" />}
+                    </div>
+                    <span className="text-xs font-bold uppercase text-slate-400">{ROLE_LABELS[p.role] || p.role}</span>
+                    <span>{p.player_name || p.game_name}</span>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           )}
           <div>

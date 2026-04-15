@@ -20,18 +20,34 @@ async function downloadAllRuneIcons() {
   // Collecter toutes les runes (arbres + runes individuelles)
   const runes = [];
   for (const tree of trees) {
-    runes.push({ id: tree.id, name: tree.name, icon: tree.icon });
+    runes.push({ id: tree.id, name: tree.name, icon: `https://ddragon.leagueoflegends.com/cdn/img/${tree.icon}` });
     for (const slot of tree.slots) {
       for (const rune of slot.runes) {
-        runes.push({ id: rune.id, name: rune.name, icon: rune.icon });
+        runes.push({ id: rune.id, name: rune.name, icon: `https://ddragon.leagueoflegends.com/cdn/img/${rune.icon}` });
       }
     }
   }
 
+  // Stat perks (AD/AP adaptive, HP, armor, MR, attack speed, ability haste, etc.)
+  // Pas dispo dans runesReforged.json, on utilise CommunityDragon
+  const statPerksBase = "https://raw.communitydragon.org/latest/game/assets/perks/statmods";
+  const statPerks = [
+    { id: 5001, name: "Health Scaling", icon: `${statPerksBase}/statmodshealthscalingicon.png` },
+    { id: 5002, name: "Armor", icon: `${statPerksBase}/statmodsarmoricon.png` },
+    { id: 5003, name: "Magic Resist", icon: `${statPerksBase}/statmodsmagicresicon.png` },
+    { id: 5005, name: "Attack Speed", icon: `${statPerksBase}/statmodsattackspeedicon.png` },
+    { id: 5007, name: "Ability Haste", icon: `${statPerksBase}/statmodscdrscalingicon.png` },
+    { id: 5008, name: "Adaptive Force", icon: `${statPerksBase}/statmodsadaptiveforceicon.png` },
+    { id: 5010, name: "Move Speed", icon: `${statPerksBase}/statmodsmovementspeedicon.png` },
+    { id: 5011, name: "Health", icon: `${statPerksBase}/statmodshealthplusicon.png` },
+    { id: 5013, name: "Tenacity and Slow Resist", icon: `${statPerksBase}/statmodstenacityicon.png` },
+  ];
+  runes.push(...statPerks);
+
   console.log(`Downloading ${runes.length} rune icons...`);
 
   for (const rune of runes) {
-    const iconUrl = `https://ddragon.leagueoflegends.com/cdn/img/${rune.icon}`;
+    const iconUrl = rune.icon;
     const outputPath = path.join(outputDir, `${rune.id}.png`);
 
     // Skip si déjà téléchargé

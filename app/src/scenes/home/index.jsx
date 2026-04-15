@@ -556,7 +556,7 @@ function ScrimCalendar() {
       setSelectedDay(selectedDay === day ? null : day)
       return
     }
-    setCreateDate(new Date(year, mo, day).toISOString().slice(0, 10))
+    setCreateDate(`${year}-${String(mo + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`)
     setShowCreateModal(true)
   }
 
