@@ -171,9 +171,9 @@ export default function View() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center self-center flex-shrink-0">
+                {/* <div className="flex items-center justify-center self-center flex-shrink-0">
                   <DraftSuggestionsTree scenario={scenario} selectedLeagues={selectedLeagues} />
-                </div>
+                </div> */}
 
                 <div className="flex-1 min-w-0">
                   <p className="text-slate-400 text-xs uppercase tracking-wider mb-2 text-right">PICKS</p>
@@ -421,6 +421,7 @@ function DraftTooltip({ champion, type, side, index, selectedLeagues }) {
   )
 }
 
+// eslint-disable-next-line no-unused-vars
 function DraftSuggestionsTree({ scenario, selectedLeagues }) {
   const [data, setData] = useState(null)
 
