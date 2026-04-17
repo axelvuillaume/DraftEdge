@@ -70,6 +70,19 @@ export default function View() {
   }, [])
 
   useEffect(() => {
+    if (!showNoteForm) return
+    const interval = setInterval(() => {
+      if (!playerRef.current?.getPlayerState || playerRef.current.getPlayerState() !== 1) return
+      if (!playerRef.current?.getCurrentTime) return
+      setNewNote(prev => ({
+        ...prev,
+        timing: `${String(Math.floor(playerRef.current.getCurrentTime() / 60)).padStart(2, "0")}:${String(Math.floor(playerRef.current.getCurrentTime() % 60)).padStart(2, "0")}`
+      }))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [showNoteForm])
+
+  useEffect(() => {
     if (!replay) return
     const videoId = replay.link?.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/)?.[1]
     if (!videoId || !containerRef.current) return
