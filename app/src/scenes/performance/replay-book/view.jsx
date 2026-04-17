@@ -4,23 +4,6 @@ import { ArrowLeft, Plus, Trash2, Clock, Play, Pencil } from "lucide-react"
 import api from "@/services/api"
 import { useParams, useNavigate } from "react-router-dom"
 
-function getYouTubeId(url) {
-  if (!url) return null
-  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/)
-  if (match) return match[1]
-  return null
-}
-
-function formatTime(seconds) {
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`
-}
-
-function parseTime(str) {
-  const parts = str.split(":").map(Number)
-  if (parts.length === 2 && parts.every(p => !isNaN(p))) return parts[0] * 60 + parts[1]
-  return null
-}
-
 export default function View() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -30,6 +13,7 @@ export default function View() {
   const [newNote, setNewNote] = useState({ title: "", description: "", timing: "" })
   const [showNoteForm, setShowNoteForm] = useState(false)
   const [editingIndex, setEditingIndex] = useState(null)
+  const [editingName, setEditingName] = useState(null)
 
   const fetchReplay = async () => {
     try {
@@ -43,12 +27,11 @@ export default function View() {
 
   const handleSaveNote = async () => {
     if (!newNote.title.trim()) return toast.error("Enter a note title")
-    if (parseTime(newNote.timing) === null) return toast.error("Enter a valid timing (MM:SS)")
+    const timingParts = newNote.timing.split(":").map(Number)
+    if (timingParts.length !== 2 || timingParts.some(p => isNaN(p))) return toast.error("Enter a valid timing (MM:SS)")
     try {
-      const note = { title: newNote.title.trim(), description: newNote.description.trim(), timing: parseTime(newNote.timing) }
-      const notes = editingIndex !== null
-        ? replay.notes.map((n, i) => (i === editingIndex ? note : n))
-        : [...(replay.notes || []), note]
+      const note = { title: newNote.title.trim(), description: newNote.description.trim(), timing: timingParts[0] * 60 + timingParts[1] }
+      const notes = editingIndex !== null ? replay.notes.map((n, i) => (i === editingIndex ? note : n)) : [...(replay.notes || []), note]
       const { ok, code } = await api.put(`/replay-book/${id}`, { ...replay, notes })
       if (!ok) return toast.error(code || "Failed to save note")
       setNewNote({ title: "", description: "", timing: "" })
@@ -60,32 +43,26 @@ export default function View() {
     }
   }
 
-  const handleEditNote = (index) => {
-    setNewNote({ title: replay.notes[index].title, description: replay.notes[index].description || "", timing: formatTime(replay.notes[index].timing) })
-    setEditingIndex(index)
-    setShowNoteForm(true)
+  const handleSaveName = async () => {
+    if (!editingName.trim()) return toast.error("Name cannot be empty")
+    try {
+      const { ok, code } = await api.put(`/replay-book/${id}`, { ...replay, name: editingName.trim() })
+      if (!ok) return toast.error(code || "Failed to update name")
+      setEditingName(null)
+      fetchReplay()
+    } catch (error) {
+      toast.error(error.code || "Failed to update name")
+    }
   }
 
   const handleDeleteNote = async index => {
     try {
-      const { ok, code } = await api.put(`/replay-book/${id}`, {
-        ...replay,
-        notes: replay.notes.filter((_, i) => i !== index)
-      })
+      const { ok, code } = await api.put(`/replay-book/${id}`, { ...replay, notes: replay.notes.filter((_, i) => i !== index) })
       if (!ok) return toast.error(code || "Failed to delete note")
       fetchReplay()
     } catch (error) {
       toast.error(error.code || "Failed to delete note")
     }
-  }
-
-  const seekTo = seconds => {
-    if (playerRef.current?.seekTo) playerRef.current.seekTo(seconds, true)
-  }
-
-  const openNoteForm = () => {
-    if (playerRef.current?.getCurrentTime) setNewNote(prev => ({ ...prev, timing: formatTime(playerRef.current.getCurrentTime()) }))
-    setShowNoteForm(true)
   }
 
   useEffect(() => {
@@ -94,7 +71,7 @@ export default function View() {
 
   useEffect(() => {
     if (!replay) return
-    const videoId = getYouTubeId(replay.link)
+    const videoId = replay.link?.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/)?.[1]
     if (!videoId || !containerRef.current) return
 
     const loadPlayer = () => {
@@ -102,7 +79,7 @@ export default function View() {
       playerRef.current = new window.YT.Player(containerRef.current, {
         videoId,
         width: "100%",
-        height: "100%",
+        height: "100%"
       })
     }
 
@@ -112,7 +89,9 @@ export default function View() {
     tag.src = "https://www.youtube.com/iframe_api"
     document.head.appendChild(tag)
     window.onYouTubeIframeAPIReady = loadPlayer
-    return () => { window.onYouTubeIframeAPIReady = null }
+    return () => {
+      window.onYouTubeIframeAPIReady = null
+    }
   }, [replay?.link])
 
   if (!replay) return null
@@ -124,13 +103,44 @@ export default function View() {
           <button onClick={() => navigate("/scrim-hub/replay-book")} className="p-2 text-slate-400 hover:text-white transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-white text-xl font-semibold">{replay.name}</h1>
+          {editingName !== null ? (
+            <form
+              onSubmit={e => {
+                e.preventDefault()
+                handleSaveName()
+              }}
+              className="flex items-center gap-2 flex-1"
+            >
+              <input
+                autoFocus
+                value={editingName}
+                onChange={e => setEditingName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Escape") setEditingName(null)
+                }}
+                className="px-3 py-1 rounded-lg border border-slate-600 bg-slate-700/50 text-white text-xl font-semibold focus:border-amber-500 focus:outline-none flex-1"
+              />
+              <button type="submit" className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg text-sm transition-colors">
+                Save
+              </button>
+              <button type="button" onClick={() => setEditingName(null)} className="px-3 py-1 text-slate-400 hover:text-white text-sm transition-colors">
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <div className="flex items-center gap-2 group">
+              <h1 className="text-white text-xl font-semibold">{replay.name}</h1>
+              <button onClick={() => setEditingName(replay.name)} className="p-1 text-slate-500 hover:text-amber-400 transition-colors opacity-0 group-hover:opacity-100">
+                <Pencil className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2">
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
-              {getYouTubeId(replay.link) ? (
+              {replay.link?.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/)?.[1] ? (
                 <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
                   <div ref={containerRef} className="absolute inset-0 w-full h-full" />
                 </div>
@@ -143,7 +153,14 @@ export default function View() {
           <div className="xl:col-span-1 space-y-4">
             {!showNoteForm && (
               <button
-                onClick={openNoteForm}
+                onClick={() => {
+                  if (playerRef.current?.getCurrentTime)
+                    setNewNote(prev => ({
+                      ...prev,
+                      timing: `${String(Math.floor(playerRef.current.getCurrentTime() / 60)).padStart(2, "0")}:${String(Math.floor(playerRef.current.getCurrentTime() % 60)).padStart(2, "0")}`
+                    }))
+                  setShowNoteForm(true)
+                }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-xl text-sm transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -155,7 +172,14 @@ export default function View() {
               <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-white font-semibold text-sm">{editingIndex !== null ? "Edit Note" : "Add Note"}</h3>
-                  <button onClick={() => { setShowNoteForm(false); setEditingIndex(null); setNewNote({ title: "", description: "", timing: "" }) }} className="text-slate-400 hover:text-white transition-colors text-xs">
+                  <button
+                    onClick={() => {
+                      setShowNoteForm(false)
+                      setEditingIndex(null)
+                      setNewNote({ title: "", description: "", timing: "" })
+                    }}
+                    className="text-slate-400 hover:text-white transition-colors text-xs"
+                  >
                     Cancel
                   </button>
                 </div>
@@ -171,7 +195,13 @@ export default function View() {
                         className="flex-1 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"
                       />
                       <button
-                        onClick={() => { if (playerRef.current?.getCurrentTime) setNewNote(prev => ({ ...prev, timing: formatTime(playerRef.current.getCurrentTime()) })) }}
+                        onClick={() => {
+                          if (playerRef.current?.getCurrentTime)
+                            setNewNote(prev => ({
+                              ...prev,
+                              timing: `${String(Math.floor(playerRef.current.getCurrentTime() / 60)).padStart(2, "0")}:${String(Math.floor(playerRef.current.getCurrentTime() % 60)).padStart(2, "0")}`
+                            }))
+                        }}
                         className="p-2 text-slate-400 hover:text-amber-500 transition-colors border border-slate-600 rounded-lg"
                         title="Get current time"
                       >
@@ -221,11 +251,13 @@ export default function View() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <button
-                              onClick={() => seekTo(note.timing)}
+                              onClick={() => {
+                                if (playerRef.current?.seekTo) playerRef.current.seekTo(note.timing, true)
+                              }}
                               className="flex items-center gap-1 text-amber-500 hover:text-amber-400 transition-colors text-xs font-mono shrink-0"
                             >
                               <Play className="w-3 h-3" />
-                              {formatTime(note.timing)}
+                              {`${String(Math.floor(note.timing / 60)).padStart(2, "0")}:${String(Math.floor(note.timing % 60)).padStart(2, "0")}`}
                             </button>
                             <span className="text-white text-sm font-medium truncate">{note.title}</span>
                           </div>
@@ -233,7 +265,16 @@ export default function View() {
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 shrink-0">
                           <button
-                            onClick={() => handleEditNote(replay.notes.findIndex(n => n.title === note.title && n.timing === note.timing))}
+                            onClick={() => {
+                              const idx = replay.notes.findIndex(n => n.title === note.title && n.timing === note.timing)
+                              setNewNote({
+                                title: replay.notes[idx].title,
+                                description: replay.notes[idx].description || "",
+                                timing: `${String(Math.floor(replay.notes[idx].timing / 60)).padStart(2, "0")}:${String(Math.floor(replay.notes[idx].timing % 60)).padStart(2, "0")}`
+                              })
+                              setEditingIndex(idx)
+                              setShowNoteForm(true)
+                            }}
                             className="p-1 text-slate-500 hover:text-amber-400 transition-colors"
                           >
                             <Pencil className="w-3.5 h-3.5" />
