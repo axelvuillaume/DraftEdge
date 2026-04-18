@@ -5,7 +5,7 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 
 export default function Billings() {
-  const { user } = useStore()
+  const { user, team } = useStore()
   const [subscription, setSubscription] = useState(null)
   const [loading, setLoading] = useState(false)
 
@@ -50,7 +50,8 @@ export default function Billings() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-8">Billing</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">Billing</h1>
+        {team?.createdAt && <p className="text-slate-400 text-sm mb-8">Team created on {new Date(team.createdAt).toLocaleDateString()}</p>}
 
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-8">
           {subscription?.subscription_status === "trialing" ? (
