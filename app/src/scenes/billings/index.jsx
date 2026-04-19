@@ -155,6 +155,8 @@ export default function Billings() {
                 <ExternalLink className="w-4 h-4" />
                 {loading ? "Loading..." : "Manage Subscription"}
               </button>
+
+              <p className="text-slate-400 text-xs mt-4">Cancel anytime from the billing portal. No commitment.</p>
             </div>
           ) : (
             <div>
@@ -181,6 +183,8 @@ export default function Billings() {
               >
                 {loading ? "Loading..." : "Subscribe Now"}
               </button>
+
+              <p className="text-slate-400 text-xs text-center mt-4">Cancel anytime. No commitment, no hidden fees.</p>
 
               {subscription?.subscription_status === "past_due" && (
                 <p className="text-amber-400 text-sm text-center mt-4">Your last payment failed. Please update your payment method.</p>
