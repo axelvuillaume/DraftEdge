@@ -43,7 +43,7 @@ export const TIER_COLORS = {
   CHALLENGER: "#f59e0b"
 }
 
-export const RANK_ICON_TIERS = new Set(["CHALLENGER", "GRANDMASTER", "MASTER", "DIAMOND", "PLATINUM", "EMERALD"])
+export const RANK_ICON_TIERS = new Set(["CHALLENGER", "GRANDMASTER", "MASTER", "DIAMOND", "PLATINUM", "EMERALD", "GOLD"])
 
 export const TIER_SHORT = {
   IRON: "Iron",
