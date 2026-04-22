@@ -60,6 +60,7 @@ app.use('/soloq-match', require('./controllers/soloq-match'));
 app.use('/team-league', require('./controllers/team-league'));
 app.use('/league', require('./controllers/league'));
 app.use('/strat-map', require('./controllers/strat-map'));
+app.use('/replay-book', require('./controllers/replay-book'));
 app.use('/stripe', require('./controllers/stripe'));
 
 setupErrorHandler(app);

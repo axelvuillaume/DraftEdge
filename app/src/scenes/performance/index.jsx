@@ -3,12 +3,14 @@ import Draft from "./draft"
 import ScrimHub from "./scrim"
 import Objectives from "./objectives"
 import StratMap from "./strat-map"
+import ReplayBook from "./replay-book"
 
 const TABS = [
   { key: "objectives", label: "Objectives", path: "objectives", title: "Objectives Overview", description: "Track scrim team objectives and individual SoloQ goals." },
   { key: "scrims", label: "Scrims", path: "scrims", title: "Scrim", description: "Organize your scrim sessions and track reviews." },
   { key: "draft", label: "Draft", path: "draft", title: "Draft Prep", description: "Prepare and analyze draft scenarios for upcoming matches." },
-  { key: "map", label: "Strat Map", path: "map", title: "Map Planner", description: "Plan strategies, vision control and rotations on the map." }
+  { key: "map", label: "Strat Map", path: "map", title: "Map Planner", description: "Plan strategies, vision control and rotations on the map." },
+  { key: "replay-book", label: "Replay Book", path: "replay-book", title: "Replay Book", description: "Track and analyze your replay book." }
 ]
 
 export default function Performance() {
@@ -51,6 +53,7 @@ export default function Performance() {
           <Route path="objectives" element={<Objectives />} />
           <Route path="draft/*" element={<Draft />} />
           <Route path="map/*" element={<StratMap />} />
+          <Route path="replay-book/*" element={<ReplayBook />} />
           <Route path="*" element={<Navigate to="objectives" replace />} />
         </Routes>
       </div>

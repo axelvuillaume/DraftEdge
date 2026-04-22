@@ -150,6 +150,21 @@ Rules:
 - ALWAYS re-fetch via `useEffect` on `[filters]`, the backend handles empty/falsy filter values
 - Filter dropdowns (patch, opponent, etc.) are self-contained components that fetch their own options
 
+## No Helper Functions
+
+NEVER create small helper/utility functions outside of the component. Inline the logic directly where it's used.
+
+```jsx
+// BAD
+function formatTime(seconds) {
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`
+}
+// then later: {formatTime(note.timing)}
+
+// GOOD — inline it directly
+{`${String(Math.floor(note.timing / 60)).padStart(2, "0")}:${String(Math.floor(note.timing % 60)).padStart(2, "0")}`}
+```
+
 ## No External Body Variable
 
 NEVER create an intermediate `body` or `payload` variable for `api.post`. Pass the object inline.
