@@ -1,8 +1,16 @@
 const Team = require('../models/team');
 
-module.exports = async () => {
-  const result = await Team.updateMany({ subscription_status: 'trialing', subscription_current_period_end: { $lt: new Date() } }, { subscription_status: 'canceled' });
-  if (result.modifiedCount > 0) {
-    console.log(`Expired ${result.modifiedCount} trial(s)`);
+async function checkTrials() {
+  const expired = await Team.find({ subscription_status: 'trialing', subscription_current_period_end: { $lt: new Date() } });
+  console.log(`[checkTrials] Found ${expired.length} expired trial(s)`);
+
+  for (const team of expired) {
+    team.subscription_status = 'canceled';
+    await team.save();
+    console.log(`[checkTrials] Canceled ${team.name}`);
   }
-};
+
+  console.log(`[checkTrials] Done`);
+}
+
+module.exports = checkTrials;
