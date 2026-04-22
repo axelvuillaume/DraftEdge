@@ -910,10 +910,9 @@ function ObjectiveRowHeader({ objective, onDelete, onEdit, expanded, setExpanded
           )}
           {objective.champions?.length > 0 && (
             <div className="flex items-center gap-0.5">
-              {objective.champions.slice(0, 3).map(c => (
+              {objective.champions.map(c => (
                 <img key={c} src={getChampionIcon(c)} alt={c} className="w-5 h-5 rounded" title={c} />
               ))}
-              {objective.champions.length > 3 && <span className="text-xs text-slate-500 ml-0.5">+{objective.champions.length - 3}</span>}
             </div>
           )}
         </div>
