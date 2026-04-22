@@ -64,6 +64,8 @@ function evaluateObjectives(objectives, doc, timeline, participantId, matchId, p
   for (const obj of objectives) {
     // Skip aggregate objectives — they are evaluated via API, not per-match
     if (obj.type === 'aggregate') continue;
+    // Skip rank objectives — they are evaluated in getElo cron, not per-match
+    if (obj.type === 'rank') continue;
     if (!obj.active) continue;
     if (obj.champions?.length > 0 && !obj.champions.includes(doc.championName)) continue;
     if (obj.role && obj.role !== doc.teamPosition) continue;
@@ -190,7 +192,7 @@ async function fetchSoloQ() {
         'account.puuid': { $exists: false },
         active: { $ne: false },
       });
-      const perGameAndStreakObjs = objectives.filter((o) => o.type !== 'aggregate');
+      const perGameAndStreakObjs = objectives.filter((o) => o.type !== 'aggregate' && o.type !== 'rank');
       const streakObjs = objectives.filter((o) => o.type === 'streak');
       const needsTimeline = perGameAndStreakObjs.some((o) => o.rule.source === 'timeline');
 
@@ -288,7 +290,7 @@ async function fetchSoloQ() {
 
           if (newSmurfIds.length === 0) continue;
 
-          const smurfPerGameAndStreakObjs = smurfObjs.filter((o) => o.type !== 'aggregate');
+          const smurfPerGameAndStreakObjs = smurfObjs.filter((o) => o.type !== 'aggregate' && o.type !== 'rank');
           const smurfStreakObjs = smurfObjs.filter((o) => o.type === 'streak');
           const smurfNeedsTimeline = smurfPerGameAndStreakObjs.some((o) => o.rule.source === 'timeline');
 

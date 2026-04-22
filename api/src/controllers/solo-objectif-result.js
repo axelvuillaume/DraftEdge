@@ -106,17 +106,17 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
       // Calculer la date de début de période
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      let periodStart;
-      if (period === 'daily') {
-        periodStart = startOfDay;
-      } else {
+      let periodStart = null;
+      if (period === 'daily') periodStart = startOfDay;
+      if (period === 'weekly') {
         const day = now.getDay();
         periodStart = new Date(startOfDay);
         periodStart.setDate(periodStart.getDate() - (day === 0 ? 6 : day - 1)); // Lundi
       }
 
       // Query les matches du joueur sur la période (filtrer par puuid pour distinguer main/smurf)
-      const matchQuery = { player_id: obj.player_id, queueId: 420, gameDate: { $gte: periodStart } };
+      const matchQuery = { player_id: obj.player_id, queueId: 420 };
+      if (periodStart) matchQuery.gameDate = { $gte: periodStart };
       if (obj.account?.puuid) matchQuery.puuid = obj.account.puuid;
       if (obj.champions?.length > 0) matchQuery.championName = { $in: obj.champions };
       if (obj.role) matchQuery.teamPosition = obj.role;

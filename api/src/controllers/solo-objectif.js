@@ -64,11 +64,12 @@ router.post('/', passport.authenticate(['admin', 'user'], { session: false, fail
 Les noms de metrics doivent correspondre EXACTEMENT aux champs de l'API Riot Games. Pour les champs nestés, utilise la dot notation (ex: "damageStats.totalDamageDoneToChampions").
 On ne gère que les stats du joueur lui-même, pas celles des adversaires ou coéquipiers.
 
-IL EXISTE 3 TYPES D'OBJECTIFS:
+IL EXISTE 4 TYPES D'OBJECTIFS:
 
 1. "per_game" — évalué sur chaque match individuellement (ex: "moins de 3 deaths", "CS > 100 à 10min")
-2. "aggregate" — compter/sommer/moyenner sur une période (ex: "jouer 5 games par jour", "win 3 games cette semaine", "average 7 kills par semaine")
+2. "aggregate" — compter/sommer/moyenner sur une période (ex: "jouer 5 games par jour", "win 3 games cette semaine", "average 7 kills par semaine", "jouer 20 games au total")
 3. "streak" — condition remplie sur N games consécutives (ex: "win 3 games d'affilée", "0 deaths 2 games de suite")
+4. "rank" — atteindre un palier de rank SoloQ (ex: "Monter Gold 1", "Atteindre Platinum", "Passer Diamond 4")
 
 METRICS ENDGAME (source: "endgame", timing: null) — champs du match:
 - kills, deaths, assists
@@ -110,11 +111,18 @@ Comptés via events (aussi disponibles en timeline):
 METRICS SPÉCIALES POUR AGGREGATE:
 - games_played (nombre de games jouées — utilisé avec fn "count" sans filtre)
 
+CHAMPS SPÉCIAUX POUR RANK:
+- target_tier: "IRON" | "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" | "EMERALD" | "DIAMOND" | "MASTER" | "GRANDMASTER" | "CHALLENGER"
+- target_division: "I" | "II" | "III" | "IV" (null pour MASTER/GRANDMASTER/CHALLENGER)
+- target_lp: nombre de LP requis en plus du palier (0 par défaut, utile pour apex comme "1300 LP Master")
+- Si l'utilisateur dit "Atteindre Platinum" sans préciser la division, utiliser IV (= entrée dans le palier)
+- Si l'utilisateur donne juste un nombre de LP élevé (ex: "1300 LP", "2000 LP"), cible MASTER division null avec target_lp = le nombre donné
+
 FORMAT DE RÉPONSE — un seul objet JSON:
 {
-  "type": "per_game" | "aggregate" | "streak",
-  "rule": { "metric": "...", "operator": "...", "value": N, "timing": N|null, "source": "endgame"|"timeline" },
-  "aggregate": { "fn": "count"|"sum"|"avg", "period": "daily"|"weekly", "minGames": N|null },
+  "type": "per_game" | "aggregate" | "streak" | "rank",
+  "rule": { "metric": "...", "operator": "...", "value": N, "timing": N|null, "source": "endgame"|"timeline", "target_tier": "...", "target_division": "...", "target_lp": N },
+  "aggregate": { "fn": "count"|"sum"|"avg", "period": "daily"|"weekly"|"total", "minGames": N|null },
   "streak_count": N
 }
 
@@ -122,7 +130,9 @@ RÈGLES:
 - Pour per_game: rule obligatoire, aggregate et streak à null
 - Pour aggregate avec fn "count": rule.metric = la metric à filtrer (ex: "win" pour compter les wins), rule.operator et rule.value = le seuil à atteindre sur le count. Si on compte juste les games jouées, rule.metric = "games_played"
 - Pour aggregate avec fn "sum"/"avg": rule.metric = la stat à sommer/moyenner, rule.operator et rule.value = le seuil
+- aggregate.period: "daily" (sur la journée), "weekly" (sur la semaine), "total" (pas de fenêtre — objectif cumulatif à vie). Si l'utilisateur dit "20 games" / "100 wins" sans préciser "par jour" ou "par semaine", utilise "total"
 - Pour streak: rule = la condition par game, streak_count = nombre de games consécutives
+- Pour rank: rule.target_tier obligatoire, rule.target_division obligatoire sauf pour MASTER/GRANDMASTER/CHALLENGER, rule.target_lp par défaut 0; rule.metric="rank", rule.operator=">=", rule.value=0 (placeholders); aggregate et streak à null
 - operator: ">", ">=", "<", "<=", "=="
 - timing: nombre de minutes (null si fin de partie)
 - source: "timeline" si timing précis, "endgame" si fin de partie
@@ -134,9 +144,17 @@ EXEMPLES:
 "Jouer 5 games par jour" → {"type":"aggregate","rule":{"metric":"games_played","operator":">=","value":5,"timing":null,"source":"endgame"},"aggregate":{"fn":"count","period":"daily","minGames":null},"streak_count":null}
 "Win 3 games par jour" → {"type":"aggregate","rule":{"metric":"win","operator":">=","value":3,"timing":null,"source":"endgame"},"aggregate":{"fn":"count","period":"daily","minGames":null},"streak_count":null}
 "Moyenne de kills > 7 par semaine" → {"type":"aggregate","rule":{"metric":"kills","operator":">=","value":7,"timing":null,"source":"endgame"},"aggregate":{"fn":"avg","period":"weekly","minGames":3},"streak_count":null}
+"Jouer 20 games" → {"type":"aggregate","rule":{"metric":"games_played","operator":">=","value":20,"timing":null,"source":"endgame"},"aggregate":{"fn":"count","period":"total","minGames":null},"streak_count":null}
+"100 wins au total" → {"type":"aggregate","rule":{"metric":"win","operator":">=","value":100,"timing":null,"source":"endgame"},"aggregate":{"fn":"count","period":"total","minGames":null},"streak_count":null}
 "Win 3 games d'affilée" → {"type":"streak","rule":{"metric":"win","operator":"==","value":1,"timing":null,"source":"endgame"},"aggregate":null,"streak_count":3}
 "0 deaths pendant 2 games de suite" → {"type":"streak","rule":{"metric":"deaths","operator":"==","value":0,"timing":null,"source":"endgame"},"aggregate":null,"streak_count":2}
 "Juste win" → {"type":"per_game","rule":{"metric":"win","operator":"==","value":1,"timing":null,"source":"endgame"},"aggregate":null,"streak_count":null}
+"Monter Gold 1" → {"type":"rank","rule":{"metric":"rank","operator":">=","value":0,"timing":null,"source":"endgame","target_tier":"GOLD","target_division":"I","target_lp":0},"aggregate":null,"streak_count":null}
+"Atteindre Platinum" → {"type":"rank","rule":{"metric":"rank","operator":">=","value":0,"timing":null,"source":"endgame","target_tier":"PLATINUM","target_division":"IV","target_lp":0},"aggregate":null,"streak_count":null}
+"Passer Diamond 4" → {"type":"rank","rule":{"metric":"rank","operator":">=","value":0,"timing":null,"source":"endgame","target_tier":"DIAMOND","target_division":"IV","target_lp":0},"aggregate":null,"streak_count":null}
+"Monter Master" → {"type":"rank","rule":{"metric":"rank","operator":">=","value":0,"timing":null,"source":"endgame","target_tier":"MASTER","target_division":null,"target_lp":0},"aggregate":null,"streak_count":null}
+"Atteindre 1300 LP" → {"type":"rank","rule":{"metric":"rank","operator":">=","value":0,"timing":null,"source":"endgame","target_tier":"MASTER","target_division":null,"target_lp":1300},"aggregate":null,"streak_count":null}
+"Gold 1 avec 50 LP" → {"type":"rank","rule":{"metric":"rank","operator":">=","value":0,"timing":null,"source":"endgame","target_tier":"GOLD","target_division":"I","target_lp":50},"aggregate":null,"streak_count":null}
 
 DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
 
@@ -157,14 +175,37 @@ DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
 
     // --- Validation & correction ---
     const VALID_OPERATORS = ['>', '>=', '<', '<=', '=='];
-    const VALID_TYPES = ['per_game', 'aggregate', 'streak'];
-
-    if (!parsed?.rule?.metric || !VALID_OPERATORS.includes(parsed.rule.operator) || parsed.rule.value == null) {
-      return res.status(422).send({ ok: false, code: ERROR_CODES.RULE_GENERATION_FAILED });
-    }
+    const VALID_TYPES = ['per_game', 'aggregate', 'streak', 'rank'];
+    const VALID_TIERS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
+    const VALID_DIVISIONS = ['I', 'II', 'III', 'IV'];
+    const APEX_TIERS = ['MASTER', 'GRANDMASTER', 'CHALLENGER'];
 
     // Force type si absent
     if (!parsed.type || !VALID_TYPES.includes(parsed.type)) parsed.type = 'per_game';
+
+    // Validation rank: tier requis, division requise hors apex
+    if (parsed.type === 'rank') {
+      if (!parsed.rule?.target_tier || !VALID_TIERS.includes(parsed.rule.target_tier)) {
+        return res.status(422).send({ ok: false, code: ERROR_CODES.RULE_GENERATION_FAILED });
+      }
+      if (!APEX_TIERS.includes(parsed.rule.target_tier) && !VALID_DIVISIONS.includes(parsed.rule.target_division)) {
+        return res.status(422).send({ ok: false, code: ERROR_CODES.RULE_GENERATION_FAILED });
+      }
+      if (APEX_TIERS.includes(parsed.rule.target_tier)) parsed.rule.target_division = null;
+      if (parsed.rule.target_lp == null || parsed.rule.target_lp < 0) parsed.rule.target_lp = 0;
+      parsed.rule.metric = 'rank';
+      parsed.rule.operator = '>=';
+      parsed.rule.value = 0;
+      parsed.rule.source = 'endgame';
+      parsed.rule.timing = null;
+    }
+
+    // Validation pour types match-based
+    if (parsed.type !== 'rank') {
+      if (!parsed?.rule?.metric || !VALID_OPERATORS.includes(parsed.rule.operator) || parsed.rule.value == null) {
+        return res.status(422).send({ ok: false, code: ERROR_CODES.RULE_GENERATION_FAILED });
+      }
+    }
 
     // Si metric = games_played, force aggregate count
     if (parsed.rule.metric === 'games_played' && parsed.type !== 'aggregate') {
@@ -183,8 +224,8 @@ DEMANDE: "${name}${request ? ` - ${request}` : ''}"`;
       if (!parsed.streak_count || parsed.streak_count < 2) parsed.streak_count = parsed.streak?.count || 2;
     }
 
-    // Force source si absent
-    if (!parsed.rule.source) parsed.rule.source = parsed.rule.timing ? 'timeline' : 'endgame';
+    // Force source si absent (non-rank)
+    if (parsed.type !== 'rank' && !parsed.rule.source) parsed.rule.source = parsed.rule.timing ? 'timeline' : 'endgame';
 
     const soloObjectif = await SoloObjectif.create({
       name,

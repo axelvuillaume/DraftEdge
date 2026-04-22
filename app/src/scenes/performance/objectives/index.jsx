@@ -770,7 +770,7 @@ function SoloQObjectives() {
               ) : (
                 <div className="divide-y divide-slate-700/30">
                   {(objectivesByPlayer[player._id] || []).map(obj => (
-                    <SoloQObjectiveRow key={obj._id} objective={obj} onDelete={handleDelete} onEdit={setEditingObjective} />
+                    <SoloQObjectiveRow key={obj._id} objective={obj} onDelete={handleDelete} onEdit={setEditingObjective} player={player} />
                   ))}
                 </div>
               )}
@@ -869,11 +869,17 @@ function SoloQStatsPanel({ objectives }) {
 const TYPE_BADGES = {
   per_game: { label: "Per Game", className: "text-violet-400/80 bg-violet-500/10" },
   aggregate: { label: "Aggregate", className: "text-amber-400/80 bg-amber-500/10" },
-  streak: { label: "Streak", className: "text-cyan-400/80 bg-cyan-500/10" }
+  streak: { label: "Streak", className: "text-cyan-400/80 bg-cyan-500/10" },
+  rank: { label: "Rank", className: "text-yellow-400/80 bg-yellow-500/10" }
 }
 
-function SoloQObjectiveRow({ objective, onDelete, onEdit }) {
+const TIER_ORDER = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"]
+const DIVISION_ORDER = ["IV", "III", "II", "I"]
+const APEX_TIERS = new Set(["MASTER", "GRANDMASTER", "CHALLENGER"])
+
+function SoloQObjectiveRow({ objective, onDelete, onEdit, player }) {
   if (objective.type === "aggregate") return <AggregateObjectiveRow objective={objective} onDelete={onDelete} onEdit={onEdit} />
+  if (objective.type === "rank") return <RankObjectiveRow objective={objective} onDelete={onDelete} onEdit={onEdit} player={player} />
   return <PerGameObjectiveRow objective={objective} onDelete={onDelete} onEdit={onEdit} />
 }
 
@@ -1065,7 +1071,7 @@ function AggregateObjectiveRow({ objective, onDelete, onEdit }) {
                   <span className={`text-xs font-bold tabular-nums ${aggData.success ? "text-emerald-400" : "text-amber-400"}`}>
                     {aggData.current ?? 0}/{aggData.target}
                   </span>
-                  <span className="text-slate-600 text-xs">{objective.aggregate?.period === "weekly" ? "week" : "today"}</span>
+                  <span className="text-slate-600 text-xs">{objective.aggregate?.period === "weekly" ? "week" : objective.aggregate?.period === "total" ? "total" : "today"}</span>
                 </div>
               </div>
             ) : (
@@ -1083,7 +1089,7 @@ function AggregateObjectiveRow({ objective, onDelete, onEdit }) {
                 {objective.aggregate?.fn}({objective.rule.metric}) {objective.rule.operator} {objective.rule.value}
               </span>
             )}
-            <span className="text-xs text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded font-medium">{objective.aggregate?.period === "weekly" ? "Weekly" : "Daily"}</span>
+            <span className="text-xs text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded font-medium">{objective.aggregate?.period === "weekly" ? "Weekly" : objective.aggregate?.period === "total" ? "Total" : "Daily"}</span>
           </div>
           {aggData ? (
             <div className="flex items-center gap-3 py-2">
@@ -1095,6 +1101,70 @@ function AggregateObjectiveRow({ objective, onDelete, onEdit }) {
           ) : (
             <p className="text-sm text-slate-500 text-center py-2">No data for this period.</p>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RankObjectiveRow({ objective, onDelete, onEdit, player }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const targetTier = objective.rule?.target_tier
+  const targetDivision = objective.rule?.target_division
+  const targetLp = objective.rule?.target_lp || 0
+  const targetLabel = `${targetTier || "?"}${!APEX_TIERS.has(targetTier) && targetDivision ? ` ${targetDivision}` : ""}${targetLp > 0 ? ` · ${targetLp} LP` : ""}`
+
+  const currentLabel = player?.current_tier
+    ? `${player.current_tier}${!APEX_TIERS.has(player.current_tier) && player.current_rank ? ` ${player.current_rank}` : ""} · ${player.current_lp ?? 0} LP`
+    : "Unranked"
+
+  const tierIdx = TIER_ORDER.indexOf(player?.current_tier)
+  const targetTierIdx = TIER_ORDER.indexOf(targetTier)
+  const divIdx = APEX_TIERS.has(player?.current_tier) ? 3 : DIVISION_ORDER.indexOf(player?.current_rank)
+  const targetDivIdx = APEX_TIERS.has(targetTier) ? 3 : DIVISION_ORDER.indexOf(targetDivision)
+
+  const currentScore = tierIdx >= 0 && divIdx >= 0 ? tierIdx * 400 + divIdx * 100 + (player?.current_lp || 0) : 0
+  const targetScore = targetTierIdx >= 0 && targetDivIdx >= 0 ? targetTierIdx * 400 + targetDivIdx * 100 + targetLp : 0
+  const progress = targetScore > 0 ? Math.min(100, Math.round((currentScore / targetScore) * 100)) : 0
+
+  return (
+    <div className="group">
+      <ObjectiveRowHeader
+        objective={objective}
+        onDelete={onDelete}
+        onEdit={onEdit}
+        expanded={expanded}
+        setExpanded={setExpanded}
+        rightContent={
+          <div className="w-36 hidden sm:block">
+            <div className="space-y-1">
+              <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${objective.completed ? "bg-emerald-500" : "bg-yellow-500"}`} style={{ width: `${progress}%` }} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={`text-xs font-bold tabular-nums ${objective.completed ? "text-emerald-400" : "text-yellow-400"}`}>
+                  {objective.completed ? "Completed" : `${progress}%`}
+                </span>
+                <span className="text-slate-600 text-xs">→ {targetLabel}</span>
+              </div>
+            </div>
+          </div>
+        }
+      />
+
+      {expanded && (
+        <div className="border-t border-slate-700/50 px-5 py-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 bg-slate-700/50 px-2 py-0.5 rounded font-mono">target: {targetLabel}</span>
+            <span className="text-xs text-slate-500 bg-slate-700/50 px-2 py-0.5 rounded font-mono">current: {currentLabel}</span>
+          </div>
+          <div className="flex items-center gap-3 py-2">
+            {objective.completed ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Target className="w-4 h-4 text-yellow-400" />}
+            <span className={`text-sm ${objective.completed ? "text-emerald-400/70" : "text-yellow-400/70"}`}>
+              {objective.completed ? `Reached ${targetLabel} on ${objective.completed_at ? new Date(objective.completed_at).toLocaleDateString() : "?"}` : `In progress — ${currentLabel}`}
+            </span>
+          </div>
         </div>
       )}
     </div>

@@ -1,8 +1,43 @@
 const Player = require('../models/player');
 const SoloQSnapshot = require('../models/soloq-snapshot');
+const SoloObjectif = require('../models/solo-objectif');
 const { getRankByPuuid } = require('../services/riotgames');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const TIER_ORDER = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
+const DIVISION_ORDER = ['IV', 'III', 'II', 'I'];
+const APEX_TIERS = new Set(['MASTER', 'GRANDMASTER', 'CHALLENGER']);
+
+function rankTuple(tier, division, lp) {
+  const tierIdx = TIER_ORDER.indexOf(tier);
+  if (tierIdx === -1) return null;
+  const divIdx = APEX_TIERS.has(tier) ? DIVISION_ORDER.length - 1 : DIVISION_ORDER.indexOf(division);
+  if (divIdx === -1) return null;
+  return [tierIdx, divIdx, lp || 0];
+}
+
+function rankGte(current, target) {
+  if (!current || !target) return false;
+  if (current[0] !== target[0]) return current[0] > target[0];
+  if (current[1] !== target[1]) return current[1] > target[1];
+  return current[2] >= target[2];
+}
+
+async function evaluateRankObjectives(player, currentTier, currentDivision, currentLp) {
+  const objectives = await SoloObjectif.find({ player_id: player._id.toString(), type: 'rank', active: { $ne: false }, completed: { $ne: true } });
+  if (objectives.length === 0) return;
+
+  const current = rankTuple(currentTier, currentDivision, currentLp);
+  if (!current) return;
+
+  for (const obj of objectives) {
+    const target = rankTuple(obj.rule?.target_tier, obj.rule?.target_division, obj.rule?.target_lp || 0);
+    if (!target) continue;
+    if (!rankGte(current, target)) continue;
+    await SoloObjectif.findByIdAndUpdate(obj._id, { completed: true, completed_at: new Date() });
+  }
+}
 
 async function getElo() {
   const players = await Player.find({ puuid: { $exists: true, $ne: null }, connected_at: { $exists: true, $ne: null }, is_league: { $ne: true } });
@@ -40,6 +75,8 @@ async function getElo() {
         current_losses: losses,
         last_fetched_at: new Date(),
       });
+
+      await evaluateRankObjectives(player, rank.tier, rank.rank, rank.leaguePoints);
 
       // Riot API rate limit: 20 req/s, 100 req/2min
       await sleep(1000);
