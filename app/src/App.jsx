@@ -263,7 +263,10 @@ const UserLayout = () => {
                   <CreditCard className="w-7 h-7 text-blue-400" />
                 </div>
                 <h2 className="text-xl font-bold text-white mb-2">No Active Subscription</h2>
-                <p className="text-slate-400 mb-6">Your subscription has ended. Subscribe to regain full access to DraftEdge.</p>
+                <p className="text-slate-400 mb-1">Your subscription has ended. Subscribe to regain full access to DraftEdge.</p>
+                {team?.createdAt && (
+                  <p className="text-slate-500 text-xs mb-6">Team created on {new Date(team.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+                )}
                 <div className="bg-slate-700/30 rounded-lg p-4 mb-6">
                   <span className="text-white font-bold text-3xl">14.99€</span>
                   <span className="text-slate-400"> / month</span>
