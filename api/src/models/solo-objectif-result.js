@@ -15,6 +15,9 @@ const Schema = new mongoose.Schema(
     team_name: { type: String },
     player_id: { type: String },
     player_name: { type: String },
+    tier: { type: String, default: null },
+    rank: { type: String, default: null },
+    lp: { type: Number, default: null },
   },
   { timestamps: true },
 );

@@ -1,6 +1,7 @@
 const Player = require('../models/player');
 const SoloQSnapshot = require('../models/soloq-snapshot');
 const SoloObjectif = require('../models/solo-objectif');
+const SoloObjectifResult = require('../models/solo-objectif-result');
 const { getRankByPuuid } = require('../services/riotgames');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -71,16 +72,26 @@ async function evaluateSmurfRankObjectives() {
       }
 
       const current = rankTuple(rank.tier, rank.rank, rank.leaguePoints);
-      if (!current) {
-        await sleep(1000);
-        continue;
-      }
 
       for (const obj of objectives) {
         const target = rankTuple(obj.rule?.target_tier, obj.rule?.target_division, obj.rule?.target_lp || 0);
-        if (!target) continue;
-        if (!rankGte(current, target)) continue;
-        await SoloObjectif.findByIdAndUpdate(obj._id, { completed: true, completed_at: new Date() });
+        const reached = !!(current && target && rankGte(current, target));
+
+        await SoloObjectifResult.create({
+          solo_objectif_id: obj._id.toString(),
+          solo_objectif_name: obj.name,
+          tier: rank.tier,
+          rank: rank.rank,
+          lp: rank.leaguePoints,
+          success: reached,
+          game_date: new Date(),
+          player_id: obj.player_id,
+          player_name: obj.player_name,
+          team_id: obj.team_id,
+          team_name: obj.team_name,
+        });
+
+        if (reached) await SoloObjectif.findByIdAndUpdate(obj._id, { completed: true, completed_at: new Date() });
       }
 
       await sleep(1000);

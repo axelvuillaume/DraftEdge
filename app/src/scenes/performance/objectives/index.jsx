@@ -1108,22 +1108,43 @@ function AggregateObjectiveRow({ objective, onDelete, onEdit }) {
 
 function RankObjectiveRow({ objective, onDelete, onEdit, player }) {
   const [expanded, setExpanded] = useState(false)
+  const [snapshot, setSnapshot] = useState(null)
+
+  const isSmurf = !!objective.account?.puuid
+
+  const fetchSnapshot = async () => {
+    try {
+      const { ok, data, code } = await api.post("/solo-objectif-result/search", { solo_objectif_id: objective._id })
+      if (!ok) return toast.error(code || "Failed to fetch rank snapshot")
+      setSnapshot(data[0] || null)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch rank snapshot")
+    }
+  }
+
+  useEffect(() => {
+    if (isSmurf) fetchSnapshot()
+  }, [objective._id, isSmurf])
 
   const targetTier = objective.rule?.target_tier
   const targetDivision = objective.rule?.target_division
   const targetLp = objective.rule?.target_lp || 0
   const targetLabel = `${targetTier || "?"}${!APEX_TIERS.has(targetTier) && targetDivision ? ` ${targetDivision}` : ""}${targetLp > 0 ? ` · ${targetLp} LP` : ""}`
 
-  const currentLabel = player?.current_tier
-    ? `${player.current_tier}${!APEX_TIERS.has(player.current_tier) && player.current_rank ? ` ${player.current_rank}` : ""} · ${player.current_lp ?? 0} LP`
+  const currentTier = isSmurf ? snapshot?.tier : player?.current_tier
+  const currentRank = isSmurf ? snapshot?.rank : player?.current_rank
+  const currentLp = isSmurf ? snapshot?.lp : player?.current_lp
+
+  const currentLabel = currentTier
+    ? `${currentTier}${!APEX_TIERS.has(currentTier) && currentRank ? ` ${currentRank}` : ""} · ${currentLp ?? 0} LP`
     : "Unranked"
 
-  const tierIdx = TIER_ORDER.indexOf(player?.current_tier)
+  const tierIdx = TIER_ORDER.indexOf(currentTier)
   const targetTierIdx = TIER_ORDER.indexOf(targetTier)
-  const divIdx = APEX_TIERS.has(player?.current_tier) ? 3 : DIVISION_ORDER.indexOf(player?.current_rank)
+  const divIdx = APEX_TIERS.has(currentTier) ? 3 : DIVISION_ORDER.indexOf(currentRank)
   const targetDivIdx = APEX_TIERS.has(targetTier) ? 3 : DIVISION_ORDER.indexOf(targetDivision)
 
-  const currentScore = tierIdx >= 0 && divIdx >= 0 ? tierIdx * 400 + divIdx * 100 + (player?.current_lp || 0) : 0
+  const currentScore = tierIdx >= 0 && divIdx >= 0 ? tierIdx * 400 + divIdx * 100 + (currentLp || 0) : 0
   const targetScore = targetTierIdx >= 0 && targetDivIdx >= 0 ? targetTierIdx * 400 + targetDivIdx * 100 + targetLp : 0
   const progress = targetScore > 0 ? Math.min(100, Math.round((currentScore / targetScore) * 100)) : 0
 
