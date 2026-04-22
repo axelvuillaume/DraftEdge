@@ -105,22 +105,13 @@ const AuthLayout = () => {
   return <Outlet />
 }
 
-const NEWS_DATE = "2026-04-15"
+const NEWS_DATE = "2026-04-22"
 const NEWS_CONTENT = [
   {
-    title: "Scrim Objectives",
+    title: "Replay Book",
     highlight: true,
-    description: "You can now select multiple players when creating a scrim objective.",
-    link: "/scrim-hub"
-  },
-  {
-    title: "Runes Tab",
-    description: "A new Runes tab is available in the game view to inspect each player's runes setup."
-  },
-  {
-    title: "Bug Fixes",
-    small: true,
-    items: ["Imported games are now displayed in the correct order (previously reversed)", "Creating a scrim from the calendar now uses the correct date"]
+    description: "Save your replays and pin timestamped notes on key moments to review them with your team.",
+    link: "/scrim-hub/replay-book"
   }
 ]
 
@@ -265,7 +256,9 @@ const UserLayout = () => {
                 <h2 className="text-xl font-bold text-white mb-2">No Active Subscription</h2>
                 <p className="text-slate-400 mb-1">Your subscription has ended. Subscribe to regain full access to DraftEdge.</p>
                 {team?.createdAt && (
-                  <p className="text-slate-500 text-xs mb-6">Team created on {new Date(team.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+                  <p className="text-slate-500 text-xs mb-6">
+                    Team created on {new Date(team.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                  </p>
                 )}
                 <div className="bg-slate-700/30 rounded-lg p-4 mb-6">
                   <span className="text-white font-bold text-3xl">14.99€</span>

@@ -98,7 +98,7 @@ export default function List() {
                 <th className="w-[25%] text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Team</th>
                 <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Total LP</th>
                 <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Points</th>
-                <th className="w-[20%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Captain</th>
+                <th className="w-[20%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Coach</th>
                 <th className="w-[20%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Manager</th>
               </tr>
             </thead>
@@ -128,7 +128,7 @@ export default function List() {
                         <span className="text-amber-400 text-sm font-medium">{t.points || 0}</span>
                       </td>
                       <td className="w-[20%] px-4 py-4 text-center">
-                        <span className="text-slate-400 text-sm truncate">{t.contacts?.find((c) => c.role === "Captain")?.name || t.contacts?.find((c) => c.role === "Captain")?.discord || "—"}</span>
+                        <span className="text-slate-400 text-sm truncate">{t.contacts?.find((c) => c.role === "Coach")?.name || t.contacts?.find((c) => c.role === "Coach")?.discord || "—"}</span>
                       </td>
                       <td className="w-[20%] px-4 py-4 text-center">
                         <span className="text-slate-400 text-sm truncate">{t.contacts?.find((c) => c.role === "Manager")?.name || t.contacts?.find((c) => c.role === "Manager")?.discord || "—"}</span>
