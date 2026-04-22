@@ -25,7 +25,13 @@ function rankGte(current, target) {
 }
 
 async function evaluateRankObjectives(player, currentTier, currentDivision, currentLp) {
-  const objectives = await SoloObjectif.find({ player_id: player._id.toString(), type: 'rank', active: { $ne: false }, completed: { $ne: true } });
+  const objectives = await SoloObjectif.find({
+    player_id: player._id.toString(),
+    type: 'rank',
+    active: { $ne: false },
+    completed: { $ne: true },
+    'account.puuid': { $exists: false },
+  });
   if (objectives.length === 0) return;
 
   const current = rankTuple(currentTier, currentDivision, currentLp);
@@ -36,6 +42,51 @@ async function evaluateRankObjectives(player, currentTier, currentDivision, curr
     if (!target) continue;
     if (!rankGte(current, target)) continue;
     await SoloObjectif.findByIdAndUpdate(obj._id, { completed: true, completed_at: new Date() });
+  }
+}
+
+async function evaluateSmurfRankObjectives() {
+  const smurfObjectives = await SoloObjectif.find({
+    type: 'rank',
+    active: { $ne: false },
+    completed: { $ne: true },
+    'account.puuid': { $exists: true, $ne: null },
+  });
+  if (smurfObjectives.length === 0) return;
+
+  const byPuuid = {};
+  for (const obj of smurfObjectives) {
+    if (!byPuuid[obj.account.puuid]) byPuuid[obj.account.puuid] = { account: obj.account, objectives: [] };
+    byPuuid[obj.account.puuid].objectives.push(obj);
+  }
+
+  for (const puuid of Object.keys(byPuuid)) {
+    const { account, objectives } = byPuuid[puuid];
+    console.log(`Fetching smurf elo for ${account.game_name}#${account.tag_line}`);
+    try {
+      const rank = await getRankByPuuid(puuid, account.region || 'euw1');
+      if (!rank) {
+        await sleep(1000);
+        continue;
+      }
+
+      const current = rankTuple(rank.tier, rank.rank, rank.leaguePoints);
+      if (!current) {
+        await sleep(1000);
+        continue;
+      }
+
+      for (const obj of objectives) {
+        const target = rankTuple(obj.rule?.target_tier, obj.rule?.target_division, obj.rule?.target_lp || 0);
+        if (!target) continue;
+        if (!rankGte(current, target)) continue;
+        await SoloObjectif.findByIdAndUpdate(obj._id, { completed: true, completed_at: new Date() });
+      }
+
+      await sleep(1000);
+    } catch (error) {
+      console.error(`Error fetching smurf elo for ${account.game_name}#${account.tag_line}:`, error.message);
+    }
   }
 }
 
@@ -84,6 +135,8 @@ async function getElo() {
       console.error(`Error fetching elo for ${player.game_name}#${player.tag_line}:`, error.message);
     }
   }
+
+  await evaluateSmurfRankObjectives();
 }
 
 module.exports = getElo;

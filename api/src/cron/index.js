@@ -26,8 +26,8 @@ const run = async (fn, id) => {
 if (ENVIRONMENT !== 'production') return;
 
 console.log('Cron jobs initialized');
-cron.schedule('*/15 * * * *', () => run(getElo, 'getElo'));
-cron.schedule('*/25 * * * *', () => run(fetchSoloQ, 'fetchSoloQ'));
+cron.schedule('*/25 * * * *', () => run(getElo, 'getElo'));
+cron.schedule('*/35 * * * *', () => run(fetchSoloQ, 'fetchSoloQ'));
 cron.schedule('0 4 * * *', () => run(getEloLeague, 'getEloLeague'));
 
 cron.schedule('0 5 * * *', () => run(scrapeOracleElixir, 'scrapeOracleElixir'));
