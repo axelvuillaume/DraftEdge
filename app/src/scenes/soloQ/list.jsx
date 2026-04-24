@@ -282,11 +282,6 @@ function toLP(tier, rank, lp = 0) {
   return i === -1 ? 0 : i >= 7 ? 2800 + lp : i * 400 + (DIVS[rank] || 0) * 100 + lp
 }
 
-function lpLabel(v) {
-  if (v >= 2800) return `${RANKED_TIERS[Math.min(9, 7 + Math.floor((v - 2800) / 500))]} ${v - 2800} LP`
-  return `${RANKED_TIERS[Math.floor(v / 400)] || "IRON"} ${["IV", "III", "II", "I"][Math.floor((v % 400) / 100)]} ${v % 100} LP`
-}
-
 export default function SoloQ() {
   const { user } = useStore()
   const [players, setPlayers] = useState([])
@@ -390,13 +385,27 @@ export default function SoloQ() {
 
   const chartData = (() => {
     if (!snapshots.length) return []
-    const m = {}
-    for (const s of snapshots) {
-      const k = Math.round(new Date(s.fetched_at || s.createdAt).getTime() / 60000) * 60000
-      if (!m[k]) m[k] = { time: k }
-      m[k][s.player_id] = toLP(s.tier, s.rank, s.league_points)
+    const sorted = [...snapshots].sort((a, b) => new Date(a.fetched_at || a.createdAt) - new Date(b.fetched_at || b.createdAt))
+    const buckets = []
+    for (const s of sorted) {
+      const t = new Date(s.fetched_at || s.createdAt).getTime()
+      const last = buckets[buckets.length - 1]
+      if (last && t - last.time <= 360000) {
+        last[s.player_id] = toLP(s.tier, s.rank, s.league_points)
+        last[`${s.player_id}_tier`] = s.tier
+        last[`${s.player_id}_rank`] = s.rank
+        last[`${s.player_id}_lp`] = s.league_points
+        continue
+      }
+      buckets.push({
+        time: t,
+        [s.player_id]: toLP(s.tier, s.rank, s.league_points),
+        [`${s.player_id}_tier`]: s.tier,
+        [`${s.player_id}_rank`]: s.rank,
+        [`${s.player_id}_lp`]: s.league_points,
+      })
     }
-    return Object.values(m).sort((a, b) => a.time - b.time)
+    return buckets
   })()
 
   const getLPChange = player => {
@@ -617,9 +626,14 @@ export default function SoloQ() {
                     contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                     labelStyle={{ color: "#94a3b8" }}
                     labelFormatter={v => new Date(v).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                    formatter={(value, name) => {
+                    formatter={(_value, name, item) => {
                       const pl = connected.find(p => p._id === name)
-                      return [lpLabel(value), pl?.player_name || pl?.game_name || name]
+                      const tier = item?.payload?.[`${name}_tier`]
+                      const rank = item?.payload?.[`${name}_rank`]
+                      const lp = item?.payload?.[`${name}_lp`] ?? 0
+                      if (!tier) return [`${lp} LP`, pl?.player_name || pl?.game_name || name]
+                      if (["MASTER", "GRANDMASTER", "CHALLENGER"].includes(tier)) return [`${tier} ${lp} LP`, pl?.player_name || pl?.game_name || name]
+                      return [`${tier} ${rank || ""} ${lp} LP`.trim(), pl?.player_name || pl?.game_name || name]
                     }}
                     itemSorter={a => -a.value}
                   />
