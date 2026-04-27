@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
-import { Target, CheckCircle2, XCircle, BarChart3, FileText, TrendingUp, Save } from "lucide-react"
+import { Target, CheckCircle2, XCircle, BarChart3, FileText, TrendingUp, Plus, Trash2, X } from "lucide-react"
 import api from "@/services/api"
 import { getChampionIcon, TIER_COLORS, RANK_ICON_TIERS } from "@/utils"
 import useStore from "@/services/store"
@@ -440,17 +440,23 @@ function TopChampions({ player }) {
 }
 
 function PlayerNotes({ player }) {
-  const [data, setData] = useState(player)
+  const [notes, setNotes] = useState([])
+  const [selected, setSelected] = useState(null)
+  const [isCreating, setIsCreating] = useState(false)
 
-  const saveNotes = async () => {
+  const fetchNotes = async () => {
     try {
-      const { ok, code } = await api.put(`/player/${player._id}`, data)
-      if (!ok) return toast.error(code || "Failed to save notes")
-      toast.success("Notes saved")
+      const { ok, data, code } = await api.post("/player-note/search", { player_id: player._id })
+      if (!ok) return toast.error(code || "Failed to fetch notes")
+      setNotes(data)
     } catch (error) {
-      toast.error(error.code || "Failed to save notes")
+      toast.error(error.code || "Failed to fetch notes")
     }
   }
+
+  useEffect(() => {
+    fetchNotes()
+  }, [player._id])
 
   return (
     <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl">
@@ -458,22 +464,138 @@ function PlayerNotes({ player }) {
         <FileText className="w-4 h-4 text-amber-400" />
         <h3 className="text-white font-semibold text-sm">Notes</h3>
         <button
-          onClick={saveNotes}
-          className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50"
+          onClick={() => setIsCreating(true)}
+          className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-xs text-slate-300 hover:text-white transition-colors"
         >
-          <Save className="w-3 h-3" />
-          Save
+          <Plus className="w-3 h-3" />
+          New
         </button>
       </div>
-      <div className="p-4">
-        <textarea
-          value={data.notes || ""}
-          onChange={e => setData(prev => ({ ...prev, notes: e.target.value }))}
-          placeholder="Add notes about this player..."
-          className="w-full h-32 bg-slate-900/50 border border-slate-700/50 rounded-lg px-3 py-2 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-slate-600 resize-y"
-        />
+      <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
+        {notes.length === 0 && <p className="text-slate-500 text-sm text-center py-6">No notes yet</p>}
+        {notes.map(note => (
+          <div
+            key={note._id}
+            onClick={() => setSelected(note)}
+            className="bg-slate-700/20 hover:bg-slate-700/30 cursor-pointer rounded-lg p-3 transition-colors"
+          >
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-white text-sm font-medium truncate">{note.title || "Untitled"}</p>
+                <p className="text-slate-400 text-xs mt-1 line-clamp-2 whitespace-pre-wrap">{note.content || "—"}</p>
+                <p className="text-[10px] text-slate-500 mt-1.5 font-mono">
+                  {new Date(note.updatedAt || note.createdAt).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })}
+                  {note.author_name && ` · ${note.author_name}`}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
+
+      {isCreating && (
+        <PlayerNoteModal
+          player={player}
+          onClose={() => setIsCreating(false)}
+          onSaved={() => {
+            setIsCreating(false)
+            fetchNotes()
+          }}
+        />
+      )}
+
+      {selected && (
+        <PlayerNoteModal
+          player={player}
+          note={selected}
+          onClose={() => setSelected(null)}
+          onSaved={() => {
+            setSelected(null)
+            fetchNotes()
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+function PlayerNoteModal({ player, note, onClose, onSaved }) {
+  const [data, setData] = useState(note || { title: "", content: "", player_id: player._id, player_name: player.player_name || player.game_name })
+
+  const save = async () => {
+    try {
+      if (note?._id) {
+        const { ok, code } = await api.put(`/player-note/${note._id}`, data)
+        if (!ok) return toast.error(code || "Failed to save note")
+        toast.success("Note saved")
+        return onSaved()
+      }
+      const { ok, code } = await api.post("/player-note", data)
+      if (!ok) return toast.error(code || "Failed to create note")
+      toast.success("Note created")
+      onSaved()
+    } catch (error) {
+      toast.error(error.code || "Failed to save note")
+    }
+  }
+
+  const remove = async () => {
+    try {
+      if (!confirm("Delete this note?")) return
+      const { ok, code } = await api.delete(`/player-note/${note._id}`)
+      if (!ok) return toast.error(code || "Failed to delete note")
+      toast.success("Note deleted")
+      onSaved()
+    } catch (error) {
+      toast.error(error.code || "Failed to delete note")
+    }
+  }
+
+  return (
+    <Modal isOpen={true} onClose={onClose} className="max-w-2xl bg-slate-900 border border-slate-700/60 rounded-2xl">
+      <div className="p-6 text-white">
+        <div className="flex items-center gap-2 mb-4">
+          <FileText className="w-5 h-5 text-amber-400" />
+          <h2 className="text-white font-bold text-lg">{note?._id ? "Edit note" : "New note"}</h2>
+          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={data.title || ""}
+            onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
+            placeholder="Title"
+            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-lg px-3 py-2 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-slate-600"
+          />
+          <textarea
+            value={data.content || ""}
+            onChange={e => setData(prev => ({ ...prev, content: e.target.value }))}
+            placeholder="Note content..."
+            className="w-full h-64 bg-slate-800/60 border border-slate-700/50 rounded-lg px-3 py-2 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-slate-600 resize-y"
+          />
+        </div>
+        <div className="flex items-center gap-2 mt-4">
+          {note?._id && (
+            <button
+              onClick={remove}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-xs text-red-400 hover:text-red-300 transition-colors"
+            >
+              <Trash2 className="w-3 h-3" />
+              Delete
+            </button>
+          )}
+          <div className="flex-1" />
+          <button onClick={onClose} className="px-3 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-xs text-slate-300 hover:text-white transition-colors">
+            Cancel
+          </button>
+          <button onClick={save} className="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs text-amber-400 hover:text-amber-300 transition-colors">
+            Save
+          </button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 

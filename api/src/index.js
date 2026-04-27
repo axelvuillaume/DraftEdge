@@ -53,6 +53,7 @@ app.use('/scrim-objectif-result', require('./controllers/scrim-objectif-result')
 app.use('/scrim-session', require('./controllers/scrim-session'));
 app.use('/enemy-team', require('./controllers/enemy-team'));
 app.use('/player', require('./controllers/player'));
+app.use('/player-note', require('./controllers/player-note'));
 app.use('/solo-objectif', require('./controllers/solo-objectif'));
 app.use('/solo-objectif-result', require('./controllers/solo-objectif-result'));
 app.use('/soloq-snapshot', require('./controllers/soloq-snapshot'));
