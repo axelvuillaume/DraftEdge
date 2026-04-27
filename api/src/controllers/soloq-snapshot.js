@@ -116,7 +116,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     const limit = req.body.limit != null ? req.body.limit : 50;
     const skip = req.body.offset || 0;
     const total = await SoloQSnapshot.countDocuments(query);
-    const data = await SoloQSnapshot.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+    const data = await SoloQSnapshot.find(query).sort(req.body.sort || { createdAt: -1 }).skip(skip).limit(limit);
     return res.status(200).send({ ok: true, data, total });
   } catch (error) {
     capture(error);

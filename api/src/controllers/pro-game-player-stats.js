@@ -220,4 +220,48 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
   }
 });
 
+router.post('/key-stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const match = { participantid: { $lte: 10 } };
+    if (req.body.position) match.position = ROLE_TO_POSITION[req.body.position] || req.body.position;
+    if (req.body.league) match.league = req.body.league;
+    if (req.body.playername) match.playername = req.body.playername;
+
+    const agg = await ProGamePlayerstats.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          n: { $sum: 1 },
+          wins: { $sum: '$result' },
+          totalKills: { $sum: '$kills' },
+          totalDeaths: { $sum: '$deaths' },
+          totalAssists: { $sum: '$assists' },
+          totalTeamkills: { $sum: '$teamkills' },
+          cspm: { $avg: '$cspm' },
+          vspm: { $avg: '$vspm' },
+        },
+      },
+    ]);
+
+    if (!agg.length) return res.status(200).send({ ok: true, data: null });
+
+    const s = agg[0];
+    return res.status(200).send({
+      ok: true,
+      data: {
+        games: s.n,
+        win_rate: round1((s.wins / s.n) * 100),
+        kda: round1(s.totalDeaths > 0 ? (s.totalKills + s.totalAssists) / s.totalDeaths : s.totalKills + s.totalAssists),
+        cs_per_min: round1(s.cspm),
+        vision_per_min: round2(s.vspm),
+        kill_participation: round1(s.totalTeamkills > 0 ? ((s.totalKills + s.totalAssists) / s.totalTeamkills) * 100 : 0),
+      },
+    });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 module.exports = router;

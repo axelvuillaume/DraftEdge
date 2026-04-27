@@ -4,6 +4,7 @@ const passport = require('passport');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const SoloQMatch = require('../models/soloq-match');
+const PlayerStats = require('../models/player-stats');
 const Player = require('../models/player');
 
 const round1 = (v) => Math.round(v * 10) / 10;
@@ -201,6 +202,74 @@ router.post('/soloq-overview', passport.authenticate(['admin', 'user'], { sessio
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
   }
 });
+
+// ==================== CHAMPION COMPARISON (SoloQ vs Scrim per champion) ====================
+
+router.post('/champion-comparison', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const { player_id, limit } = req.body;
+    if (!player_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const player = await Player.findById(player_id);
+    if (!player) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+
+    const soloqMatches = await SoloQMatch.find({ puuid: player.puuid, queueId: 420, gameDuration: { $gte: 300 } });
+    const scrimStats = await PlayerStats.find({ puuid: player.puuid, opponent: false });
+
+    const byChamp = {};
+    for (const m of soloqMatches) {
+      if (!m.championName) continue;
+      if (!byChamp[m.championName]) byChamp[m.championName] = { soloq: [], scrim: [] };
+      byChamp[m.championName].soloq.push(m);
+    }
+    for (const s of scrimStats) {
+      if (!s.champion) continue;
+      if (!byChamp[s.champion]) byChamp[s.champion] = { soloq: [], scrim: [] };
+      byChamp[s.champion].scrim.push(s);
+    }
+
+    const champions = Object.entries(byChamp)
+      .map(([name, buckets]) => ({ name, soloq: aggregateSoloQ(buckets.soloq), scrim: aggregateScrim(buckets.scrim) }))
+      .sort((a, b) => (b.soloq?.games || 0) + (b.scrim?.games || 0) - ((a.soloq?.games || 0) + (a.scrim?.games || 0)))
+      .slice(0, limit || 5);
+
+    return res.status(200).send({ ok: true, data: champions });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+function aggregateScrim(stats) {
+  const n = stats.length;
+  if (n === 0) return null;
+  const totals = stats.reduce(
+    (acc, s) => {
+      acc.wins += s.game_win ? 1 : 0;
+      acc.kills += s.kills || 0;
+      acc.deaths += s.deaths || 0;
+      acc.assists += s.assists || 0;
+      acc.cs += s.cs || 0;
+      acc.damage += s.damage?.total_to_champions || 0;
+      acc.duration += s.game_duration || 0;
+      return acc;
+    },
+    { wins: 0, kills: 0, deaths: 0, assists: 0, cs: 0, damage: 0, duration: 0 },
+  );
+
+  const durationMin = totals.duration / 60;
+  return {
+    games: n,
+    wins: totals.wins,
+    winRate: round1((totals.wins / n) * 100),
+    avgKills: round1(totals.kills / n),
+    avgDeaths: round1(totals.deaths / n),
+    avgAssists: round1(totals.assists / n),
+    kda: round1(totals.deaths > 0 ? (totals.kills + totals.assists) / totals.deaths : totals.kills + totals.assists),
+    csPerMin: round1(durationMin > 0 ? totals.cs / durationMin : 0),
+    dmgPerMin: Math.round(durationMin > 0 ? totals.damage / durationMin : 0),
+  };
+}
 
 function aggregateSoloQ(matches) {
   const n = matches.length;

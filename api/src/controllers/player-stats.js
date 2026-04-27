@@ -254,6 +254,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     if (req.body.team_id) query.team_id = req.body.team_id;
     if (req.body.role) query.role = req.body.role;
     if (req.body.game_id) query.game_id = req.body.game_id;
+    if (req.body.puuid) query.puuid = req.body.puuid;
     const limit = req.body.limit || 50;
     const skip = req.body.offset || 0;
     const total = await PlayerStats.countDocuments(query);
@@ -1397,6 +1398,60 @@ router.post('/official_split', passport.authenticate(['admin', 'user'], { sessio
         nonOfficial: buildCategoryValues(nonOfficialTeam, nonOfficialEnemy),
         officialGames: [...new Set(officialTeam.map((s) => s.game_id))].length,
         nonOfficialGames: [...new Set(nonOfficialTeam.map((s) => s.game_id))].length,
+      },
+    });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+router.post('/key-stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    if (!req.body.puuid) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const agg = await PlayerStats.aggregate([
+      { $match: { puuid: req.body.puuid } },
+      {
+        $lookup: {
+          from: PlayerStats.collection.collectionName,
+          let: { gid: '$game_id', side: '$side' },
+          pipeline: [
+            { $match: { $expr: { $and: [{ $eq: ['$game_id', '$$gid'] }, { $eq: ['$side', '$$side'] }] } } },
+            { $group: { _id: null, team_kills: { $sum: '$kills' } } },
+          ],
+          as: 'team',
+        },
+      },
+      { $unwind: { path: '$team', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: null,
+          n: { $sum: 1 },
+          wins: { $sum: { $cond: ['$game_win', 1, 0] } },
+          totalKills: { $sum: '$kills' },
+          totalDeaths: { $sum: '$deaths' },
+          totalAssists: { $sum: '$assists' },
+          totalTeamKills: { $sum: { $ifNull: ['$team.team_kills', 0] } },
+          totalCs: { $sum: '$cs' },
+          totalVisionScore: { $sum: '$vision.score' },
+          totalDuration: { $sum: '$game_duration' },
+        },
+      },
+    ]);
+
+    if (!agg.length) return res.status(200).send({ ok: true, data: null });
+
+    const s = agg[0];
+    return res.status(200).send({
+      ok: true,
+      data: {
+        games: s.n,
+        win_rate: round1((s.wins / s.n) * 100),
+        kda: round1(s.totalDeaths > 0 ? (s.totalKills + s.totalAssists) / s.totalDeaths : s.totalKills + s.totalAssists),
+        cs_per_min: round1(s.totalDuration > 0 ? s.totalCs / (s.totalDuration / 60) : 0),
+        vision_per_min: round2(s.totalDuration > 0 ? s.totalVisionScore / (s.totalDuration / 60) : 0),
+        kill_participation: round1(s.totalTeamKills > 0 ? ((s.totalKills + s.totalAssists) / s.totalTeamKills) * 100 : 0),
       },
     });
   } catch (error) {

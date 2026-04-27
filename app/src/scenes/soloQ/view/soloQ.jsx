@@ -6,12 +6,18 @@ function getRankIcon(tier) {
   return RANK_ICON_TIERS.has(tier.toUpperCase()) ? `/rank/${tier.toLowerCase()}.png` : null
 }
 
-export default function SoloQOverviewTab({ player, soloqOverview }) {
+export default function SoloQOverviewTab({ player, soloqOverview, onBackToGlobal }) {
   const totalRanked = (player.current_wins || 0) + (player.current_losses || 0)
   const rankedWR = totalRanked > 0 ? (((player.current_wins || 0) / totalRanked) * 100).toFixed(1) : null
 
   return (
     <div className="space-y-6">
+      <button
+        onClick={onBackToGlobal}
+        className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/15"
+      >
+        ← VIEW GLOBAL
+      </button>
       {/* Overall Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex items-center gap-3 col-span-2 sm:col-span-1">
