@@ -105,11 +105,16 @@ const AuthLayout = () => {
   return <Outlet />
 }
 
-const NEWS_DATE = "2026-04-22"
+const NEWS_DATE = "2026-04-29"
 const NEWS_CONTENT = [
   {
-    title: "Replay Book",
+    title: "Player View Redesign",
     highlight: true,
+    description: "A brand new individual player view to explore SoloQ stats, recent games and performances at a glance.",
+    link: "/soloq"
+  },
+  {
+    title: "Replay Book",
     description: "Save your replays and pin timestamped notes on key moments to review them with your team.",
     link: "/scrim-hub/replay-book"
   }
