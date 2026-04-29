@@ -1396,22 +1396,6 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
             </div>
           )}
           <div>
-            <label className="text-slate-400 text-xs font-medium mb-1.5 block">Role filter (optional)</label>
-            <div className="flex gap-1.5">
-              {SOLOQ_ROLES.map(r => (
-                <button
-                  key={r.value}
-                  onClick={() => setRole(r.value)}
-                  className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    role === r.value ? "bg-violet-500/20 text-violet-400 ring-1 ring-violet-500/50" : "bg-slate-700/50 text-slate-400 hover:text-white"
-                  }`}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
             <label className="text-slate-400 text-xs font-medium mb-1.5 block">Side filter (optional)</label>
             <div className="flex gap-1.5">
               {[
