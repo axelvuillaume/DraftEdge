@@ -32,7 +32,9 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     let query = {};
 
     if (req.body.team_id) query.team_id = req.body.team_id;
+    if (req.body.opponent_id) query.opponent_id = req.body.opponent_id;
     if (req.body.name) query.name = { $regex: req.body.name, $options: 'i' };
+    if (req.body.search) query.name = { $regex: req.body.search, $options: 'i' };
     const limit = req.body.limit != null ? req.body.limit : 50;
     const skip = req.body.offset || 0;
     const total = await StratMap.countDocuments(query);

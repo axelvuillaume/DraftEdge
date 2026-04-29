@@ -12,6 +12,8 @@ const Schema = new mongoose.Schema(
     redBans: [{ type: mongoose.Schema.Types.Mixed }],
     bluePicks: [{ type: mongoose.Schema.Types.Mixed }],
     redPicks: [{ type: mongoose.Schema.Types.Mixed }],
+    opponent_id: { type: String },
+    opponent_name: { type: String },
   },
   { timestamps: true },
 );

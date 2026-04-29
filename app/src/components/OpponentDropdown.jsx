@@ -5,7 +5,7 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import { ChevronDown, Plus } from "lucide-react"
 
-export default function OpponentDropdown({ value, onChange, label }) {
+export default function OpponentDropdown({ value, onChange, label, allowClear = false }) {
   const { user } = useStore()
   const [enemyTeams, setEnemyTeams] = useState([])
   const [open, setOpen] = useState(false)
@@ -121,6 +121,18 @@ export default function OpponentDropdown({ value, onChange, label }) {
                 </form>
               </div>
               <div className="max-h-40 overflow-y-auto p-1">
+                {allowClear && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange({ _id: "", name: "" })
+                      setOpen(false)
+                    }}
+                    className={`w-full text-left px-3 py-1.5 rounded-md text-xs ${!value ? "bg-blue-500/20 text-blue-400" : "text-slate-400 hover:bg-slate-700/50"}`}
+                  >
+                    All opponents
+                  </button>
+                )}
                 {filteredTeams.length === 0 && <p className="text-xs text-slate-500 text-center py-2">{search.trim() ? "No match — press + to create" : "No teams yet"}</p>}
                 {filteredTeams.map(team => (
                   <button

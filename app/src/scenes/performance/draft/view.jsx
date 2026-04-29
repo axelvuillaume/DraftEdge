@@ -5,6 +5,7 @@ import { RotateCcw, Zap, X, Search, Star, Shuffle } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import DebounceInput from "@/components/debounceInput"
+import OpponentDropdown from "@/components/OpponentDropdown"
 import { getChampionIcon, DRAFT_ROLES, ROLE_ICONS, POSITION_LABELS, ALL_CHAMPIONS, CHAMPIONS_BY_ROLE } from "@/utils"
 
 export default function View() {
@@ -110,6 +111,10 @@ export default function View() {
             className="bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm w-64"
           />
           <div className="flex items-center gap-3">
+            <OpponentDropdown
+              value={scenario.opponent_name || ""}
+              onChange={team => save({ ...scenario, opponent_id: team._id, opponent_name: team.name })}
+            />
             <LeagueDropdown selectedLeagues={selectedLeagues} setSelectedLeagues={setSelectedLeagues} />
             <button
               onClick={() => save({ ...scenario, blueBans: Array(5).fill(null), redBans: Array(5).fill(null), bluePicks: Array(5).fill(null), redPicks: Array(5).fill(null) })}

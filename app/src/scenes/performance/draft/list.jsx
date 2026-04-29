@@ -4,6 +4,7 @@ import { Plus, Trash2, X, Search, Star, Shuffle } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
+import OpponentDropdown from "@/components/OpponentDropdown"
 import { useNavigate } from "react-router-dom"
 import { getChampionIcon, ALL_CHAMPIONS } from "@/utils"
 
@@ -12,10 +13,11 @@ export default function List() {
   const { user } = useStore()
   const [scenarios, setScenarios] = useState([])
   const [isOpen, setIsOpen] = useState(false)
+  const [filters, setFilters] = useState({ opponent_id: "", opponent_name: "" })
 
   const fetchScenarios = async () => {
     try {
-      const { ok, data, code } = await api.post("/draft-scenario/search", { team_id: user?.team_id })
+      const { ok, data, code } = await api.post("/draft-scenario/search", { team_id: user?.team_id, opponent_id: filters.opponent_id })
       if (!ok) return toast.error(code || "Failed to fetch scenarios")
       setScenarios(data)
     } catch (error) {
@@ -37,7 +39,7 @@ export default function List() {
 
   useEffect(() => {
     fetchScenarios()
-  }, [])
+  }, [filters])
 
   return (
     <div className="h-full overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8 flex flex-col">
@@ -45,7 +47,14 @@ export default function List() {
         <TeamPriorities />
 
         <div className="flex items-center justify-between flex-shrink-0">
-          <h1 className="text-white text-xl font-semibold">Draft Scenarios</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-white text-xl font-semibold">Draft Scenarios</h1>
+            <OpponentDropdown
+              value={filters.opponent_name}
+              onChange={team => setFilters(f => ({ ...f, opponent_id: team._id, opponent_name: team.name }))}
+              allowClear
+            />
+          </div>
           <button
             onClick={() => setIsOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors"
@@ -59,9 +68,10 @@ export default function List() {
           <table className="w-full table-fixed">
             <thead className="flex-shrink-0">
               <tr className="border-b border-slate-700/50">
-                <th className="w-1/2 text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Name</th>
-                <th className="w-1/4 text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Date</th>
-                <th className="w-1/4 text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Actions</th>
+                <th className="w-2/5 text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Name</th>
+                <th className="w-1/4 text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Opponent</th>
+                <th className="w-1/5 text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Date</th>
+                <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Actions</th>
               </tr>
             </thead>
           </table>
@@ -70,7 +80,7 @@ export default function List() {
               <tbody>
                 {scenarios.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="text-center text-slate-500 py-12 text-sm">
+                    <td colSpan={4} className="text-center text-slate-500 py-12 text-sm">
                       No scenarios yet
                     </td>
                   </tr>
@@ -81,15 +91,22 @@ export default function List() {
                     onClick={() => navigate(`/scrim-hub/draft/${scenario._id}`)}
                     className="border-b border-slate-700/30 hover:bg-slate-700/20 cursor-pointer transition-colors"
                   >
-                    <td className="w-1/2 px-6 py-4">
+                    <td className="w-2/5 px-6 py-4">
                       <span className="text-white font-medium text-sm">{scenario.name || "Untitled"}</span>
                     </td>
-                    <td className="w-1/4 px-4 py-4 text-center">
+                    <td className="w-1/4 px-4 py-4">
+                      {scenario.opponent_name ? (
+                        <span className="text-slate-300 text-sm">{scenario.opponent_name}</span>
+                      ) : (
+                        <span className="text-slate-600 text-sm">—</span>
+                      )}
+                    </td>
+                    <td className="w-1/5 px-4 py-4 text-center">
                       <span className="text-slate-400 text-sm">
                         {new Date(scenario.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                       </span>
                     </td>
-                    <td className="w-1/4 px-6 py-4 text-center">
+                    <td className="w-[15%] px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button onClick={e => handleDelete(e, scenario._id)} className="p-1.5 text-slate-400 hover:text-red-400 transition-colors">
                           <Trash2 className="w-4 h-4" />
