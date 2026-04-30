@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(npx eslint *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "WebSearch",
+      "WebFetch(domain:maknee.github.io)",
+      "Bash(gh api *)"
     ]
   }
 }

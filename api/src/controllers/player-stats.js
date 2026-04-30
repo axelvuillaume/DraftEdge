@@ -44,9 +44,9 @@ const aggregateStats = (stats) => {
       acc.gold_from_turret_plates += curr.gold_from_turret_plates || 0;
       acc.gold_from_shutdowns += curr.gold_from_shutdowns || 0;
       acc.ping_on_my_way += curr.pings?.on_my_way || 0;
-      acc.ping_danger += curr.pings?.danger || 0;
+      acc.ping_retreat += curr.pings?.retreat || 0;
       acc.ping_enemy_missing += curr.pings?.enemy_missing || 0;
-      acc.ping_basic += curr.pings?.basic || 0;
+      acc.ping_assist_me += curr.pings?.assist_me || 0;
       acc.ping_enemy_vision += curr.pings?.enemy_vision || 0;
       acc.games += 1;
       return acc;
@@ -78,9 +78,9 @@ const aggregateStats = (stats) => {
       gold_from_turret_plates: 0,
       gold_from_shutdowns: 0,
       ping_on_my_way: 0,
-      ping_danger: 0,
+      ping_retreat: 0,
       ping_enemy_missing: 0,
-      ping_basic: 0,
+      ping_assist_me: 0,
       ping_enemy_vision: 0,
       games: 0,
     },
@@ -135,9 +135,9 @@ const getMetrics = (t, e, category) => {
   if (category === 'Pings') {
     return [
       { name: 'On My Way / game', team: round1(getAvg(t.ping_on_my_way, t.games)), enemies: round1(getAvg(e.ping_on_my_way, e.games)) },
-      { name: 'Danger / game', team: round1(getAvg(t.ping_danger, t.games)), enemies: round1(getAvg(e.ping_danger, e.games)) },
+      { name: 'Danger / game', team: round1(getAvg(t.ping_retreat, t.games)), enemies: round1(getAvg(e.ping_retreat, e.games)) },
       { name: 'Enemy Missing / game', team: round1(getAvg(t.ping_enemy_missing, t.games)), enemies: round1(getAvg(e.ping_enemy_missing, e.games)) },
-      { name: 'Basic / game', team: round1(getAvg(t.ping_basic, t.games)), enemies: round1(getAvg(e.ping_basic, e.games)) },
+      { name: 'Assist Me / game', team: round1(getAvg(t.ping_assist_me, t.games)), enemies: round1(getAvg(e.ping_assist_me, e.games)) },
       { name: 'Enemy Vision / game', team: round1(getAvg(t.ping_enemy_vision, t.games)), enemies: round1(getAvg(e.ping_enemy_vision, e.games)) },
     ];
   }

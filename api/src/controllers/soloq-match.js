@@ -115,8 +115,9 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
           turrets: { $sum: '$turretKills' },
           enemyJungle: { $sum: '$totalEnemyJungleMinionsKilled' },
           pingOnMyWay: { $sum: '$onMyWayPings' },
-          pingDanger: { $sum: '$dangerPings' },
+          pingRetreat: { $sum: '$dangerPings' },
           pingEnemyMissing: { $sum: '$enemyMissingPings' },
+          pingAssistMe: { $sum: '$assistMePings' },
           pingEnemyVision: { $sum: '$enemyVisionPings' },
         },
       },
@@ -157,9 +158,9 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
       },
       Pings: {
         'On My Way / game': round1(s.pingOnMyWay / n),
-        'Danger / game': round1(s.pingDanger / n),
+        'Danger / game': round1(s.pingRetreat / n),
         'Enemy Missing / game': round1(s.pingEnemyMissing / n),
-        'Basic / game': '-',
+        'Assist Me / game': round1(s.pingAssistMe / n),
         'Enemy Vision / game': round1(s.pingEnemyVision / n),
       },
     };
