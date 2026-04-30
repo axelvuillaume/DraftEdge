@@ -125,22 +125,27 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
       const matches = await SoloqMatch.find(matchQuery).sort({ gameDate: -1 });
 
       let current;
+      let championsPlayed = null;
       if (metric === 'games_played') {
         // count simple : nombre de games jouées
         current = matches.length;
-      } else if (fn === 'count') {
+      }
+      if (metric !== 'games_played' && metric === 'championId' && fn === 'count') {
+        // count distinct : nombre de champions différents joués
+        championsPlayed = [...new Set(matches.map((m) => m.championName).filter(Boolean))];
+        current = championsPlayed.length;
+      }
+      if (current === undefined && fn === 'count') {
         // count conditionnel : compter les games où metric est truthy (win, firstBlood, etc.)
         current = matches.filter((m) => resolveMetric(m, metric) === 1).length;
-      } else if (fn === 'sum') {
+      }
+      if (current === undefined && fn === 'sum') {
         current = matches.reduce((acc, m) => acc + (resolveMetric(m, metric) || 0), 0);
-      } else if (fn === 'avg') {
-        if (minGames && matches.length < minGames) {
-          current = null; // Pas assez de games
-        } else if (matches.length === 0) {
-          current = null;
-        } else {
-          current = matches.reduce((acc, m) => acc + (resolveMetric(m, metric) || 0), 0) / matches.length;
-        }
+      }
+      if (current === undefined && fn === 'avg') {
+        if (minGames && matches.length < minGames) current = null;
+        if (current === undefined && matches.length === 0) current = null;
+        if (current === undefined) current = matches.reduce((acc, m) => acc + (resolveMetric(m, metric) || 0), 0) / matches.length;
       }
 
       let success = false;
@@ -164,6 +169,7 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
         target: value,
         success,
         total_games: matches.length,
+        champions_played: championsPlayed,
       });
     }
 

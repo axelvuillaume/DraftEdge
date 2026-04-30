@@ -1091,12 +1091,25 @@ function AggregateObjectiveRow({ objective, onDelete, onEdit }) {
             <span className="text-xs text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded font-medium">{objective.aggregate?.period === "weekly" ? "Weekly" : objective.aggregate?.period === "total" ? "Total" : "Daily"}</span>
           </div>
           {aggData ? (
-            <div className="flex items-center gap-3 py-2">
-              {aggData.success ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Target className="w-4 h-4 text-amber-400" />}
-              <span className={`text-sm ${aggData.success ? "text-emerald-400/70" : "text-amber-400/70"}`}>
-                {aggData.success ? "Objective completed!" : `${aggData.current ?? 0}/${aggData.target} — ${aggData.total_games} games played`}
-              </span>
-            </div>
+            <>
+              <div className="flex items-center gap-3 py-2">
+                {aggData.success ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Target className="w-4 h-4 text-amber-400" />}
+                <span className={`text-sm ${aggData.success ? "text-emerald-400/70" : "text-amber-400/70"}`}>
+                  {aggData.success ? "Objective completed!" : `${aggData.current ?? 0}/${aggData.target} — ${aggData.total_games} games played`}
+                </span>
+              </div>
+              {aggData.champions_played?.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-slate-500">Champions played:</span>
+                  {aggData.champions_played.map(c => (
+                    <div key={c} className="flex items-center gap-1.5 bg-slate-700/30 px-2 py-1 rounded">
+                      <img src={getChampionIcon(c)} alt={c} className="w-5 h-5 rounded" />
+                      <span className="text-xs text-slate-300">{c}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-sm text-slate-500 text-center py-2">No data for this period.</p>
           )}
