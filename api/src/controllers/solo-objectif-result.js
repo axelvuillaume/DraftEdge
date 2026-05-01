@@ -4,6 +4,7 @@ const passport = require('passport');
 const SoloObjectifResult = require('../models/solo-objectif-result');
 const SoloObjectif = require('../models/solo-objectif');
 const SoloqMatch = require('../models/soloq-match');
+const Player = require('../models/player');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 
@@ -118,6 +119,10 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
       const matchQuery = { player_id: obj.player_id, queueId: 420 };
       if (periodStart) matchQuery.gameDate = { $gte: periodStart };
       if (obj.account?.puuid) matchQuery.puuid = obj.account.puuid;
+      if (!obj.account?.puuid) {
+        const player = await Player.findById(obj.player_id);
+        if (player?.puuid) matchQuery.puuid = player.puuid;
+      }
       if (obj.champions?.length > 0) matchQuery.championName = { $in: obj.champions };
       if (obj.role) matchQuery.teamPosition = obj.role;
       if (obj.side) matchQuery.side = obj.side;

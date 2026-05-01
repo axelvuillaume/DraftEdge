@@ -177,21 +177,20 @@ async function fetchSoloQ() {
       const platform = player.region || 'euw1';
       const matchIds = await getMatchIdsByPuuid(player.puuid, { queue: QUEUE_ID, count: 4, platform });
 
-      if (!matchIds || matchIds.length === 0) continue;
-
-      const existing = await SoloqMatch.find({ matchId: { $in: matchIds }, puuid: player.puuid }, { matchId: 1 });
-      const existingSet = new Set(existing.map((d) => d.matchId));
-      const newIds = matchIds.filter((id) => !existingSet.has(id));
-
-      if (newIds.length === 0) continue;
+      let newIds = [];
+      if (matchIds && matchIds.length > 0) {
+        const existing = await SoloqMatch.find({ matchId: { $in: matchIds }, puuid: player.puuid }, { matchId: 1 });
+        const existingSet = new Set(existing.map((d) => d.matchId));
+        newIds = matchIds.filter((id) => !existingSet.has(id));
+      }
 
       // Charger les objectifs du joueur (compte principal uniquement)
-      const objectives = await SoloObjectif.find({
+      const objectives = newIds.length > 0 ? await SoloObjectif.find({
         player_id: player._id.toString(),
         'rule.metric': { $exists: true },
         'account.puuid': { $exists: false },
         active: { $ne: false },
-      });
+      }) : [];
       const perGameAndStreakObjs = objectives.filter((o) => o.type !== 'aggregate' && o.type !== 'rank');
       const streakObjs = objectives.filter((o) => o.type === 'streak');
       const needsTimeline = perGameAndStreakObjs.some((o) => o.rule.source === 'timeline');
