@@ -15,8 +15,17 @@ const round2 = (val) => Math.round(val * 100) / 100;
 const getAvg = (total, count) => (count > 0 ? total / count : 0);
 const getPerMin = (total, duration) => (duration > 0 ? total / (duration / 60) : 0);
 
-const aggregateStats = (stats) => {
-  return stats.reduce(
+const buildTeamKillsMap = (stats) => {
+  const map = {};
+  stats.forEach((s) => {
+    if (!s.game_id) return;
+    map[s.game_id] = (map[s.game_id] || 0) + (s.kills || 0);
+  });
+  return map;
+};
+
+const aggregateStats = (stats, teamKillsMap) => {
+  const result = stats.reduce(
     (acc, curr) => {
       acc.kills += curr.kills || 0;
       acc.deaths += curr.deaths || 0;
@@ -85,6 +94,17 @@ const aggregateStats = (stats) => {
       games: 0,
     },
   );
+  const gameDurations = {};
+  stats.forEach((s) => {
+    if (s.game_id && !(s.game_id in gameDurations)) gameDurations[s.game_id] = s.game_duration || 0;
+  });
+  const gameIds = Object.keys(gameDurations);
+  if (gameIds.length > 0) {
+    result.games = gameIds.length;
+    result.duration = gameIds.reduce((acc, gid) => acc + gameDurations[gid], 0);
+  }
+  result.team_kills = teamKillsMap ? gameIds.reduce((acc, gid) => acc + (teamKillsMap[gid] || 0), 0) : result.kills;
+  return result;
 };
 
 const getMetrics = (t, e, category) => {
@@ -95,8 +115,8 @@ const getMetrics = (t, e, category) => {
       { name: 'Deaths / game', team: round1(getAvg(t.deaths, t.games)), enemies: round1(getAvg(e.deaths, e.games)), invert: true },
       {
         name: 'Kill Participation %',
-        team: round1(t.kills + t.deaths + t.assists > 0 ? (t.kills / (t.kills + t.deaths + t.assists)) * 100 : 0),
-        enemies: round1(e.kills + e.deaths + e.assists > 0 ? (e.kills / (e.kills + e.deaths + e.assists)) * 100 : 0),
+        team: round1(t.team_kills > 0 ? Math.min(100, ((t.kills + t.assists) / t.team_kills) * 100) : 0),
+        enemies: round1(e.team_kills > 0 ? Math.min(100, ((e.kills + e.assists) / e.team_kills) * 100) : 0),
       },
       { name: 'DMG / Gold', team: round2(t.gold > 0 ? t.damage / t.gold : 0), enemies: round2(e.gold > 0 ? e.damage / e.gold : 0) },
     ];
@@ -600,16 +620,19 @@ router.post('/bubble_stats', passport.authenticate(['admin', 'user'], { session:
     const allEnemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
     const enemyStats = role ? allEnemyStats.filter((s) => s.role === role) : allEnemyStats;
 
+    const teamKillsMap = buildTeamKillsMap(allTeamStats);
+    const enemyKillsMap = buildTeamKillsMap(allEnemyStats);
+
     const roles = ['top', 'jungle', 'mid', 'bottom', 'support'];
     const scores = roles.map((r) => {
       const roleTeamStats = allTeamStats.filter((s) => s.role === r);
       const roleEnemyStats = allEnemyStats.filter((s) => s.role === r);
       if (!roleTeamStats.length) return { role: r, score: 50 };
-      return { role: r, score: calculateScore(getMetrics(aggregateStats(roleTeamStats), aggregateStats(roleEnemyStats), category)) };
+      return { role: r, score: calculateScore(getMetrics(aggregateStats(roleTeamStats, teamKillsMap), aggregateStats(roleEnemyStats, enemyKillsMap), category)) };
     });
 
-    const teamAgg = aggregateStats(playerStats);
-    const enemyAgg = aggregateStats(enemyStats);
+    const teamAgg = aggregateStats(playerStats, teamKillsMap);
+    const enemyAgg = aggregateStats(enemyStats, enemyKillsMap);
     const metrics = getMetrics(teamAgg, enemyAgg, category);
 
     const dataMetrics = metrics.map((m) => {
@@ -633,6 +656,9 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
     const playerStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false, ...gameIdFilter });
     const opponentStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
     const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
+
+    const teamKillsMap = buildTeamKillsMap(playerStats);
+    const opponentKillsMap = buildTeamKillsMap(opponentStats);
 
     // Build opponent map for matchups
     const opponentMap = {};
@@ -687,8 +713,8 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
     };
 
     // --- Build Team Data ---
-    const teamAgg = aggregateStats(playerStats);
-    const enemyAgg = aggregateStats(opponentStats);
+    const teamAgg = aggregateStats(playerStats, teamKillsMap);
+    const enemyAgg = aggregateStats(opponentStats, opponentKillsMap);
     const teamCategoryScores = getCategoryScores(teamAgg, enemyAgg);
     const teamMetrics = getAllMetrics(teamAgg, enemyAgg);
     const teamWinRate = games.length > 0 ? round1((games.filter((g) => g.win).length / games.length) * 100) : 0;
@@ -739,8 +765,8 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
       // Get opponent stats for this player's games
       const pOpponentStats = opponentStats.filter((o) => pGames.includes(o.game_id) && o.role === data.role);
 
-      const pAgg = aggregateStats(pStats);
-      const pEnemyAgg = aggregateStats(pOpponentStats);
+      const pAgg = aggregateStats(pStats, teamKillsMap);
+      const pEnemyAgg = aggregateStats(pOpponentStats, opponentKillsMap);
       const pCategoryScores = getCategoryScores(pAgg, pEnemyAgg);
 
       // Build player's champions stats
@@ -756,9 +782,9 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
 
       const playerChampions = Object.entries(playerChampionMap).map(([champName, champData]) => {
         const champWinRate = champData.games > 0 ? round1((champData.wins / champData.games) * 100) : 0;
-        const champAgg = aggregateStats(champData.stats);
+        const champAgg = aggregateStats(champData.stats, teamKillsMap);
         const champOpponentStats = opponentStats.filter((o) => champData.stats.some((s) => s.game_id === o.game_id && s.role === o.role));
-        const champEnemyAgg = aggregateStats(champOpponentStats);
+        const champEnemyAgg = aggregateStats(champOpponentStats, opponentKillsMap);
         const champCategoryScores = getCategoryScores(champAgg, champEnemyAgg);
 
         // Build matchups against enemy champions for this player champion
@@ -778,8 +804,8 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
         const champMatchups = Object.entries(champMatchupMap).map(([oppChamp, mData]) => {
           const mWinRate = mData.games > 0 ? round1((mData.wins / mData.games) * 100) : 0;
           const mDiff = round1(mWinRate - champWinRate);
-          const mTeamAgg = aggregateStats(mData.teamStats);
-          const mEnemyAgg = aggregateStats(mData.enemyStats);
+          const mTeamAgg = aggregateStats(mData.teamStats, teamKillsMap);
+          const mEnemyAgg = aggregateStats(mData.enemyStats, opponentKillsMap);
           const mCategoryScores = getCategoryScores(mTeamAgg, mEnemyAgg);
           return {
             name: oppChamp,
@@ -850,6 +876,9 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
     const opponentStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
     const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
 
+    const teamKillsMap = buildTeamKillsMap(playerStats);
+    const opponentKillsMap = buildTeamKillsMap(opponentStats);
+
     const getCategoryScores = (teamAgg, enemyAgg) => {
       const categories = ['Combat', 'Objectives', 'Vision', 'Income', 'Pings'];
       const scores = {};
@@ -880,8 +909,8 @@ router.post('/enemy_champion_stats', passport.authenticate(['admin', 'user'], { 
     const enemyRole = Object.entries(roleCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
 
     // Aggregate stats
-    const ourAgg = aggregateStats(ourStatsVsChamp);
-    const enemyAgg = aggregateStats(enemyChampStats);
+    const ourAgg = aggregateStats(ourStatsVsChamp, teamKillsMap);
+    const enemyAgg = aggregateStats(enemyChampStats, opponentKillsMap);
 
     // Win rate calculation (from our perspective - how many games we WON against this champion)
     const uniqueGames = [...new Set(ourStatsVsChamp.map((s) => s.game_id))];
@@ -1357,6 +1386,9 @@ router.post('/official_split', passport.authenticate(['admin', 'user'], { sessio
     let teamStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: false, puuid: { $exists: true, $ne: null }, ...gameIdFilter });
     let enemyStats = await PlayerStats.find({ team_id: req.user.team_id, opponent: true, ...gameIdFilter });
 
+    const teamKillsMap = buildTeamKillsMap(teamStats);
+    const enemyKillsMap = buildTeamKillsMap(enemyStats);
+
     const position = req.body.position;
     const puuid = req.body.puuid;
     if (puuid) {
@@ -1374,8 +1406,8 @@ router.post('/official_split', passport.authenticate(['admin', 'user'], { sessio
 
     const buildCategoryValues = (tStats, eStats) => {
       if (!tStats.length) return null;
-      const t = aggregateStats(tStats);
-      const e = aggregateStats(eStats);
+      const t = aggregateStats(tStats, teamKillsMap);
+      const e = aggregateStats(eStats, enemyKillsMap);
       const result = {};
       ['Combat', 'Objectives', 'Vision', 'Income', 'Pings'].forEach((cat) => {
         result[cat] = {};

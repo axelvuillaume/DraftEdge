@@ -138,6 +138,7 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
           totalKills: { $sum: '$kills' },
           totalDeaths: { $sum: '$deaths' },
           totalAssists: { $sum: '$assists' },
+          totalTeamkills: { $sum: '$teamkills' },
           damagetochampions: { $sum: '$damagetochampions' },
           totalgold: { $sum: '$totalgold' },
           dpm: { $avg: '$dpm' },
@@ -186,7 +187,7 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
         'DMG / min': round1(s.dpm),
         'Kills / game': round1(s.kills),
         'Deaths / game': round1(s.deaths),
-        'Kill Participation %': round1(s.totalKills + s.totalDeaths + s.totalAssists > 0 ? (s.totalKills / (s.totalKills + s.totalDeaths + s.totalAssists)) * 100 : 0),
+        'Kill Participation %': round1(s.totalTeamkills > 0 ? Math.min(100, ((s.totalKills + s.totalAssists) / s.totalTeamkills) * 100) : 0),
         'DMG / Gold': round2(s.totalgold > 0 ? s.damagetochampions / s.totalgold : 0),
       },
       Objectives: {

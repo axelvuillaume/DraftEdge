@@ -119,6 +119,7 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
           pingEnemyMissing: { $sum: '$enemyMissingPings' },
           pingAssistMe: { $sum: '$assistMePings' },
           pingEnemyVision: { $sum: '$enemyVisionPings' },
+          killParticipation: { $avg: '$challenges.killParticipation' },
         },
       },
     ]);
@@ -134,7 +135,7 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
         'DMG / min': round1(durationMin > 0 ? s.damage / durationMin : 0),
         'Kills / game': round1(s.kills / n),
         'Deaths / game': round1(s.deaths / n),
-        'Kill Participation %': round1(s.kills + s.deaths + s.assists > 0 ? (s.kills / (s.kills + s.deaths + s.assists)) * 100 : 0),
+        'Kill Participation %': round1((s.killParticipation || 0) * 100),
         'DMG / Gold': round2(s.gold > 0 ? s.damage / s.gold : 0),
       },
       Objectives: {
