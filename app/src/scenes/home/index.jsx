@@ -6,14 +6,38 @@ import useStore from "@/services/store"
 import Modal from "@/components/modal"
 import UploadModal from "@/components/UploadModal"
 import OpponentDropdown from "@/components/OpponentDropdown"
-import { RANK_ICON_TIERS, getChampionIcon } from "@/utils"
-import { Calendar, BarChart, Swords, Plus, ChevronLeft, ChevronRight, StickyNote, Flame, Crown, Target, Zap, Upload, Loader2, Trophy } from "lucide-react"
+import { RANK_ICON_TIERS, getChampionIcon, ROLES, ROLE_LABELS, SERVERS } from "@/utils"
+import { Calendar, BarChart, Swords, Plus, ChevronLeft, ChevronRight, StickyNote, Flame, Crown, Target, Zap, Upload, Loader2, Trophy, UserPlus, Sparkles } from "lucide-react"
 
 export default function Home() {
   const navigate = useNavigate()
   const { user } = useStore()
   const [readyUpOpen, setReadyUpOpen] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [players, setPlayers] = useState(null)
+
+  const fetchPlayers = async () => {
+    try {
+      const { ok, data, code } = await api.post("/player/search", { team_id: user?.team_id })
+      if (!ok) return toast.error(code || "Failed to fetch players")
+      setPlayers(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch players")
+    }
+  }
+
+  useEffect(() => {
+    fetchPlayers()
+  }, [user?.team_id])
+
+  if (players === null)
+    return (
+      <div className="h-[calc(100vh-65px)] bg-slate-900 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+      </div>
+    )
+
+  if (players.filter(p => p.active !== false).length === 0 && user?.role !== "user") return <RosterOnboarding onComplete={fetchPlayers} />
 
   return (
     <div className="h-[calc(100vh-65px)] bg-slate-900 p-4 overflow-hidden">
@@ -823,6 +847,145 @@ function ReadyUpModal({ isOpen, onClose }) {
         </div>
       </div>
     </Modal>
+  )
+}
+
+// Roster Onboarding
+function RosterOnboarding({ onComplete }) {
+  const { user, team, setTeam } = useStore()
+  const [roster, setRoster] = useState(ROLES.reduce((acc, r) => ({ ...acc, [r]: { player_name: "", game_name: "", tag_line: "" } }), {}))
+  const [saving, setSaving] = useState(false)
+
+  const handleRegionChange = async newRegion => {
+    try {
+      const { ok, code } = await api.put(`/team/${user?.team_id}/region`, { region: newRegion })
+      if (!ok) return toast.error(code || "Failed to update region")
+      setTeam({ ...team, region: newRegion })
+      toast.success("Region updated")
+    } catch (error) {
+      toast.error(error.code || "Failed to update region")
+    }
+  }
+
+  const handleCreate = async () => {
+    const filled = ROLES.filter(r => roster[r].game_name.trim() && roster[r].tag_line.trim())
+    if (filled.length === 0) return toast.error("Add at least one player")
+    setSaving(true)
+    let created = 0
+    for (const role of filled) {
+      try {
+        const { ok, code } = await api.post("/player", {
+          game_name: roster[role].game_name.trim(),
+          tag_line: roster[role].tag_line.trim(),
+          player_name: roster[role].player_name?.trim() || "",
+          region: team?.region || "euw1",
+          role
+        })
+        if (!ok) {
+          toast.error(`${ROLE_LABELS[role]}: ${code || "Riot ID not found"}`)
+          continue
+        }
+        created++
+      } catch (error) {
+        toast.error(`${ROLE_LABELS[role]}: ${error.code || "Failed to create"}`)
+      }
+    }
+    setSaving(false)
+    if (created === 0) return
+    toast.success(`${created} player${created > 1 ? "s" : ""} added`)
+    onComplete()
+  }
+
+  const filledCount = ROLES.filter(r => roster[r].game_name.trim() && roster[r].tag_line.trim()).length
+
+  return (
+    <div className="h-[calc(100vh-65px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6 overflow-auto relative">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 -left-20 w-96 h-96 rounded-full bg-amber-500/5 blur-3xl" />
+        <div className="absolute bottom-1/4 -right-20 w-96 h-96 rounded-full bg-blue-500/5 blur-3xl" />
+      </div>
+      <div className="max-w-3xl w-full relative">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/5 border border-amber-500/30 mb-5 shadow-[0_0_30px_rgba(245,158,11,0.15)]">
+            <UserPlus className="w-8 h-8 text-amber-400" />
+          </div>
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 bg-clip-text text-transparent mb-2 tracking-tight">
+            Welcome to {user?.team_name || "DraftEdge"}
+          </h1>
+          <p className="text-slate-400 text-sm">
+            Build your roster to start tracking scrims, drafts and soloQ
+            <Sparkles className="inline w-3.5 h-3.5 ml-1.5 text-amber-400/70 -translate-y-0.5" />
+          </p>
+        </div>
+
+        <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl shadow-2xl backdrop-blur-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between bg-slate-900/30">
+            <div>
+              <p className="text-white text-sm font-medium">Region</p>
+              <p className="text-slate-500 text-xs">Where your team plays soloQ</p>
+            </div>
+            <select
+              value={team?.region || "euw1"}
+              onChange={e => handleRegionChange(e.target.value)}
+              className="w-28 px-3 py-1.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white focus:border-amber-500 focus:outline-none text-sm appearance-none cursor-pointer"
+            >
+              {SERVERS.map(s => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="divide-y divide-slate-700/30">
+            {ROLES.map(role => (
+              <div key={role} className="flex items-center gap-3 px-6 py-3 hover:bg-slate-900/20 transition-colors">
+                <div className="flex items-center gap-2 w-24 shrink-0">
+                  <img src={`/roles/${role}.png`} alt={role} className="w-6 h-6 opacity-70" />
+                  <span className="text-amber-400 font-semibold text-xs uppercase tracking-wider">{ROLE_LABELS[role]}</span>
+                </div>
+                <input
+                  type="text"
+                  value={roster[role].player_name}
+                  onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], player_name: e.target.value } }))}
+                  placeholder="Name"
+                  className="w-32 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
+                />
+                <input
+                  type="text"
+                  value={roster[role].game_name}
+                  onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], game_name: e.target.value } }))}
+                  placeholder="Summoner Name"
+                  className="flex-1 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
+                />
+                <span className="text-slate-500 text-sm">#</span>
+                <input
+                  type="text"
+                  value={roster[role].tag_line}
+                  onChange={e => setRoster(prev => ({ ...prev, [role]: { ...prev[role], tag_line: e.target.value } }))}
+                  placeholder="TAG"
+                  className="w-20 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none text-sm"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="px-6 py-4 bg-slate-900/40 border-t border-slate-700/50 flex items-center justify-between">
+            <p className="text-slate-500 text-xs">
+              <span className="text-amber-400 font-semibold">{filledCount}</span>/5 players ready
+            </p>
+            <button
+              onClick={handleCreate}
+              disabled={saving || filledCount === 0}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 text-slate-900 font-semibold text-sm shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 hover:from-amber-400 hover:to-amber-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              {saving ? "Creating..." : "Create roster"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

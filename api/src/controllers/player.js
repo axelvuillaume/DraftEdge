@@ -6,6 +6,7 @@ const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const { getPuuidByRiotId, getRankByPuuid, getMatchIdsByPuuid, getMatchById, PLATFORM_TO_REGIONAL, SERVERS } = require('../services/riotgames');
 const SoloqMatch = require('../models/soloq-match');
+const { seedPlayerSoloObjectifs } = require('../seeders/player-defaults');
 
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
@@ -257,6 +258,12 @@ router.post('/', passport.authenticate(['admin', 'user'], { session: false, fail
     }
 
     const player = await Player.create(playerData);
+
+    try {
+      await seedPlayerSoloObjectifs(player);
+    } catch (seedError) {
+      capture(seedError);
+    }
 
     return res.status(200).send({ ok: true, data: player });
   } catch (error) {

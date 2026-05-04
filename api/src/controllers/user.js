@@ -6,6 +6,7 @@ const crypto = require('crypto');
 
 const UserObject = require('../models/user');
 const TeamObject = require('../models/team');
+const { seedTeamDefaults } = require('../seeders/team-defaults');
 const config = require('../config');
 const { validatePassword } = require('../utils');
 const { BREVO_TEMPLATES } = require('../utils/constants');
@@ -84,6 +85,11 @@ router.post('/signup', async (req, res) => {
         subscription_current_period_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       });
       teamId = team._id;
+      try {
+        await seedTeamDefaults(team);
+      } catch (seedError) {
+        capture(seedError);
+      }
     }
 
     const user = await UserObject.create({ team_name: finalTeamName, password, email, team_id: teamId, name, role: team_id ? 'user' : 'admin' });
