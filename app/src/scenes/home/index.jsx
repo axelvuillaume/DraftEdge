@@ -515,7 +515,7 @@ function PatchCard() {
       <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 hover:border-amber-400/40 px-4 py-4 flex items-center gap-3 transition-colors">
         <div>
           <p className="text-[9px] text-slate-500 uppercase tracking-wider">Current Patch</p>
-          <p className="text-lg font-extrabold text-amber-400 tabular-nums leading-tight">25.6</p>
+          <p className="text-lg font-extrabold text-amber-400 tabular-nums leading-tight">26.9</p>
         </div>
       </div>
     </div>
