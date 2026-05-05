@@ -312,6 +312,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     let query = {};
 
     if (req.body.team_id) query.team_id = req.body.team_id;
+    if (req.body.role) query.role = req.body.role;
 
     const searchValue = req.body.search?.replace(/[#-.]|[[-^]|[?|{}]/g, '\\$&');
     if (req.body.search) {

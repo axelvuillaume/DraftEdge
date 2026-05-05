@@ -525,16 +525,24 @@ export default function SoloQ() {
               >
                 <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: CHART_COLORS[i % 5] }} />
                 {/* Connected indicator + actions */}
-                {user?.role !== "user" && (
-                  <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={openEditModal} className="p-1 rounded bg-slate-700/80 text-slate-400 hover:text-amber-400 transition-colors" title="Edit Roster">
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                    <button onClick={e => handleArchive(e, p._id)} className="p-1 rounded bg-slate-700/80 text-slate-400 hover:text-orange-400 transition-colors" title="Archive">
-                      <Archive className="w-3 h-3" />
-                    </button>
-                  </div>
-                )}
+                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={user?.role === "user" ? undefined : openEditModal}
+                    disabled={user?.role === "user"}
+                    title={user?.role === "user" ? "Vous n'avez pas la permission de modifier les joueurs" : "Edit Roster"}
+                    className={`p-1 rounded bg-slate-700/80 text-slate-400 transition-colors ${user?.role === "user" ? "cursor-not-allowed opacity-40" : "hover:text-amber-400"}`}
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={user?.role === "user" ? undefined : e => handleArchive(e, p._id)}
+                    disabled={user?.role === "user"}
+                    title={user?.role === "user" ? "Vous n'avez pas la permission d'archiver un joueur" : "Archive"}
+                    className={`p-1 rounded bg-slate-700/80 text-slate-400 transition-colors ${user?.role === "user" ? "cursor-not-allowed opacity-40" : "hover:text-orange-400"}`}
+                  >
+                    <Archive className="w-3 h-3" />
+                  </button>
+                </div>
                 <div className="absolute top-2.5 left-2.5" title={p.connected_at ? "Connected" : "Not connected"}>
                   <div className={`w-2 h-2 rounded-full ${p.connected_at ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" : "bg-slate-600"}`} />
                 </div>

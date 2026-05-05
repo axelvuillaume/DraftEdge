@@ -93,6 +93,42 @@ export default function App() {
   )
 }
 
+const AdminContact = ({ user }) => {
+  const [admins, setAdmins] = useState([])
+
+  const fetchAdmins = async () => {
+    try {
+      const { ok, data, code } = await api.post("/user/search", { team_id: user?.team_id, role: "admin" })
+      if (!ok) return toast.error(code || "Failed to fetch admins")
+      setAdmins(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch admins")
+    }
+  }
+
+  useEffect(() => {
+    fetchAdmins()
+  }, [])
+
+  if (!admins.length) return <p className="text-slate-500 text-sm">Contact your team admin to resubscribe.</p>
+
+  return (
+    <div className="text-sm">
+      <p className="text-slate-400 mb-3">Contact your team admin to resubscribe:</p>
+      <ul className="space-y-2">
+        {admins.map(admin => (
+          <li key={admin._id} className="flex flex-col items-center">
+            <span className="text-white font-medium">{admin.name}</span>
+            <a href={`mailto:${admin.email}`} className="text-blue-400 hover:text-blue-300 transition-colors">
+              {admin.email}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 const AdminRoute = ({ children }) => {
   const { user } = useStore()
   if (user?.role !== "admin") return <Navigate to="/" replace={true} />
@@ -279,7 +315,7 @@ const UserLayout = () => {
                     {subscribeLoading ? "Loading..." : "Subscribe Now"}
                   </button>
                 ) : (
-                  <p className="text-slate-500 text-sm">Contact your team admin to resubscribe.</p>
+                  <AdminContact user={user} />
                 )}
               </div>
             </div>
