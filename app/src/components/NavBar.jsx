@@ -5,10 +5,10 @@ import useStore from "@/services/store"
 
 const getMenu = user => [
   { title: "Home", to: "/", icon: LayoutDashboard },
-  { title: "Players", to: "/soloq", icon: Users },
-  { title: "Performance", to: "/scrim-hub", icon: Target },
-  { title: "Stats Team", to: "/performance", icon: BarChart3 },
-  { title: "Manager space", to: "/opponents", icon: Briefcase },
+  { title: "Players", to: "/players", icon: Users },
+  { title: "Performance", to: "/performance", icon: Target },
+  { title: "Stats Team", to: "/stats-team", icon: BarChart3 },
+  { title: "Manager space", to: "/manager-space", icon: Briefcase },
   { title: "My League", to: "/league", icon: Trophy },
   ...(user?.role === "admin" ? [{ title: "Billings", to: "/billings", icon: CreditCard }] : [])
 ]

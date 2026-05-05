@@ -146,7 +146,7 @@ export default function View() {
         <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/30 rounded-2xl px-5 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <button onClick={() => navigate("/scrim-hub/scrims")} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all">
+              <button onClick={() => navigate("/performance/scrims")} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all">
                 <ArrowLeft className="w-4 h-4" />
               </button>
               <DebounceInput

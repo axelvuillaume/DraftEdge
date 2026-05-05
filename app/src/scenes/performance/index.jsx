@@ -17,7 +17,7 @@ export default function Performance() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const active = TABS.find(t => location.pathname.includes(`/scrim-hub/${t.path}`)) || TABS[0]
+  const active = TABS.find(t => location.pathname.includes(`/performance/${t.path}`)) || TABS[0]
   const activeTab = active.key
 
   return (
@@ -34,7 +34,7 @@ export default function Performance() {
               <div key={tab.key} className="flex items-center">
                 {i > 0 && <div className="w-px h-4 bg-slate-600 mx-1" />}
                 <button
-                  onClick={() => navigate(`/scrim-hub/${tab.path}`)}
+                  onClick={() => navigate(`/performance/${tab.path}`)}
                   className={`px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
                     isActive ? "text-amber-400 border-amber-500" : "text-slate-400 border-transparent hover:text-white hover:border-slate-600"
                   }`}

@@ -139,7 +139,7 @@ export default function List() {
               </thead>
               <tbody className="divide-y divide-slate-700/30">
                 {sessions.map(session => (
-                  <tr key={session._id} onClick={() => navigate(`/scrim-hub/scrims/${session._id}`)} className="hover:bg-slate-700/20 transition-colors cursor-pointer group">
+                  <tr key={session._id} onClick={() => navigate(`/performance/scrims/${session._id}`)} className="hover:bg-slate-700/20 transition-colors cursor-pointer group">
                     <td className="px-5 py-3.5">
                       <span className="text-white text-sm font-medium">{session.name || "Untitled session"}</span>
                     </td>
@@ -198,7 +198,7 @@ export default function List() {
           )}
         </div>
 
-        <AddSessionModal isOpen={showAddSessionModal} onClose={() => setShowAddSessionModal(false)} onSuccess={sessionId => navigate(`/scrim-hub/scrims/${sessionId}`)} />
+        <AddSessionModal isOpen={showAddSessionModal} onClose={() => setShowAddSessionModal(false)} onSuccess={sessionId => navigate(`/performance/scrims/${sessionId}`)} />
       </div>
     </div>
   )

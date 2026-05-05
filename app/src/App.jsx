@@ -71,10 +71,10 @@ export default function App() {
         <Route element={<UserLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/team" element={<Team />} />
-          <Route path="/scrim-hub/*" element={<PerformancePage />} />
-          <Route path="/soloq/*" element={<SoloQ />} />
-          <Route path="/opponents/*" element={<Opponents />} />
-          <Route path="/performance/*" element={<Performance />} />
+          <Route path="/performance/*" element={<PerformancePage />} />
+          <Route path="/players/*" element={<SoloQ />} />
+          <Route path="/manager-space/*" element={<Opponents />} />
+          <Route path="/stats-team/*" element={<Performance />} />
           <Route path="/league/*" element={<League />} />
           <Route path="/map/*" element={<StratMap />} />
           <Route
@@ -111,12 +111,12 @@ const NEWS_CONTENT = [
     title: "Player View Redesign",
     highlight: true,
     description: "A brand new individual player view to explore SoloQ stats, recent games and performances at a glance.",
-    link: "/soloq"
+    link: "/players"
   },
   {
     title: "Replay Book",
     description: "Save your replays and pin timestamped notes on key moments to review them with your team.",
-    link: "/scrim-hub/replay-book"
+    link: "/performance/replay-book"
   }
 ]
 

@@ -22,7 +22,7 @@ export default function Performance() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const active = TABS.find(t => location.pathname.includes(`/performance/${t.path}`)) || TABS[0]
+  const active = TABS.find(t => location.pathname.includes(`/stats-team/${t.path}`)) || TABS[0]
   const activeTab = active.key
 
   return (
@@ -42,7 +42,7 @@ export default function Performance() {
             return (
               <button
                 key={tab.key}
-                onClick={() => navigate(`/performance/${tab.path}`)}
+                onClick={() => navigate(`/stats-team/${tab.path}`)}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
                   isActive ? "text-amber-400 border-amber-500" : "text-slate-400 border-transparent hover:text-white hover:border-slate-600"
                 }`}

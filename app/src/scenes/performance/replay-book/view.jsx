@@ -113,7 +113,7 @@ export default function View() {
     <div className="h-full overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8">
       <div className="max-w-[1800px] mx-auto space-y-6">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate("/scrim-hub/replay-book")} className="p-2 text-slate-400 hover:text-white transition-colors">
+          <button onClick={() => navigate("/performance/replay-book")} className="p-2 text-slate-400 hover:text-white transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           {editingName !== null ? (

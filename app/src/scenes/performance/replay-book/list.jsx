@@ -89,7 +89,7 @@ export default function List() {
                 {replays.map(replay => (
                   <tr
                     key={replay._id}
-                    onClick={() => navigate(`/scrim-hub/replay-book/${replay._id}`)}
+                    onClick={() => navigate(`/performance/replay-book/${replay._id}`)}
                     className="border-b border-slate-700/30 hover:bg-slate-700/20 cursor-pointer transition-colors"
                   >
                     <td className="w-2/5 px-6 py-4">
@@ -140,7 +140,7 @@ function AddReplay({ isOpen, setIsOpen, onCreated }) {
       setReplay({ name: "", link: "" })
       setIsOpen(false)
       onCreated()
-      navigate(`/scrim-hub/replay-book/${data._id}`)
+      navigate(`/performance/replay-book/${data._id}`)
     } catch (error) {
       toast.error(error.code || "Failed to create replay")
     }

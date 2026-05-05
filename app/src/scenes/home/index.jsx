@@ -77,7 +77,7 @@ export default function Home() {
             <p className="text-amber-400/60 text-[11px] mt-0.5">Upload a .rofl replay</p>
           </button>
           <button
-            onClick={() => navigate("/scrim-hub/draft")}
+            onClick={() => navigate("/performance/draft")}
             className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-rose-500/10 to-rose-600/5 border border-rose-500/20 hover:border-rose-400/40 p-2.5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-rose-500/10 transition-colors" />
@@ -86,7 +86,7 @@ export default function Home() {
             <p className="text-rose-400/60 text-[11px] mt-0.5">Practice picks & bans</p>
           </button>
           <button
-            onClick={() => navigate("/performance/stats")}
+            onClick={() => navigate("/stats-team/stats")}
             className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 hover:border-emerald-400/40 p-2.5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-emerald-500/10 transition-colors" />
@@ -95,7 +95,7 @@ export default function Home() {
             <p className="text-emerald-400/60 text-[11px] mt-0.5">Team performance</p>
           </button>
           <button
-            onClick={() => navigate("/soloq")}
+            onClick={() => navigate("/players")}
             className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 hover:border-purple-400/40 p-2.5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -translate-y-8 translate-x-8 group-hover:bg-purple-500/10 transition-colors" />
@@ -213,7 +213,7 @@ function SoloQToday() {
           <Flame className="w-4 h-4 text-amber-400" />
           <h3 className="text-xs font-semibold text-white uppercase tracking-wider">SoloQ Today</h3>
         </div>
-        <button onClick={() => navigate("/soloq")} className="text-[10px] text-slate-500 hover:text-amber-400 transition-colors flex items-center gap-0.5">
+        <button onClick={() => navigate("/players")} className="text-[10px] text-slate-500 hover:text-amber-400 transition-colors flex items-center gap-0.5">
           View all <ChevronRight className="w-3 h-3" />
         </button>
       </div>
@@ -343,7 +343,7 @@ function ObjectivesScore() {
           <Target className="w-4 h-4 text-purple-400" />
           <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Objectives Scrims</h3>
         </div>
-        <button onClick={() => navigate("/scrim-hub/objectives")} className="text-[10px] text-slate-500 hover:text-purple-400 transition-colors flex items-center gap-0.5">
+        <button onClick={() => navigate("/performance/objectives")} className="text-[10px] text-slate-500 hover:text-purple-400 transition-colors flex items-center gap-0.5">
           Details <ChevronRight className="w-3 h-3" />
         </button>
       </div>
@@ -498,7 +498,7 @@ function RecentGames() {
         )}
 
         <button
-          onClick={() => navigate("/performance/games")}
+          onClick={() => navigate("/stats-team/games")}
           className="ml-auto text-xs px-2.5 py-1 rounded-lg bg-slate-700/40 text-slate-400 hover:text-blue-400 hover:bg-slate-700/60 transition-all flex items-center gap-1 font-medium"
         >
           View all <ChevronRight className="w-3.5 h-3.5" />
@@ -573,7 +573,7 @@ function ScrimCalendar() {
 
   const handleDayClick = (day, daySess) => {
     if (daySess && daySess.length === 1) {
-      navigate(`/scrim-hub/scrims/${daySess[0]._id}`)
+      navigate(`/performance/scrims/${daySess[0]._id}`)
       return
     }
     if (daySess && daySess.length > 1) {
@@ -707,7 +707,7 @@ function ScrimCalendar() {
                 <div
                   key={session._id}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-700/30 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/scrim-hub/scrims/${session._id}`)}
+                  onClick={() => navigate(`/performance/scrims/${session._id}`)}
                 >
                   <div
                     className={`w-1 h-6 rounded-full shrink-0 ${
@@ -790,7 +790,7 @@ function ReadyUpModal({ isOpen, onClose }) {
       })
       if (!ok) return toast.error(code || "Failed to create session")
       handleClose()
-      navigate(`/scrim-hub/scrims/${data._id}`)
+      navigate(`/performance/scrims/${data._id}`)
     } catch (error) {
       toast.error(error.code || "Failed to create session")
     } finally {

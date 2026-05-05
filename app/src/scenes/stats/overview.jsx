@@ -57,7 +57,7 @@ function EmptyOverview() {
         <p className="text-sm text-slate-400 mb-8">Start importing games to unlock your stats, draft analysis, and performance insights.</p>
         <div className="flex flex-col gap-3">
           <Link
-            to="/scrim-hub/scrims"
+            to="/performance/scrims"
             className="group flex items-center gap-4 bg-slate-800/60 border border-slate-700/50 rounded-xl px-5 py-4 hover:border-amber-500/30 hover:bg-slate-800/80 transition-all"
           >
             <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
@@ -83,7 +83,7 @@ function EmptyOverview() {
             <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-blue-400 transition-colors" />
           </Link>
           <Link
-            to="/performance/games"
+            to="/stats-team/games"
             className="group flex items-center gap-4 bg-slate-800/60 border border-slate-700/50 rounded-xl px-5 py-4 hover:border-violet-500/30 hover:bg-slate-800/80 transition-all"
           >
             <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center flex-shrink-0">
@@ -442,7 +442,7 @@ function FirstPickPanel() {
           <p className="text-sm text-slate-400 mb-1">No draft has been added to games</p>
           <p className="text-xs text-slate-500">
             You can edit games{" "}
-            <Link to="/performance/games" className="text-amber-400 hover:text-amber-300 underline">
+            <Link to="/stats-team/games" className="text-amber-400 hover:text-amber-300 underline">
               here
             </Link>{" "}
             or add the draft link during import.
@@ -550,7 +550,7 @@ function BansPanel() {
           <p className="text-sm text-slate-400 mb-1">No draft has been added to games</p>
           <p className="text-xs text-slate-500">
             You can edit games{" "}
-            <Link to="/performance/games" className="text-amber-400 hover:text-amber-300 underline">
+            <Link to="/stats-team/games" className="text-amber-400 hover:text-amber-300 underline">
               here
             </Link>{" "}
             or add the draft link during import.

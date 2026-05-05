@@ -521,7 +521,7 @@ export default function SoloQ() {
               <div
                 key={p._id}
                 className="relative bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 flex flex-col items-center gap-3 overflow-hidden group hover:border-slate-600/80 transition-all cursor-pointer"
-                onClick={() => navigate(`/soloq/${p._id}`)}
+                onClick={() => navigate(`/players/${p._id}`)}
               >
                 <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: CHART_COLORS[i % 5] }} />
                 {/* Connected indicator + actions */}

@@ -297,7 +297,7 @@ function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
               <span
                 onClick={e => {
                   e.stopPropagation()
-                  if (objectif.draft_scenario_id) navigate(`/scrim-hub/draft/${objectif.draft_scenario_id}`)
+                  if (objectif.draft_scenario_id) navigate(`/performance/draft/${objectif.draft_scenario_id}`)
                 }}
                 className={`text-xs text-blue-400/80 bg-blue-500/10 px-1.5 py-0.5 rounded font-medium shrink-0 ${objectif.draft_scenario_id ? "hover:text-blue-300 cursor-pointer" : ""}`}
               >
@@ -308,7 +308,7 @@ function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
               <span
                 onClick={e => {
                   e.stopPropagation()
-                  if (objectif.strat_map_id) navigate(`/scrim-hub/map/${objectif.strat_map_id}`)
+                  if (objectif.strat_map_id) navigate(`/performance/map/${objectif.strat_map_id}`)
                 }}
                 className={`text-xs text-teal-400/80 bg-teal-500/10 px-1.5 py-0.5 rounded font-medium shrink-0 ${objectif.strat_map_id ? "hover:text-teal-300 cursor-pointer" : ""}`}
               >
@@ -396,7 +396,7 @@ function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
                       <span
                         onClick={e => {
                           e.stopPropagation()
-                          if (r.session_id) navigate(`/scrim-hub/scrims/${r.session_id}`)
+                          if (r.session_id) navigate(`/performance/scrims/${r.session_id}`)
                         }}
                         className={`text-xs bg-slate-700/40 px-1.5 py-0.5 rounded truncate ${r.session_id ? "text-amber-400/80 hover:text-amber-300 cursor-pointer" : "text-slate-300"}`}
                       >

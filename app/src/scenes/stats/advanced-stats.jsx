@@ -404,7 +404,7 @@ export default function StatsV2() {
                   return (
                     <div
                       key={role}
-                      onClick={() => navigate("/soloq")}
+                      onClick={() => navigate("/players")}
                       className="bg-slate-900/40 border border-slate-700/40 border-dashed rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-700/40 hover:border-emerald-500/40 transition-all group"
                     >
                       <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">

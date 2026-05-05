@@ -26,7 +26,7 @@ export default function DraftScenarioSelect({ value, onChange }) {
     return (
       <p className="text-slate-500 text-xs py-1">
         No draft scenarios yet.{" "}
-        <Link to="/scrim-hub/draft" className="text-amber-400 hover:text-amber-300 transition-colors">
+        <Link to="/performance/draft" className="text-amber-400 hover:text-amber-300 transition-colors">
           Create one here
         </Link>
       </p>

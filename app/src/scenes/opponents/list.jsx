@@ -111,7 +111,7 @@ export default function List({ stats }) {
                 {teams.map(team => {
                   const s = getStatsForTeam(team.name)
                   return (
-                    <tr key={team._id} onClick={() => navigate(`/opponents/${team._id}`)} className="hover:bg-slate-700/20 transition-colors cursor-pointer group">
+                    <tr key={team._id} onClick={() => navigate(`/manager-space/${team._id}`)} className="hover:bg-slate-700/20 transition-colors cursor-pointer group">
                       <td className="px-5 py-3.5">
                         <span className="text-white text-sm font-medium">{team.name}</span>
                       </td>
@@ -243,7 +243,7 @@ function AddTeamModal({ isOpen, setIsOpen, onCreated, navigate }) {
       setTeam({ name: "", league: "" })
       setIsOpen(false)
       onCreated()
-      navigate(`/opponents/${data._id}`)
+      navigate(`/manager-space/${data._id}`)
     } catch (error) {
       toast.error(error.code || "Failed to add team")
     }

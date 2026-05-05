@@ -85,7 +85,7 @@ export default function List() {
                 {maps.map(m => (
                   <tr
                     key={m._id}
-                    onClick={() => navigate(`/scrim-hub/map/${m._id}`)}
+                    onClick={() => navigate(`/performance/map/${m._id}`)}
                     className="border-b border-slate-700/30 hover:bg-slate-700/20 cursor-pointer transition-colors"
                   >
                     <td className="w-2/5 px-6 py-4">
@@ -135,7 +135,7 @@ function AddMap({ isOpen, setIsOpen, onCreated }) {
       setName("")
       setIsOpen(false)
       onCreated()
-      navigate(`/scrim-hub/map/${data._id}`)
+      navigate(`/performance/map/${data._id}`)
     } catch (error) {
       toast.error(error.code || "Failed to create map")
     }

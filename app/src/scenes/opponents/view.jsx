@@ -53,7 +53,7 @@ export default function View({ stats }) {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate("/opponents")} className="p-2 text-slate-400 hover:text-white transition-colors">
+            <button onClick={() => navigate("/manager-space")} className="p-2 text-slate-400 hover:text-white transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
@@ -99,7 +99,7 @@ export default function View({ stats }) {
               <p className={`text-2xl font-bold ${wrColor}`}>{Math.round(teamStats.win_rate * 100)}%</p>
             </div>
             <button
-              onClick={() => navigate("/performance/games", { state: { opponent_id: team._id } })}
+              onClick={() => navigate("/stats-team/games", { state: { opponent_id: team._id } })}
               className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 hover:border-amber-500/50 transition-all group text-left"
             >
               <div className="flex items-center gap-2 mb-1">

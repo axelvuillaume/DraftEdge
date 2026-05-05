@@ -1025,7 +1025,7 @@ function AdvancedTab({ playerStats, game }) {
                 onClick={e => {
                   e.stopPropagation()
                   setSearchNavigation({ type: "player", data: { puuid: player.puuid, name: player.summoner_name } })
-                  navigate("/performance/stats")
+                  navigate("/stats-team/stats")
                 }}
                 className="text-white text-xs font-medium truncate hover:text-amber-400 transition-colors"
               >

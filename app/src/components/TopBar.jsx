@@ -59,21 +59,21 @@ const TopBar = () => {
     setSearchNavigation({ type: "player", data: player })
     setSearchQuery("")
     setShowResults(false)
-    navigate("/performance/stats")
+    navigate("/stats-team/stats")
   }
 
   const handleSelectAllyChampion = champion => {
     setSearchNavigation({ type: "allyChampion", data: champion })
     setSearchQuery("")
     setShowResults(false)
-    navigate("/performance/stats")
+    navigate("/stats-team/stats")
   }
 
   const handleSelectEnemyChampion = champion => {
     setSearchNavigation({ type: "enemyChampion", data: champion })
     setSearchQuery("")
     setShowResults(false)
-    navigate("/performance/stats")
+    navigate("/stats-team/stats")
   }
 
   const hasResults = searchResults.players.length > 0 || searchResults.allyChampions.length > 0 || searchResults.enemyChampions.length > 0

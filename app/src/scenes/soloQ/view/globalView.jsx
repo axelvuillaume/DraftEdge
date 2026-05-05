@@ -105,7 +105,7 @@ function RecapHeader({ player, onOpenSoloQ }) {
           <button
             onClick={() => {
               setSearchNavigation({ type: "player", data: { puuid: player.puuid }, timestamp: Date.now() })
-              navigate("/performance/stats")
+              navigate("/stats-team/stats")
             }}
             className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/15"
           >
@@ -979,7 +979,7 @@ function ScrimObjItem({ objective }) {
               <button
                 onClick={e => {
                   e.stopPropagation()
-                  if (objective.draft_scenario_id) navigate(`/scrim-hub/draft/${objective.draft_scenario_id}`)
+                  if (objective.draft_scenario_id) navigate(`/performance/draft/${objective.draft_scenario_id}`)
                 }}
                 className="text-[10px] text-violet-400 bg-violet-500/10 hover:bg-violet-500/20 px-1.5 py-0.5 rounded font-medium truncate max-w-[120px]"
               >
@@ -990,7 +990,7 @@ function ScrimObjItem({ objective }) {
               <button
                 onClick={e => {
                   e.stopPropagation()
-                  if (objective.strat_map_id) navigate(`/scrim-hub/map/${objective.strat_map_id}`)
+                  if (objective.strat_map_id) navigate(`/performance/map/${objective.strat_map_id}`)
                 }}
                 className="text-[10px] text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 px-1.5 py-0.5 rounded font-medium truncate max-w-[120px]"
               >

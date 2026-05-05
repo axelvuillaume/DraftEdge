@@ -26,7 +26,7 @@ export default function StratMapSelect({ value, onChange }) {
     return (
       <p className="text-slate-500 text-xs py-1">
         No strat maps yet.{" "}
-        <Link to="/scrim-hub/map" className="text-amber-400 hover:text-amber-300 transition-colors">
+        <Link to="/performance/map" className="text-amber-400 hover:text-amber-300 transition-colors">
           Create one here
         </Link>
       </p>
