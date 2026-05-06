@@ -65,6 +65,7 @@ export default function Team() {
             <span className={`px-3 py-1 rounded-lg border text-sm font-medium ${ROLE_COLORS.admin}`}>Admin</span>
             <span className="text-slate-400 text-sm">Full access</span>
           </div>
+
           <div className="flex items-center gap-2">
             <span className={`px-3 py-1 rounded-lg border text-sm font-medium ${ROLE_COLORS.staff}`}>Staff</span>
             <span className="text-slate-400 text-sm">No access to billings</span>
