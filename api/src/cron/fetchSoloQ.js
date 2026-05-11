@@ -207,6 +207,7 @@ async function fetchSoloQ() {
 
           const { participants, teams, ...infoRest } = matchData.info;
           const team = teams.find((t) => t.teamId === p.teamId);
+          const opp = p.teamPosition ? participants.find((x) => x.teamId !== p.teamId && x.teamPosition === p.teamPosition) : null;
 
           const doc = {
             ...matchData.metadata,
@@ -220,6 +221,9 @@ async function fetchSoloQ() {
             side: p.teamId === 100 ? 'blue' : 'red',
             teamObjectives: team?.objectives,
             teamBans: team?.bans,
+            opponentChampion: opp?.championName,
+            opponentChampionId: opp?.championId,
+            opponentPuuid: opp?.puuid,
           };
 
           await SoloqMatch.updateOne({ matchId: doc.matchId, puuid: doc.puuid }, { $set: doc }, { upsert: true });

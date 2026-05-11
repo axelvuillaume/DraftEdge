@@ -15,7 +15,7 @@ const seedStratMaps = (team, ids) =>
       _id: ids.nashStratMap,
       team_id: team._id.toString(),
       team_name: team.name,
-      name: 'Setup Nash',
+      name: 'Default : Setup Nash',
       map_type: 'default',
       nash_type: 'nash2',
       note: '',
@@ -98,7 +98,7 @@ const seedReplayBook = (team) =>
     {
       team_id: team._id.toString(),
       team_name: team.name,
-      name: 'Example : G2 - GenG First Stand',
+      name: 'Default : G2 - GenG First Stand',
       link: 'https://www.youtube.com/watch?v=yLPrAg8fb9Q',
       notes: [
         { title: 'Game 2 - Lvl 1 Pression Botlane G2', description: 'Varus / Brum vs Sivir Alister\nPlaystyle lvl 1', timing: 5604 },
@@ -109,7 +109,7 @@ const seedReplayBook = (team) =>
     {
       team_id: team._id.toString(),
       team_name: team.name,
-      name: 'Exemple : POV my adc scrim',
+      name: 'Default : POV my adc scrim',
       link: 'https://www.youtube.com/watch?v=xCQelrIHoBA',
       notes: [
         { title: 'Bad Trade', description: '', timing: 234 },
@@ -123,7 +123,7 @@ const seedScrimObjectifs = (team, ids) =>
     {
       team_id: team._id.toString(),
       team_name: team.name,
-      name: 'Setup Drake',
+      name: 'Default : Setup Drake',
       description: 'Quality of dragon setups (vision, timers, rotations)',
       rating_type: 'rating',
       player: [],
@@ -131,7 +131,7 @@ const seedScrimObjectifs = (team, ids) =>
     {
       team_id: team._id.toString(),
       team_name: team.name,
-      name: 'Setup Nash',
+      name: 'Default : Setup Nash',
       description: 'Quality of Baron Nashor setups (vision, timers, rotations)',
       rating_type: 'rating',
       player: [],
@@ -141,7 +141,7 @@ const seedScrimObjectifs = (team, ids) =>
     {
       team_id: team._id.toString(),
       team_name: team.name,
-      name: 'Tracking jungle',
+      name: 'Default : Tracking jungle',
       description: 'Tracking enemy jungler and communicating his position',
       rating_type: 'rating',
       player: [],
@@ -153,7 +153,7 @@ const seedDraftScenarios = (team) =>
     {
       team_id: team._id.toString(),
       team_name: team.name,
-      name: 'B1 Yunara',
+      name: 'Default : B1 Yunara',
       blueBans: [],
       redBans: [],
       bluePicks: ['Yunara', null, null, null, null],
@@ -162,7 +162,7 @@ const seedDraftScenarios = (team) =>
     {
       team_id: team._id.toString(),
       team_name: team.name,
-      name: 'B1 Ryze',
+      name: 'Default : B1 Ryze',
       blueBans: ['Azir', null, null, null, null],
       redBans: [],
       bluePicks: ['Ryze', 'Corki', 'Nami', null, null],

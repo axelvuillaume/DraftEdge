@@ -5,7 +5,15 @@
       "Bash(npm run *)",
       "WebSearch",
       "WebFetch(domain:maknee.github.io)",
-      "Bash(gh api *)"
+      "Bash(gh api *)",
+      "Bash(mkdir -p /Users/axelvuillaume/Documents/GitHub/DraftEdge/app/src/scenes/performance/team-objectives /Users/axelvuillaume/Documents/GitHub/DraftEdge/app/src/scenes/performance/soloq-objectives)",
+      "Bash(cp /Users/axelvuillaume/Documents/GitHub/DraftEdge/app/src/scenes/performance/objectives/index.jsx /Users/axelvuillaume/Documents/GitHub/DraftEdge/app/src/scenes/performance/team-objectives/index.jsx)",
+      "Bash(cp /Users/axelvuillaume/Documents/GitHub/DraftEdge/app/src/scenes/performance/objectives/index.jsx /Users/axelvuillaume/Documents/GitHub/DraftEdge/app/src/scenes/performance/soloq-objectives/index.jsx)",
+      "Bash(git add *)",
+      "Read(//tmp/**)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
     ]
   }
 }
