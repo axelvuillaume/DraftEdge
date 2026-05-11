@@ -141,18 +141,13 @@ const AuthLayout = () => {
   return <Outlet />
 }
 
-const NEWS_DATE = "2026-04-29"
+const NEWS_DATE = "2026-05-11"
 const NEWS_CONTENT = [
   {
-    title: "Player View Redesign",
+    title: "SoloQ Objectives Redesign",
     highlight: true,
-    description: "A brand new individual player view to explore SoloQ stats, recent games and performances at a glance.",
-    link: "/players"
-  },
-  {
-    title: "Replay Book",
-    description: "Save your replays and pin timestamped notes on key moments to review them with your team.",
-    link: "/performance/replay-book"
+    description: "A refreshed SoloQ Objectives view to set goals for your players and track their progression more easily.",
+    link: "/performance/soloq-objectives"
   }
 ]
 
