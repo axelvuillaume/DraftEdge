@@ -1,13 +1,15 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom"
 import Draft from "./draft"
 import ScrimHub from "./scrim"
-import Objectives from "./objectives"
+import TeamObjectives from "./team-objectives"
+import SoloQObjectives from "./soloq-objectives"
 import StratMap from "./strat-map"
 import ReplayBook from "./replay-book"
 
 const TABS = [
-  { key: "objectives", label: "Objectives", path: "objectives", title: "Objectives Overview", description: "Track scrim team objectives and individual SoloQ goals." },
+  { key: "team-objectives", label: "Team Objectives", path: "team-objectives", title: "Team Objectives", description: "Track scrim team objectives." },
   { key: "scrims", label: "Scrims", path: "scrims", title: "Scrim", description: "Organize your scrim sessions and track reviews." },
+  { key: "soloq-objectives", label: "SoloQ Objectives", path: "soloq-objectives", title: "SoloQ Objectives", description: "Track individual SoloQ goals." },
   { key: "draft", label: "Draft", path: "draft", title: "Draft Prep", description: "Prepare and analyze draft scenarios for upcoming matches." },
   { key: "map", label: "Strat Map", path: "map", title: "Map Planner", description: "Plan strategies, vision control and rotations on the map." },
   { key: "replay-book", label: "Replay Book", path: "replay-book", title: "Replay Book", description: "Track and analyze your replay book." }
@@ -50,11 +52,12 @@ export default function Performance() {
       <div className="flex-1 overflow-auto">
         <Routes>
           <Route path="scrims/*" element={<ScrimHub />} />
-          <Route path="objectives" element={<Objectives />} />
+          <Route path="team-objectives" element={<TeamObjectives />} />
+          <Route path="soloq-objectives/*" element={<SoloQObjectives />} />
           <Route path="draft/*" element={<Draft />} />
           <Route path="map/*" element={<StratMap />} />
           <Route path="replay-book/*" element={<ReplayBook />} />
-          <Route path="*" element={<Navigate to="objectives" replace />} />
+          <Route path="*" element={<Navigate to="team-objectives" replace />} />
         </Routes>
       </div>
     </div>

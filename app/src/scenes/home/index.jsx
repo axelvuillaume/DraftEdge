@@ -343,7 +343,7 @@ function ObjectivesScore() {
           <Target className="w-4 h-4 text-purple-400" />
           <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Objectives Scrims</h3>
         </div>
-        <button onClick={() => navigate("/performance/objectives")} className="text-[10px] text-slate-500 hover:text-purple-400 transition-colors flex items-center gap-0.5">
+        <button onClick={() => navigate("/performance/team-objectives")} className="text-[10px] text-slate-500 hover:text-purple-400 transition-colors flex items-center gap-0.5">
           Details <ChevronRight className="w-3 h-3" />
         </button>
       </div>

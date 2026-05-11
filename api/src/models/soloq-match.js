@@ -53,6 +53,11 @@ const Schema = new mongoose.Schema(
     championId: { type: Number },
     championTransform: { type: Number }, // Kayn: 0=None, 1=Slayer, 2=Assassin
 
+    // Lane opponent (déduit des participants à l'ingestion)
+    opponentChampion: { type: String, trim: true },
+    opponentChampionId: { type: Number },
+    opponentPuuid: { type: String, trim: true },
+
     // ==================== RESULT ====================
     win: { type: Boolean },
     gameEndedInSurrender: { type: Boolean },

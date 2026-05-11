@@ -185,6 +185,123 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
   }
 });
 
+router.post('/aggregate-history', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    if (!req.body.solo_objectif_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const obj = await SoloObjectif.findById(req.body.solo_objectif_id);
+    if (!obj || obj.type !== 'aggregate') return res.status(200).send({ ok: true, data: [] });
+
+    const { fn, period, minGames } = obj.aggregate || {};
+    const { metric, operator, value } = obj.rule || {};
+    if (!fn || !period || !metric) return res.status(200).send({ ok: true, data: [] });
+
+    const matchPuuidQuery = {};
+    if (obj.account?.puuid) matchPuuidQuery.puuid = obj.account.puuid;
+    if (!obj.account?.puuid) {
+      const player = await Player.findById(obj.player_id);
+      if (player?.puuid) matchPuuidQuery.puuid = player.puuid;
+    }
+
+    const baseMatchQuery = { player_id: obj.player_id, queueId: 420, ...matchPuuidQuery };
+    if (obj.champions?.length > 0) baseMatchQuery.championName = { $in: obj.champions };
+    if (obj.role) baseMatchQuery.teamPosition = obj.role;
+    if (obj.side) baseMatchQuery.side = obj.side;
+
+    const now = new Date();
+    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const startOfWeek = (d) => {
+      const day = d.getDay();
+      const start = startOfDay(d);
+      start.setDate(start.getDate() - (day === 0 ? 6 : day - 1));
+      return start;
+    };
+
+    const buckets = [];
+    if (period === 'total') {
+      buckets.push({ start: new Date(obj.createdAt), end: now });
+    }
+    if (period === 'daily') {
+      let cursor = startOfDay(new Date(obj.createdAt));
+      const today = startOfDay(now);
+      while (cursor <= today) {
+        const end = new Date(cursor);
+        end.setDate(end.getDate() + 1);
+        buckets.push({ start: new Date(cursor), end });
+        cursor = end;
+      }
+    }
+    if (period === 'weekly') {
+      let cursor = startOfWeek(new Date(obj.createdAt));
+      const thisWeek = startOfWeek(now);
+      while (cursor <= thisWeek) {
+        const end = new Date(cursor);
+        end.setDate(end.getDate() + 7);
+        buckets.push({ start: new Date(cursor), end });
+        cursor = end;
+      }
+    }
+
+    const data = [];
+    for (const b of buckets) {
+      const matches = await SoloqMatch.find({ ...baseMatchQuery, gameDate: { $gte: b.start, $lt: b.end } }).sort({ gameDate: -1 });
+
+      let current;
+      let championsPlayed = null;
+      if (metric === 'games_played') current = matches.length;
+      if (current === undefined && metric === 'championId' && fn === 'count') {
+        championsPlayed = [...new Set(matches.map((m) => m.championName).filter(Boolean))];
+        current = championsPlayed.length;
+      }
+      if (current === undefined && fn === 'count') current = matches.filter((m) => resolveMetric(m, metric) === 1).length;
+      if (current === undefined && fn === 'sum') current = matches.reduce((acc, m) => acc + (resolveMetric(m, metric) || 0), 0);
+      if (current === undefined && fn === 'avg') {
+        if (minGames && matches.length < minGames) current = null;
+        if (current === undefined && matches.length === 0) current = null;
+        if (current === undefined) current = matches.reduce((acc, m) => acc + (resolveMetric(m, metric) || 0), 0) / matches.length;
+      }
+
+      let success = false;
+      if (current != null) {
+        if (operator === '>') success = current > value;
+        if (operator === '>=') success = current >= value;
+        if (operator === '<') success = current < value;
+        if (operator === '<=') success = current <= value;
+        if (operator === '==') success = current === value;
+      }
+
+      const champStats = {};
+      let wins = 0;
+      for (const m of matches) {
+        if (m.championName) {
+          if (!champStats[m.championName]) champStats[m.championName] = { games: 0, wins: 0 };
+          champStats[m.championName].games++;
+          if (m.win) champStats[m.championName].wins++;
+        }
+        if (m.win) wins++;
+      }
+      const champions = Object.entries(champStats).map(([name, s]) => ({ name, games: s.games, wins: s.wins, losses: s.games - s.wins })).sort((a, b) => b.games - a.games);
+
+      data.push({
+        period_start: b.start,
+        period_end: b.end,
+        current: current != null ? Math.round(current * 100) / 100 : null,
+        target: value,
+        success,
+        total_games: matches.length,
+        wins,
+        champions_played: championsPlayed,
+        champions,
+      });
+    }
+
+    return res.status(200).send({ ok: true, data });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 router.post('/search', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     let query = {};
