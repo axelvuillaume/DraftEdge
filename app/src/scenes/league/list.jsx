@@ -9,7 +9,11 @@ export default function List() {
   const { team } = useStore()
   const [teams, setTeams] = useState([])
   const [league, setLeague] = useState(null)
-  const [filters, setFilters] = useState({ search: "", sort: "lp" })
+  const [filters, setFilters] = useState({ search: "", sort: "lp", group: "" })
+
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, group: "" }))
+  }, [team?.league_id])
 
   const fetchLeague = async () => {
     try {
@@ -39,6 +43,10 @@ export default function List() {
     if (team?.league_id) fetchTeams()
   }, [team, filters])
 
+  useEffect(() => {
+    if (league?.has_points === false && filters.sort === "points") setFilters(prev => ({ ...prev, sort: "lp" }))
+  }, [league?.has_points])
+
   if (!team?.league_id) return <LeagueSelector />
   if (!league) return null
 
@@ -49,10 +57,10 @@ export default function List() {
         <div className="flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-amber-500" />
-                {league.name}
-              </h1>
+                <LeagueSwitcher />
+              </div>
               {league.description && <p className="text-sm text-slate-400 mt-0.5">{league.description}</p>}
               <div className="flex items-center gap-3 mt-1">
                 {league.region && <span className="text-xs text-slate-500">{league.region}</span>}
@@ -74,7 +82,7 @@ export default function List() {
           </div>
         </div>
 
-        {/* Sort */}
+        {/* Sort + Group filter */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <span className="text-xs text-slate-500">Sort by:</span>
           <div className="relative">
@@ -85,10 +93,11 @@ export default function List() {
             >
               <option value="">Alphabet</option>
               <option value="lp">Total LP</option>
-              <option value="points">Points</option>
+              {league.has_points !== false && <option value="points">Points</option>}
             </select>
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
           </div>
+          <GroupFilter filters={filters} setFilters={setFilters} />
         </div>
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden flex-1 min-h-0 flex flex-col">
           <table className="w-full table-fixed">
@@ -96,10 +105,10 @@ export default function List() {
               <tr className="border-b border-slate-700/50">
                 <th className="w-[5%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-2 py-3">#</th>
                 <th className="w-[25%] text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Team</th>
-                <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Total LP</th>
-                <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Points</th>
-                <th className="w-[20%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Coach</th>
-                <th className="w-[20%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Manager</th>
+                <th className={`${league.has_points === false ? "w-[25%]" : "w-[15%]"} text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3`}>Total LP</th>
+                {league.has_points !== false && <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Points</th>}
+                <th className={`${league.has_points === false ? "w-[25%]" : "w-[20%]"} text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3`}>Coach</th>
+                <th className={`${league.has_points === false ? "w-[20%]" : "w-[20%]"} text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3`}>Manager</th>
               </tr>
             </thead>
           </table>
@@ -108,7 +117,7 @@ export default function List() {
               <tbody>
                 {teams.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center text-slate-500 py-12 text-sm">
+                    <td colSpan={league.has_points === false ? 5 : 6} className="text-center text-slate-500 py-12 text-sm">
                       {filters.search ? "No teams match your search" : "No teams in this league yet"}
                     </td>
                   </tr>
@@ -121,13 +130,15 @@ export default function List() {
                       <td className="w-[25%] px-6 py-4">
                         <span className="text-white font-medium text-sm truncate">{t.name}</span>
                       </td>
-                      <td className="w-[15%] px-4 py-4 text-center">
+                      <td className={`${league.has_points === false ? "w-[25%]" : "w-[15%]"} px-4 py-4 text-center`}>
                         <span className="text-amber-400 text-sm font-medium">{t.total_lp || 0}</span>
                       </td>
-                      <td className="w-[15%] px-4 py-4 text-center">
-                        <span className="text-amber-400 text-sm font-medium">{t.points || 0}</span>
-                      </td>
-                      <td className="w-[20%] px-4 py-4 text-center">
+                      {league.has_points !== false && (
+                        <td className="w-[15%] px-4 py-4 text-center">
+                          <span className="text-amber-400 text-sm font-medium">{t.points || 0}</span>
+                        </td>
+                      )}
+                      <td className={`${league.has_points === false ? "w-[25%]" : "w-[20%]"} px-4 py-4 text-center`}>
                         <span className="text-slate-400 text-sm truncate">{t.contacts?.find((c) => c.role === "Coach")?.name || t.contacts?.find((c) => c.role === "Coach")?.discord || "—"}</span>
                       </td>
                       <td className="w-[20%] px-4 py-4 text-center">
@@ -141,6 +152,93 @@ export default function List() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function LeagueSwitcher() {
+  const { team, setTeam } = useStore()
+  const [allLeagues, setAllLeagues] = useState([])
+
+  const fetchAllLeagues = async () => {
+    try {
+      const { ok, data, code } = await api.post("/league/search")
+      if (!ok) return toast.error(code || "Failed to fetch leagues")
+      setAllLeagues(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch leagues")
+    }
+  }
+
+  useEffect(() => {
+    fetchAllLeagues()
+  }, [])
+
+  const handleChange = async (e) => {
+    const newId = e.target.value
+    if (!newId || newId === team.league_id) return
+    try {
+      const selected = allLeagues.find(l => l._id === newId)
+      const { ok, code } = await api.put(`/team/${team._id}`, { ...team, league_id: newId, league_name: selected?.name || "" })
+      if (!ok) return toast.error(code || "Failed to update team")
+      setTeam({ ...team, league_id: newId, league_name: selected?.name || "" })
+      toast.success("League updated")
+    } catch (error) {
+      toast.error(error.code || "Failed to update team")
+    }
+  }
+
+  return (
+    <div className="relative">
+      <select
+        value={team.league_id || ""}
+        onChange={handleChange}
+        className="appearance-none bg-transparent text-xl font-bold text-white pr-7 cursor-pointer focus:outline-none hover:text-amber-400 transition-colors"
+      >
+        {allLeagues.map(l => (
+          <option key={l._id} value={l._id} className="bg-slate-800 text-white font-normal">
+            {l.name}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500 pointer-events-none" />
+    </div>
+  )
+}
+
+function GroupFilter({ filters, setFilters }) {
+  const { team } = useStore()
+  const [groups, setGroups] = useState([])
+
+  const fetchGroups = async () => {
+    try {
+      const { ok, data, code } = await api.post("/team-league/groups", { league_id: team?.league_id })
+      if (!ok) return toast.error(code || "Failed to fetch groups")
+      setGroups(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch groups")
+    }
+  }
+
+  useEffect(() => {
+    if (team?.league_id) fetchGroups()
+  }, [team?.league_id])
+
+  if (groups.length === 0) return null
+
+  return (
+    <div className="relative">
+      <select
+        value={filters.group}
+        onChange={e => setFilters(prev => ({ ...prev, group: e.target.value }))}
+        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600/50 focus:border-amber-500 focus:outline-none appearance-none pr-8 cursor-pointer"
+      >
+        <option value="">All groups</option>
+        {groups.map(g => (
+          <option key={g} value={g}>Group {g}</option>
+        ))}
+      </select>
+      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
     </div>
   )
 }

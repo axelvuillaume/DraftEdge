@@ -8,6 +8,7 @@ const Schema = new mongoose.Schema(
     description: { type: String },
     region: { type: String },
     tier: { type: String },
+    has_points: { type: Boolean, default: true },
   },
   { timestamps: true },
 );
