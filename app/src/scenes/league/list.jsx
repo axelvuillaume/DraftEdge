@@ -105,10 +105,11 @@ export default function List() {
               <tr className="border-b border-slate-700/50">
                 <th className="w-[5%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-2 py-3">#</th>
                 <th className="w-[25%] text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Team</th>
-                <th className={`${league.has_points === false ? "w-[25%]" : "w-[15%]"} text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3`}>Total LP</th>
-                {league.has_points !== false && <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Points</th>}
-                <th className={`${league.has_points === false ? "w-[25%]" : "w-[20%]"} text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3`}>Coach</th>
-                <th className={`${league.has_points === false ? "w-[20%]" : "w-[20%]"} text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3`}>Manager</th>
+                <th className={`${league.has_points === false ? "w-[20%]" : "w-[12%]"} text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3`}>Total LP</th>
+                {league.has_points !== false && <th className="w-[10%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Record</th>}
+                {league.has_points !== false && <th className="w-[10%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Points</th>}
+                <th className={`${league.has_points === false ? "w-[25%]" : "w-[18%]"} text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3`}>Coach</th>
+                <th className={`${league.has_points === false ? "w-[25%]" : "w-[20%]"} text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3`}>Manager</th>
               </tr>
             </thead>
           </table>
@@ -117,7 +118,7 @@ export default function List() {
               <tbody>
                 {teams.length === 0 ? (
                   <tr>
-                    <td colSpan={league.has_points === false ? 5 : 6} className="text-center text-slate-500 py-12 text-sm">
+                    <td colSpan={league.has_points === false ? 5 : 7} className="text-center text-slate-500 py-12 text-sm">
                       {filters.search ? "No teams match your search" : "No teams in this league yet"}
                     </td>
                   </tr>
@@ -130,18 +131,23 @@ export default function List() {
                       <td className="w-[25%] px-6 py-4">
                         <span className="text-white font-medium text-sm truncate">{t.name}</span>
                       </td>
-                      <td className={`${league.has_points === false ? "w-[25%]" : "w-[15%]"} px-4 py-4 text-center`}>
+                      <td className={`${league.has_points === false ? "w-[20%]" : "w-[12%]"} px-4 py-4 text-center`}>
                         <span className="text-amber-400 text-sm font-medium">{t.total_lp || 0}</span>
                       </td>
                       {league.has_points !== false && (
-                        <td className="w-[15%] px-4 py-4 text-center">
+                        <td className="w-[10%] px-4 py-4 text-center">
+                          <span className="text-slate-300 text-sm font-medium">{t.wins || 0}-{t.losses || 0}</span>
+                        </td>
+                      )}
+                      {league.has_points !== false && (
+                        <td className="w-[10%] px-4 py-4 text-center">
                           <span className="text-amber-400 text-sm font-medium">{t.points || 0}</span>
                         </td>
                       )}
-                      <td className={`${league.has_points === false ? "w-[25%]" : "w-[20%]"} px-4 py-4 text-center`}>
+                      <td className={`${league.has_points === false ? "w-[25%]" : "w-[18%]"} px-4 py-4 text-center`}>
                         <span className="text-slate-400 text-sm truncate">{t.contacts?.find((c) => c.role === "Coach")?.name || t.contacts?.find((c) => c.role === "Coach")?.discord || "—"}</span>
                       </td>
-                      <td className="w-[20%] px-4 py-4 text-center">
+                      <td className={`${league.has_points === false ? "w-[25%]" : "w-[20%]"} px-4 py-4 text-center`}>
                         <span className="text-slate-400 text-sm truncate">{t.contacts?.find((c) => c.role === "Manager")?.name || t.contacts?.find((c) => c.role === "Manager")?.discord || "—"}</span>
                       </td>
                     </tr>

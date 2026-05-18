@@ -33,6 +33,7 @@ const TEAMS = [
   { group: "3.2", name: "TeamBash", multi_opgg: "https://op.gg/fr/lol/multisearch/euw?summoners=Boppa%23Big%2CFrozenKing%23Astra%2Cabysrising%23EUW%2CSantiago+Carlos%23SANTI%2CeBay+Ben%23eBay" },
 
   // ============ Group 3.3 ============
+  { group: "3.3", name: "Cloud eSport", multi_opgg: "https://op.gg/fr/lol/multisearch/euw?summoners=9thMay%23twtv%2CCLD+Dawi%23GRE%2C1334mat%23MMMMM%2CCLD+Pooya%23010%2CCLD+Tyrant%23PRM" },
   { group: "3.3", name: "300 Black", multi_opgg: "https://op.gg/fr/lol/multisearch/euw?summoners=Tayto%23TOP%2Cpauleman007%23JGL%2CCorvus%23DQ9%2CAgeile%23EUW%2CVeyytix%23EUW" },
   { group: "3.3", name: "Kanji Kin", multi_opgg: "https://op.gg/fr/lol/multisearch/euw?summoners=NeptuneX%23EUW%2Cclomnxx%23wipe%2CSunam%230000%2C%E3%82%A8%E3%82%B4%E3%82%A4%E3%82%B9%E3%83%88%231210%2CHeaders+Kitten%23Cyrcl" },
   { group: "3.3", name: "Eintracht Spandau II", multi_opgg: "https://op.gg/fr/lol/multisearch/euw?summoners=Siegbert+Schn%C3%B6sl%23REICH%2CV9+Autophil%23EUW%2CV9+Bladeshow%23EUW%2CReval%23EUW%2CPhilly+Westside%23MEGA" },
@@ -170,7 +171,10 @@ async function main() {
   const allTeams = await TeamLeague.find({ league_id: league._id.toString() });
   for (const tl of allTeams) {
     const masters = await Player.find({ team_league_id: tl._id.toString(), is_league: true, active: true, current_tier: { $in: MASTER_TIERS } });
-    const totalLp = masters.sort((a, b) => (b.current_lp || 0) - (a.current_lp || 0)).slice(0, 5).reduce((sum, p) => sum + (p.current_lp || 0), 0);
+    const totalLp = masters
+      .sort((a, b) => (b.current_lp || 0) - (a.current_lp || 0))
+      .slice(0, 5)
+      .reduce((sum, p) => sum + (p.current_lp || 0), 0);
     await TeamLeague.findByIdAndUpdate(tl._id, { total_lp: totalLp });
     console.log(`  [${tl.group}] ${tl.name}: ${totalLp} LP (${masters.length} master+ players)`);
   }

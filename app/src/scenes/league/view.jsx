@@ -39,9 +39,19 @@ export default function View() {
           <button onClick={() => navigate("/league")} className="p-2 text-slate-400 hover:text-white transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold text-white">{team.name}</h1>
-            {team.league_name && <p className="text-sm text-slate-400 mt-0.5">{team.league_name}</p>}
+            {team.league_name && <p className="text-sm text-slate-400 mt-0.5">{team.league_name}{team.group ? ` — Group ${team.group}` : ""}</p>}
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-center">
+              <div className="text-xs text-slate-400 uppercase tracking-wider">Record</div>
+              <div className="text-lg font-bold text-white">{team.wins || 0}-{team.losses || 0}</div>
+            </div>
+            <div className="px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-center">
+              <div className="text-xs text-slate-400 uppercase tracking-wider">Points</div>
+              <div className="text-lg font-bold text-amber-400">{team.points || 0}</div>
+            </div>
           </div>
         </div>
 
