@@ -775,14 +775,16 @@ export default function View() {
         </div>
 
         <h3 className="text-sm font-semibold text-slate-300 mt-4 mb-2">Notes</h3>
-        <DebounceInput
-          isTextArea
-          placeholder="Add a note..."
-          value={note}
-          onChange={e => saveNote(e.target.value)}
-          className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-2.5 py-1.5 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-xs resize-none"
-          rows={9}
-        />
+        {loaded && (
+          <DebounceInput
+            isTextArea
+            placeholder="Add a note..."
+            value={note}
+            onChange={e => saveNote(e.target.value)}
+            className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-2.5 py-1.5 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-xs resize-none"
+            rows={9}
+          />
+        )}
       </div>
     </div>
   )
