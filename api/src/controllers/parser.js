@@ -589,11 +589,11 @@ function processRoflData(metadata, filename, team_id) {
 router.post('/parse', upload.single('replay'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ ok: false, error: 'Aucun fichier fourni' });
+      return res.status(400).json({ ok: false, code: 'No file provided' });
     }
 
     if (!req.file.originalname.endsWith('.rofl')) {
-      return res.status(400).json({ ok: false, error: 'Le fichier doit être un .rofl' });
+      return res.status(400).json({ ok: false, code: 'File must be a .rofl' });
     }
 
     const metadata = parseRoflBuffer(req.file.buffer);
@@ -602,7 +602,7 @@ router.post('/parse', upload.single('replay'), async (req, res) => {
     res.json({ ok: true, data: { game: data.game, players: data.players } });
   } catch (error) {
     console.error('Erreur parsing ROFL:', error);
-    res.status(500).json({ ok: false, error: 'Erreur parsing', details: error.message });
+    res.status(500).json({ ok: false, code: 'Parsing error', details: error.message });
   }
 });
 
@@ -612,24 +612,24 @@ router.post('/parse', upload.single('replay'), async (req, res) => {
 router.post('/import', upload.single('replay'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ ok: false, error: 'Aucun fichier fourni' });
+      return res.status(400).json({ ok: false, code: 'No file provided' });
     }
 
     if (!req.file.originalname.endsWith('.rofl')) {
-      return res.status(400).json({ ok: false, error: 'Le fichier doit être un .rofl' });
+      return res.status(400).json({ ok: false, code: 'File must be a .rofl' });
     }
 
     const { team_id, team_name, team_side, opponent_id, opponent_name, name, session_id, session_name, folder_id, folder_name, draft_url, date, official } = req.body;
 
     if (!team_side || !['blue', 'red'].includes(team_side)) {
-      return res.status(400).json({ ok: false, error: 'team_side requis (blue ou red)' });
+      return res.status(400).json({ ok: false, code: 'team_side required (blue or red)' });
     }
 
     const metadata = parseRoflBuffer(req.file.buffer);
     const data = processRoflData(metadata, req.file.originalname, team_id);
 
     const existingGame = await Game.findOne({ game_fingerprint: data.game.game_fingerprint });
-    if (existingGame) return res.status(409).json({ ok: false, error: 'This game already exists', existing_game_id: existingGame._id });
+    if (existingGame) return res.status(409).json({ ok: false, code: 'This game already exists', existing_game_id: existingGame._id });
 
     // Enrichir les données Game
     data.game.team_id = team_id || null;
@@ -692,10 +692,10 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     console.error('Erreur import ROFL:', error);
 
     if (error.code === 11000) {
-      return res.status(409).json({ ok: false, error: 'This game already exists' });
+      return res.status(409).json({ ok: false, code: 'This game already exists' });
     }
 
-    res.status(500).json({ ok: false, error: 'Erreur import', details: error.message });
+    res.status(500).json({ ok: false, code: 'Import error', details: error.message });
   }
 });
 
