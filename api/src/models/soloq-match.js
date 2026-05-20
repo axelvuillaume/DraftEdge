@@ -22,7 +22,8 @@ const Schema = new mongoose.Schema(
     gameVersion: { type: String, trim: true }, // patch ex: 14.10.614.4526
     mapId: { type: Number }, // 11 = Summoner's Rift
     platformId: { type: String, trim: true }, // EUW1
-    queueId: { type: Number }, // 420 = SoloQ, 440 = Flex
+    queueId: { type: Number }, // 420 = SoloQ, 440 = Flex, 3130 = Tournament Draft
+    tournamentCode: { type: String, trim: true }, // rempli pour les games tournament code
 
     // ==================== CUSTOM DRAFTEDGE ====================
     player_id: { type: String, trim: true }, // ref vers Player._id

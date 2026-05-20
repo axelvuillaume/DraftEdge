@@ -420,7 +420,7 @@ function WinrateCorrelation({ results, playerId }) {
 
   const fetchMatches = async () => {
     try {
-      const { ok, data, code } = await api.post("/soloq-match/search", { player_id: playerId })
+      const { ok, data, code } = await api.post("/soloq-match/search", { player_id: playerId, queueId: 420 })
       if (!ok) return toast.error(code || "Failed to fetch matches")
       setMatches(data)
     } catch (error) {
@@ -504,7 +504,7 @@ function MatchupBreakdown({ results, playerId }) {
 
   const fetchMatches = async () => {
     try {
-      const { ok, data, code } = await api.post("/soloq-match/search", { player_id: playerId })
+      const { ok, data, code } = await api.post("/soloq-match/search", { player_id: playerId, queueId: 420 })
       if (!ok) return toast.error(code || "Failed to fetch matches")
       setMatches(data)
     } catch (error) {
