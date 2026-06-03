@@ -10,7 +10,19 @@
       "Bash(cp /Users/axelvuillaume/Documents/GitHub/DraftEdge/app/src/scenes/performance/objectives/index.jsx /Users/axelvuillaume/Documents/GitHub/DraftEdge/app/src/scenes/performance/team-objectives/index.jsx)",
       "Bash(cp /Users/axelvuillaume/Documents/GitHub/DraftEdge/app/src/scenes/performance/objectives/index.jsx /Users/axelvuillaume/Documents/GitHub/DraftEdge/app/src/scenes/performance/soloq-objectives/index.jsx)",
       "Bash(git add *)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(npx -y mongodb-mcp-server --version)",
+      "mcp__mongodb__list-databases",
+      "mcp__mongodb__list-collections",
+      "mcp__mongodb__collection-schema",
+      "mcp__mongodb__collection-indexes",
+      "mcp__mongodb__collection-storage-size",
+      "mcp__mongodb__count",
+      "mcp__mongodb__find",
+      "mcp__mongodb__aggregate",
+      "mcp__mongodb__db-stats",
+      "mcp__mongodb__explain",
+      "mcp__mongodb__export"
     ],
     "additionalDirectories": [
       "/tmp"
