@@ -51,7 +51,7 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <PatchCard />
+            {/* <PatchCard /> */}
             <MiniStats />
           </div>
         </div>
