@@ -52,7 +52,7 @@ export default function Performance() {
       <div className="flex-1 overflow-auto">
         <Routes>
           <Route path="scrims/*" element={<ScrimHub />} />
-          <Route path="team-objectives" element={<TeamObjectives />} />
+          <Route path="team-objectives/*" element={<TeamObjectives />} />
           <Route path="soloq-objectives/*" element={<SoloQObjectives />} />
           <Route path="draft/*" element={<Draft />} />
           <Route path="map/*" element={<StratMap />} />
