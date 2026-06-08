@@ -72,7 +72,8 @@ const buildObjective = (d, role, player) => ({
   team_name: player.team_name,
   player_id: player._id.toString(),
   player_name: player.game_name,
-  account: { puuid: player.puuid, game_name: player.game_name, tag_line: player.tag_line, region: player.region },
+  // No `account`: these are main-account objectives. The cron treats any objectif
+  // with `account.puuid` set as a smurf objectif and never evaluates it per-match.
 });
 
 const seedPlayerSoloObjectifs = (player) => {
