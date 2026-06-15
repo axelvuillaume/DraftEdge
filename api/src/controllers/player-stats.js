@@ -184,7 +184,7 @@ const getAllMetrics = (teamAgg, enemyAgg) => {
     result[cat] = getMetrics(teamAgg, enemyAgg, cat).map((m) => {
       let diff = m.enemies > 0 ? ((m.team - m.enemies) / m.enemies) * 100 : m.team > 0 ? 100 : 0;
       if (m.invert) diff = -diff;
-      return { name: m.name, team: m.team, enemies: m.enemies, diff: round1(diff) };
+      return { name: m.name, team: m.team, enemies: m.enemies, diff: round1(diff), invert: !!m.invert };
     });
   });
   return result;
@@ -856,6 +856,68 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
     players.sort((a, b) => (roleOrder[a.role] ?? 5) - (roleOrder[b.role] ?? 5));
 
     return res.status(200).send({ ok: true, data: { ...teamData, players } });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// Weekly progression - per-week team metric values (last 3 weeks) for a scope (team / role / player)
+router.post('/weekly_progression', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const filters = extractFilters(req.body);
+    const { gameIdFilter, gameQuery } = await buildGameFilters({ team_id: req.user.team_id, ...filters });
+    const games = await Game.find({ team_id: req.user.team_id, ...gameQuery });
+
+    const gameDateMap = {};
+    games.forEach((g) => {
+      gameDateMap[g._id.toString()] = g.date || g.createdAt || null;
+    });
+
+    const teamQuery = { team_id: req.user.team_id, opponent: false, ...gameIdFilter };
+    const opponentQuery = { team_id: req.user.team_id, opponent: true, ...gameIdFilter };
+    if (req.body.position) teamQuery.role = req.body.position;
+    if (req.body.puuid) teamQuery.puuid = req.body.puuid;
+    const playerStats = await PlayerStats.find(teamQuery);
+    const opponentStats = await PlayerStats.find(opponentQuery);
+
+    const teamKillsMap = buildTeamKillsMap(playerStats);
+    const opponentKillsMap = buildTeamKillsMap(opponentStats);
+
+    const weekStart = (date) => {
+      if (!date) return null;
+      const dt = new Date(date);
+      if (Number.isNaN(dt.getTime())) return null;
+      const day = (dt.getUTCDay() + 6) % 7;
+      dt.setUTCDate(dt.getUTCDate() - day);
+      dt.setUTCHours(0, 0, 0, 0);
+      return dt.getTime();
+    };
+
+    const weeks = [...new Set(playerStats.map((s) => weekStart(gameDateMap[s.game_id])).filter((w) => w != null))].sort((a, b) => a - b).slice(-3);
+
+    const categories = ['Vision', 'Income', 'Combat', 'Objectives', 'Pings'];
+    const metricsOut = {};
+    categories.forEach((cat) => {
+      metricsOut[cat] = {};
+    });
+
+    weeks.forEach((wk) => {
+      const teamAgg = aggregateStats(playerStats.filter((s) => weekStart(gameDateMap[s.game_id]) === wk), teamKillsMap);
+      const enemyAgg = aggregateStats(opponentStats.filter((s) => weekStart(gameDateMap[s.game_id]) === wk), opponentKillsMap);
+      categories.forEach((cat) => {
+        getMetrics(teamAgg, enemyAgg, cat).forEach((m) => {
+          if (!metricsOut[cat][m.name]) metricsOut[cat][m.name] = [];
+          metricsOut[cat][m.name].push(m.team);
+        });
+      });
+    });
+
+    return res.status(200).send({
+      ok: true,
+      data: { weeks: weeks.map((_, i) => `W${i + 1}`), weekDates: weeks.map((ts) => new Date(ts).toISOString()), metrics: metricsOut },
+      total: weeks.length,
+    });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });

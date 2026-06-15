@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, ChevronDown } from "lucide-react"
 import api from "@/services/api"
 import { getChampionIcon } from "@/utils"
 
@@ -361,7 +361,6 @@ function ObjectiveDetails({ objective }) {
 
       <ResultsChart results={results} target={objective.rule?.value} />
       <WinrateCorrelation results={results} playerId={objective.player_id} />
-      <ChampionBreakdown results={results} />
       <MatchupBreakdown results={results} playerId={objective.player_id} />
     </div>
   )
@@ -459,7 +458,7 @@ function WinrateCorrelation({ results, playerId }) {
   return (
     <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-slate-400 text-sm font-medium">Impact sur la victoire</p>
+        <p className="text-slate-400 text-sm font-medium">Win impact</p>
         {lift != null && (
           <span className={`text-xs font-bold tabular-nums ${lift > 0 ? "text-emerald-400" : lift < 0 ? "text-red-400" : "text-slate-400"}`}>
             {lift > 0 ? "+" : ""}
@@ -469,7 +468,7 @@ function WinrateCorrelation({ results, playerId }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4">
-          <p className="text-emerald-400 text-[10px] uppercase tracking-wide mb-1">Objectif réussi</p>
+          <p className="text-emerald-400 text-[10px] uppercase tracking-wide mb-1">Objective hit</p>
           {succRate != null ? (
             <>
               <p className="text-emerald-400 text-2xl font-bold tabular-nums">{succRate}% WR</p>
@@ -482,7 +481,7 @@ function WinrateCorrelation({ results, playerId }) {
           )}
         </div>
         <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
-          <p className="text-red-400 text-[10px] uppercase tracking-wide mb-1">Objectif échoué</p>
+          <p className="text-red-400 text-[10px] uppercase tracking-wide mb-1">Objective missed</p>
           {failRate != null ? (
             <>
               <p className="text-red-400 text-2xl font-bold tabular-nums">{failRate}% WR</p>
@@ -549,76 +548,47 @@ function MatchupBreakdown({ results, playerId }) {
 
   return (
     <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
-      <p className="text-slate-400 text-sm font-medium mb-3">Matchups (champion joué vs adversaire)</p>
+      <p className="text-slate-400 text-sm font-medium mb-3">Matchups (champion played vs opponent)</p>
       <div className="space-y-4">
         {Object.entries(byChampion).map(([champion, oppRows]) => (
-          <div key={champion}>
-            <div className="flex items-center gap-2 mb-2">
-              <img src={getChampionIcon(champion)} alt={champion} className="w-6 h-6 rounded" />
-              <span className="text-white text-sm font-semibold">{champion}</span>
-              <span className="text-slate-600 text-xs">{oppRows.reduce((a, r) => a + r.games, 0)} games</span>
-            </div>
-            <div className="space-y-1 pl-2">
-              {oppRows.map(row => (
-                <div key={row.opponent} className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-slate-700/30">
-                  <span className="text-slate-500 text-xs shrink-0">vs</span>
-                  <img src={getChampionIcon(row.opponent)} alt={row.opponent} className="w-6 h-6 rounded shrink-0" />
-                  <span className="text-white text-xs font-medium w-28 truncate">{row.opponent}</span>
-                  <span className="text-slate-500 text-xs w-16 tabular-nums">
-                    {row.success}/{row.games}
-                  </span>
-                  {row.avg != null && <span className="text-slate-400 text-xs w-20 tabular-nums">avg {row.avg.toFixed(1)}</span>}
-                  <div className="flex-1 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${row.rate >= 70 ? "bg-emerald-400" : row.rate >= 50 ? "bg-amber-400" : "bg-red-400"}`} style={{ width: `${row.rate}%` }} />
-                  </div>
-                  <span className={`text-xs font-bold tabular-nums w-10 text-right ${row.rate >= 70 ? "text-emerald-400" : row.rate >= 50 ? "text-amber-300" : "text-red-400"}`}>{row.rate}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <ChampionMatchups key={champion} champion={champion} oppRows={oppRows} />
         ))}
       </div>
     </div>
   )
 }
 
-function ChampionBreakdown({ results }) {
-  const byChamp = {}
-  for (const r of results) {
-    if (!r.champion) continue
-    if (!byChamp[r.champion]) byChamp[r.champion] = { games: 0, success: 0, sum: 0, count: 0 }
-    byChamp[r.champion].games++
-    if (r.success) byChamp[r.champion].success++
-    if (r.actual_value != null) {
-      byChamp[r.champion].sum += r.actual_value
-      byChamp[r.champion].count++
-    }
-  }
-  const rows = Object.entries(byChamp)
-    .map(([champion, s]) => ({ champion, games: s.games, success: s.success, rate: Math.round((s.success / s.games) * 100), avg: s.count > 0 ? s.sum / s.count : null }))
-    .sort((a, b) => b.games - a.games)
-
-  if (rows.length === 0) return null
+function ChampionMatchups({ champion, oppRows }) {
+  const [open, setOpen] = useState(false)
 
   return (
-    <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
-      <p className="text-slate-400 text-sm font-medium mb-3">Par champion</p>
-      <div className="space-y-1">
-        {rows.map(row => (
-          <div key={row.champion} className="flex items-center gap-3 px-2 py-2 rounded hover:bg-slate-700/30">
-            <img src={getChampionIcon(row.champion)} alt={row.champion} className="w-8 h-8 rounded shrink-0" />
-            <span className="text-white text-sm font-medium w-32 truncate">{row.champion}</span>
-            <span className="text-slate-500 text-xs w-20 tabular-nums">
-              {row.success}/{row.games}
-            </span>
-            {row.avg != null && <span className="text-slate-400 text-xs w-24 tabular-nums">avg {row.avg.toFixed(1)}</span>}
-            <div className="flex-1 h-2 bg-slate-700/50 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full ${row.rate >= 70 ? "bg-emerald-400" : row.rate >= 50 ? "bg-amber-400" : "bg-red-400"}`} style={{ width: `${row.rate}%` }} />
+    <div>
+      <button onClick={() => setOpen(o => !o)} className="flex items-center gap-2 mb-2 w-full group">
+        <img src={getChampionIcon(champion)} alt={champion} className="w-6 h-6 rounded" />
+        <span className="text-white text-sm font-semibold group-hover:text-emerald-400 transition-colors">{champion}</span>
+        <span className="text-slate-600 text-xs">{oppRows.reduce((a, r) => a + r.games, 0)} games</span>
+        <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${open ? "" : "-rotate-90"}`} />
+      </button>
+      {open && (
+        <div className="space-y-1 pl-2">
+          {oppRows.map(row => (
+            <div key={row.opponent} className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-slate-700/30">
+              <span className="text-slate-500 text-xs shrink-0">vs</span>
+              <img src={getChampionIcon(row.opponent)} alt={row.opponent} className="w-6 h-6 rounded shrink-0" />
+              <span className="text-white text-xs font-medium w-28 truncate">{row.opponent}</span>
+              <span className="text-slate-500 text-xs w-16 tabular-nums">
+                {row.success}/{row.games}
+              </span>
+              {row.avg != null && <span className="text-slate-400 text-xs w-20 tabular-nums">avg {row.avg.toFixed(1)}</span>}
+              <div className="flex-1 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${row.rate >= 70 ? "bg-emerald-400" : row.rate >= 50 ? "bg-amber-400" : "bg-red-400"}`} style={{ width: `${row.rate}%` }} />
+              </div>
+              <span className={`text-xs font-bold tabular-nums w-10 text-right ${row.rate >= 70 ? "text-emerald-400" : row.rate >= 50 ? "text-amber-300" : "text-red-400"}`}>{row.rate}%</span>
             </div>
-            <span className={`text-sm font-bold tabular-nums w-12 text-right ${row.rate >= 70 ? "text-emerald-400" : row.rate >= 50 ? "text-amber-300" : "text-red-400"}`}>{row.rate}%</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
+

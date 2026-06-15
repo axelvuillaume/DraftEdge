@@ -4,21 +4,27 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import { getChampionIcon } from "@/utils"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon, PingsIcon } from "@/components/icons/performance-icons"
-import { ChevronLeft, ChevronDown, Radar, Table2, Search } from "lucide-react"
-import { useNavigate } from "react-router-dom"
+import { ChevronLeft, ChevronDown, Radar, Table2, Search, Users } from "lucide-react"
 
 const ROLE_TO_POSITION = { top: "top", jungle: "jng", mid: "mid", bottom: "bot", support: "sup" }
 
+const ROLE_META = {
+  top: { pos: "TOP", color: "#f59e0b" },
+  jungle: { pos: "JNG", color: "#10b981" },
+  mid: { pos: "MID", color: "#3b82f6" },
+  bottom: { pos: "BOT", color: "#ec4899" },
+  support: { pos: "SUP", color: "#a855f7" }
+}
+
 const CATEGORIES = [
-  { id: "Vision", icon: PatternIcon, color: "#0ea5e9" },
-  { id: "Income", icon: ScalingIcon, color: "#a855f7" },
-  { id: "Combat", icon: CombatIcon, color: "#3b82f6" },
-  { id: "Objectives", icon: ObjectivesIcon, color: "#f97316" },
-  { id: "Pings", icon: PingsIcon, color: "#ec4899" }
+  { id: "Vision", initial: "V", color: "#0ea5e9", icon: PatternIcon },
+  { id: "Income", initial: "I", color: "#a855f7", icon: ScalingIcon },
+  { id: "Combat", initial: "C", color: "#3b82f6", icon: CombatIcon },
+  { id: "Objectives", initial: "O", color: "#f97316", icon: ObjectivesIcon },
+  { id: "Pings", initial: "P", color: "#ec4899", icon: PingsIcon }
 ]
 
 export default function StatsV2() {
-  const navigate = useNavigate()
   const { searchNavigation, setSearchNavigation, globalFilters } = useStore()
   const [teamData, setTeamData] = useState(null)
   const [activePlayer, setActivePlayer] = useState(null)
@@ -36,6 +42,8 @@ export default function StatsV2() {
   const [officialSplitStats, setOfficialSplitStats] = useState(null)
   const [proGames, setProGames] = useState(null)
   const [soloqGames, setSoloqGames] = useState(null)
+  const [weeklyData, setWeeklyData] = useState(null)
+  const [rightTab, setRightTab] = useState("prog")
 
   const fetchStats = async () => {
     try {
@@ -100,11 +108,25 @@ export default function StatsV2() {
     }
   }
 
+  const fetchWeeklyProgression = async (position, puuid) => {
+    try {
+      const body = { ...globalFilters }
+      if (position) body.position = position
+      if (puuid) body.puuid = puuid
+      const { ok, data, code } = await api.post("/playerstats/weekly_progression", body)
+      if (!ok) return toast.error(code || "Failed to fetch progression")
+      setWeeklyData(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch progression")
+    }
+  }
+
   useEffect(() => {
     fetchStats()
     fetchProStats()
     fetchSoloqStats(null, null)
     fetchOfficialSplit()
+    fetchWeeklyProgression(null, null)
   }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   useEffect(() => {
@@ -112,6 +134,7 @@ export default function StatsV2() {
     fetchProStats(activePlayer?.role || null, champion)
     fetchSoloqStats(activePlayer?.role || null, activePlayer?.puuid || null, champion)
     fetchOfficialSplit(activePlayer?.role || null, champion, activePlayer?.puuid || null)
+    fetchWeeklyProgression(activePlayer?.role || null, activePlayer?.puuid || null)
   }, [activePlayer?.role, activePlayer?.puuid, activeChampion?.name, selectedLeagues, proSubMode, selectedProTeam, selectedProPlayer])
 
   useEffect(() => {
@@ -163,43 +186,82 @@ export default function StatsV2() {
   }
 
   const currentData = activeEnemyChampion || activeChampion || activePlayer || teamData
+  const scope = activePlayer ? activePlayer.role : "team"
+  const scopeName = activePlayer ? activePlayer.name : teamData.name
   const proCompareLabel = proSubMode === "team" ? selectedProTeam || "Pro Avg" : proSubMode === "player" ? selectedProPlayer?.name || "Pro Avg" : "Pro Avg"
+  const activeCat = CATEGORIES.find(c => c.id === activeCategory)
+  const compareLabel = compareMode === "scrim" ? "Scrim" : compareMode === "pro" ? proCompareLabel : compareMode === "soloq" ? "SoloQ" : "Non-Offi"
+
+  const round1 = v => Math.round(v * 10) / 10
+  const baseMetrics = currentData.metrics?.[activeCategory] || []
+
+  const getCompareMetrics = (source, metrics) =>
+    metrics.map(m => {
+      const val = source?.[m.name]
+      if (val === "-") return { ...m, unavailable: true }
+      if (val == null) return m
+      return { ...m, enemies: val, diff: round1(val > 0 ? ((m.team - val) / val) * 100 : m.team > 0 ? 100 : 0) }
+    })
+
+  const buildOfficialMetrics = (official, nonOfficial, metrics) =>
+    metrics.map(m => {
+      const offiVal = official?.[m.name]
+      const nonOffiVal = nonOfficial?.[m.name]
+      if (offiVal == null && nonOffiVal == null) return m
+      const team = offiVal ?? 0
+      const enemies = nonOffiVal ?? 0
+      return { ...m, team, enemies, diff: round1(enemies > 0 ? ((team - enemies) / enemies) * 100 : team > 0 ? 100 : 0) }
+    })
+
+  const noCompareData =
+    (compareMode === "pro" && !proGames) ||
+    (compareMode === "soloq" && !soloqGames) ||
+    (compareMode === "offi" && (!officialSplitStats || !officialSplitStats.officialGames)) ||
+    (compareMode === "pro" && proStats?.[activeCategory] === "No data")
+
+  const activeCompareMetrics =
+    compareMode === "offi" && officialSplitStats?.official?.[activeCategory] && officialSplitStats?.nonOfficial?.[activeCategory]
+      ? buildOfficialMetrics(officialSplitStats.official[activeCategory], officialSplitStats.nonOfficial[activeCategory], baseMetrics)
+      : compareMode === "pro" && proStats?.[activeCategory]
+        ? getCompareMetrics(proStats[activeCategory], baseMetrics)
+        : compareMode === "soloq" && soloqStats?.[activeCategory]
+          ? getCompareMetrics(soloqStats[activeCategory], baseMetrics)
+          : baseMetrics
 
   return (
-    <div className="h-[calc(100vh-200px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
-      <div className="max-w-[1800px] mx-auto w-full">
-        <Breadcrumb
+    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6 min-h-full">
+      <div className="max-w-[1500px] mx-auto w-full">
+        <ScopeRail
           teamData={teamData}
-          activePlayer={activePlayer}
-          activeChampion={activeChampion}
-          activeEnemyChampion={activeEnemyChampion}
-          onTeamClick={() => {
+          scope={scope}
+          onSelectTeam={() => {
             setActivePlayer(null)
             setActiveChampion(null)
             setActiveEnemyChampion(null)
           }}
-          onPlayerChange={player => {
+          onSelectPlayer={player => {
             setActivePlayer(player)
             setActiveChampion(null)
             setActiveEnemyChampion(null)
           }}
-          onChampionChange={setActiveChampion}
+        />
+
+        <Breadcrumb
+          scopeName={scopeName}
+          scopeGames={currentData.games}
+          activeChampion={activeChampion}
+          activeEnemyChampion={activeEnemyChampion}
           onBack={() => {
-            if (activeEnemyChampion) {
-              setActiveEnemyChampion(null)
-            } else if (activeChampion) {
-              setActiveChampion(null)
-            } else if (activePlayer) {
-              setActivePlayer(null)
-            }
+            if (activeEnemyChampion) return setActiveEnemyChampion(null)
+            if (activeChampion) return setActiveChampion(null)
           }}
         />
 
-        <div className="grid lg:grid-cols-2 gap-6 items-start">
-          <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-white font-semibold text-sm uppercase tracking-wider">Performance by Category</h2>
-              <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
+        <div className="grid lg:grid-cols-2 gap-5 items-start">
+          <div className="bg-slate-800/40 border border-slate-700/50 rounded-[14px] p-[18px]">
+            <div className="flex items-center justify-between mb-[14px]">
+              <h2 className="text-white font-semibold text-xs uppercase tracking-[0.08em]">Performance by Category</h2>
+              <div className="flex items-center bg-slate-900/60 rounded-[9px] p-0.5 border border-slate-700/50">
                 <button
                   onClick={() => setViewMode("spider")}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
@@ -220,10 +282,10 @@ export default function StatsV2() {
                 </button>
               </div>
             </div>
-            <div className="h-px bg-slate-700/50 -mx-5 mb-3" />
+            <div className="h-px bg-slate-700/50 -mx-[18px] mb-[14px]" />
 
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700/50">
+            <div className="flex items-center justify-between mb-[14px]">
+              <div className="flex items-center bg-slate-900/60 rounded-[9px] p-0.5 border border-slate-700/50 w-fit">
                 <button
                   onClick={() => setCompareMode("scrim")}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
@@ -302,151 +364,93 @@ export default function StatsV2() {
             )}
 
             <CategoryTabs categories={CATEGORIES} activeCategory={activeCategory} onCategoryChange={setActiveCategory} data={currentData} />
-            {(() => {
-              const round1 = v => Math.round(v * 10) / 10
 
-              const getCompareMetrics = (source, metrics) =>
-                metrics.map(m => {
-                  const val = source?.[m.name]
-                  if (val === "-") return { ...m, unavailable: true }
-                  if (val == null) return m
-                  return { ...m, enemies: val, diff: round1(val > 0 ? ((m.team - val) / val) * 100 : m.team > 0 ? 100 : 0) }
-                })
-
-              const buildOfficialMetrics = (official, nonOfficial, metrics) =>
-                metrics.map(m => {
-                  const offiVal = official?.[m.name]
-                  const nonOffiVal = nonOfficial?.[m.name]
-                  if (offiVal == null && nonOffiVal == null) return m
-                  const team = offiVal ?? 0
-                  const enemies = nonOffiVal ?? 0
-                  const diff = round1(enemies > 0 ? ((team - enemies) / enemies) * 100 : team > 0 ? 100 : 0)
-                  return { ...m, team, enemies, diff }
-                })
-
-              if (viewMode === "spider") {
-                const noCompareData =
-                  (compareMode === "pro" && !proGames) ||
-                  (compareMode === "soloq" && !soloqGames) ||
-                  (compareMode === "offi" && (!officialSplitStats || !officialSplitStats.officialGames)) ||
-                  (compareMode === "pro" && proStats?.[activeCategory] === "No data")
-
-                if (noCompareData) {
-                  return (
-                    <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-                      <p className="text-sm font-medium">No data for this comparison mode</p>
-                    </div>
-                  )
-                }
-
-                const spiderMetrics =
-                  compareMode === "offi" && officialSplitStats?.official?.[activeCategory] && officialSplitStats?.nonOfficial?.[activeCategory]
-                    ? buildOfficialMetrics(officialSplitStats.official[activeCategory], officialSplitStats.nonOfficial[activeCategory], currentData.metrics?.[activeCategory] || [])
-                    : compareMode === "pro" && proStats?.[activeCategory]
-                      ? getCompareMetrics(proStats[activeCategory], currentData.metrics?.[activeCategory] || [])
-                      : compareMode === "soloq" && soloqStats?.[activeCategory]
-                        ? getCompareMetrics(soloqStats[activeCategory], currentData.metrics?.[activeCategory] || [])
-                        : currentData.metrics?.[activeCategory] || []
-
-                return (
-                  <SpiderChart
-                    metrics={spiderMetrics}
-                    isEnemyChampion={!!activeEnemyChampion}
-                    compareMode={compareMode}
-                    proLabel={compareMode === "soloq" ? "SoloQ" : compareMode === "offi" ? "Non-Offi" : proCompareLabel}
-                    teamLabel={compareMode === "offi" ? "Official" : undefined}
-                    teamGames={compareMode === "offi" ? officialSplitStats?.officialGames : currentData.games}
-                    compareGames={compareMode === "pro" ? proGames : compareMode === "soloq" ? soloqGames : compareMode === "offi" ? officialSplitStats?.nonOfficialGames : null}
-                  />
-                )
-              }
-
-              return (
-                <MetricsTable
-                  metrics={currentData.metrics?.[activeCategory] || []}
+            {viewMode === "spider" ? (
+              noCompareData ? (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                  <p className="text-sm font-medium">No data for this comparison mode</p>
+                </div>
+              ) : (
+                <SpiderChart
+                  metrics={activeCompareMetrics}
                   isEnemyChampion={!!activeEnemyChampion}
-                  proStats={proStats?.[activeCategory]}
-                  proLabel={proCompareLabel}
-                  soloqStats={soloqStats?.[activeCategory]}
-                  officialStats={officialSplitStats?.official?.[activeCategory]}
-                  nonOfficialStats={officialSplitStats?.nonOfficial?.[activeCategory]}
+                  compareMode={compareMode}
+                  proLabel={compareMode === "soloq" ? "SoloQ" : compareMode === "offi" ? "Non-Offi" : proCompareLabel}
+                  teamLabel={compareMode === "offi" ? "Official" : undefined}
+                  teamGames={compareMode === "offi" ? officialSplitStats?.officialGames : currentData.games}
+                  compareGames={compareMode === "pro" ? proGames : compareMode === "soloq" ? soloqGames : compareMode === "offi" ? officialSplitStats?.nonOfficialGames : null}
                 />
               )
-            })()}
+            ) : (
+              <MetricsTable
+                metrics={currentData.metrics?.[activeCategory] || []}
+                isEnemyChampion={!!activeEnemyChampion}
+                proStats={proStats?.[activeCategory]}
+                proLabel={proCompareLabel}
+                soloqStats={soloqStats?.[activeCategory]}
+                officialStats={officialSplitStats?.official?.[activeCategory]}
+                nonOfficialStats={officialSplitStats?.nonOfficial?.[activeCategory]}
+              />
+            )}
           </div>
 
-          {!activePlayer && !activeChampion && !activeEnemyChampion && (
-            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
-              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">Team Players</h2>
-              <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
-              <div className="space-y-2">
-                {["top", "jungle", "mid", "bottom", "support"].map(role => {
-                  const player = (teamData.players || []).find(p => p.role === role)
-                  if (player)
-                    return (
-                      <div
-                        key={role}
-                        onClick={() => setActivePlayer(player)}
-                        className="bg-slate-900/40 border border-slate-700/40 rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-700/40 hover:border-emerald-500/40 transition-all group"
-                      >
-                        <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                          <img src={`/roles/${role}.png`} alt={role} className="w-5 h-5" onError={e => (e.target.style.display = "none")} />
-                        </div>
-                        <div className="flex-1">
-                          <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">{player.name}</span>
-                        </div>
-                        <span className="text-slate-400 text-xs">{player.games || 0}G</span>
-                        <span className={`font-bold text-sm ${player.score >= 70 ? "text-emerald-400" : player.score >= 50 ? "text-amber-400" : "text-red-400"}`}>
-                          {player.score || 0}
-                        </span>
-                      </div>
-                    )
-                  return (
-                    <div
-                      key={role}
-                      onClick={() => navigate("/players")}
-                      className="bg-slate-900/40 border border-slate-700/40 border-dashed rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-700/40 hover:border-emerald-500/40 transition-all group"
-                    >
-                      <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                        <img src={`/roles/${role}.png`} alt={role} className="w-5 h-5" onError={e => (e.target.style.display = "none")} />
-                      </div>
-                      <div className="flex-1">
-                        <span className="text-slate-500 group-hover:text-emerald-400 transition-colors">Add a player</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {activePlayer && !activeChampion && !activeEnemyChampion && (
-            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
-              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
-                <img src={`/roles/${activePlayer.role}.png`} alt={activePlayer.role} className="w-5 h-5 opacity-60" onError={e => (e.target.style.display = "none")} />
-                {activePlayer.name} Champions
-              </h2>
-              <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
-              <Matchups data={activePlayer} onChampionClick={setActiveChampion} />
+          {activeEnemyChampion && (
+            <div className="bg-slate-800/40 border border-slate-700/50 rounded-[14px] p-[18px]">
+              <h2 className="text-white font-semibold text-xs uppercase tracking-[0.08em] mb-4">Our champions vs this champion</h2>
+              <div className="h-px bg-slate-700/50 -mx-[18px] mb-4" />
+              <Matchups data={activeEnemyChampion} readOnly />
             </div>
           )}
 
           {activeChampion && !activeEnemyChampion && (
-            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
-              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+            <div className="bg-slate-800/40 border border-slate-700/50 rounded-[14px] p-[18px]">
+              <h2 className="text-white font-semibold text-xs uppercase tracking-[0.08em] mb-4 flex items-center gap-2">
                 <img src={getChampionIcon(activeChampion.name)} alt={activeChampion.name} className="w-6 h-6 rounded-full" onError={e => (e.target.style.display = "none")} />
                 {activeChampion.name} <span className="text-slate-500">vs</span>
               </h2>
-              <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
+              <div className="h-px bg-slate-700/50 -mx-[18px] mb-4" />
               <Matchups data={activeChampion} readOnly />
             </div>
           )}
 
-          {activeEnemyChampion && (
-            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
-              <h2 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">Our champions vs this champion</h2>
-              <div className="h-px bg-slate-700/50 -mx-5 mb-4" />
-              <Matchups data={activeEnemyChampion} readOnly />
+          {!activeChampion && !activeEnemyChampion && (
+            <div className="bg-slate-800/40 border border-slate-700/50 rounded-[14px] p-[18px]">
+              <div className="flex items-center justify-between mb-[14px]">
+                <div className="flex items-center bg-slate-900/60 rounded-[9px] p-0.5 border border-slate-700/50">
+                  <button
+                    onClick={() => setRightTab("prog")}
+                    className={`px-[13px] py-1.5 rounded-md text-xs font-semibold transition-all ${rightTab === "prog" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
+                  >
+                    Progression
+                  </button>
+                  <button
+                    onClick={() => setRightTab("champ")}
+                    className={`px-[13px] py-1.5 rounded-md text-xs font-semibold transition-all ${rightTab === "champ" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
+                  >
+                    Champions
+                  </button>
+                </div>
+              </div>
+              <div className="h-px bg-slate-700/50 -mx-[18px] mb-[14px]" />
+
+              {rightTab === "prog" && (
+                <ProgressionPanel
+                  metrics={activeCompareMetrics}
+                  weeklyData={weeklyData}
+                  category={activeCat}
+                  weeks={weeklyData?.weeks || []}
+                  weekDates={weeklyData?.weekDates || []}
+                  compareLabel={compareLabel}
+                  noCompareData={noCompareData}
+                />
+              )}
+              {rightTab === "champ" && (
+                <Matchups
+                  data={activePlayer || { champions: mergeTeamChampions(teamData) }}
+                  onChampionClick={activePlayer ? setActiveChampion : undefined}
+                  readOnly={!activePlayer}
+                />
+              )}
             </div>
           )}
         </div>
@@ -455,53 +459,69 @@ export default function StatsV2() {
   )
 }
 
-function CategoryTabs({ categories, activeCategory, onCategoryChange, data }) {
+function mergeTeamChampions(teamData) {
+  const map = {}
+  ;(teamData.players || []).forEach(p => {
+    ;(p.champions || []).forEach(c => {
+      if (!map[c.name]) map[c.name] = { name: c.name, games: 0, wins: 0 }
+      map[c.name].games += c.games || 0
+      map[c.name].wins += Math.round(((c.winRate || 0) / 100) * (c.games || 0))
+    })
+  })
+  return Object.values(map).map(c => ({ name: c.name, games: c.games, winRate: c.games > 0 ? Math.round((c.wins / c.games) * 100) : 0 }))
+}
+
+function ScopeRail({ teamData, scope, onSelectTeam, onSelectPlayer }) {
   return (
-    <div className="flex items-center gap-2 mb-5">
-      {categories.map(cat => (
-        <button
-          key={cat.id}
-          onClick={() => onCategoryChange(cat.id)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
-            activeCategory === cat.id
-              ? "bg-slate-700/80 border-slate-500 ring-1 ring-slate-400/50"
-              : "bg-slate-800/50 border-slate-700/50 hover:bg-slate-700/50 hover:border-slate-600"
-          }`}
-        >
-          <div className="w-6 h-6 rounded flex items-center justify-center" style={{ backgroundColor: cat.color + "20" }}>
-            <cat.icon className="w-4 h-4" style={{ color: cat.color }} />
-          </div>
-          <span
-            className={`font-bold text-sm ${
-              (data.categoryScores?.[cat.id] ?? 50) >= 70 ? "text-emerald-400" : (data.categoryScores?.[cat.id] ?? 50) >= 50 ? "text-amber-400" : "text-red-400"
-            }`}
-          >
-            {data.categoryScores?.[cat.id] ?? 50}
-          </span>
-        </button>
-      ))}
+    <div className="flex items-center gap-2.5 mb-4">
+      <span className="text-[10px] font-semibold tracking-[0.08em] uppercase text-slate-500 flex-shrink-0">Scope</span>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <ScopeButton active={scope === "team"} role="team" name={teamData.name} onClick={onSelectTeam} />
+        {["top", "jungle", "mid", "bottom", "support"].map(role => {
+          const player = (teamData.players || []).find(p => p.role === role)
+          return <ScopeButton key={role} active={scope === role} role={role} name={player ? player.name : "—"} disabled={!player} onClick={() => player && onSelectPlayer(player)} />
+        })}
+      </div>
     </div>
   )
 }
 
-function Breadcrumb({ teamData, activePlayer, activeChampion, activeEnemyChampion, onTeamClick, onPlayerChange, onChampionChange, onBack }) {
+function ScopeButton({ active, role, name, disabled, onClick }) {
   return (
-    <div className="flex items-center gap-2 mb-3 text-sm flex-shrink-0">
-      {(activePlayer || activeChampion || activeEnemyChampion) && (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={role === "team" ? "Team" : ROLE_META[role].pos}
+      className={`flex items-center gap-[7px] px-3 py-[7px] rounded-[9px] border transition-all ${
+        active ? "bg-slate-700/80 border-slate-500/70" : "bg-slate-900/50 border-slate-700/50"
+      } ${disabled ? "opacity-50 cursor-default" : "cursor-pointer hover:border-slate-600"}`}
+    >
+      {role === "team" ? (
+        <Users className="w-[15px] h-[15px] text-emerald-400 flex-shrink-0" />
+      ) : (
+        <img src={`/roles/${role}.png`} alt={ROLE_META[role].pos} className={`w-[15px] h-[15px] flex-shrink-0 ${active ? "" : "opacity-60"}`} onError={e => (e.target.style.display = "none")} />
+      )}
+      <span className={`text-[13px] font-medium ${active ? "text-white" : "text-slate-400"}`}>{name}</span>
+    </button>
+  )
+}
+
+function Breadcrumb({ scopeName, scopeGames, activeChampion, activeEnemyChampion, onBack }) {
+  return (
+    <div className="flex items-center gap-2 mb-3 text-[13px] flex-shrink-0">
+      {(activeChampion || activeEnemyChampion) && (
         <button
           onClick={onBack}
           className="w-6 h-6 flex items-center justify-center rounded bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 hover:text-white transition-colors"
-          title={activeEnemyChampion ? "Back to team" : activeChampion ? "Back to player" : "Back to team"}
+          title="Back"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
       )}
-      <button
-        onClick={onTeamClick}
-        className={`font-medium transition-colors ${!activePlayer && !activeChampion && !activeEnemyChampion ? "text-emerald-400" : "text-slate-400 hover:text-white"}`}
-      >
-        {teamData.name}
-      </button>
+      <span className="text-slate-500">Path</span>
+      <span className="text-slate-600">/</span>
+      <span className="font-semibold text-emerald-400">{scopeName}</span>
+      {scopeGames != null && <span className="font-mono text-[11px] text-slate-500 ml-0.5">{scopeGames}G</span>}
       {activeEnemyChampion && (
         <>
           <span className="text-slate-600">/</span>
@@ -511,61 +531,186 @@ function Breadcrumb({ teamData, activePlayer, activeChampion, activeEnemyChampio
           </span>
         </>
       )}
-      {activePlayer && (
+      {activeChampion && !activeEnemyChampion && (
         <>
           <span className="text-slate-600">/</span>
-          <select
-            value={activePlayer.puuid}
-            onChange={e => {
-              const player = (teamData.players || []).find(p => p.puuid === e.target.value)
-              if (player) onPlayerChange(player)
-            }}
-            className={`bg-transparent font-medium px-1 py-1 outline-none border-none cursor-pointer transition-colors appearance-none pr-6 ${activeChampion ? "text-slate-400 hover:text-white" : "text-emerald-400"}`}
-            style={{
-              border: "none",
-              WebkitAppearance: "none",
-              MozAppearance: "none",
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='${activeChampion ? "%2394a3b8" : "%2310b981"}'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right 0px center",
-              backgroundSize: "14px"
-            }}
-          >
-            {(teamData.players || []).map(player => (
-              <option key={player.puuid} value={player.puuid} className="bg-slate-800 text-white">
-                {player.name}
-              </option>
-            ))}
-          </select>
+          <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+            <img src={getChampionIcon(activeChampion.name)} alt={activeChampion.name} className="w-5 h-5 rounded-full" onError={e => (e.target.style.display = "none")} />
+            {activeChampion.name}
+          </span>
         </>
       )}
-      {activeChampion && (
-        <>
-          <span className="text-slate-600">/</span>
-          <select
-            value={activeChampion.name}
-            onChange={e => {
-              const champion = (activePlayer?.champions || []).find(c => c.name === e.target.value)
-              if (champion) onChampionChange(champion)
-            }}
-            className="bg-transparent font-medium text-emerald-400 px-1 py-1 outline-none border-none cursor-pointer transition-colors appearance-none pr-6"
-            style={{
-              border: "none",
-              WebkitAppearance: "none",
-              MozAppearance: "none",
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2310b981'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right 0px center",
-              backgroundSize: "14px"
-            }}
+    </div>
+  )
+}
+
+function CategoryTabs({ categories, activeCategory, onCategoryChange, data }) {
+  return (
+    <div className="flex items-center gap-2 mb-[18px]">
+      {categories.map(cat => {
+        const score = data.categoryScores?.[cat.id] ?? 50
+        return (
+          <button
+            key={cat.id}
+            onClick={() => onCategoryChange(cat.id)}
+            className={`flex items-center gap-2 px-[11px] py-2 rounded-[10px] border transition-all ${
+              activeCategory === cat.id ? "bg-slate-700/80 border-slate-500/80" : "bg-slate-800/50 border-slate-700/50 hover:bg-slate-700/50 hover:border-slate-600"
+            }`}
           >
-            {(activePlayer?.champions || []).map(champion => (
-              <option key={champion.name} value={champion.name} className="bg-slate-800 text-white">
-                {champion.name}
-              </option>
-            ))}
-          </select>
-        </>
+            <span className="w-6 h-6 rounded-md flex items-center justify-center" style={{ backgroundColor: cat.color + "22" }}>
+              <cat.icon className="w-4 h-4" style={{ color: cat.color }} />
+            </span>
+            <span className={`font-bold text-sm font-mono ${score >= 70 ? "text-emerald-400" : score >= 50 ? "text-amber-400" : "text-red-400"}`}>{score}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+const PROG_DIMS = {
+  A: { w: 132, h: 36, pl: 6, pr: 8, pt: 7, pb: 7 }
+}
+
+function ProgressionPanel({ metrics, weeklyData, category, weeks, weekDates, compareLabel, noCompareData }) {
+  if (noCompareData) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+        <p className="text-sm font-medium">No data for this comparison mode</p>
+      </div>
+    )
+  }
+  if (!metrics || metrics.length === 0) {
+    return <div className="text-slate-500 text-center py-8">No metrics available</div>
+  }
+
+  const rows = metrics.map(m => {
+    const series = weeklyData?.metrics?.[category.id]?.[m.name] || []
+    const baseline = typeof m.enemies === "number" ? m.enemies : 0
+    const gaps = series.map(v => {
+      const g = baseline > 0 ? ((v - baseline) / baseline) * 100 : 0
+      return m.invert ? -g : g
+    })
+    const latest = gaps.length ? gaps[gaps.length - 1] : 0
+    return {
+      name: m.name,
+      team: m.team,
+      cmp: m.enemies,
+      hasData: series.length > 0,
+      series,
+      gaps,
+      latest,
+      lineColor: latest >= 0 ? "#34d399" : "#f87171",
+      diffLabel: `${latest >= 0 ? "+" : ""}${latest.toFixed(1)}%`,
+      diffColor: latest >= 0 ? "#34d399" : "#f87171"
+    }
+  })
+
+  const rangeLabel = weekDates.length > 0 ? `last ${Math.max(1, Math.round((Date.now() - new Date(weekDates[0]).getTime()) / 86400000))} days` : weeks.length > 0 ? `last ${weeks.length} weeks` : ""
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-[14px]">
+        <div className="flex items-center gap-[7px]">
+          <span className="w-[22px] h-[22px] rounded-md flex items-center justify-center" style={{ backgroundColor: category.color + "22" }}>
+            <category.icon className="w-[13px] h-[13px]" style={{ color: category.color }} />
+          </span>
+          <span className="text-[13px] font-semibold text-white">{category.id} progression</span>
+          {rangeLabel && <span className="text-[10px] text-slate-500">· {rangeLabel}</span>}
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+          <span className="w-4 border-t border-dashed border-slate-400 inline-block" />
+          <span>
+            parity <span className="text-slate-400">vs {compareLabel}</span>
+          </span>
+        </div>
+      </div>
+
+      {!rows.some(r => r.hasData) ? (
+        <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+          <p className="text-sm font-medium">No progression data yet</p>
+        </div>
+      ) : (
+        <div className="pr-1">
+          {rows.map(m => (
+            <div key={m.name} className="flex items-center gap-3 py-[11px] px-1 border-b border-slate-700/30">
+              <div className="w-32 flex-shrink-0">
+                <div className="text-slate-200 text-xs font-medium truncate">{m.name}</div>
+                <div className="flex items-center gap-1.5 mt-[3px]">
+                  <span className="font-mono text-sm font-semibold" style={{ color: m.diffColor }}>
+                    {m.diffLabel}
+                  </span>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <Sparkline row={m} weeks={weeks} weekDates={weekDates} compareLabel={compareLabel} dims={PROG_DIMS.A} />
+              </div>
+              <div className="w-10 flex-shrink-0 text-right">
+                <span className="font-mono text-[11px] text-slate-500">{m.team}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
+function Sparkline({ row, weeks, weekDates, compareLabel, dims }) {
+  const [hover, setHover] = useState(null)
+  const range = 45
+  const plotW = dims.w - dims.pl - dims.pr
+  const plotH = dims.h - dims.pt - dims.pb
+  const X = i => (row.gaps.length > 1 ? dims.pl + (i / (row.gaps.length - 1)) * plotW : dims.pl + plotW / 2)
+  const Y = v => +(dims.pt + (1 - (Math.max(-range, Math.min(range, v)) + range) / (2 * range)) * plotH).toFixed(1)
+  const dots = row.gaps.map((v, i) => ({ cx: +X(i).toFixed(1), cy: Y(v) }))
+  const baselineY = Y(0)
+  const last = dots[dots.length - 1]
+
+  // Dots are rendered as HTML overlays (not SVG circles) so the `preserveAspectRatio:none`
+  // horizontal stretch of the chart doesn't flatten them into ellipses.
+  return (
+    <div className="relative" style={{ height: dims.h }}>
+      <svg viewBox={`0 0 ${dims.w} ${dims.h}`} width="100%" height={dims.h} preserveAspectRatio="none" className="block">
+        <line x1={dims.pl} y1={baselineY} x2={dims.w - dims.pr} y2={baselineY} stroke="rgba(148,163,184,.45)" strokeWidth="1" strokeDasharray="3 3" />
+        {row.hasData && <polyline points={dots.map(p => `${p.cx},${p.cy}`).join(" ")} fill="none" stroke={row.lineColor} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />}
+        {hover != null && <line x1={dots[hover].cx} y1={dims.pt} x2={dots[hover].cx} y2={dims.h - dims.pb} stroke="rgba(148,163,184,.35)" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+        {row.hasData &&
+          dots.map((d, i) => {
+            const lo = i === 0 ? 0 : (dots[i - 1].cx + d.cx) / 2
+            const hi = i === dots.length - 1 ? dims.w : (d.cx + dots[i + 1].cx) / 2
+            return <rect key={i} x={lo} y="0" width={Math.max(0, hi - lo)} height={dims.h} fill="transparent" className="cursor-pointer" onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} />
+          })}
+      </svg>
+
+      {row.hasData && (
+        <span
+          className="absolute rounded-full pointer-events-none"
+          style={{ left: `${(last.cx / dims.w) * 100}%`, top: last.cy, width: 6, height: 6, background: row.lineColor, transform: "translate(-50%,-50%)" }}
+        />
+      )}
+      {row.hasData && hover != null && (
+        <span
+          className="absolute rounded-full pointer-events-none ring-2 ring-slate-900"
+          style={{ left: `${(dots[hover].cx / dims.w) * 100}%`, top: dots[hover].cy, width: 9, height: 9, background: row.lineColor, transform: "translate(-50%,-50%)" }}
+        />
+      )}
+
+      {hover != null && (
+        <div
+          className="absolute z-20 -translate-x-1/2 bottom-full mb-1.5 pointer-events-none bg-slate-900/95 border border-slate-600/60 rounded-lg px-2.5 py-1.5 shadow-xl whitespace-nowrap"
+          style={{ left: `${(dots[hover].cx / dims.w) * 100}%` }}
+        >
+          <p className="text-[10px] text-slate-400 mb-0.5">{weekDates[hover] ? new Date(weekDates[hover]).toLocaleDateString("en-US", { day: "2-digit", month: "short" }) : weeks[hover]}</p>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-semibold" style={{ color: row.gaps[hover] >= 0 ? "#34d399" : "#f87171" }}>
+              {row.gaps[hover] >= 0 ? "+" : ""}
+              {row.gaps[hover].toFixed(1)}%
+            </span>
+            <span className="font-mono text-[11px] text-slate-300">{row.series[hover]}</span>
+          </div>
+          <p className="text-[9px] text-slate-500 mt-0.5">vs {compareLabel}</p>
+        </div>
       )}
     </div>
   )
@@ -1103,23 +1248,23 @@ function Matchups({ data, onChampionClick, readOnly }) {
           Win Rate
         </button>
       </div>
-      <div className="max-h-[400px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+      <div className="max-h-[520px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
         {allChampions.map((matchup, idx) => (
           <div
             key={idx}
             onClick={readOnly ? undefined : () => onChampionClick(matchup)}
-            className={`bg-slate-900/40 border rounded-lg p-3 flex items-center gap-3 transition-all ${
+            className={`bg-slate-900/40 border rounded-[11px] p-[11px] flex items-center gap-3 transition-all ${
               readOnly ? "border-slate-700/40" : "cursor-pointer hover:bg-slate-700/40 border-slate-700/40 hover:border-slate-500/50"
             }`}
           >
-            <div className="w-10 h-10 bg-slate-700/50 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+            <div className="w-10 h-10 bg-slate-700/50 rounded-[9px] flex items-center justify-center overflow-hidden flex-shrink-0">
               <img src={getChampionIcon(matchup.name)} alt={matchup.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-white font-medium text-sm truncate block">{matchup.name}</span>
               <span className="text-slate-500 text-xs">{matchup.games} games</span>
             </div>
-            <span className={`font-bold text-sm ${matchup.winRate > 50 ? "text-emerald-400" : "text-red-400"}`}>{matchup.winRate}%</span>
+            <span className={`font-bold text-sm font-mono ${matchup.winRate > 50 ? "text-emerald-400" : "text-red-400"}`}>{matchup.winRate}%</span>
           </div>
         ))}
       </div>

@@ -22,7 +22,9 @@
       "mcp__mongodb__aggregate",
       "mcp__mongodb__db-stats",
       "mcp__mongodb__explain",
-      "mcp__mongodb__export"
+      "mcp__mongodb__export",
+      "Bash(cd /Users/axelvuillaume/Documents/GitHub/DraftEdge/app && npx vite build 2>&1 | tail -5 && cd ../api && node --check src/controllers/player-stats.js && echo \"API OK\")",
+      "Read(//Users/axelvuillaume/Documents/GitHub/**)"
     ],
     "additionalDirectories": [
       "/tmp"
