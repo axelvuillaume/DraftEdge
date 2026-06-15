@@ -3,7 +3,7 @@ import { Toaster, toast } from "react-hot-toast"
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import * as Sentry from "@sentry/browser"
 import posthog from "posthog-js"
-import { CreditCard } from "lucide-react"
+import { CreditCard, Sparkles, ArrowRight } from "lucide-react"
 
 import Auth from "@/scenes/auth"
 import Home from "@/scenes/home"
@@ -141,13 +141,13 @@ const AuthLayout = () => {
   return <Outlet />
 }
 
-const NEWS_DATE = "2026-05-11"
+const NEWS_DATE = "2026-06-15"
 const NEWS_CONTENT = [
   {
-    title: "SoloQ Objectives Redesign",
+    title: "Advanced Stats — Weekly Progression",
     highlight: true,
-    description: "A refreshed SoloQ Objectives view to set goals for your players and track their progression more easily.",
-    link: "/performance/soloq-objectives"
+    description: "Track how each metric trends over the last weeks versus your comparison baseline (Scrim / Pro / SoloQ / Offi), right next to the category spider. Pick a scope from the new rail to focus on the team or a single role.",
+    link: "/stats-team/stats"
   }
 ]
 
@@ -169,43 +169,51 @@ const NewsModal = ({ user }) => {
 
   return (
     <Modal isOpen={isOpen} className="max-w-lg w-full bg-slate-800">
-      <div className="p-8">
-        <h2 className="text-2xl font-bold text-white mb-1">What's new</h2>
-        <p className="text-sm text-slate-400 mb-6">{new Date(NEWS_DATE).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
-        <div className="space-y-4">
+      <div className="p-7">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white leading-tight">What's new</h2>
+            <p className="text-xs text-slate-500">{new Date(NEWS_DATE).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
           {NEWS_CONTENT.map((item, i) => (
-            <div key={i} className={`rounded-xl ${item.small ? "p-3" : "p-4"} ${item.highlight ? "bg-blue-600/20 border border-blue-500/30" : "bg-slate-700/50"}`}>
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  {item.highlight && <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-500 text-white px-2 py-0.5 rounded-full">New Feature</span>}
-                  <h3 className={`text-white font-semibold ${item.small ? "text-sm" : ""}`}>{item.title}</h3>
-                </div>
-                {item.link && (
-                  <button
-                    onClick={() => {
-                      handleClose()
-                      navigate(item.link)
-                    }}
-                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                  >
-                    Go to →
-                  </button>
-                )}
-              </div>
-              {item.description && <p className={`text-slate-300 ${item.small ? "text-xs" : "text-sm"}`}>{item.description}</p>}
+            <div key={i} className={`rounded-xl p-5 ${item.highlight ? "bg-gradient-to-br from-blue-600/20 to-blue-500/5 border border-blue-500/30" : "bg-slate-700/40 border border-slate-700/60"}`}>
+              {item.highlight && (
+                <span className="inline-block text-[10px] font-bold uppercase tracking-wider bg-blue-500 text-white px-2 py-0.5 rounded-full mb-3">New Feature</span>
+              )}
+              <h3 className="text-white font-semibold text-base mb-1.5">{item.title}</h3>
+              {item.description && <p className="text-slate-300 text-sm leading-relaxed">{item.description}</p>}
               {item.items && (
-                <ul className="mt-1 space-y-1">
+                <ul className="mt-2 space-y-1">
                   {item.items.map((text, j) => (
-                    <li key={j} className={`text-slate-300 ${item.small ? "text-xs" : "text-sm"} flex items-start gap-2`}>
+                    <li key={j} className="text-slate-300 text-sm flex items-start gap-2">
                       <span className="text-blue-400 mt-0.5">•</span>
                       {text}
                     </li>
                   ))}
                 </ul>
               )}
+              {item.link && (
+                <button
+                  onClick={() => {
+                    handleClose()
+                    navigate(item.link)
+                  }}
+                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  Go to
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           ))}
         </div>
+
         <button onClick={handleClose} className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-xl transition-colors">
           Got it
         </button>
