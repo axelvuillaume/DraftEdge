@@ -4,7 +4,7 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import { getChampionIcon } from "@/utils"
 import { PatternIcon, ObjectivesIcon, ScalingIcon, CombatIcon, PingsIcon } from "@/components/icons/performance-icons"
-import { ChevronLeft, ChevronDown, Radar, Table2, Search, Users } from "lucide-react"
+import { ChevronLeft, ChevronDown, Radar, Table2, Search, Users, Info } from "lucide-react"
 
 const ROLE_TO_POSITION = { top: "top", jungle: "jng", mid: "mid", bottom: "bot", support: "sup" }
 
@@ -14,6 +14,10 @@ const ROLE_META = {
   mid: { pos: "MID", color: "#3b82f6" },
   bottom: { pos: "BOT", color: "#ec4899" },
   support: { pos: "SUP", color: "#a855f7" }
+}
+
+const METRIC_INFO = {
+  "Ward Clear %": "Wards destroyed by the team (or player) ÷ wards placed by the enemy team"
 }
 
 const CATEGORIES = [
@@ -479,7 +483,9 @@ function ScopeRail({ teamData, scope, onSelectTeam, onSelectPlayer }) {
         <ScopeButton active={scope === "team"} role="team" name={teamData.name} onClick={onSelectTeam} />
         {["top", "jungle", "mid", "bottom", "support"].map(role => {
           const player = (teamData.players || []).find(p => p.role === role)
-          return <ScopeButton key={role} active={scope === role} role={role} name={player ? player.name : "—"} disabled={!player} onClick={() => player && onSelectPlayer(player)} />
+          return (
+            <ScopeButton key={role} active={scope === role} role={role} name={player ? player.name : "—"} disabled={!player} onClick={() => player && onSelectPlayer(player)} />
+          )
         })}
       </div>
     </div>
@@ -499,7 +505,12 @@ function ScopeButton({ active, role, name, disabled, onClick }) {
       {role === "team" ? (
         <Users className="w-[15px] h-[15px] text-emerald-400 flex-shrink-0" />
       ) : (
-        <img src={`/roles/${role}.png`} alt={ROLE_META[role].pos} className={`w-[15px] h-[15px] flex-shrink-0 ${active ? "" : "opacity-60"}`} onError={e => (e.target.style.display = "none")} />
+        <img
+          src={`/roles/${role}.png`}
+          alt={ROLE_META[role].pos}
+          className={`w-[15px] h-[15px] flex-shrink-0 ${active ? "" : "opacity-60"}`}
+          onError={e => (e.target.style.display = "none")}
+        />
       )}
       <span className={`text-[13px] font-medium ${active ? "text-white" : "text-slate-400"}`}>{name}</span>
     </button>
@@ -606,7 +617,8 @@ function ProgressionPanel({ metrics, weeklyData, category, weeks, weekDates, com
     }
   })
 
-  const rangeLabel = weekDates.length > 0 ? `last ${Math.max(1, Math.round((Date.now() - new Date(weekDates[0]).getTime()) / 86400000))} days` : weeks.length > 0 ? `last ${weeks.length} weeks` : ""
+  const rangeLabel =
+    weekDates.length > 0 ? `last ${Math.max(1, Math.round((Date.now() - new Date(weekDates[0]).getTime()) / 86400000))} days` : weeks.length > 0 ? `last ${weeks.length} weeks` : ""
 
   return (
     <>
@@ -673,13 +685,37 @@ function Sparkline({ row, weeks, weekDates, compareLabel, dims }) {
     <div className="relative" style={{ height: dims.h }}>
       <svg viewBox={`0 0 ${dims.w} ${dims.h}`} width="100%" height={dims.h} preserveAspectRatio="none" className="block">
         <line x1={dims.pl} y1={baselineY} x2={dims.w - dims.pr} y2={baselineY} stroke="rgba(148,163,184,.45)" strokeWidth="1" strokeDasharray="3 3" />
-        {row.hasData && <polyline points={dots.map(p => `${p.cx},${p.cy}`).join(" ")} fill="none" stroke={row.lineColor} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />}
-        {hover != null && <line x1={dots[hover].cx} y1={dims.pt} x2={dots[hover].cx} y2={dims.h - dims.pb} stroke="rgba(148,163,184,.35)" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+        {row.hasData && (
+          <polyline
+            points={dots.map(p => `${p.cx},${p.cy}`).join(" ")}
+            fill="none"
+            stroke={row.lineColor}
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+        {hover != null && (
+          <line x1={dots[hover].cx} y1={dims.pt} x2={dots[hover].cx} y2={dims.h - dims.pb} stroke="rgba(148,163,184,.35)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+        )}
         {row.hasData &&
           dots.map((d, i) => {
             const lo = i === 0 ? 0 : (dots[i - 1].cx + d.cx) / 2
             const hi = i === dots.length - 1 ? dims.w : (d.cx + dots[i + 1].cx) / 2
-            return <rect key={i} x={lo} y="0" width={Math.max(0, hi - lo)} height={dims.h} fill="transparent" className="cursor-pointer" onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} />
+            return (
+              <rect
+                key={i}
+                x={lo}
+                y="0"
+                width={Math.max(0, hi - lo)}
+                height={dims.h}
+                fill="transparent"
+                className="cursor-pointer"
+                onMouseEnter={() => setHover(i)}
+                onMouseLeave={() => setHover(null)}
+              />
+            )
           })}
       </svg>
 
@@ -701,7 +737,9 @@ function Sparkline({ row, weeks, weekDates, compareLabel, dims }) {
           className="absolute z-20 -translate-x-1/2 bottom-full mb-1.5 pointer-events-none bg-slate-900/95 border border-slate-600/60 rounded-lg px-2.5 py-1.5 shadow-xl whitespace-nowrap"
           style={{ left: `${(dots[hover].cx / dims.w) * 100}%` }}
         >
-          <p className="text-[10px] text-slate-400 mb-0.5">{weekDates[hover] ? new Date(weekDates[hover]).toLocaleDateString("en-US", { day: "2-digit", month: "short" }) : weeks[hover]}</p>
+          <p className="text-[10px] text-slate-400 mb-0.5">
+            {weekDates[hover] ? new Date(weekDates[hover]).toLocaleDateString("en-US", { day: "2-digit", month: "short" }) : weeks[hover]}
+          </p>
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs font-semibold" style={{ color: row.gaps[hover] >= 0 ? "#34d399" : "#f87171" }}>
               {row.gaps[hover] >= 0 ? "+" : ""}
@@ -747,7 +785,17 @@ function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats
       <div className="divide-y divide-slate-700/30">
         {metrics.map((row, i) => (
           <div key={i} className={`grid ${gridCols} gap-4 px-4 py-3 hover:bg-slate-700/20 transition-colors items-center text-sm`}>
-            <div className="text-slate-200 font-medium">{row.name}</div>
+            <div className="text-slate-200 font-medium flex items-center gap-1.5">
+              {row.name}
+              {METRIC_INFO[row.name] && (
+                <span className="relative group flex-shrink-0">
+                  <Info className="w-3.5 h-3.5 text-slate-500 hover:text-slate-300 cursor-help" />
+                  <span className="pointer-events-none absolute left-0 top-full mt-1.5 hidden group-hover:block z-30 w-56 bg-slate-900/95 border border-slate-600/60 rounded-lg px-2.5 py-1.5 text-[11px] font-normal normal-case tracking-normal text-slate-300 leading-snug shadow-xl">
+                    {METRIC_INFO[row.name]}
+                  </span>
+                </span>
+              )}
+            </div>
             <div className="text-center text-emerald-400 font-mono font-medium">{row.team}</div>
             <div className="text-center text-red-400 font-mono">{row.enemies}</div>
             {proStats && Object.keys(proStats).length > 0 && <div className="text-center text-amber-400 font-mono">{proStats[row.name] ?? "-"}</div>}
@@ -938,6 +986,9 @@ function SpiderChart({ metrics, isEnemyChampion, compareMode, proLabel, teamLabe
                     {metrics[hoveredIndex].diff}%
                   </p>
                 </>
+              )}
+              {METRIC_INFO[metrics[hoveredIndex].name] && (
+                <p className="text-slate-500 text-[10px] leading-snug mt-2 pt-2 border-t border-slate-700/50">{METRIC_INFO[metrics[hoveredIndex].name]}</p>
               )}
             </div>
           ) : (

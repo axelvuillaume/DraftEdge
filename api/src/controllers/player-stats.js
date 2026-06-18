@@ -107,6 +107,13 @@ const aggregateStats = (stats, teamKillsMap) => {
   return result;
 };
 
+// Total wards placed by a full team across a set of games. Used as the denominator for Ward Clear %
+// so a single player's clears are measured against the whole enemy team's vision (never > 100%).
+const sumWardsPlaced = (stats, gameIds) => {
+  const ids = new Set(gameIds);
+  return stats.reduce((acc, s) => acc + (ids.has(s.game_id) ? s.vision?.wards_placed || 0 : 0), 0);
+};
+
 const getMetrics = (t, e, category) => {
   if (category === 'Combat') {
     return [
@@ -131,6 +138,8 @@ const getMetrics = (t, e, category) => {
     ];
   }
   if (category === 'Vision') {
+    const teamWards = t.team_wards_placed ?? t.wards_placed;
+    const enemyWards = e.team_wards_placed ?? e.wards_placed;
     return [
       { name: 'Vision Score / min', team: round1(getPerMin(t.vision_score, t.duration)), enemies: round1(getPerMin(e.vision_score, e.duration)) },
       { name: 'Wards Placed / game', team: round1(getAvg(t.wards_placed, t.games)), enemies: round1(getAvg(e.wards_placed, e.games)) },
@@ -138,8 +147,8 @@ const getMetrics = (t, e, category) => {
       { name: 'Control Wards / game', team: round1(getAvg(t.control_wards_placed, t.games)), enemies: round1(getAvg(e.control_wards_placed, e.games)) },
       {
         name: 'Ward Clear %',
-        team: round1(e.wards_placed > 0 ? (t.wards_killed / e.wards_placed) * 100 : 0),
-        enemies: round1(t.wards_placed > 0 ? (e.wards_killed / t.wards_placed) * 100 : 0),
+        team: round1(enemyWards > 0 ? Math.min(100, (t.wards_killed / enemyWards) * 100) : 0),
+        enemies: round1(teamWards > 0 ? Math.min(100, (e.wards_killed / teamWards) * 100) : 0),
       },
     ];
   }
@@ -767,6 +776,8 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
 
       const pAgg = aggregateStats(pStats, teamKillsMap);
       const pEnemyAgg = aggregateStats(pOpponentStats, opponentKillsMap);
+      pAgg.team_wards_placed = sumWardsPlaced(playerStats, pGames);
+      pEnemyAgg.team_wards_placed = sumWardsPlaced(opponentStats, pGames);
       const pCategoryScores = getCategoryScores(pAgg, pEnemyAgg);
 
       // Build player's champions stats
@@ -782,9 +793,12 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
 
       const playerChampions = Object.entries(playerChampionMap).map(([champName, champData]) => {
         const champWinRate = champData.games > 0 ? round1((champData.wins / champData.games) * 100) : 0;
+        const champGames = [...new Set(champData.stats.map((s) => s.game_id))];
         const champAgg = aggregateStats(champData.stats, teamKillsMap);
         const champOpponentStats = opponentStats.filter((o) => champData.stats.some((s) => s.game_id === o.game_id && s.role === o.role));
         const champEnemyAgg = aggregateStats(champOpponentStats, opponentKillsMap);
+        champAgg.team_wards_placed = sumWardsPlaced(playerStats, champGames);
+        champEnemyAgg.team_wards_placed = sumWardsPlaced(opponentStats, champGames);
         const champCategoryScores = getCategoryScores(champAgg, champEnemyAgg);
 
         // Build matchups against enemy champions for this player champion
@@ -804,8 +818,11 @@ router.post('/team_stats_v2', passport.authenticate(['admin', 'user'], { session
         const champMatchups = Object.entries(champMatchupMap).map(([oppChamp, mData]) => {
           const mWinRate = mData.games > 0 ? round1((mData.wins / mData.games) * 100) : 0;
           const mDiff = round1(mWinRate - champWinRate);
+          const mGames = [...new Set(mData.teamStats.map((s) => s.game_id))];
           const mTeamAgg = aggregateStats(mData.teamStats, teamKillsMap);
           const mEnemyAgg = aggregateStats(mData.enemyStats, opponentKillsMap);
+          mTeamAgg.team_wards_placed = sumWardsPlaced(playerStats, mGames);
+          mEnemyAgg.team_wards_placed = sumWardsPlaced(opponentStats, mGames);
           const mCategoryScores = getCategoryScores(mTeamAgg, mEnemyAgg);
           return {
             name: oppChamp,
