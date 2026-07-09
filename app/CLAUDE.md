@@ -162,7 +162,9 @@ function formatTime(seconds) {
 // then later: {formatTime(note.timing)}
 
 // GOOD — inline it directly
-{`${String(Math.floor(note.timing / 60)).padStart(2, "0")}:${String(Math.floor(note.timing % 60)).padStart(2, "0")}`}
+{
+  ;`${String(Math.floor(note.timing / 60)).padStart(2, "0")}:${String(Math.floor(note.timing % 60)).padStart(2, "0")}`
+}
 ```
 
 ## No External Body Variable

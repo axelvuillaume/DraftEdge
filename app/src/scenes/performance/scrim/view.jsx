@@ -4,7 +4,7 @@ import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import { getChampionIcon } from "@/utils"
-import { ArrowLeft, Plus, X, Target, TrendingUp, ImagePlus, ChevronDown, Loader2, Check, ToggleLeft, Users, User, ExternalLink, Gamepad2 } from "lucide-react"
+import { ArrowLeft, Plus, X, Target, TrendingUp, ImagePlus, ChevronDown, Loader2, Check, ToggleLeft, Users, User, ExternalLink, Gamepad2, MessageSquare } from "lucide-react"
 import Modal from "@/components/modal"
 import UploadModal from "@/components/UploadModal"
 import DebounceInput from "@/components/debounceInput"
@@ -306,17 +306,7 @@ export default function View() {
             </div>
 
             {/* Notes Card */}
-            <div className="bg-slate-800/40 border border-slate-700/30 rounded-2xl p-4 space-y-2">
-              <h2 className="text-white font-semibold text-sm">Notes</h2>
-              <DebounceInput
-                isTextArea
-                placeholder="Add notes for this session..."
-                value={session.comment || ""}
-                onChange={e => updateSession("comment", e.target.value)}
-                className="w-full bg-slate-700/30 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500/50 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm resize-none"
-                rows={7}
-              />
-            </div>
+            <NotesSection session={session} updateSession={updateSession} />
           </div>
 
           {/* Right Column */}
@@ -394,6 +384,94 @@ function MultiOpggLink({ session }) {
       <ExternalLink className="w-3.5 h-3.5" />
       <span>Multi OP.GG</span>
     </a>
+  )
+}
+
+function NotesSection({ session, updateSession }) {
+  const { user } = useStore()
+  const [players, setPlayers] = useState([])
+
+  const fetchPlayers = async () => {
+    try {
+      const { ok, data, code } = await api.post("/player/search", { team_id: user?.team_id, active: true })
+      if (!ok) return toast.error(code || "Failed to fetch players")
+      setPlayers(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch players")
+    }
+  }
+
+  useEffect(() => {
+    if (user?.team_id) fetchPlayers()
+  }, [user?.team_id])
+
+  const updatePlayerNote = (player, comment) => {
+    if ((session.player_notes || []).some(n => n.player_id === player._id)) {
+      return updateSession(
+        "player_notes",
+        session.player_notes.map(n => (n.player_id === player._id ? { ...n, comment } : n))
+      )
+    }
+    updateSession("player_notes", [
+      ...(session.player_notes || []),
+      { player_id: player._id, player_name: player.player_name || player.game_name, role: player.role, comment }
+    ])
+  }
+
+  return (
+    <div className="bg-slate-800/40 border border-slate-700/30 rounded-2xl p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <MessageSquare className="w-4 h-4 text-amber-500" />
+        <h2 className="text-white font-semibold text-sm">Notes</h2>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-slate-400 text-xs font-medium block">Game summary</label>
+        <DebounceInput
+          isTextArea
+          placeholder="Short summary of the session..."
+          value={session.summary || session.comment || ""}
+          onChange={e => updateSession("summary", e.target.value)}
+          rows={3}
+          className="w-full bg-slate-700/30 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500/50 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm resize-none"
+        />
+      </div>
+
+      {players.length > 0 && (
+        <div className="space-y-2">
+          <label className="text-slate-400 text-xs font-medium block">Players</label>
+          {players.map(p => (
+            <div key={p._id} className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase text-amber-500/70">{p.role}</span>
+                <span className="text-slate-300 text-xs font-medium">{p.player_name || p.game_name}</span>
+              </div>
+              <DebounceInput
+                isTextArea
+                placeholder="Positive / negative points (behavior, level of play...)"
+                value={(session.player_notes || []).find(n => n.player_id === p._id)?.comment || ""}
+                onChange={e => updatePlayerNote(p, e.target.value)}
+                rows={2}
+                className="w-full bg-slate-700/30 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500/50 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm resize-none"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        <label className="text-slate-400 text-xs font-medium block">Communication</label>
+        <DebounceInput
+          isTextArea
+          placeholder="How was the communication this session..."
+          value={session.communication || ""}
+          onChange={e => updateSession("communication", e.target.value)}
+          rows={2}
+          className="w-full bg-slate-700/30 border-0 outline-none ring-0 focus:ring-1 focus:ring-amber-500/50 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm resize-none"
+        />
+      </div>
+
+    </div>
   )
 }
 
