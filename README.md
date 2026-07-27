@@ -1,95 +1,49 @@
 # DraftEdge
 
-Plateforme de gestion pour équipes esport **League of Legends** : planification et analyse des scrims, préparation des drafts, scouting des adversaires et suivi des performances soloQ des joueurs.
+**La plateforme tout-en-un pour les équipes esport League of Legends.**
 
-## ✨ Fonctionnalités
+🔗 **[draftedge.lol](https://draftedge.lol/website)**
 
-- **Scrims** — planification des sessions (calendrier), objectifs et résultats, analyse des games
-- **Drafts** — préparation de scénarios de draft
-- **Scouting** — suivi des équipes adverses, pro games et stats joueurs
-- **SoloQ** — suivi des matchs et snapshots de progression des joueurs (Riot API)
-- **Replay book & strat maps** — notes, replays et cartes stratégiques
-- **Leagues & stats** — suivi des compétitions et statistiques d'équipe
-- **AI feedback** — retours générés par IA (Claude / Gemini)
-- **Billing** — abonnements via Stripe
+DraftEdge centralise tout le travail quotidien d'un staff esport — coachs, analystes et managers — au même endroit : planifier les scrims, préparer les drafts, scouter les adversaires et suivre la progression des joueurs.
 
-## 🛠️ Stack
+---
 
-| Partie | Technologies |
-| --- | --- |
-| Frontend (`/app`) | React 18, Vite, React Router, Tailwind CSS, Zustand, Recharts, i18next |
-| Backend (`/api`) | Node.js, Express, Mongoose (MongoDB), Passport JWT, node-cron |
-| Services | Riot API, Stripe, Anthropic (Claude), Gemini, Brevo, Sentry, PostHog |
+## 🎯 Le problème
 
-## 📁 Structure
+Les équipes esport jonglent entre des dizaines d'outils : feuilles Excel pour les drafts, Discord pour le planning, sites tiers pour les stats, notes éparpillées pour le scouting. Résultat : du temps perdu et des informations qui se perdent entre les membres du staff.
 
-```
-app/
-  src/
-    scenes/        # pages (auth, home, league, opponents, performance, soloQ, stats, team…)
-    components/    # composants réutilisables
-    services/api.js# client API
-api/
-  src/
-    controllers/   # routes / logique métier
-    models/        # modèles Mongoose
-    services/      # services externes (Riot, Stripe, IA…)
-    cron/          # tâches planifiées
-```
+DraftEdge remplace tout ça par une seule plateforme pensée pour le workflow réel d'une équipe compétitive.
 
-## 🚀 Démarrage
+## ⚡ Ce que fait DraftEdge
 
-### Prérequis
+### 📅 Gestion des scrims
+Planifiez les sessions d'entraînement sur un calendrier partagé, fixez des objectifs par session et par joueur, puis mesurez les résultats game après game.
 
-- Node.js ≥ 18
-- Une base MongoDB
+### 🧠 Préparation de draft
+Construisez et sauvegardez des scénarios de draft complets : priorités de picks, bans, réponses aux compositions adverses. Arrivez en game officielle avec un plan clair.
 
-### API
+### 🔍 Scouting des adversaires
+Analysez les équipes adverses avant de les affronter : historique de leurs games, champion pools des joueurs, tendances de draft et statistiques détaillées.
 
-```bash
-cd api
-npm install
-npm run dev   # http://localhost:8080
-```
+### 📈 Suivi soloQ
+Suivez automatiquement les performances soloQ de chaque joueur grâce aux données Riot Games : progression du rank, champions joués, tendances de forme.
 
-Créer un fichier `api/.env` :
+### 🎬 Replay book & cartes stratégiques
+Centralisez les replays à revoir, les notes d'analyse et les schémas stratégiques dessinés directement sur la carte.
 
-```env
-PORT=8080
-ENVIRONMENT=development
-APP_URL=http://localhost:5173
-MONGODB_ENDPOINT=mongodb://...
-SECRET=jwt-secret
+### 🤖 Analyse assistée par IA
+Obtenez des retours automatiques générés par IA sur les performances, pour aider le staff à identifier plus vite les axes de progression.
 
-# Services externes
-RIOT_API_KEY=
-CLAUDE_API_KEY=
-GEMINI_API_KEY=
-BREVO_KEY=
-SENTRY_DSN=
-POSTHOG_API_KEY=
-POSTHOG_HOST=
+## 👥 Pour qui ?
 
-# Stripe
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-STRIPE_PRICE_ID=
-```
+- **Coachs & analystes** — préparation des drafts, scouting, review des games
+- **Managers** — planning des scrims, suivi global de l'équipe
+- **Joueurs** — objectifs personnels, suivi de leur progression soloQ
 
-### App
+## 🛠️ Sous le capot
 
-```bash
-cd app
-npm install
-npm run dev   # http://localhost:5173
-```
+Application web complète développée de bout en bout : interface React, API Node.js, base de données MongoDB, intégrations Riot Games API, Stripe (abonnements) et modèles d'IA (Claude, Gemini).
 
-## 📜 Scripts
+---
 
-| Commande | Description |
-| --- | --- |
-| `cd app && npm run dev` | Frontend en dev (Vite) |
-| `cd app && npm run build` | Build de production |
-| `cd app && npm run lint` | Lint (ESLint, zéro warning) |
-| `cd api && npm run dev` | API en dev (nodemon) |
-| `cd api && npm start` | API en production |
+**Découvrir la plateforme → [draftedge.lol](https://draftedge.lol/website)**
