@@ -295,7 +295,7 @@ function TopScrimChampions() {
       <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60">
         <div className="flex items-center gap-2">
           <Swords className="w-4 h-4 text-amber-400" />
-          <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Best Scrim Champions</h3>
+          <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Most Played Scrims</h3>
         </div>
       </div>
       <div className="bg-slate-800/30 px-4 py-3 flex items-center justify-around">
