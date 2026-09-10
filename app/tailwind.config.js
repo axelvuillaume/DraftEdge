@@ -115,7 +115,9 @@ export default {
         'accordion-up': 'accordion-up 0.2s ease-out'
       },
       fontFamily: {
-        'space-grotesk': 'var(--font-space-grostesk)'
+        'space-grotesk': 'var(--font-space-grostesk)',
+        inter: ['Inter', 'system-ui', 'sans-serif'],
+        jetbrains: ['"JetBrains Mono"', 'monospace']
       }
     }
   },

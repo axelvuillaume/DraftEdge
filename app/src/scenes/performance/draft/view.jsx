@@ -1,280 +1,503 @@
-import { useState, useEffect, useRef } from "react"
-import { useParams } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
+import { useParams, useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
-import { RotateCcw, Zap, X, Search, Star, Shuffle } from "lucide-react"
+import { X, Search } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import DebounceInput from "@/components/debounceInput"
 import OpponentDropdown from "@/components/OpponentDropdown"
 import { getChampionIcon, DRAFT_ROLES, ROLE_ICONS, POSITION_LABELS, ALL_CHAMPIONS, CHAMPIONS_BY_ROLE } from "@/utils"
 
+// Official draft order, grouped into 4 strips
+const DRAFT_GROUPS = [
+  {
+    label: "BANS · P1",
+    slots: [
+      { key: "blueBans", index: 0, type: "ban", side: "blue", tag: "BB1" },
+      { key: "blueBans", index: 1, type: "ban", side: "blue", tag: "BB2" },
+      { key: "blueBans", index: 2, type: "ban", side: "blue", tag: "BB3" },
+      { key: "redBans", index: 0, type: "ban", side: "red", tag: "RB1" },
+      { key: "redBans", index: 1, type: "ban", side: "red", tag: "RB2" },
+      { key: "redBans", index: 2, type: "ban", side: "red", tag: "RB3" }
+    ]
+  },
+  {
+    label: "PICKS · P1",
+    slots: [
+      { key: "bluePicks", index: 0, type: "pick", side: "blue", tag: "B1" },
+      { key: "redPicks", index: 0, type: "pick", side: "red", tag: "R1" },
+      { key: "redPicks", index: 1, type: "pick", side: "red", tag: "R2" },
+      { key: "bluePicks", index: 1, type: "pick", side: "blue", tag: "B2" },
+      { key: "bluePicks", index: 2, type: "pick", side: "blue", tag: "B3" },
+      { key: "redPicks", index: 2, type: "pick", side: "red", tag: "R3" }
+    ]
+  },
+  {
+    label: "BANS · P2",
+    slots: [
+      { key: "redBans", index: 3, type: "ban", side: "red", tag: "RB4" },
+      { key: "blueBans", index: 3, type: "ban", side: "blue", tag: "BB4" },
+      { key: "redBans", index: 4, type: "ban", side: "red", tag: "RB5" },
+      { key: "blueBans", index: 4, type: "ban", side: "blue", tag: "BB5" }
+    ]
+  },
+  {
+    label: "PICKS · P2",
+    slots: [
+      { key: "redPicks", index: 3, type: "pick", side: "red", tag: "R4" },
+      { key: "bluePicks", index: 3, type: "pick", side: "blue", tag: "B4" },
+      { key: "bluePicks", index: 4, type: "pick", side: "blue", tag: "B5" },
+      { key: "redPicks", index: 4, type: "pick", side: "red", tag: "R5" }
+    ]
+  }
+]
+
 export default function View() {
   const { id } = useParams()
-  const [scenario, setScenario] = useState({ name: "", blueBans: Array(5).fill(null), redBans: Array(5).fill(null), bluePicks: Array(5).fill(null), redPicks: Array(5).fill(null) })
-  const [selectedLeagues, setSelectedLeagues] = useState([])
-  const [modal, setModal] = useState(null)
-  const [hoveredSlot, setHoveredSlot] = useState(null)
+  const navigate = useNavigate()
+  const [draft, setDraft] = useState(null)
 
-  const fetchScenario = async () => {
+  const fetchDraft = async () => {
     try {
-      const { ok, data, code } = await api.get(`/draft-scenario/${id}`)
-      if (!ok) return toast.error(code || "Failed to load scenario")
-      setScenario(data)
+      const { ok, data, code } = await api.get(`/draft/${id}`)
+      if (!ok) {
+        toast.error(code || "Failed to fetch draft")
+        return navigate("/performance/draft")
+      }
+      if (data._id !== id) return navigate(`/performance/draft/${data._id}`, { replace: true })
+      setDraft(data)
     } catch (error) {
-      toast.error(error.code || "Failed to load scenario")
+      toast.error(error.code || "Failed to fetch draft")
     }
   }
 
   useEffect(() => {
-    if (id) fetchScenario()
+    fetchDraft()
   }, [id])
 
-  const save = async updated => {
-    setScenario(updated)
+  const saveDraft = async updated => {
+    setDraft(updated)
     try {
-      const { ok, code } = await api.put(`/draft-scenario/${id}`, updated)
+      const { ok, code } = await api.put(`/draft/${updated._id}`, updated)
+      if (!ok) return toast.error(code || "Failed to save draft")
+    } catch (error) {
+      toast.error(error.code || "Failed to save draft")
+    }
+  }
+
+  if (!draft) return <div className="min-h-[calc(100vh-65px)] bg-[hsl(228_25%_4%)]" />
+  return <Planner draft={draft} saveDraft={saveDraft} />
+}
+
+function Planner({ draft, saveDraft }) {
+  const navigate = useNavigate()
+  const { user } = useStore()
+  const [scenarios, setScenarios] = useState([])
+  const [activeId, setActiveId] = useState(null)
+  const [modal, setModal] = useState(null)
+
+  const fetchScenarios = async () => {
+    try {
+      const { ok, data, code } = await api.post("/draft-scenario/search", { team_id: user?.team_id, draft_id: draft._id })
+      if (!ok) return toast.error(code || "Failed to fetch scenarios")
+      setScenarios(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch scenarios")
+    }
+  }
+
+  useEffect(() => {
+    fetchScenarios()
+  }, [draft._id])
+
+  useEffect(() => {
+    if (scenarios.some(s => s._id === activeId)) return
+    setActiveId(scenarios.find(s => !s.parent_id)?._id || null)
+  }, [scenarios])
+
+  const createScenario = async () => {
+    try {
+      const { ok, data, code } = await api.post("/draft-scenario", {
+        name: "New scenario",
+        draft_id: draft._id,
+        side: "blue",
+        blueBans: Array(5).fill(null),
+        redBans: Array(5).fill(null),
+        bluePicks: Array(5).fill(null),
+        redPicks: Array(5).fill(null),
+        opponent_id: draft.opponent_id || undefined,
+        opponent_name: draft.opponent_name || undefined
+      })
+      if (!ok) return toast.error(code || "Failed to create scenario")
+      setActiveId(data._id)
+      fetchScenarios()
+    } catch (error) {
+      toast.error(error.code || "Failed to create scenario")
+    }
+  }
+
+  const branchScenario = async scenario => {
+    try {
+      const { ok, data, code } = await api.post("/draft-scenario", {
+        name: scenario.name,
+        draft_id: draft._id,
+        parent_id: scenario._id,
+        condition: "if …",
+        side: scenario.side || "blue",
+        blueBans: Array.from({ length: 5 }, (_, i) => scenario.blueBans?.[i] || null),
+        redBans: Array.from({ length: 5 }, (_, i) => scenario.redBans?.[i] || null),
+        bluePicks: Array.from({ length: 5 }, (_, i) => scenario.bluePicks?.[i] || null),
+        redPicks: Array.from({ length: 5 }, (_, i) => scenario.redPicks?.[i] || null),
+        opponent_id: scenario.opponent_id || undefined,
+        opponent_name: scenario.opponent_name || undefined
+      })
+      if (!ok) return toast.error(code || "Failed to branch scenario")
+      setActiveId(data._id)
+      fetchScenarios()
+    } catch (error) {
+      toast.error(error.code || "Failed to branch scenario")
+    }
+  }
+
+  const saveScenario = async updated => {
+    setScenarios(prev => prev.map(s => (s._id === updated._id ? updated : s)))
+    try {
+      const { ok, code } = await api.put(`/draft-scenario/${updated._id}`, updated)
       if (!ok) return toast.error(code || "Failed to save scenario")
     } catch (error) {
       toast.error(error.code || "Failed to save scenario")
     }
   }
 
-  const renderSlot = (champion, type, side, index, onRemove) => (
-    <div
-      className={`relative ${hoveredSlot === `${type}-${side}-${index}` ? "z-[100]" : ""}`}
-      onMouseEnter={() => setHoveredSlot(`${type}-${side}-${index}`)}
-      onMouseLeave={() => setHoveredSlot(null)}
-    >
-      <button
-        onClick={() => {
-          setHoveredSlot(null)
-          setModal({ type, side, index })
-        }}
-        className={`
-          ${type === "ban" ? "w-12 h-12" : "w-14 h-14"}
-          rounded-lg border-2 border-dashed transition-all cursor-pointer
-          ${champion ? (type === "ban" ? `${side === "blue" ? "border-blue-500/50 hover:border-blue-400 hover:bg-blue-500/20" : "border-red-500/50 hover:border-red-400 hover:bg-red-500/20"} ${side === "blue" ? "bg-blue-500/10" : "bg-red-500/10"} grayscale hover:grayscale-0` : `${side === "blue" ? "border-blue-500/50 hover:border-blue-400 hover:bg-blue-500/20" : "border-red-500/50 hover:border-red-400 hover:bg-red-500/20"} ${side === "blue" ? "bg-blue-500/10" : "bg-red-500/10"}`) : "border-slate-600 bg-slate-700/30 hover:border-slate-500 hover:bg-slate-600/50"}
-          hover:scale-105 hover:shadow-lg
-          flex items-center justify-center overflow-hidden
-        `}
-      >
-        {champion ? (
-          <div className="w-full h-full relative">
-            <img
-              src={getChampionIcon(champion)}
-              alt={champion}
-              className={`w-full h-full object-cover ${type === "ban" ? "grayscale opacity-50" : ""}`}
-              onError={e => {
-                e.target.style.display = "none"
-              }}
-            />
-            {type === "ban" && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className={`w-full h-0.5 ${side === "blue" ? "bg-blue-500" : "bg-red-500"} rotate-45`} />
-              </div>
-            )}
-          </div>
-        ) : (
-          <span className={`text-xs ${side === "blue" ? "text-blue-400" : "text-red-400"}`}>{type === "ban" ? "BAN" : side === "blue" ? "B" : "R"}</span>
-        )}
-      </button>
-      {champion && (
-        <button
-          onClick={e => {
-            e.stopPropagation()
-            onRemove()
-          }}
-          className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center text-white text-[8px] font-bold leading-none z-10 transition-colors"
-        >
-          ✕
-        </button>
-      )}
-      {hoveredSlot === `${type}-${side}-${index}` && <DraftTooltip champion={champion} type={type} side={side} index={index} selectedLeagues={selectedLeagues} />}
-    </div>
-  )
+  const deleteScenario = async id => {
+    try {
+      const { ok, code } = await api.delete(`/draft-scenario/${id}`)
+      if (!ok) return toast.error(code || "Failed to delete scenario")
+      toast.success("Scenario deleted")
+      fetchScenarios()
+    } catch (error) {
+      toast.error(error.code || "Failed to delete scenario")
+    }
+  }
 
   const selectChampionFromModal = champion => {
-    const key = modal.type === "ban" ? (modal.side === "blue" ? "blueBans" : "redBans") : modal.side === "blue" ? "bluePicks" : "redPicks"
-    save({ ...scenario, [key]: Array.from({ length: 5 }, (_, i) => (i === modal.index ? champion : scenario[key]?.[i] || null)) })
+    const scenario = scenarios.find(s => s._id === modal.scenarioId)
+    if (!scenario) return setModal(null)
+    saveScenario({ ...scenario, [modal.key]: Array.from({ length: 5 }, (_, i) => (i === modal.index ? champion : scenario[modal.key]?.[i] || null)) })
     setModal(null)
   }
 
   return (
-    <div className="min-h-[calc(100vh-65px)] flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 lg:p-6">
-      <div className="max-w-[1600px] w-full mx-auto flex-1 flex flex-col">
-        <div className="flex items-center justify-between mb-6">
-          <DebounceInput
-            type="text"
-            placeholder="Scenario name..."
-            value={scenario.name}
-            onChange={e => save({ ...scenario, name: e.target.value })}
-            className="bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm w-64"
-          />
-          <div className="flex items-center gap-3">
-            <OpponentDropdown
-              value={scenario.opponent_name || ""}
-              onChange={team => save({ ...scenario, opponent_id: team._id, opponent_name: team.name })}
-            />
-            <LeagueDropdown selectedLeagues={selectedLeagues} setSelectedLeagues={setSelectedLeagues} />
-            <button
-              onClick={() => save({ ...scenario, blueBans: Array(5).fill(null), redBans: Array(5).fill(null), bluePicks: Array(5).fill(null), redPicks: Array(5).fill(null) })}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Reset
-            </button>
-          </div>
+    <div className="min-h-[calc(100vh-65px)] bg-[hsl(228_25%_4%)] text-[hsl(220_20%_92%)] font-inter px-6 pt-5 pb-12">
+      <div className="flex items-center gap-3.5 flex-wrap mb-5">
+        <button onClick={() => navigate("/performance/draft")} className="text-[hsl(220_10%_54%)] hover:text-[hsl(220_20%_92%)] text-base px-1.5 py-1 rounded-md transition-colors">
+          ←
+        </button>
+        <DebounceInput
+          type="text"
+          placeholder="Draft name…"
+          value={draft.name || ""}
+          onChange={e => saveDraft({ ...draft, name: e.target.value })}
+          className="px-3.5 py-2 rounded-lg bg-[hsl(228_22%_7%)] border border-[hsl(225_15%_15%)] text-[15px] font-bold tracking-[-0.02em] min-w-[220px] focus:outline-none focus:border-[hsl(234_89%_64%/0.5)]"
+        />
+        <OpponentDropdown value={draft.opponent_name || ""} onChange={team => saveDraft({ ...draft, opponent_id: team._id, opponent_name: team.name })} allowClear />
+        <button
+          onClick={createScenario}
+          className="flex items-center gap-2 px-4 py-[9px] rounded-lg bg-[hsl(234_89%_64%)] text-white text-[13px] font-semibold transition-all duration-150 hover:shadow-[0_0_24px_hsl(234_89%_64%/0.35)]"
+        >
+          ＋ New scenario
+        </button>
+      </div>
+
+      <div className="grid gap-5 items-start" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(540px, 1fr))" }}>
+        <div className="flex flex-col gap-4 min-w-0">
+          {scenarios.length === 0 && (
+            <div className="border border-[hsl(225_15%_15%)] rounded-[10px] bg-[hsl(228_22%_7%)] p-6 text-center text-[hsl(220_10%_54%)] text-sm">
+              No scenarios yet — create your first draft plan
+            </div>
+          )}
+          {scenarios
+            .filter(s => !s.parent_id)
+            .map(root => (
+              <ScenarioCard
+                key={root._id}
+                scenario={root}
+                scenarios={scenarios}
+                depth={0}
+                activeId={activeId}
+                setActiveId={setActiveId}
+                saveScenario={saveScenario}
+                branchScenario={branchScenario}
+                deleteScenario={deleteScenario}
+                openSlot={setModal}
+              />
+            ))}
         </div>
 
-        <div className="flex-1 grid grid-cols-12 gap-4">
-          <div className="col-span-3 flex flex-col gap-4">
-            <MyTeamMostPlayedPanel />
-            <MyTeamCombosPanel />
-          </div>
-
-          <div className="col-span-6 flex flex-col gap-4">
-            <div className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">BANS</p>
-                  <div className="flex gap-2">
-                    {[0, 1, 2, 3, 4].map(idx => (
-                      <div key={`blue-ban-${idx}`}>
-                        {renderSlot(scenario.blueBans?.[idx] || null, "ban", "blue", idx, () =>
-                          save({ ...scenario, blueBans: Array.from({ length: 5 }, (_, i) => (i === idx ? null : scenario.blueBans?.[i] || null)) })
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2 text-right">BANS</p>
-                  <div className="flex gap-2">
-                    {[0, 1, 2, 3, 4].map(idx => (
-                      <div key={`red-ban-${idx}`}>
-                        {renderSlot(scenario.redBans?.[idx] || null, "ban", "red", idx, () =>
-                          save({ ...scenario, redBans: Array.from({ length: 5 }, (_, i) => (i === idx ? null : scenario.redBans?.[i] || null)) })
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">PICKS</p>
-                  <div className="space-y-2">
-                    {["TOP", "JGL", "MID", "ADC", "SUP"].map((role, idx) => (
-                      <div key={role} className="flex items-center gap-3">
-                        {renderSlot(scenario.bluePicks?.[idx] || null, "pick", "blue", idx, () =>
-                          save({ ...scenario, bluePicks: Array.from({ length: 5 }, (_, i) => (i === idx ? null : scenario.bluePicks?.[i] || null)) })
-                        )}
-                        <span className="text-slate-500 text-xs uppercase">{role}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* <div className="flex items-center justify-center self-center flex-shrink-0">
-                  <DraftSuggestionsTree scenario={scenario} selectedLeagues={selectedLeagues} />
-                </div> */}
-
-                <div className="flex-1 min-w-0">
-                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2 text-right">PICKS</p>
-                  <div className="space-y-2">
-                    {["TOP", "JGL", "MID", "ADC", "SUP"].map((role, idx) => (
-                      <div key={role} className="flex items-center gap-3 justify-end">
-                        <span className="text-slate-500 text-xs uppercase">{role}</span>
-                        {renderSlot(scenario.redPicks?.[idx] || null, "pick", "red", idx, () =>
-                          save({ ...scenario, redPicks: Array.from({ length: 5 }, (_, i) => (i === idx ? null : scenario.redPicks?.[i] || null)) })
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <MyTeamFlexedPanel />
-              <ProFlexedPanel selectedLeagues={selectedLeagues} />
+        <div className="flex flex-col gap-4 min-w-0">
+          <div>
+            <div className="font-jetbrains text-[10px] tracking-[0.14em] uppercase text-[hsl(220_10%_54%)] mb-2">Pools</div>
+            <div className="grid gap-3 items-stretch" style={{ gridTemplateColumns: "1.4fr 1fr 1.4fr" }}>
+              <OurPoolPanel activeScenario={scenarios.find(s => s._id === activeId)} />
+              <CommonPoolPanel draft={draft} activeScenario={scenarios.find(s => s._id === activeId)} />
+              <OpponentPoolPanel draft={draft} activeScenario={scenarios.find(s => s._id === activeId)} />
             </div>
           </div>
 
-          <div className="col-span-3 flex flex-col gap-4">
-            <ProMostPlayedPanel selectedLeagues={selectedLeagues} />
-            <ProCombosPanel selectedLeagues={selectedLeagues} />
-          </div>
+          <ModulesSection />
         </div>
       </div>
 
-      {modal && <ChampionModal modalType={modal.type} scenario={scenario} selectChampionFromModal={selectChampionFromModal} closeModal={() => setModal(null)} />}
+      {modal && (
+        <ChampionModal
+          modalType={modal.type}
+          scenario={scenarios.find(s => s._id === modal.scenarioId)}
+          selectChampionFromModal={selectChampionFromModal}
+          closeModal={() => setModal(null)}
+        />
+      )}
     </div>
   )
 }
 
-function LeagueDropdown({ selectedLeagues, setSelectedLeagues }) {
-  const [leagues, setLeagues] = useState([])
-  const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveScenario, branchScenario, deleteScenario, openSlot }) {
+  const { team } = useStore()
+  const [hoveredSlot, setHoveredSlot] = useState(null)
 
-  const fetchLeagues = async () => {
-    try {
-      const { ok, data, code } = await api.get("/pro-game/leagues/list")
-      if (!ok) return toast.error(code || "Failed to fetch leagues")
-      setLeagues(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch leagues")
-    }
+  const parent = scenarios.find(s => s._id === scenario.parent_id)
+  const children = scenarios.filter(s => s.parent_id === scenario._id)
+  const active = scenario._id === activeId
+
+  const renderSlot = slot => {
+    const champion = scenario[slot.key]?.[slot.index] || null
+    const modified = parent && (parent[slot.key]?.[slot.index] || null) !== champion
+    const slotId = `${slot.key}-${slot.index}`
+    return (
+      <div
+        key={slot.tag}
+        className="relative group"
+        onMouseEnter={e => setHoveredSlot({ id: slotId, rect: e.currentTarget.getBoundingClientRect() })}
+        onMouseLeave={() => setHoveredSlot(null)}
+      >
+        <button
+          onClick={e => {
+            e.stopPropagation()
+            setHoveredSlot(null)
+            openSlot({ scenarioId: scenario._id, key: slot.key, index: slot.index, type: slot.type, side: slot.side })
+          }}
+          className={`
+            block w-[38px] h-11 rounded-md overflow-hidden relative text-left transition-all duration-150
+            ${
+              champion
+                ? modified
+                  ? "border-2 border-[hsl(38_92%_50%/0.7)]"
+                  : slot.type === "pick" && team?.prio_pick?.includes(champion)
+                    ? "border-2 border-[hsl(234_89%_64%)] shadow-[0_0_20px_hsl(234_89%_64%/0.25)]"
+                    : `border ${slot.side === "blue" ? "border-[hsl(234_89%_64%/0.45)]" : "border-[hsl(0_62%_45%/0.5)]"}`
+                : `border border-dashed ${
+                    modified
+                      ? "border-[hsl(38_92%_50%/0.7)] bg-[hsl(38_92%_50%/0.08)]"
+                      : slot.side === "blue"
+                        ? "border-[hsl(234_89%_64%/0.45)] bg-[hsl(234_89%_64%/0.08)] hover:bg-[hsl(234_89%_64%/0.16)]"
+                        : "border-[hsl(0_62%_45%/0.5)] bg-[hsl(0_62%_45%/0.1)] hover:bg-[hsl(0_62%_45%/0.2)]"
+                  }`
+            }
+          `}
+        >
+          {champion ? (
+            <>
+              <img
+                src={getChampionIcon(champion)}
+                alt={champion}
+                className={`w-full h-full object-cover ${slot.type === "ban" ? "grayscale opacity-55" : ""}`}
+                onError={e => (e.target.style.display = "none")}
+              />
+              {slot.type === "ban" && (
+                <div className="absolute inset-0 flex items-center">
+                  <div className={`w-full h-0.5 rotate-45 ${modified ? "bg-[hsl(38_92%_50%/0.9)]" : slot.side === "blue" ? "bg-[hsl(234_89%_64%/0.8)]" : "bg-[hsl(0_62%_55%/0.8)]"}`} />
+                </div>
+              )}
+              {slot.type === "pick" && (
+                <span className="absolute top-px left-0.5 font-jetbrains text-[7px] font-bold text-white [text-shadow:0_1px_2px_#000]">{slot.tag}</span>
+              )}
+            </>
+          ) : (
+            <span className={`absolute top-[3px] left-1 font-jetbrains text-[8px] ${slot.side === "blue" ? "text-[hsl(234_89%_74%)]" : "text-[hsl(0_62%_62%)]"}`}>{slot.tag}</span>
+          )}
+        </button>
+        {champion && (
+          <button
+            onClick={e => {
+              e.stopPropagation()
+              saveScenario({ ...scenario, [slot.key]: Array.from({ length: 5 }, (_, i) => (i === slot.index ? null : scenario[slot.key]?.[i] || null)) })
+            }}
+            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500/80 hover:bg-red-500 items-center justify-center text-white text-[8px] font-bold leading-none z-10 transition-colors hidden group-hover:flex"
+          >
+            ✕
+          </button>
+        )}
+        {hoveredSlot?.id === slotId && <DraftTooltip champion={champion} type={slot.type} side={slot.side} index={slot.index} rect={hoveredSlot.rect} />}
+      </div>
+    )
   }
 
-  useEffect(() => {
-    fetchLeagues()
-  }, [])
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (ref.current && !ref.current.contains(event.target)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
-
   return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm hover:border-slate-500 transition-colors min-w-[140px]"
-      >
-        <span className="truncate">{selectedLeagues.length === 0 ? "All Leagues" : selectedLeagues.length === 1 ? selectedLeagues[0] : `${selectedLeagues.length} leagues`}</span>
-        <svg className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 min-w-[180px] max-h-64 overflow-y-auto">
+    <div className="flex flex-col gap-4">
+      {scenario.collapsed ? (
+        <div
+          onClick={() => setActiveId(scenario._id)}
+          className={`relative border rounded-[10px] bg-[hsl(228_22%_7%)] px-3.5 py-[11px] flex items-center gap-2.5 flex-wrap cursor-pointer ${active ? "border-[hsl(234_89%_64%/0.55)] shadow-[0_0_20px_hsl(234_89%_64%/0.25)]" : "border-[hsl(225_15%_15%)]"}`}
+        >
+          {parent && <div className="absolute -left-5 -top-4 bottom-1/2 w-3.5 border-l border-b border-[hsl(38_92%_50%/0.5)] rounded-bl-lg" />}
           <button
-            onClick={() => setSelectedLeagues([])}
-            className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-700 transition-colors ${selectedLeagues.length === 0 ? "text-amber-400" : "text-white"}`}
+            onClick={e => {
+              e.stopPropagation()
+              saveScenario({ ...scenario, collapsed: false })
+            }}
+            className="text-[hsl(220_10%_54%)] text-[11px]"
           >
-            All Leagues
+            ▸
           </button>
-          <div className="border-t border-slate-700" />
-          {leagues.map(league => (
+          <div className={`text-[13px] font-semibold ${parent ? "italic text-[hsl(38_92%_62%)]" : ""}`}>{parent ? scenario.condition || "if …" : scenario.name || "Untitled"}</div>
+          <button
+            onClick={e => {
+              e.stopPropagation()
+              saveScenario({ ...scenario, side: scenario.side === "red" ? "blue" : "red" })
+            }}
+            className={`font-jetbrains text-[9px] px-2 py-[3px] rounded-full border ${scenario.side === "red" ? "bg-[hsl(0_62%_45%/0.12)] border-[hsl(0_62%_45%/0.4)] text-[hsl(0_70%_70%)]" : "bg-[hsl(234_89%_64%/0.12)] border-[hsl(234_89%_64%/0.4)] text-[hsl(234_89%_74%)]"}`}
+          >
+            {scenario.side === "red" ? "RED SIDE" : "BLUE SIDE"}
+          </button>
+          <span className="text-[11px] text-[hsl(220_10%_54%)]">
+            {[...(scenario.bluePicks || []), ...(scenario.redPicks || [])].filter(Boolean).length} picks · {children.length} branch{children.length > 1 ? "es" : ""}
+          </span>
+          <button
+            onClick={e => {
+              e.stopPropagation()
+              branchScenario(scenario)
+            }}
+            className="ml-auto font-jetbrains text-[11px] text-[hsl(220_10%_54%)] px-2.5 py-1.5 rounded-md transition-all duration-150 hover:text-[hsl(234_89%_74%)] hover:bg-[hsl(225_18%_13%)]"
+          >
+            ⑂ Branch
+          </button>
+          <button
+            onClick={e => {
+              e.stopPropagation()
+              deleteScenario(scenario._id)
+            }}
+            className="text-xs text-[hsl(220_10%_54%)] px-2 py-1.5 rounded-md hover:text-[hsl(0_70%_70%)]"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <div
+          onClick={() => setActiveId(scenario._id)}
+          className={`relative border rounded-[10px] bg-[hsl(228_22%_7%)] px-3.5 pt-3 pb-3.5 cursor-pointer ${active ? "border-[hsl(234_89%_64%/0.55)] shadow-[0_0_20px_hsl(234_89%_64%/0.25),0_0_40px_hsl(234_89%_64%/0.1)]" : "border-[hsl(225_15%_15%)]"}`}
+        >
+          {parent && <div className="absolute -left-5 -top-4 bottom-1/2 w-3.5 border-l border-b border-[hsl(38_92%_50%/0.5)] rounded-bl-lg" />}
+          <div className="flex items-center gap-2 mb-2.5 flex-wrap">
             <button
-              key={league}
-              onClick={() => setSelectedLeagues(prev => (prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]))}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-slate-700 transition-colors flex items-center gap-2"
+              onClick={e => {
+                e.stopPropagation()
+                saveScenario({ ...scenario, collapsed: true })
+              }}
+              className="text-[hsl(220_10%_54%)] text-[11px]"
             >
-              <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedLeagues.includes(league) ? "bg-amber-500 border-amber-500" : "border-slate-500"}`}>
-                {selectedLeagues.includes(league) && (
-                  <svg className="w-3 h-3 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </div>
-              <span className="text-white">{league}</span>
+              ▾
             </button>
+            {parent ? (
+              <DebounceInput
+                type="text"
+                placeholder="if …"
+                value={scenario.condition || ""}
+                onChange={e => saveScenario({ ...scenario, condition: e.target.value })}
+                onClick={e => e.stopPropagation()}
+                className="px-3 py-1.5 rounded-md bg-[hsl(228_25%_4%)] border border-[hsl(38_92%_50%/0.4)] text-[13px] italic text-[hsl(38_92%_62%)] min-w-[200px] focus:outline-none focus:border-[hsl(38_92%_50%/0.7)]"
+              />
+            ) : (
+              <DebounceInput
+                type="text"
+                placeholder="Scenario name…"
+                value={scenario.name || ""}
+                onChange={e => saveScenario({ ...scenario, name: e.target.value })}
+                onClick={e => e.stopPropagation()}
+                className={`px-3 py-1.5 rounded-md bg-[hsl(228_25%_4%)] border text-[13px] font-semibold min-w-[200px] focus:outline-none ${active ? "border-[hsl(234_89%_64%/0.5)]" : "border-[hsl(225_15%_15%)] focus:border-[hsl(234_89%_64%/0.5)]"}`}
+              />
+            )}
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                saveScenario({ ...scenario, side: scenario.side === "red" ? "blue" : "red" })
+              }}
+              className={`font-jetbrains text-[9px] px-2 py-[3px] rounded-full border ${scenario.side === "red" ? "bg-[hsl(0_62%_45%/0.12)] border-[hsl(0_62%_45%/0.4)] text-[hsl(0_70%_70%)]" : "bg-[hsl(234_89%_64%/0.12)] border-[hsl(234_89%_64%/0.4)] text-[hsl(234_89%_74%)]"}`}
+            >
+              {scenario.side === "red" ? "RED SIDE" : "BLUE SIDE"}
+            </button>
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                branchScenario(scenario)
+              }}
+              className="font-jetbrains text-[11px] text-[hsl(220_10%_54%)] px-2.5 py-1.5 rounded-md transition-all duration-150 hover:text-[hsl(234_89%_74%)] hover:bg-[hsl(225_18%_13%)]"
+            >
+              ⑂ Branch
+            </button>
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                deleteScenario(scenario._id)
+              }}
+              className="text-xs text-[hsl(220_10%_54%)] px-2 py-1.5 rounded-md hover:text-[hsl(0_70%_70%)]"
+            >
+              ✕
+            </button>
+            <div className="ml-auto flex items-center gap-2">
+              {parent && (
+                <span className="font-jetbrains text-[9px] px-2 py-[3px] rounded-full bg-[hsl(38_92%_50%/0.12)] border border-[hsl(38_92%_50%/0.35)] text-[hsl(38_92%_62%)] uppercase">
+                  Branch of {parent.name || "?"}
+                </span>
+              )}
+              {active && <span className="font-jetbrains text-[9px] px-2 py-[3px] rounded-full bg-[hsl(225_18%_13%)] text-[hsl(220_20%_92%)]">ACTIF</span>}
+            </div>
+          </div>
+          <div className="overflow-x-auto pb-1">
+            <div className="flex gap-3 items-start w-max">
+              {DRAFT_GROUPS.map(group => (
+                <div key={group.label} className="flex flex-col gap-1">
+                  <div className="flex gap-1">{group.slots.map(slot => renderSlot(slot))}</div>
+                  <div className="text-center font-jetbrains text-[8px] tracking-[0.14em] text-[hsl(220_10%_54%)]">
+                    {group.label}
+                    {parent && group.slots.filter(slot => (parent[slot.key]?.[slot.index] || null) !== (scenario[slot.key]?.[slot.index] || null)).length > 0 && (
+                      <span className="text-[hsl(38_92%_62%)]">
+                        {" "}
+                        · {group.slots.filter(slot => (parent[slot.key]?.[slot.index] || null) !== (scenario[slot.key]?.[slot.index] || null)).length} MODIFIED
+                        {group.slots.filter(slot => (parent[slot.key]?.[slot.index] || null) !== (scenario[slot.key]?.[slot.index] || null)).length > 1 ? "S" : ""}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {children.length > 0 && (
+        <div className="ml-8 flex flex-col gap-4">
+          {children.map(child => (
+            <ScenarioCard
+              key={child._id}
+              scenario={child}
+              scenarios={scenarios}
+              depth={depth + 1}
+              activeId={activeId}
+              setActiveId={setActiveId}
+              saveScenario={saveScenario}
+              branchScenario={branchScenario}
+              deleteScenario={deleteScenario}
+              openSlot={openSlot}
+            />
           ))}
         </div>
       )}
@@ -282,7 +505,271 @@ function LeagueDropdown({ selectedLeagues, setSelectedLeagues }) {
   )
 }
 
-function DraftTooltip({ champion, type, side, index, selectedLeagues }) {
+function OurPoolPanel({ activeScenario }) {
+  const { user, team, globalFilters } = useStore()
+  const [data, setData] = useState({})
+
+  const fetchData = async () => {
+    try {
+      const { ok, data, code } = await api.post("/playerstats/most-played", { ...globalFilters, limit: 4 })
+      if (!ok) return toast.error(code || "Failed to fetch team pool")
+      setData(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch team pool")
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
+
+  const usedChampions = [
+    ...(activeScenario?.blueBans || []),
+    ...(activeScenario?.redBans || []),
+    ...(activeScenario?.bluePicks || []),
+    ...(activeScenario?.redPicks || [])
+  ].filter(Boolean)
+
+  return (
+    <div className="bg-[hsl(228_22%_7%)] border border-[hsl(225_15%_15%)] rounded-[10px] p-3">
+      <div className="text-xs font-semibold mb-2">Our pool{user?.team_name ? ` — ${user.team_name}` : ""}</div>
+      <div className="flex flex-col gap-1.5">
+        {DRAFT_ROLES.map(role => {
+          if (!Array.isArray(data[role]) || data[role].length === 0) return null
+          return (
+            <div key={role} className="flex gap-2 items-start">
+              <img src={ROLE_ICONS[role]} alt={role} className="w-3.5 h-3.5 opacity-60 mt-0.5 flex-shrink-0" />
+              <div className="flex flex-wrap gap-x-2 gap-y-1.5">
+                {data[role].map(champ => (
+                  <div key={champ.name} className="flex items-center gap-1" title={champ.name}>
+                    <img
+                      src={getChampionIcon(champ.name)}
+                      alt={champ.name}
+                      className={`w-6 h-6 rounded object-cover ${usedChampions.includes(champ.name) ? "grayscale opacity-40" : ""} ${team?.prio_pick?.includes(champ.name) ? "outline outline-1 outline-[hsl(234_89%_64%)]" : ""}`}
+                      onError={e => (e.target.style.display = "none")}
+                    />
+                    <div className="flex flex-col leading-[1.25]">
+                      <span className="font-jetbrains text-[8px] text-[hsl(220_10%_54%)]">PR {champ.pr}%</span>
+                      <span className={`font-jetbrains text-[8px] ${champ.wr >= 60 ? "text-[hsl(152_60%_44%)]" : champ.wr >= 50 ? "text-[hsl(38_92%_60%)]" : "text-[hsl(0_62%_62%)]"}`}>
+                        WR {champ.wr}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+        {DRAFT_ROLES.every(role => !Array.isArray(data[role]) || data[role].length === 0) && <div className="text-xs text-[hsl(220_10%_54%)]">No scrim data</div>}
+      </div>
+    </div>
+  )
+}
+
+function CommonPoolPanel({ draft, activeScenario }) {
+  const { globalFilters } = useStore()
+  const [data, setData] = useState([])
+
+  const fetchData = async () => {
+    if (!draft.opponent_id) return setData([])
+    try {
+      const { ok, data, code } = await api.post("/playerstats/common-pool", { ...globalFilters, opponent_id: draft.opponent_id })
+      if (!ok) return toast.error(code || "Failed to fetch common pool")
+      setData(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch common pool")
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [draft.opponent_id, globalFilters.patch, globalFilters.folder_id])
+
+  const usedChampions = [
+    ...(activeScenario?.blueBans || []),
+    ...(activeScenario?.redBans || []),
+    ...(activeScenario?.bluePicks || []),
+    ...(activeScenario?.redPicks || [])
+  ].filter(Boolean)
+
+  return (
+    <div className="bg-[hsl(228_22%_7%)] border border-[hsl(225_15%_15%)] rounded-[10px] p-3">
+      <div className="text-xs font-semibold mb-2">Common</div>
+      {!draft.opponent_id ? (
+        <div className="text-xs text-[hsl(220_10%_54%)]">Select an opponent</div>
+      ) : data.length === 0 ? (
+        <div className="text-xs text-[hsl(220_10%_54%)]">No common champions</div>
+      ) : (
+        <div className="flex flex-wrap gap-x-2 gap-y-1.5">
+          {data.map(champ => (
+            <div key={champ.name} className="flex items-center gap-1" title={`${champ.name} — us ${champ.ourWr}% (${champ.ourGames}g) · them ${champ.oppWr}% (${champ.oppGames}g)`}>
+              <img
+                src={getChampionIcon(champ.name)}
+                alt={champ.name}
+                className={`w-6 h-6 rounded object-cover ${usedChampions.includes(champ.name) ? "grayscale opacity-40" : ""}`}
+                onError={e => (e.target.style.display = "none")}
+              />
+              <div className="flex flex-col leading-[1.25]">
+                <span className={`font-jetbrains text-[8px] ${champ.ourWr >= 60 ? "text-[hsl(152_60%_44%)]" : champ.ourWr >= 50 ? "text-[hsl(38_92%_60%)]" : "text-[hsl(0_62%_62%)]"}`}>
+                  US {champ.ourWr}%
+                </span>
+                <span className={`font-jetbrains text-[8px] ${champ.oppWr >= 60 ? "text-[hsl(152_60%_44%)]" : champ.oppWr >= 50 ? "text-[hsl(38_92%_60%)]" : "text-[hsl(0_62%_62%)]"}`}>
+                  OP {champ.oppWr}%
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OpponentPoolPanel({ draft, activeScenario }) {
+  const { globalFilters } = useStore()
+  const [data, setData] = useState({})
+
+  const fetchData = async () => {
+    if (!draft.opponent_id) return setData({})
+    try {
+      const { ok, data, code } = await api.post("/playerstats/opponent-pool", { ...globalFilters, opponent_id: draft.opponent_id, limit: 4 })
+      if (!ok) return toast.error(code || "Failed to fetch opponent pool")
+      setData(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch opponent pool")
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [draft.opponent_id, globalFilters.patch, globalFilters.folder_id])
+
+  const usedChampions = [
+    ...(activeScenario?.blueBans || []),
+    ...(activeScenario?.redBans || []),
+    ...(activeScenario?.bluePicks || []),
+    ...(activeScenario?.redPicks || [])
+  ].filter(Boolean)
+
+  return (
+    <div className="bg-[hsl(228_22%_7%)] border border-[hsl(225_15%_15%)] rounded-[10px] p-3">
+      <div className="text-xs font-semibold mb-2">Opponent{draft.opponent_name ? ` — ${draft.opponent_name}` : ""}</div>
+      {!draft.opponent_id ? (
+        <div className="text-xs text-[hsl(220_10%_54%)]">Select an opponent</div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {DRAFT_ROLES.map(role => {
+            if (!Array.isArray(data[role]) || data[role].length === 0) return null
+            return (
+              <div key={role} className="flex gap-2 items-start">
+                <img src={ROLE_ICONS[role]} alt={role} className="w-3.5 h-3.5 opacity-60 mt-0.5 flex-shrink-0" />
+                <div className="flex flex-wrap gap-x-2 gap-y-1.5">
+                  {data[role].map(champ => (
+                    <div key={champ.name} className="flex items-center gap-1" title={champ.name}>
+                      <img
+                        src={getChampionIcon(champ.name)}
+                        alt={champ.name}
+                        className={`w-6 h-6 rounded object-cover ${usedChampions.includes(champ.name) ? "grayscale opacity-40" : ""}`}
+                        onError={e => (e.target.style.display = "none")}
+                      />
+                      <div className="flex flex-col leading-[1.25]">
+                        <span className="font-jetbrains text-[8px] text-[hsl(220_10%_54%)]">PR {champ.pr}%</span>
+                        <span className={`font-jetbrains text-[8px] ${champ.wr >= 60 ? "text-[hsl(152_60%_44%)]" : champ.wr >= 50 ? "text-[hsl(38_92%_60%)]" : "text-[hsl(0_62%_62%)]"}`}>
+                          WR {champ.wr}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+          {DRAFT_ROLES.every(role => !Array.isArray(data[role]) || data[role].length === 0) && (
+            <div className="text-xs text-[hsl(220_10%_54%)]">No games vs this team</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ModulesSection() {
+  const [filters, setFilters] = useState({ search: "" })
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="font-jetbrains text-[10px] tracking-[0.14em] uppercase text-[hsl(220_10%_54%)]">▾ Modules</span>
+        <DebounceInput
+          type="text"
+          placeholder="Search a champion…"
+          value={filters.search}
+          onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+          className="ml-auto px-2.5 py-[5px] rounded-md bg-[hsl(225_18%_13%)] border border-[hsl(225_15%_15%)] text-[11px] text-[hsl(220_20%_92%)] placeholder-[hsl(220_10%_54%)] min-w-[140px] focus:outline-none focus:border-[hsl(234_89%_64%/0.5)]"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <ComboPanel title="J+M" roles={["jungle", "mid"]} filters={filters} />
+        <ComboPanel title="A+S" roles={["bottom", "support"]} filters={filters} />
+      </div>
+    </div>
+  )
+}
+
+function ComboPanel({ title, roles, filters }) {
+  const { globalFilters } = useStore()
+  const [data, setData] = useState([])
+
+  const fetchData = async () => {
+    try {
+      const { ok, data, code } = await api.post("/playerstats/best-combos", { ...globalFilters, ...filters, roles, limit: 3 })
+      if (!ok) return toast.error(code || "Failed to fetch combos")
+      setData(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch combos")
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [filters, globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
+
+  return (
+    <div className="bg-[hsl(228_22%_7%)] border border-[hsl(225_15%_15%)] rounded-[10px] p-3">
+      <div className="text-xs font-semibold mb-2">{title}</div>
+      <div className="flex flex-col gap-1.5">
+        {(data || []).length === 0 && <div className="text-xs text-[hsl(220_10%_54%)]">No data</div>}
+        {(data || []).map((combo, idx) => (
+          <div key={idx} className="flex items-center gap-2 bg-[hsl(225_18%_13%/0.6)] rounded-full py-1 pr-2 pl-1">
+            <div className="flex">
+              <img
+                src={getChampionIcon(combo.champ1)}
+                alt={combo.champ1}
+                className="w-[22px] h-[22px] rounded-full object-cover border-2 border-[hsl(225_15%_15%)]"
+                onError={e => (e.target.style.display = "none")}
+              />
+              <img
+                src={getChampionIcon(combo.champ2)}
+                alt={combo.champ2}
+                className="w-[22px] h-[22px] rounded-full object-cover border-2 border-[hsl(225_15%_15%)] -ml-2"
+                onError={e => (e.target.style.display = "none")}
+              />
+            </div>
+            <span className="text-[11px] flex-1 min-w-0 truncate">
+              {combo.champ1} + {combo.champ2}
+            </span>
+            <span className="font-jetbrains text-[9px] text-[hsl(220_10%_54%)]">{combo.games}g</span>
+            <span className={`font-jetbrains text-[10px] ${combo.wr >= 60 ? "text-[hsl(152_60%_44%)]" : combo.wr >= 50 ? "text-[hsl(38_92%_60%)]" : "text-[hsl(0_62%_62%)]"}`}>
+              {combo.wr}%
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DraftTooltip({ champion, type, side, index, rect }) {
   const { globalFilters } = useStore()
   const [draftAverages, setDraftAverages] = useState(null)
   const [myDraftAverages, setMyDraftAverages] = useState(null)
@@ -291,7 +778,7 @@ function DraftTooltip({ champion, type, side, index, selectedLeagues }) {
 
   const fetchDraftAverages = async () => {
     try {
-      const { ok, data, code } = await api.post("/pro-game/draft-averages", selectedLeagues.length ? { leagues: selectedLeagues } : {})
+      const { ok, data, code } = await api.post("/pro-game/draft-averages", {})
       if (!ok) return toast.error(code || "Failed to fetch draft averages")
       setDraftAverages(data)
     } catch (error) {
@@ -321,7 +808,7 @@ function DraftTooltip({ champion, type, side, index, selectedLeagues }) {
 
   const fetchProSynergies = async () => {
     try {
-      const { ok, data, code } = await api.post("/pro-game/synergies", { champion, ...(selectedLeagues?.length ? { leagues: selectedLeagues } : {}) })
+      const { ok, data, code } = await api.post("/pro-game/synergies", { champion })
       if (!ok) return toast.error(code || "Failed to fetch synergies")
       setProSynergies(data)
     } catch (error) {
@@ -352,14 +839,7 @@ function DraftTooltip({ champion, type, side, index, selectedLeagues }) {
           <div className="flex items-center gap-2">
             {(type === "ban" ? averages.bans[side][index] : averages.picks[side][index]).map((champ, idx) => (
               <div key={idx} className={`w-8 h-8 rounded-md overflow-hidden bg-slate-700 border ${avgBorderColor}`}>
-                <img
-                  src={getChampionIcon(champ)}
-                  alt={champ}
-                  className="w-full h-full object-cover"
-                  onError={e => {
-                    e.target.style.display = "none"
-                  }}
-                />
+                <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
               </div>
             ))}
           </div>
@@ -373,14 +853,7 @@ function DraftTooltip({ champion, type, side, index, selectedLeagues }) {
           <div className="flex items-center gap-2">
             {synergies.mostPlayedWith.slice(0, 3).map((s, idx) => (
               <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-emerald-500/30">
-                <img
-                  src={getChampionIcon(s.name)}
-                  alt={s.name}
-                  className="w-full h-full object-cover"
-                  onError={e => {
-                    e.target.style.display = "none"
-                  }}
-                />
+                <img src={getChampionIcon(s.name)} alt={s.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
               </div>
             ))}
           </div>
@@ -392,14 +865,7 @@ function DraftTooltip({ champion, type, side, index, selectedLeagues }) {
           <div className="flex items-center gap-2">
             {synergies.mostPlayedAgainst.slice(0, 3).map((s, idx) => (
               <div key={idx} className="w-8 h-8 rounded-md overflow-hidden bg-slate-700 border border-red-500/30">
-                <img
-                  src={getChampionIcon(s.name)}
-                  alt={s.name}
-                  className="w-full h-full object-cover"
-                  onError={e => {
-                    e.target.style.display = "none"
-                  }}
-                />
+                <img src={getChampionIcon(s.name)} alt={s.name} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
               </div>
             ))}
           </div>
@@ -408,529 +874,19 @@ function DraftTooltip({ champion, type, side, index, selectedLeagues }) {
     </div>
   )
 
-  return (
+  return createPortal(
     <div
-      className={`absolute z-[100] left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 rounded-lg p-3 shadow-xl whitespace-nowrap ${type === "ban" ? "top-full mt-2" : "bottom-full mb-2"}`}
+      className="fixed z-[200] -translate-x-1/2 bg-slate-900 border border-slate-700 rounded-lg p-3 shadow-xl whitespace-nowrap pointer-events-none"
+      style={{ left: rect.left + rect.width / 2, top: rect.bottom + 8 }}
     >
       <div className="flex gap-4">
         {renderColumn(myDraftAverages, mySynergies, "My Team", "text-amber-400", "border-amber-400/20", "border-amber-500/30")}
         <div className="w-px bg-slate-700" />
         {renderColumn(draftAverages, proSynergies, "Pro", "text-white", "border-slate-600", "border-slate-600")}
       </div>
-      {type === "ban" ? (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[6px] border-b-slate-700" />
-      ) : (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-700" />
-      )}
-    </div>
-  )
-}
-
-// eslint-disable-next-line no-unused-vars
-function DraftSuggestionsTree({ scenario, selectedLeagues }) {
-  const [data, setData] = useState(null)
-
-  const fetchSuggestions = async () => {
-    try {
-      const body = { bluePicks: scenario.bluePicks, redPicks: scenario.redPicks, blueBans: scenario.blueBans, redBans: scenario.redBans }
-      if (selectedLeagues.length) body.leagues = selectedLeagues
-      const { ok, data, code } = await api.post("/pro-game/draft-suggestions", body)
-      if (!ok) return toast.error(code || "Failed to fetch draft suggestions")
-      setData(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch draft suggestions")
-    }
-  }
-
-  useEffect(() => {
-    fetchSuggestions()
-  }, [scenario.bluePicks, scenario.redPicks, scenario.blueBans, scenario.redBans, selectedLeagues])
-
-  if (!data?.tree?.length) {
-    return (
-      <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
-        <span className="text-amber-400 font-bold text-xs">VS</span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <span className="text-amber-400 text-[8px] font-bold uppercase tracking-wider">Picks</span>
-      <div className="flex flex-col gap-2">
-        {data.tree.map((branch, i) => (
-          <div key={i} className="flex items-center gap-0">
-            <div className="flex flex-col items-center" title={`${branch.name} (${branch.games}g, ${branch.wr}% WR)`}>
-              <div className={`w-8 h-8 rounded border ${data.suggestSide === "blue" ? "border-blue-400/60" : "border-red-400/60"} bg-slate-700/40 overflow-hidden group`}>
-                <img
-                  src={getChampionIcon(branch.name)}
-                  alt={branch.name}
-                  className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity"
-                  onError={e => {
-                    e.target.style.display = "none"
-                  }}
-                />
-              </div>
-              <span className={`text-[6px] font-bold leading-tight ${branch.wr >= 55 ? "text-emerald-400" : branch.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
-                {branch.wr}%
-              </span>
-            </div>
-            <div className="w-2 h-px bg-slate-500/50" />
-            <div className="border-l border-slate-500/50 flex flex-col">
-              {data.depth === 3 ? (
-                branch.synergies?.length > 0 ? (
-                  branch.synergies.map((syn, j) => (
-                    <div key={j} className="flex items-center">
-                      <div className="w-1.5 h-px bg-slate-500/50" />
-                      <div className="flex flex-col items-center" title={`${syn.name} (${syn.games}g, ${syn.wr}% WR)`}>
-                        <div className="w-7 h-7 rounded border border-emerald-400/50 bg-slate-700/40 overflow-hidden group">
-                          <img
-                            src={getChampionIcon(syn.name)}
-                            alt={syn.name}
-                            className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity"
-                            onError={e => {
-                              e.target.style.display = "none"
-                            }}
-                          />
-                        </div>
-                        <span className={`text-[5px] font-bold leading-tight ${syn.wr >= 55 ? "text-emerald-400" : syn.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
-                          {syn.wr}%
-                        </span>
-                      </div>
-                      <div className="w-1.5 h-px bg-slate-500/50" />
-                      <div className="border-l border-slate-500/50 flex flex-col">
-                        {syn.counters?.length > 0 ? (
-                          syn.counters.map((ctr, k) => (
-                            <div key={k} className="flex items-center">
-                              <div className="w-1 h-px bg-slate-500/50" />
-                              <div className="flex flex-col items-center" title={`${ctr.name} (${ctr.games}g, ${ctr.wr}% WR)`}>
-                                <div
-                                  className={`w-5 h-5 rounded border ${data.suggestSide === "blue" ? "border-red-400/40" : "border-blue-400/40"} bg-slate-700/40 overflow-hidden group`}
-                                >
-                                  <img
-                                    src={getChampionIcon(ctr.name)}
-                                    alt={ctr.name}
-                                    className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity"
-                                    onError={e => {
-                                      e.target.style.display = "none"
-                                    }}
-                                  />
-                                </div>
-                                <span className={`text-[5px] font-bold leading-tight ${ctr.wr >= 55 ? "text-emerald-400" : ctr.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
-                                  {ctr.wr}%
-                                </span>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="flex items-center">
-                            <div className="w-1 h-px bg-slate-500/50" />
-                            <div className="w-5 h-5 rounded border border-dashed border-slate-600 bg-slate-700/30" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex items-center">
-                    <div className="w-1.5 h-px bg-slate-500/50" />
-                    <div className="w-6 h-6 rounded border border-dashed border-slate-600 bg-slate-700/30" />
-                  </div>
-                )
-              ) : branch.responses?.length > 0 ? (
-                branch.responses.map((resp, j) => (
-                  <div key={j} className="flex items-center">
-                    <div className="w-2 h-px bg-slate-500/50" />
-                    <div className="flex flex-col items-center" title={`${resp.name} (${resp.games}g, ${resp.wr}% WR)`}>
-                      <div className={`w-7 h-7 rounded border ${data.suggestSide === "blue" ? "border-red-400/40" : "border-blue-400/40"} bg-slate-700/40 overflow-hidden group`}>
-                        <img
-                          src={getChampionIcon(resp.name)}
-                          alt={resp.name}
-                          className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity"
-                          onError={e => {
-                            e.target.style.display = "none"
-                          }}
-                        />
-                      </div>
-                      <span className={`text-[5px] font-bold leading-tight ${resp.wr >= 55 ? "text-emerald-400" : resp.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
-                        {resp.wr}%
-                      </span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="flex items-center">
-                  <div className="w-2 h-px bg-slate-500/50" />
-                  <div className="w-6 h-6 rounded border border-dashed border-slate-600 bg-slate-700/30" />
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-      {data.totalGames > 0 && <span className="text-slate-500 text-[7px]">{data.totalGames}g</span>}
-    </div>
-  )
-}
-
-function MyTeamMostPlayedPanel() {
-  const { user, globalFilters } = useStore()
-  const [data, setData] = useState([])
-
-  const fetchData = async () => {
-    try {
-      const { ok, data, code } = await api.post("/playerstats/most-played", { ...globalFilters })
-      if (!ok) return toast.error(code || "Failed to fetch my team most-played")
-      setData(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch my team most-played")
-    }
-  }
-
-  useEffect(() => {
-    fetchData()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
-
-  return (
-    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
-      <div className="flex items-center gap-2 mb-3">
-        <h3 className="text-white font-semibold text-sm">Most played - {user?.team_name || "My Team"}</h3>
-      </div>
-      <div className="space-y-2">
-        {Object.entries(data || {}).map(([role, champions]) => {
-          if (!Array.isArray(champions)) return null
-          return (
-            <div key={role}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <img src={ROLE_ICONS[role]} alt={role} className="w-4 h-4 opacity-70" />
-                <span className="text-slate-400 text-[10px] font-medium uppercase">{role}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {champions.map(champ => (
-                  <div key={champ.name} className="flex items-center gap-1 p-1 rounded-lg">
-                    <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-700 flex-shrink-0">
-                      <img
-                        src={getChampionIcon(champ.name)}
-                        alt={champ.name}
-                        className="w-full h-full object-cover"
-                        onError={e => {
-                          e.target.style.display = "none"
-                        }}
-                      />
-                    </div>
-                    <div className="flex flex-col items-start">
-                      <span className="text-slate-400 text-[9px] font-semibold leading-tight">PR {champ.pr}%</span>
-                      <span className={`text-[9px] font-semibold leading-tight ${champ.wr >= 60 ? "text-emerald-400" : champ.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
-                        WR {champ.wr}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function ProMostPlayedPanel({ selectedLeagues }) {
-  const [data, setData] = useState([])
-
-  const fetchData = async () => {
-    try {
-      const { ok, data, code } = await api.post("/pro-game/most-played", selectedLeagues.length ? { leagues: selectedLeagues } : {})
-      if (!ok) return toast.error(code || "Failed to fetch enemy most-played")
-      setData(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch enemy most-played")
-    }
-  }
-
-  useEffect(() => {
-    fetchData()
-  }, [selectedLeagues])
-
-  return (
-    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
-      <div className="flex items-center gap-2 mb-3">
-        <h3 className="text-white font-semibold text-sm">Most played - Pro League</h3>
-      </div>
-      <div className="space-y-2">
-        {Object.entries(data || {}).map(([role, champions]) => {
-          if (!Array.isArray(champions)) return null
-          return (
-            <div key={role}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <img src={ROLE_ICONS[role]} alt={role} className="w-4 h-4 opacity-70" />
-                <span className="text-slate-400 text-[10px] font-medium uppercase">{role}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {champions.map(champ => (
-                  <div key={champ.name} className="flex items-center gap-1 p-1 rounded-lg">
-                    <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-700 flex-shrink-0">
-                      <img
-                        src={getChampionIcon(champ.name)}
-                        alt={champ.name}
-                        className="w-full h-full object-cover"
-                        onError={e => {
-                          e.target.style.display = "none"
-                        }}
-                      />
-                    </div>
-                    <div className="flex flex-col items-start">
-                      <span className="text-slate-400 text-[9px] font-semibold leading-tight">PR {champ.pr}%</span>
-                      <span className={`text-[9px] font-semibold leading-tight ${champ.wr >= 60 ? "text-emerald-400" : champ.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
-                        WR {champ.wr}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function MyTeamCombosPanel() {
-  const { globalFilters } = useStore()
-  const [data, setData] = useState([])
-
-  const fetchData = async () => {
-    try {
-      const { ok, data, code } = await api.post("/playerstats/best-combos", { ...globalFilters })
-      if (!ok) return toast.error(code || "Failed to fetch my team combos")
-      setData(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch my team combos")
-    }
-  }
-
-  useEffect(() => {
-    fetchData()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
-
-  return (
-    <div className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Zap className="w-4 h-4 text-emerald-500" />
-        <h3 className="text-emerald-500 font-semibold text-sm">Most Played Combos</h3>
-      </div>
-      <div className="space-y-2">
-        {(data || []).map((combo, idx) => (
-          <div key={idx} className="flex items-center justify-between bg-slate-700/30 rounded-full px-3 py-2">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center">
-                <div className="w-7 h-7 rounded-full bg-slate-600 overflow-hidden border-2 border-slate-500">
-                  <img
-                    src={getChampionIcon(combo.champ1)}
-                    alt={combo.champ1}
-                    className="w-full h-full object-cover"
-                    onError={e => {
-                      e.target.style.display = "none"
-                    }}
-                  />
-                </div>
-                <div className="w-7 h-7 rounded-full bg-slate-600 overflow-hidden border-2 border-slate-500 -ml-2">
-                  <img
-                    src={getChampionIcon(combo.champ2)}
-                    alt={combo.champ2}
-                    className="w-full h-full object-cover"
-                    onError={e => {
-                      e.target.style.display = "none"
-                    }}
-                  />
-                </div>
-              </div>
-              <span className="text-white text-sm">
-                {combo.champ1} + {combo.champ2}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {combo.games && <span className="text-slate-400 text-xs">{combo.games}g</span>}
-              <span className="text-emerald-400 font-semibold text-sm">{combo.wr}%</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ProCombosPanel({ selectedLeagues }) {
-  const [data, setData] = useState([])
-
-  const fetchData = async () => {
-    try {
-      const { ok, data, code } = await api.post("/pro-game/best-combos", selectedLeagues.length ? { leagues: selectedLeagues } : {})
-      if (!ok) return toast.error(code || "Failed to fetch enemy team combos")
-      setData(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch enemy team combos")
-    }
-  }
-
-  useEffect(() => {
-    fetchData()
-  }, [selectedLeagues])
-
-  return (
-    <div className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Zap className="w-4 h-4 text-emerald-500" />
-        <h3 className="text-emerald-500 font-semibold text-sm">Most Played Combos</h3>
-      </div>
-      <div className="space-y-2">
-        {(data || []).map((combo, idx) => (
-          <div key={idx} className="flex items-center justify-between bg-slate-700/30 rounded-full px-3 py-2">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center">
-                <div className="w-7 h-7 rounded-full bg-slate-600 overflow-hidden border-2 border-slate-500">
-                  <img
-                    src={getChampionIcon(combo.champ1)}
-                    alt={combo.champ1}
-                    className="w-full h-full object-cover"
-                    onError={e => {
-                      e.target.style.display = "none"
-                    }}
-                  />
-                </div>
-                <div className="w-7 h-7 rounded-full bg-slate-600 overflow-hidden border-2 border-slate-500 -ml-2">
-                  <img
-                    src={getChampionIcon(combo.champ2)}
-                    alt={combo.champ2}
-                    className="w-full h-full object-cover"
-                    onError={e => {
-                      e.target.style.display = "none"
-                    }}
-                  />
-                </div>
-              </div>
-              <span className="text-white text-sm">
-                {combo.champ1} + {combo.champ2}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {combo.games && <span className="text-slate-400 text-xs">{combo.games}g</span>}
-              <span className="text-emerald-400 font-semibold text-sm">{combo.wr}%</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function MyTeamFlexedPanel() {
-  const { globalFilters } = useStore()
-  const [data, setData] = useState([])
-
-  const fetchData = async () => {
-    try {
-      const { ok, data, code } = await api.post("/playerstats/most-flexed", { ...globalFilters, limit: 3 })
-      if (!ok) return toast.error(code || "Failed to fetch my team flexed champions")
-      setData(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch my team flexed champions")
-    }
-  }
-
-  useEffect(() => {
-    fetchData()
-  }, [globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="flex-1 min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
-        <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider mb-2">🔄 Most Flexed - My Team</p>
-        <p className="text-slate-500 text-xs">No flex picks data</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex-1 min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
-      <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider mb-2">🔄 Most Flexed - My Team</p>
-      <div className="flex items-center gap-3">
-        {data.map((champ, idx) => (
-          <div key={idx} className="flex items-center gap-1.5">
-            <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-700 flex-shrink-0">
-              <img
-                src={getChampionIcon(champ.name)}
-                alt={champ.name}
-                className="w-full h-full object-cover"
-                onError={e => {
-                  e.target.style.display = "none"
-                }}
-              />
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="text-cyan-400 text-[8px] font-semibold whitespace-nowrap">{champ.roles?.map(r => r.role).join("/")}</span>
-              <span className="text-slate-400 text-[8px] whitespace-nowrap">PR {champ.roles?.reduce((sum, r) => sum + r.pr, 0) || 0}%</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ProFlexedPanel({ selectedLeagues }) {
-  const [data, setData] = useState([])
-
-  const fetchData = async () => {
-    try {
-      const body = { limit: 3 }
-      if (selectedLeagues.length) body.leagues = selectedLeagues
-      const { ok, data, code } = await api.post("/pro-game/most-flexed", body)
-      if (!ok) return toast.error(code || "Failed to fetch pro flexed champions")
-      setData(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch pro flexed champions")
-    }
-  }
-
-  useEffect(() => {
-    fetchData()
-  }, [selectedLeagues])
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="flex-1 min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
-        <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider mb-2">🔄 Most Flexed - Pro</p>
-        <p className="text-slate-500 text-xs">No flex picks data</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex-1 min-w-0 bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
-      <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider mb-2">🔄 Most Flexed - Pro</p>
-      <div className="flex items-center gap-3">
-        {data.map((champ, idx) => (
-          <div key={idx} className="flex items-center gap-1.5">
-            <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-700 flex-shrink-0">
-              <img
-                src={getChampionIcon(champ.name)}
-                alt={champ.name}
-                className="w-full h-full object-cover"
-                onError={e => {
-                  e.target.style.display = "none"
-                }}
-              />
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="text-cyan-400 text-[8px] font-semibold whitespace-nowrap">{champ.roles?.map(r => r.role).join("/")}</span>
-              <span className="text-slate-400 text-[8px] whitespace-nowrap">PR {champ.roles?.reduce((sum, r) => sum + r.pr, 0) || 0}%</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[6px] border-b-slate-700" />
+    </div>,
+    document.body
   )
 }
 
@@ -939,7 +895,7 @@ function ChampionModal({ modalType, scenario, selectChampionFromModal, closeModa
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedRole, setSelectedRole] = useState(null)
 
-  const usedChampions = [...scenario.blueBans, ...scenario.redBans, ...scenario.bluePicks, ...scenario.redPicks].filter(Boolean)
+  const usedChampions = [...(scenario?.blueBans || []), ...(scenario?.redBans || []), ...(scenario?.bluePicks || []), ...(scenario?.redPicks || [])].filter(Boolean)
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={closeModal}>
@@ -984,72 +940,23 @@ function ChampionModal({ modalType, scenario, selectChampionFromModal, closeModa
           </div>
         </div>
 
-        {!searchQuery && !selectedRole && modalType === "pick" && (team?.prio_pick?.length > 0 || team?.prio_flex?.length > 0) && (
+        {!searchQuery && !selectedRole && modalType === "pick" && team?.prio_pick?.length > 0 && (
           <div className="p-4 border-b border-slate-700 bg-slate-800/50">
-            <div className="flex gap-6">
-              {team?.prio_pick?.length > 0 && (
-                <div className="flex-[2]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Star className="w-4 h-4 text-amber-500" />
-                    <p className="text-amber-500 text-xs font-semibold uppercase">Priority Picks</p>
+            <p className="text-amber-500 text-xs font-semibold uppercase mb-2">Priority Picks</p>
+            <div className="flex gap-2 flex-wrap">
+              {team.prio_pick.map(champ => (
+                <button
+                  key={champ}
+                  onClick={() => !usedChampions.includes(champ) && selectChampionFromModal(champ)}
+                  disabled={usedChampions.includes(champ)}
+                  className={`flex flex-col items-center p-2 rounded-lg border transition-colors ${usedChampions.includes(champ) ? "bg-slate-700/30 border-slate-600 opacity-40 cursor-not-allowed" : "bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 cursor-pointer"}`}
+                >
+                  <div className={`w-10 h-10 rounded-lg overflow-hidden bg-slate-700 ${usedChampions.includes(champ) ? "grayscale" : ""}`}>
+                    <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
                   </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {team.prio_pick.map(champ => (
-                      <button
-                        key={champ}
-                        onClick={() => !usedChampions.includes(champ) && selectChampionFromModal(champ)}
-                        disabled={usedChampions.includes(champ)}
-                        className={`flex flex-col items-center p-2 rounded-lg border transition-colors ${usedChampions.includes(champ) ? "bg-slate-700/30 border-slate-600 opacity-40 cursor-not-allowed" : "bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 cursor-pointer"}`}
-                      >
-                        <div className={`w-10 h-10 rounded-lg overflow-hidden bg-slate-700 ${usedChampions.includes(champ) ? "grayscale" : ""}`}>
-                          <img
-                            src={getChampionIcon(champ)}
-                            alt={champ}
-                            className="w-full h-full object-cover"
-                            onError={e => {
-                              e.target.style.display = "none"
-                            }}
-                          />
-                        </div>
-                        <span className="text-slate-300 text-[9px] mt-1">{champ}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {team?.prio_flex?.length > 0 && (
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Shuffle className="w-4 h-4 text-cyan-500" />
-                    <p className="text-cyan-500 text-xs font-semibold uppercase">Flex Picks</p>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {team.prio_flex
-                      .filter(champ => !usedChampions.includes(champ))
-                      .slice(0, 5)
-                      .map(champ => (
-                        <button
-                          key={champ}
-                          onClick={() => selectChampionFromModal(champ)}
-                          className="flex flex-col items-center p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors"
-                        >
-                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-700">
-                            <img
-                              src={getChampionIcon(champ)}
-                              alt={champ}
-                              className="w-full h-full object-cover"
-                              onError={e => {
-                                e.target.style.display = "none"
-                              }}
-                            />
-                          </div>
-                          <span className="text-slate-300 text-[9px] mt-1">{champ}</span>
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              )}
+                  <span className="text-slate-300 text-[9px] mt-1">{champ}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -1069,14 +976,7 @@ function ChampionModal({ modalType, scenario, selectChampionFromModal, closeModa
                 className={`flex flex-col items-center p-1.5 rounded-lg transition-colors ${usedChampions.includes(champion) ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-700 cursor-pointer"}`}
               >
                 <div className={`w-10 h-10 rounded-lg overflow-hidden bg-slate-700 ${usedChampions.includes(champion) ? "grayscale" : ""}`}>
-                  <img
-                    src={getChampionIcon(champion)}
-                    alt={champion}
-                    className="w-full h-full object-cover"
-                    onError={e => {
-                      e.target.style.display = "none"
-                    }}
-                  />
+                  <img src={getChampionIcon(champion)} alt={champion} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
                 </div>
                 <span className="text-slate-300 text-[9px] mt-1 text-center truncate w-full">{champion}</span>
               </button>

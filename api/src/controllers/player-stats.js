@@ -1294,6 +1294,98 @@ router.post('/most-played', passport.authenticate(['admin', 'user'], { session: 
   }
 });
 
+// Champion pool of a scouted opponent, built from the games played against them (opponent: true rows)
+router.post('/opponent-pool', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team_id = req.body.team_id || req.user.team_id;
+    if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+    if (!req.body.opponent_id) return res.status(200).send({ ok: true, data: {}, totalGames: 0 });
+
+    const { gameIdFilter } = await buildGameFilters({ team_id, ...extractFilters(req.body) });
+    const query = { team_id, opponent: true, ...gameIdFilter };
+
+    const totalGamesAgg = await PlayerStats.aggregate([{ $match: query }, { $group: { _id: '$game_id' } }, { $count: 'total' }]);
+    const totalGames = totalGamesAgg[0]?.total || 0;
+    if (totalGames === 0) return res.status(200).send({ ok: true, data: {}, totalGames: 0 });
+
+    const stats = await PlayerStats.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: { role: '$role', champion: '$champion' },
+          games: { $sum: 1 },
+          wins: { $sum: { $cond: ['$game_win', 1, 0] } },
+        },
+      },
+      { $sort: { games: -1 } },
+    ]);
+
+    const topN = req.body.limit || 5;
+    const result = {};
+    for (const [roleKey, displayName] of Object.entries(ROLE_DISPLAY)) {
+      result[displayName] = stats
+        .filter((s) => s._id.role === roleKey)
+        .slice(0, topN)
+        .map((s) => ({
+          name: s._id.champion,
+          games: s.games,
+          pr: Math.round((s.games / totalGames) * 100),
+          wr: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0,
+        }));
+    }
+
+    return res.status(200).send({ ok: true, data: result, totalGames });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// Champions shared by our pool and the scouted opponent's pool
+router.post('/common-pool', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team_id = req.body.team_id || req.user.team_id;
+    if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+    if (!req.body.opponent_id) return res.status(200).send({ ok: true, data: [] });
+
+    const activePlayers = await Player.find({ team_id, active: true });
+    const activePuuids = activePlayers.map((p) => p.puuid).filter(Boolean);
+
+    const ourFilters = await buildGameFilters({ team_id, patch: req.body.patch || null, folder_id: req.body.folder_id || null });
+    const ourStats = await PlayerStats.aggregate([
+      { $match: { team_id, opponent: false, puuid: { $in: activePuuids }, ...ourFilters.gameIdFilter } },
+      { $group: { _id: '$champion', games: { $sum: 1 }, wins: { $sum: { $cond: ['$game_win', 1, 0] } } } },
+    ]);
+
+    const oppFilters = await buildGameFilters({ team_id, patch: req.body.patch || null, folder_id: req.body.folder_id || null, opponent_id: req.body.opponent_id });
+    const oppStats = await PlayerStats.aggregate([
+      { $match: { team_id, opponent: true, ...oppFilters.gameIdFilter } },
+      { $group: { _id: '$champion', games: { $sum: 1 }, wins: { $sum: { $cond: ['$game_win', 1, 0] } } } },
+    ]);
+
+    const limit = req.body.limit || 12;
+    const data = ourStats
+      .filter((ours) => oppStats.some((theirs) => theirs._id === ours._id))
+      .map((ours) => {
+        const theirs = oppStats.find((o) => o._id === ours._id);
+        return {
+          name: ours._id,
+          ourGames: ours.games,
+          ourWr: Math.round((ours.wins / ours.games) * 100),
+          oppGames: theirs.games,
+          oppWr: Math.round((theirs.wins / theirs.games) * 100),
+        };
+      })
+      .sort((a, b) => b.ourGames + b.oppGames - (a.ourGames + a.oppGames))
+      .slice(0, limit);
+
+    return res.status(200).send({ ok: true, data });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 // Most flexed champions (played on most different roles) for my team
 const ROLE_DISPLAY_FLEX = { top: 'TOP', jungle: 'JGL', mid: 'MID', bottom: 'ADC', support: 'SUP' };
 
@@ -1357,24 +1449,26 @@ router.post('/best-combos', passport.authenticate(['admin', 'user'], { session: 
     const filters = extractFilters(req.body);
     const { gameIdFilter } = await buildGameFilters({ team_id, ...filters });
     // Get all ally player stats grouped by game
-    const stats = await PlayerStats.find({ team_id, opponent: false, ...gameIdFilter }, { game_id: 1, champion: 1, game_win: 1 }).lean();
+    const stats = await PlayerStats.find({ team_id, opponent: false, ...gameIdFilter });
 
     // Group by game_id
     const gameMap = {};
     for (const s of stats) {
       if (!s.game_id || !s.champion) continue;
       if (!gameMap[s.game_id]) gameMap[s.game_id] = { champions: [], win: s.game_win };
-      gameMap[s.game_id].champions.push(s.champion);
+      gameMap[s.game_id].champions.push({ name: s.champion, role: s.role });
     }
 
-    // Count all champion pairs
+    // Count all champion pairs (optionally restricted to a role duo, e.g. ['jungle', 'mid'])
+    const roles = Array.isArray(req.body.roles) && req.body.roles.length === 2 ? req.body.roles : null;
     const pairStats = {};
     for (const game of Object.values(gameMap)) {
       const champs = game.champions;
       for (let i = 0; i < champs.length; i++) {
         for (let j = i + 1; j < champs.length; j++) {
-          const key = [champs[i], champs[j]].sort().join('+');
-          if (!pairStats[key]) pairStats[key] = { champ1: champs[i] < champs[j] ? champs[i] : champs[j], champ2: champs[i] < champs[j] ? champs[j] : champs[i], games: 0, wins: 0 };
+          if (roles && !((champs[i].role === roles[0] && champs[j].role === roles[1]) || (champs[i].role === roles[1] && champs[j].role === roles[0]))) continue;
+          const key = [champs[i].name, champs[j].name].sort().join('+');
+          if (!pairStats[key]) pairStats[key] = { champ1: champs[i].name < champs[j].name ? champs[i].name : champs[j].name, champ2: champs[i].name < champs[j].name ? champs[j].name : champs[i].name, games: 0, wins: 0 };
           pairStats[key].games++;
           if (game.win) pairStats[key].wins++;
         }
@@ -1385,6 +1479,7 @@ router.post('/best-combos', passport.authenticate(['admin', 'user'], { session: 
     const limit = req.body.limit || 3;
     const combos = Object.values(pairStats)
       .filter((p) => p.games >= minGames)
+      .filter((p) => !req.body.search || p.champ1.toLowerCase().includes(req.body.search.toLowerCase()) || p.champ2.toLowerCase().includes(req.body.search.toLowerCase()))
       .map((p) => ({ champ1: p.champ1, champ2: p.champ2, games: p.games, wr: Math.round((p.wins / p.games) * 100) }))
       .sort((a, b) => b.games - a.games || b.wr - a.wr)
       .slice(0, limit);

@@ -4,6 +4,7 @@ const FolderObject = require('../models/folder');
 const StratMapObject = require('../models/strat-map');
 const ReplayBookObject = require('../models/replay-book');
 const ScrimObjectifObject = require('../models/scrim-objectif');
+const DraftObject = require('../models/draft');
 const DraftScenarioObject = require('../models/draft-scenario');
 
 // Each function below seeds the defaults for one feature when a team is created.
@@ -148,11 +149,9 @@ const seedScrimObjectifs = (team, ids) =>
     },
   ]);
 
-const seedDraftScenarios = (team) =>
-  DraftScenarioObject.create([
+const seedDraftScenarios = async (team) => {
+  const defaults = [
     {
-      team_id: team._id.toString(),
-      team_name: team.name,
       name: 'Default : B1 Yunara',
       blueBans: [],
       redBans: [],
@@ -160,15 +159,18 @@ const seedDraftScenarios = (team) =>
       redPicks: ['Ryze', 'Aphelios', null, null, null],
     },
     {
-      team_id: team._id.toString(),
-      team_name: team.name,
       name: 'Default : B1 Ryze',
       blueBans: ['Azir', null, null, null, null],
       redBans: [],
       bluePicks: ['Ryze', 'Corki', 'Nami', null, null],
       redPicks: ['Yunara', 'Anivia', null, null, null],
     },
-  ]);
+  ];
+  for (const scenario of defaults) {
+    const draft = await DraftObject.create({ team_id: team._id.toString(), team_name: team.name, name: scenario.name });
+    await DraftScenarioObject.create({ ...scenario, name: 'Plan A', team_id: team._id.toString(), team_name: team.name, draft_id: draft._id.toString() });
+  }
+};
 
 const seedTeamDefaults = async (team) => {
   const ids = { nashStratMap: new mongoose.Types.ObjectId() };

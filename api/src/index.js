@@ -44,6 +44,7 @@ app.use('/game', require('./controllers/game'));
 app.use('/aifeedback', require('./controllers/ai-feedback'));
 app.use('/folder', require('./controllers/folder'));
 app.use('/playerstats', require('./controllers/player-stats'));
+app.use('/draft', require('./controllers/draft'));
 app.use('/draft-scenario', require('./controllers/draft-scenario'));
 app.use('/pro-game', require('./controllers/pro-game'));
 app.use('/pro-game-playerstats', require('./controllers/pro-game-player-stats'));

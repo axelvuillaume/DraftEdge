@@ -1,54 +1,51 @@
 import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
-import { Plus, Trash2, X, Search, Star, Shuffle } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
 import OpponentDropdown from "@/components/OpponentDropdown"
 import { useNavigate } from "react-router-dom"
-import { getChampionIcon, ALL_CHAMPIONS } from "@/utils"
 
 export default function List() {
   const navigate = useNavigate()
   const { user } = useStore()
-  const [scenarios, setScenarios] = useState([])
+  const [drafts, setDrafts] = useState([])
   const [isOpen, setIsOpen] = useState(false)
   const [filters, setFilters] = useState({ opponent_id: "", opponent_name: "" })
 
-  const fetchScenarios = async () => {
+  const fetchDrafts = async () => {
     try {
-      const { ok, data, code } = await api.post("/draft-scenario/search", { team_id: user?.team_id, opponent_id: filters.opponent_id })
-      if (!ok) return toast.error(code || "Failed to fetch scenarios")
-      setScenarios(data)
+      const { ok, data, code } = await api.post("/draft/search", { team_id: user?.team_id, opponent_id: filters.opponent_id })
+      if (!ok) return toast.error(code || "Failed to fetch drafts")
+      setDrafts(data)
     } catch (error) {
-      toast.error(error.code || "Failed to fetch scenarios")
+      toast.error(error.code || "Failed to fetch drafts")
     }
   }
 
   const handleDelete = async (e, id) => {
     e.stopPropagation()
     try {
-      const { ok, code } = await api.delete(`/draft-scenario/${id}`)
-      if (!ok) return toast.error(code || "Failed to delete scenario")
-      toast.success("Scenario deleted")
-      fetchScenarios()
+      const { ok, code } = await api.delete(`/draft/${id}`)
+      if (!ok) return toast.error(code || "Failed to delete draft")
+      toast.success("Draft deleted")
+      fetchDrafts()
     } catch (error) {
-      toast.error(error.code || "Failed to delete scenario")
+      toast.error(error.code || "Failed to delete draft")
     }
   }
 
   useEffect(() => {
-    fetchScenarios()
+    fetchDrafts()
   }, [filters])
 
   return (
     <div className="h-full overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 lg:p-8 flex flex-col">
       <div className="max-w-[1800px] mx-auto w-full flex flex-col flex-1 min-h-0 space-y-6">
-        <TeamPriorities />
-
         <div className="flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
-            <h1 className="text-white text-xl font-semibold">Draft Scenarios</h1>
+            <h1 className="text-white text-xl font-semibold">Draft Preps</h1>
             <OpponentDropdown
               value={filters.opponent_name}
               onChange={team => setFilters(f => ({ ...f, opponent_id: team._id, opponent_name: team.name }))}
@@ -60,7 +57,7 @@ export default function List() {
             className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
-            New Scenario
+            New Draft
           </button>
         </div>
 
@@ -68,47 +65,51 @@ export default function List() {
           <table className="w-full table-fixed">
             <thead className="flex-shrink-0">
               <tr className="border-b border-slate-700/50">
-                <th className="w-2/5 text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Name</th>
+                <th className="w-[35%] text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Name</th>
                 <th className="w-1/4 text-left text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Opponent</th>
-                <th className="w-1/5 text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Date</th>
-                <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Actions</th>
+                <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Scenarios</th>
+                <th className="w-[15%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-4 py-3">Date</th>
+                <th className="w-[10%] text-center text-slate-400 text-xs font-medium uppercase tracking-wider px-6 py-3">Actions</th>
               </tr>
             </thead>
           </table>
           <div className="overflow-y-auto flex-1">
             <table className="w-full table-fixed">
               <tbody>
-                {scenarios.length === 0 && (
+                {drafts.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="text-center text-slate-500 py-12 text-sm">
-                      No scenarios yet
+                    <td colSpan={5} className="text-center text-slate-500 py-12 text-sm">
+                      No drafts yet
                     </td>
                   </tr>
                 )}
-                {scenarios.map(scenario => (
+                {drafts.map(draft => (
                   <tr
-                    key={scenario._id}
-                    onClick={() => navigate(`/performance/draft/${scenario._id}`)}
+                    key={draft._id}
+                    onClick={() => navigate(`/performance/draft/${draft._id}`)}
                     className="border-b border-slate-700/30 hover:bg-slate-700/20 cursor-pointer transition-colors"
                   >
-                    <td className="w-2/5 px-6 py-4">
-                      <span className="text-white font-medium text-sm">{scenario.name || "Untitled"}</span>
+                    <td className="w-[35%] px-6 py-4">
+                      <span className="text-white font-medium text-sm">{draft.name || "Untitled"}</span>
                     </td>
                     <td className="w-1/4 px-4 py-4">
-                      {scenario.opponent_name ? (
-                        <span className="text-slate-300 text-sm">{scenario.opponent_name}</span>
+                      {draft.opponent_name ? (
+                        <span className="text-slate-300 text-sm">{draft.opponent_name}</span>
                       ) : (
                         <span className="text-slate-600 text-sm">—</span>
                       )}
                     </td>
-                    <td className="w-1/5 px-4 py-4 text-center">
+                    <td className="w-[15%] px-4 py-4 text-center">
+                      <span className="text-slate-400 text-sm">{draft.scenarioCount || 0}</span>
+                    </td>
+                    <td className="w-[15%] px-4 py-4 text-center">
                       <span className="text-slate-400 text-sm">
-                        {new Date(scenario.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                        {new Date(draft.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
                       </span>
                     </td>
-                    <td className="w-[15%] px-6 py-4 text-center">
+                    <td className="w-[10%] px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <button onClick={e => handleDelete(e, scenario._id)} className="p-1.5 text-slate-400 hover:text-red-400 transition-colors">
+                        <button onClick={e => handleDelete(e, draft._id)} className="p-1.5 text-slate-400 hover:text-red-400 transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -121,225 +122,55 @@ export default function List() {
         </div>
       </div>
 
-      <AddScenario isOpen={isOpen} setIsOpen={setIsOpen} onCreated={fetchScenarios} />
+      <AddDraft isOpen={isOpen} setIsOpen={setIsOpen} onCreated={fetchDrafts} />
     </div>
   )
 }
 
-function TeamPriorities() {
-  const { user } = useStore()
-  const [teamSettings, setTeamSettings] = useState(null)
-  const [championModalOpen, setChampionModalOpen] = useState(false)
-  const [championModalType, setChampionModalType] = useState(null)
-
-  const fetchTeamSettings = async () => {
-    if (!user?.team_id) return
-    try {
-      const { ok, data, code } = await api.get(`/team/${user.team_id}`)
-      if (!ok) return toast.error(code || "Failed to fetch team settings")
-      setTeamSettings(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch team settings")
-    }
-  }
-
-  const removeChampion = async (type, champion) => {
-    if (!user?.team_id) return
-    try {
-      const { ok, code } = await api.put(`/team/${user.team_id}`, {
-        ...teamSettings,
-        [type === "pick" ? "prio_pick" : "prio_flex"]: (type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).filter(c => c !== champion)
-      })
-      if (!ok) return toast.error(code || "Failed to update team")
-      fetchTeamSettings()
-    } catch (error) {
-      toast.error(error.code || "Failed to update team")
-    }
-  }
-
-  useEffect(() => {
-    fetchTeamSettings()
-  }, [])
-
-  return (
-    <div className="grid grid-cols-2 gap-4 flex-shrink-0">
-      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Star className="w-4 h-4 text-amber-500" />
-            <h3 className="text-amber-500 font-semibold text-sm">Priority Picks</h3>
-          </div>
-          <button
-            onClick={() => {
-              setChampionModalType("pick")
-              setChampionModalOpen(true)
-            }}
-            className="p-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(teamSettings?.prio_pick || []).length === 0 && <span className="text-slate-500 text-xs">No priority picks set</span>}
-          {(teamSettings?.prio_pick || []).map(champ => (
-            <div key={champ} className="flex items-center gap-1.5 bg-slate-700/50 rounded-lg px-2 py-1.5 group">
-              <div className="w-6 h-6 rounded overflow-hidden bg-slate-600">
-                <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
-              </div>
-              <span className="text-white text-xs">{champ}</span>
-              <button onClick={() => removeChampion("pick", champ)} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Shuffle className="w-4 h-4 text-cyan-500" />
-            <h3 className="text-cyan-500 font-semibold text-sm">Flex Picks</h3>
-          </div>
-          <button
-            onClick={() => {
-              setChampionModalType("flex")
-              setChampionModalOpen(true)
-            }}
-            className="p-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-500 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(teamSettings?.prio_flex || []).length === 0 && <span className="text-slate-500 text-xs">No flex picks set</span>}
-          {(teamSettings?.prio_flex || []).map(champ => (
-            <div key={champ} className="flex items-center gap-1.5 bg-slate-700/50 rounded-lg px-2 py-1.5 group">
-              <div className="w-6 h-6 rounded overflow-hidden bg-slate-600">
-                <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
-              </div>
-              <span className="text-white text-xs">{champ}</span>
-              <button onClick={() => removeChampion("flex", champ)} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <ChampionModal isOpen={championModalOpen} onClose={() => setChampionModalOpen(false)} type={championModalType} teamSettings={teamSettings} onUpdate={fetchTeamSettings} />
-    </div>
-  )
-}
-
-function AddScenario({ isOpen, setIsOpen, onCreated }) {
+function AddDraft({ isOpen, setIsOpen, onCreated }) {
   const navigate = useNavigate()
-  const [name, setName] = useState("")
+  const [draft, setDraft] = useState({ name: "", opponent_id: "", opponent_name: "" })
 
-  const handleAddScenario = async () => {
-    if (!name.trim()) return toast.error("Enter a scenario name")
+  const handleAdd = async () => {
+    if (!draft.name.trim()) return toast.error("Enter a draft name")
     try {
-      const { ok, data, code } = await api.post("/draft-scenario", { name: name.trim() })
-      if (!ok) return toast.error(code || "Failed to create scenario")
-      setName("")
+      const { ok, data, code } = await api.post("/draft", { ...draft, name: draft.name.trim() })
+      if (!ok) return toast.error(code || "Failed to create draft")
+      setDraft({ name: "", opponent_id: "", opponent_name: "" })
       setIsOpen(false)
       onCreated()
       navigate(`/performance/draft/${data._id}`)
     } catch (error) {
-      toast.error(error.code || "Failed to create scenario")
+      toast.error(error.code || "Failed to create draft")
     }
   }
 
   return (
     <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} className="w-full max-w-md bg-slate-800 border border-slate-700">
       <div className="p-6 space-y-5">
-        <h3 className="text-white text-lg font-semibold">New Draft Scenario</h3>
+        <h3 className="text-white text-lg font-semibold">New Draft</h3>
         <div>
-          <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5 block">Scenario Name</label>
+          <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5 block">Draft Name</label>
           <input
             type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleAddScenario()}
-            placeholder="e.g. T1 vs GenG - Game 1"
+            value={draft.name}
+            onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
+            onKeyDown={e => e.key === "Enter" && handleAdd()}
+            placeholder="e.g. Draft Yunara vs T1"
             className="w-full px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"
             autoFocus
           />
         </div>
+        <div>
+          <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5 block">Opponent (optional)</label>
+          <OpponentDropdown value={draft.opponent_name} onChange={team => setDraft(d => ({ ...d, opponent_id: team._id, opponent_name: team.name }))} allowClear />
+        </div>
         <div className="flex items-center justify-end gap-3">
-          <button onClick={handleAddScenario} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg text-sm transition-colors">
+          <button onClick={handleAdd} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg text-sm transition-colors">
             Create
           </button>
         </div>
       </div>
     </Modal>
-  )
-}
-
-function ChampionModal({ isOpen, onClose, type, teamSettings, onUpdate }) {
-  const { user } = useStore()
-  const [searchQuery, setSearchQuery] = useState("")
-
-  if (!isOpen) return null
-
-  const addChampion = async champion => {
-    if (!user?.team_id || (type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).includes(champion)) return
-    try {
-      const { ok, code } = await api.put(`/team/${user.team_id}`, {
-        ...teamSettings,
-        [type === "pick" ? "prio_pick" : "prio_flex"]: [...(type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []), champion]
-      })
-      if (!ok) return toast.error(code || "Failed to add champion")
-      onUpdate()
-      onClose()
-      setSearchQuery("")
-    } catch (error) {
-      toast.error(error.code || "Failed to add champion")
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-slate-800 border border-slate-700 rounded-xl w-[600px] max-h-[70vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
-          <h2 className="text-white font-semibold">Add {type === "pick" ? "Priority Pick" : "Flex Pick"}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-4 border-b border-slate-700">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search champion..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none"
-              autoFocus
-            />
-          </div>
-        </div>
-        <div className="p-4 overflow-y-auto max-h-[50vh]">
-          <div className="grid grid-cols-8 gap-2">
-            {ALL_CHAMPIONS.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase())).map(champion => (
-              <button
-                key={champion}
-                onClick={() => !(type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).includes(champion) && addChampion(champion)}
-                disabled={(type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).includes(champion)}
-                className={`flex flex-col items-center p-1.5 rounded-lg transition-colors ${(type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).includes(champion) ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-700 cursor-pointer"}`}
-              >
-                <div
-                  className={`w-10 h-10 rounded-lg overflow-hidden bg-slate-700 ${(type === "pick" ? teamSettings?.prio_pick || [] : teamSettings?.prio_flex || []).includes(champion) ? "grayscale" : ""}`}
-                >
-                  <img src={getChampionIcon(champion)} alt={champion} className="w-full h-full object-cover" onError={e => (e.target.style.display = "none")} />
-                </div>
-                <span className="text-slate-300 text-[9px] mt-1 text-center truncate w-full">{champion}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
   )
 }
