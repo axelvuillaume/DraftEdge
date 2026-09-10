@@ -348,10 +348,11 @@ router.post('/draft-slot-roles', passport.authenticate(['admin', 'user'], { sess
 
     return res.status(200).send({
       ok: true,
-      data: [
-        { rotation: 1, slots: slots.filter((s) => s.rotation === 1) },
-        { rotation: 2, slots: slots.filter((s) => s.rotation === 2) },
-      ],
+      data: [1, 2].map((rotation) => ({
+        rotation,
+        blue: slots.filter((s) => s.rotation === rotation && s.side === 'blue'),
+        red: slots.filter((s) => s.rotation === rotation && s.side === 'red'),
+      })),
     });
   } catch (error) {
     capture(error);
@@ -415,6 +416,26 @@ router.get('/leagues/list', passport.authenticate(['admin', 'user'], { session: 
   try {
     const leagues = await ProGame.distinct('league');
     return res.status(200).send({ ok: true, data: leagues.filter(Boolean).sort() });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// Win/loss record of a pro team (optionally filtered by league/year/split)
+router.post('/team-record', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const { league, leagues, year, split, team_name } = req.body;
+    if (!team_name) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const query = { team_name };
+    applyLeagueFilter(query, league, leagues);
+    if (year) query.year = year;
+    if (split) query.split = split;
+
+    const [games, wins] = await Promise.all([ProGame.countDocuments(query), ProGame.countDocuments({ ...query, winner: true })]);
+
+    return res.status(200).send({ ok: true, data: { games, wins, losses: games - wins, wr: games > 0 ? Math.round((wins / games) * 100) : 0 } });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });

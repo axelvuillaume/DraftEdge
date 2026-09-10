@@ -470,10 +470,11 @@ router.post('/draft-slot-roles', passport.authenticate(['admin', 'user'], { sess
 
     return res.status(200).send({
       ok: true,
-      data: [
-        { rotation: 1, slots: slots.filter((s) => s.rotation === 1) },
-        { rotation: 2, slots: slots.filter((s) => s.rotation === 2) },
-      ],
+      data: [1, 2].map((rotation) => ({
+        rotation,
+        blue: slots.filter((s) => s.rotation === rotation && s.side === 'blue'),
+        red: slots.filter((s) => s.rotation === rotation && s.side === 'red'),
+      })),
     });
   } catch (error) {
     capture(error);
