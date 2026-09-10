@@ -395,7 +395,7 @@ router.post('/draft-slot-stats', passport.authenticate(['admin', 'user'], { sess
       }
       return Object.entries(merged)
         .map(([name, s]) => ({ name, games: s.games, wins: s.wins, wr: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0 }))
-        .sort((a, b) => b.games - a.games)
+        .sort((a, b) => (req.body.sort === 'wr' ? b.wr - a.wr || b.games - a.games : b.games - a.games || b.wr - a.wr))
         .slice(0, 5);
     };
 
@@ -416,6 +416,64 @@ router.post('/draft-slot-stats', passport.authenticate(['admin', 'user'], { sess
         sideRecord,
         totalGames: games.length,
       },
+    });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// Role distribution per draft slot group (e.g. what role is picked B1, R1+R2...)
+router.post('/draft-slot-roles', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const team_id = req.body.team_id || req.user.team_id;
+    if (!team_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const filters = extractFilters(req.body);
+    const { gameQuery } = await buildGameFilters({ team_id, ...filters });
+
+    const games = await Game.find({ team_id, ...gameQuery }, { bluePicks: 1, redPicks: 1 });
+
+    const groups = [
+      { key: 'B1', side: 'blue', indices: [0], rotation: 1, label: 'First pick' },
+      { key: 'R1+R2', side: 'red', indices: [0, 1], rotation: 1, label: 'Red double pick' },
+      { key: 'B2+B3', side: 'blue', indices: [1, 2], rotation: 1, label: 'Blue double pick' },
+      { key: 'R3', side: 'red', indices: [2], rotation: 1, label: 'Last pick of rotation 1' },
+      { key: 'R4', side: 'red', indices: [3], rotation: 2, label: 'First pick of rotation 2' },
+      { key: 'B4+B5', side: 'blue', indices: [3, 4], rotation: 2, label: 'Blue double pick' },
+      { key: 'R5', side: 'red', indices: [4], rotation: 2, label: 'Last pick / Counter' },
+    ];
+
+    const slots = groups.map((g) => {
+      let slotGames = 0;
+      const counts = { top: 0, jungle: 0, mid: 0, bottom: 0, support: 0 };
+      for (const game of games) {
+        const sidePicks = g.side === 'blue' ? game.bluePicks : game.redPicks;
+        if (!sidePicks || !sidePicks.some((p) => p?.champ)) continue;
+        slotGames++;
+        for (const idx of g.indices) {
+          if (!sidePicks[idx]?.role || counts[sidePicks[idx].role] === undefined) continue;
+          counts[sidePicks[idx].role]++;
+        }
+      }
+      return {
+        key: g.key,
+        side: g.side,
+        rotation: g.rotation,
+        label: g.label,
+        games: slotGames,
+        roles: Object.entries(counts)
+          .map(([role, count]) => ({ role, count, pct: slotGames > 0 ? Math.round((count / slotGames) * 100) : 0 }))
+          .sort((a, b) => b.pct - a.pct),
+      };
+    });
+
+    return res.status(200).send({
+      ok: true,
+      data: [
+        { rotation: 1, slots: slots.filter((s) => s.rotation === 1) },
+        { rotation: 2, slots: slots.filter((s) => s.rotation === 2) },
+      ],
     });
   } catch (error) {
     capture(error);

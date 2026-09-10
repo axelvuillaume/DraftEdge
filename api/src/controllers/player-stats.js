@@ -1481,7 +1481,7 @@ router.post('/best-combos', passport.authenticate(['admin', 'user'], { session: 
       .filter((p) => p.games >= minGames)
       .filter((p) => !req.body.search || p.champ1.toLowerCase().includes(req.body.search.toLowerCase()) || p.champ2.toLowerCase().includes(req.body.search.toLowerCase()))
       .map((p) => ({ champ1: p.champ1, champ2: p.champ2, games: p.games, wr: Math.round((p.wins / p.games) * 100) }))
-      .sort((a, b) => b.games - a.games || b.wr - a.wr)
+      .sort((a, b) => (req.body.sort === 'wr' ? b.wr - a.wr || b.games - a.games : b.games - a.games || b.wr - a.wr))
       .slice(0, limit);
 
     return res.status(200).send({ ok: true, data: combos });

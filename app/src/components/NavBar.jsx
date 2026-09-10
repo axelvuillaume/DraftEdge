@@ -23,9 +23,9 @@ const Navbar = () => {
   useEffect(() => {
     const index = MENU.findIndex(e => {
       if (e.to === "/") return location.pathname === "/"
-      return location.pathname.includes(e.to)
+      return location.pathname === e.to || location.pathname.startsWith(e.to + "/")
     })
-    setSelected(index >= 0 ? index : 0)
+    setSelected(index)
   }, [location, MENU.length])
 
   return (
@@ -73,7 +73,7 @@ const Navbar = () => {
         <Link
           to="/team"
           className={`w-full px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 ${
-            location.pathname.includes("/team")
+            location.pathname === "/team" || location.pathname.startsWith("/team/")
               ? "bg-gradient-to-r from-amber-500/20 to-amber-600/10 text-amber-400 border border-amber-500/30"
               : "text-slate-400 hover:text-white hover:bg-slate-800/50"
           }`}

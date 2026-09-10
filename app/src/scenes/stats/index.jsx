@@ -1,12 +1,14 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom"
-import { Gamepad2, BarChart3, LayoutDashboard } from "lucide-react"
+import { Gamepad2, BarChart3, LayoutDashboard, Swords } from "lucide-react"
 import Overview from "./overview"
 import Games from "./games"
 import StatsV2 from "./advanced-stats"
+import DraftStats from "./draft-stats"
 import FilterBar from "@/components/FilterBar"
 
 const TABS = [
   { key: "overview", label: "Overview", icon: LayoutDashboard, path: "overview", title: "Overview", description: "Key team stats at a glance." },
+  { key: "draft", label: "Draft Stats", icon: Swords, path: "draft", title: "Draft Stats", description: "Draft rotations, bans and duos from your games." },
   {
     key: "stats",
     label: "Advanced Stats",
@@ -58,6 +60,7 @@ export default function Performance() {
       <div className="flex-1 overflow-auto">
         <Routes>
           <Route path="overview" element={<Overview />} />
+          <Route path="draft" element={<DraftStats />} />
           <Route path="stats" element={<StatsV2 />} />
           <Route path="games" element={<Games />} />
           <Route path="*" element={<Navigate to="overview" replace />} />

@@ -178,34 +178,181 @@ router.post('/best-combos', passport.authenticate(['admin', 'user'], { session: 
     if (split) query.split = split;
     if (team_name) query.team_name = team_name;
 
+    // Optionally restrict to a role duo (frontend sends full names, pro data uses Oracle's Elixir short roles)
+    const ROLE_ALIASES = { top: ['top'], jungle: ['jungle', 'jng'], mid: ['mid'], bottom: ['bottom', 'bot', 'adc'], support: ['support', 'sup'] };
+    const roles = Array.isArray(req.body.roles) && req.body.roles.length === 2 ? req.body.roles : null;
+
     const combos = await ProGame.aggregate([
       { $match: query },
-      {
-        $addFields: {
-          champNames: {
-            $filter: { input: { $map: { input: { $ifNull: ['$picks', []] }, as: 'p', in: '$$p.champion' } }, as: 'c', cond: { $ne: ['$$c', null] } },
-          },
-        },
-      },
-      { $addFields: { champNames2: '$champNames' } },
-      { $unwind: { path: '$champNames', includeArrayIndex: 'i' } },
-      { $unwind: { path: '$champNames2', includeArrayIndex: 'j' } },
+      { $addFields: { champPicks: { $filter: { input: { $ifNull: ['$picks', []] }, as: 'p', cond: { $ne: ['$$p.champion', null] } } } } },
+      { $addFields: { champPicks2: '$champPicks' } },
+      { $unwind: { path: '$champPicks', includeArrayIndex: 'i' } },
+      { $unwind: { path: '$champPicks2', includeArrayIndex: 'j' } },
       { $match: { $expr: { $lt: ['$i', '$j'] } } },
+      ...(roles
+        ? [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $and: [{ $in: [{ $toLower: { $ifNull: ['$champPicks.role', ''] } }, ROLE_ALIASES[roles[0]] || [roles[0]]] }, { $in: [{ $toLower: { $ifNull: ['$champPicks2.role', ''] } }, ROLE_ALIASES[roles[1]] || [roles[1]]] }] },
+                    { $and: [{ $in: [{ $toLower: { $ifNull: ['$champPicks.role', ''] } }, ROLE_ALIASES[roles[1]] || [roles[1]]] }, { $in: [{ $toLower: { $ifNull: ['$champPicks2.role', ''] } }, ROLE_ALIASES[roles[0]] || [roles[0]]] }] },
+                  ],
+                },
+              },
+            },
+          ]
+        : []),
       {
         $addFields: {
-          c1: { $cond: { if: { $lt: ['$champNames', '$champNames2'] }, then: '$champNames', else: '$champNames2' } },
-          c2: { $cond: { if: { $lt: ['$champNames', '$champNames2'] }, then: '$champNames2', else: '$champNames' } },
+          c1: { $cond: { if: { $lt: ['$champPicks.champion', '$champPicks2.champion'] }, then: '$champPicks.champion', else: '$champPicks2.champion' } },
+          c2: { $cond: { if: { $lt: ['$champPicks.champion', '$champPicks2.champion'] }, then: '$champPicks2.champion', else: '$champPicks.champion' } },
         },
       },
       { $group: { _id: { champ1: '$c1', champ2: '$c2' }, games: { $sum: 1 }, wins: { $sum: { $cond: ['$winner', 1, 0] } } } },
       { $match: { games: { $gte: req.body.minGames || 2 } } },
       { $addFields: { wr: { $round: [{ $multiply: [{ $divide: ['$wins', '$games'] }, 100] }, 0] } } },
-      { $sort: { games: -1, wr: -1 } },
+      { $sort: req.body.sort === 'wr' ? { wr: -1, games: -1 } : { games: -1, wr: -1 } },
       { $limit: req.body.limit || 3 },
       { $project: { _id: 0, champ1: '$_id.champ1', champ2: '$_id.champ2', games: 1, wr: 1 } },
     ]);
 
     return res.status(200).send({ ok: true, data: combos });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// Draft slot stats from pro games — same response shape as /game/draft-slot-stats
+router.post('/draft-slot-stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const { league, leagues, year, split, team_name } = req.body;
+    const query = { side: { $ne: null } };
+    applyLeagueFilter(query, league, leagues);
+    if (year) query.year = year;
+    if (split) query.split = split;
+    if (team_name) query.team_name = team_name;
+
+    const games = await ProGame.find(query, { picks: 1, bans: 1, side: 1, winner: 1 });
+
+    const picks = { blue: {}, red: {} };
+    const bans = { blue: {}, red: {} };
+    const sideRecord = { blue: { wins: 0, total: 0 }, red: { wins: 0, total: 0 } };
+
+    for (const game of games) {
+      sideRecord[game.side].total++;
+      if (game.winner) sideRecord[game.side].wins++;
+
+      (game.picks || []).forEach((p, i) => {
+        if (!p?.champion) return;
+        if (!picks[game.side][i]) picks[game.side][i] = {};
+        if (!picks[game.side][i][p.champion]) picks[game.side][i][p.champion] = { games: 0, wins: 0 };
+        picks[game.side][i][p.champion].games++;
+        if (game.winner) picks[game.side][i][p.champion].wins++;
+      });
+
+      (game.bans || []).forEach((b, i) => {
+        if (!b) return;
+        if (!bans[game.side][i]) bans[game.side][i] = {};
+        if (!bans[game.side][i][b]) bans[game.side][i][b] = { games: 0, wins: 0 };
+        bans[game.side][i][b].games++;
+        if (game.winner) bans[game.side][i][b].wins++;
+      });
+    }
+
+    const mergeSlots = (slotObj, indices) => {
+      const merged = {};
+      for (const idx of indices) {
+        if (!slotObj[idx]) continue;
+        for (const [name, s] of Object.entries(slotObj[idx])) {
+          if (!merged[name]) merged[name] = { games: 0, wins: 0 };
+          merged[name].games += s.games;
+          merged[name].wins += s.wins;
+        }
+      }
+      return Object.entries(merged)
+        .map(([name, s]) => ({ name, games: s.games, wins: s.wins, wr: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0 }))
+        .sort((a, b) => (req.body.sort === 'wr' ? b.wr - a.wr || b.games - a.games : b.games - a.games || b.wr - a.wr))
+        .slice(0, 5);
+    };
+
+    const blueRotations = [[0], [1, 2], [3, 4]].map((indices) => mergeSlots(picks.blue, indices));
+    const redRotations = [[0, 1], [2, 3], [4]].map((indices) => mergeSlots(picks.red, indices));
+    const blueBanPhases = [[0, 1, 2], [3, 4]].map((indices) => mergeSlots(bans.blue, indices));
+    const redBanPhases = [[0, 1, 2], [3, 4]].map((indices) => mergeSlots(bans.red, indices));
+
+    return res.status(200).send({
+      ok: true,
+      data: {
+        rotations: { blue: blueRotations, red: redRotations },
+        bans: { blue: blueBanPhases, red: redBanPhases },
+        sideRecord,
+        totalGames: games.length,
+      },
+    });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// Role distribution per draft slot group from pro games — same response shape as /game/draft-slot-roles
+router.post('/draft-slot-roles', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const { league, leagues, year, split, team_name } = req.body;
+    const query = { side: { $ne: null } };
+    applyLeagueFilter(query, league, leagues);
+    if (year) query.year = year;
+    if (split) query.split = split;
+    if (team_name) query.team_name = team_name;
+
+    const games = await ProGame.find(query, { picks: 1, side: 1 });
+
+    const ROLE_FULL = { top: 'top', jng: 'jungle', jungle: 'jungle', mid: 'mid', bot: 'bottom', adc: 'bottom', bottom: 'bottom', sup: 'support', support: 'support' };
+
+    const groups = [
+      { key: 'B1', side: 'blue', indices: [0], rotation: 1, label: 'First pick' },
+      { key: 'R1+R2', side: 'red', indices: [0, 1], rotation: 1, label: 'Red double pick' },
+      { key: 'B2+B3', side: 'blue', indices: [1, 2], rotation: 1, label: 'Blue double pick' },
+      { key: 'R3', side: 'red', indices: [2], rotation: 1, label: 'Last pick of rotation 1' },
+      { key: 'R4', side: 'red', indices: [3], rotation: 2, label: 'First pick of rotation 2' },
+      { key: 'B4+B5', side: 'blue', indices: [3, 4], rotation: 2, label: 'Blue double pick' },
+      { key: 'R5', side: 'red', indices: [4], rotation: 2, label: 'Last pick / Counter' },
+    ];
+
+    const slots = groups.map((g) => {
+      let slotGames = 0;
+      const counts = { top: 0, jungle: 0, mid: 0, bottom: 0, support: 0 };
+      for (const game of games) {
+        if (game.side !== g.side) continue;
+        if (!game.picks || !game.picks.some((p) => p?.champion)) continue;
+        slotGames++;
+        for (const idx of g.indices) {
+          const role = ROLE_FULL[(game.picks[idx]?.role || '').toLowerCase()];
+          if (!role) continue;
+          counts[role]++;
+        }
+      }
+      return {
+        key: g.key,
+        side: g.side,
+        rotation: g.rotation,
+        label: g.label,
+        games: slotGames,
+        roles: Object.entries(counts)
+          .map(([role, count]) => ({ role, count, pct: slotGames > 0 ? Math.round((count / slotGames) * 100) : 0 }))
+          .sort((a, b) => b.pct - a.pct),
+      };
+    });
+
+    return res.status(200).send({
+      ok: true,
+      data: [
+        { rotation: 1, slots: slots.filter((s) => s.rotation === 1) },
+        { rotation: 2, slots: slots.filter((s) => s.rotation === 2) },
+      ],
+    });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
@@ -268,6 +415,19 @@ router.get('/leagues/list', passport.authenticate(['admin', 'user'], { session: 
   try {
     const leagues = await ProGame.distinct('league');
     return res.status(200).send({ ok: true, data: leagues.filter(Boolean).sort() });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
+// Get all distinct team names (optionally filtered by league)
+router.get('/teams/list', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const query = {};
+    if (req.query.league) query.league = req.query.league;
+    const teams = await ProGame.distinct('team_name', query);
+    return res.status(200).send({ ok: true, data: teams.filter(Boolean).sort() });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });

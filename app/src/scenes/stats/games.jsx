@@ -1,8 +1,8 @@
 import { useState, useEffect, Fragment } from "react"
-import { useNavigate, useLocation } from "react-router-dom"
+import { useNavigate, useLocation, Link } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
-import { Clock, Swords, Trash2, MoreVertical, Folder, Plus, Check, FolderInput, X, Pencil, ImagePlus } from "lucide-react"
+import { Clock, Swords, Trash2, MoreVertical, Folder, Plus, Check, FolderInput, X, Pencil, ImagePlus, Gamepad2, FolderPlus, Upload, ArrowRight } from "lucide-react"
 import Modal from "@/components/modal"
 import OpponentDropdown from "@/components/OpponentDropdown"
 import UploadModal from "@/components/UploadModal"
@@ -18,7 +18,7 @@ const sortPlayersByRole = players =>
 
 export default function Games() {
   const location = useLocation()
-  const [games, setGames] = useState([])
+  const [games, setGames] = useState(null)
   const { user } = useStore()
   const [folders, setFolders] = useState([])
   const [filters, setFilters] = useState({ folder_id: null, opponent_id: location.state?.opponent_id || null, official: null })
@@ -149,7 +149,7 @@ export default function Games() {
               </div>
             )}
 
-            {!selectionMode && games.length > 0 && (
+            {!selectionMode && games?.length > 0 && (
               <div className="flex justify-end">
                 <button
                   onClick={() => setSelectionMode(true)}
@@ -161,7 +161,7 @@ export default function Games() {
               </div>
             )}
 
-            {games.map(game => (
+            {(games || []).map(game => (
               <GameCard
                 key={game._id}
                 game={game}
@@ -172,6 +172,59 @@ export default function Games() {
                 folders={folders}
               />
             ))}
+
+            {games && games.length === 0 && (
+              <div className="flex items-center justify-center py-16">
+                <div className="max-w-xl w-full text-center">
+                  <div className="w-20 h-20 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center mx-auto mb-6">
+                    <Gamepad2 className="w-10 h-10 text-slate-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-white mb-2">No games yet</h2>
+                  <p className="text-sm text-slate-400 mb-8">Start importing games to unlock your stats, draft analysis, and performance insights.</p>
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={() => setShowImportModal(true)}
+                      className="group flex items-center gap-4 bg-slate-800/60 border border-slate-700/50 rounded-xl px-5 py-4 hover:border-amber-500/30 hover:bg-slate-800/80 transition-all"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                        <Upload className="w-5 h-5 text-amber-400" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-sm font-semibold text-white">Import a game</p>
+                        <p className="text-xs text-slate-500">Upload a replay file to add your first game here.</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-amber-400 transition-colors" />
+                    </button>
+                    <Link
+                      to="/performance/scrims"
+                      className="group flex items-center gap-4 bg-slate-800/60 border border-slate-700/50 rounded-xl px-5 py-4 hover:border-blue-500/30 hover:bg-slate-800/80 transition-all"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                        <FolderPlus className="w-5 h-5 text-blue-400" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-sm font-semibold text-white">Create a scrim</p>
+                        <p className="text-xs text-slate-500">Set up a scrim session and start importing your games into it.</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-blue-400 transition-colors" />
+                    </Link>
+                    <Link
+                      to="/"
+                      className="group flex items-center gap-4 bg-slate-800/60 border border-slate-700/50 rounded-xl px-5 py-4 hover:border-violet-500/30 hover:bg-slate-800/80 transition-all"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center flex-shrink-0">
+                        <Upload className="w-5 h-5 text-violet-400" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-sm font-semibold text-white">Import official games</p>
+                        <p className="text-xs text-slate-500">Import your official games directly from the home page.</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-violet-400 transition-colors" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </div>
