@@ -3,6 +3,10 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
+// Usage: node script/downloadRunes.js [--force]
+// --force re-downloads icons that already exist (useful when Riot updates the artwork)
+const force = process.argv.includes("--force");
+
 async function downloadAllRuneIcons() {
   const { data: versions } = await axios.get("https://ddragon.leagueoflegends.com/api/versions.json");
   const version = versions[0];
@@ -50,8 +54,8 @@ async function downloadAllRuneIcons() {
     const iconUrl = rune.icon;
     const outputPath = path.join(outputDir, `${rune.id}.png`);
 
-    // Skip si déjà téléchargé
-    if (fs.existsSync(outputPath)) {
+    // Skip si déjà téléchargé (sauf --force)
+    if (!force && fs.existsSync(outputPath)) {
       console.log(`✓ ${rune.id} - ${rune.name} (already exists)`);
       continue;
     }
