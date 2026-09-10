@@ -1,6 +1,7 @@
 const https = require('https');
 const WebSocket = require('ws');
 const Game = require('../models/game');
+const PlayerStats = require('../models/player-stats');
 
 function fetchFromDrafter(draftUrl) {
   const parsed = new URL(draftUrl);
@@ -132,7 +133,29 @@ async function fetchAndSaveDraft(gameId, draftUrl) {
 
   const draft = source === 'drafter' ? await fetchFromDrafter(draftUrl) : await fetchFromDawe(extractDraftId(draftUrl));
 
-  return Game.findByIdAndUpdate(gameId, { ...draft, source_url: draftUrl }, { new: true });
+  // The draft picks must match the champions actually played in the game
+  const normalize = (name) => (name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const stats = await PlayerStats.find({ game_id: gameId.toString() });
+  if (stats.length > 0) {
+    const gameChamps = stats.map((s) => normalize(s.champion)).filter(Boolean).sort();
+    const draftChamps = [...(draft.bluePicks || []), ...(draft.redPicks || [])].map(normalize).filter(Boolean).sort();
+    if (gameChamps.length > 0 && gameChamps.join('|') !== draftChamps.join('|')) {
+      throw new Error("Champions in the draft don't match the champions of the game");
+    }
+  }
+
+  // Save each pick with the champion's in-game role
+  const roleByChamp = {};
+  for (const s of stats) {
+    if (s.champion && s.role) roleByChamp[normalize(s.champion)] = s.role;
+  }
+  const toPick = (name) => (name ? { champ: name, role: roleByChamp[normalize(name)] || null } : null);
+
+  return Game.findByIdAndUpdate(
+    gameId,
+    { ...draft, bluePicks: (draft.bluePicks || []).map(toPick), redPicks: (draft.redPicks || []).map(toPick), source_url: draftUrl },
+    { new: true },
+  );
 }
 
 module.exports = { fetchFromDrafter, fetchFromDawe, detectDraftSource, extractDraftId, fetchAndSaveDraft };

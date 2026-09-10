@@ -335,11 +335,12 @@ router.post('/draft-slot-stats', passport.authenticate(['admin', 'user'], { sess
       const ourPicks = ourSide === 'blue' ? game.bluePicks : game.redPicks;
       if (ourPicks) {
         for (let i = 0; i < ourPicks.length; i++) {
-          if (!ourPicks[i]) continue;
+          const champ = ourPicks[i]?.champ;
+          if (!champ) continue;
           if (!picks[ourSide][i]) picks[ourSide][i] = {};
-          if (!picks[ourSide][i][ourPicks[i]]) picks[ourSide][i][ourPicks[i]] = { games: 0, wins: 0 };
-          picks[ourSide][i][ourPicks[i]].games++;
-          if (game.win) picks[ourSide][i][ourPicks[i]].wins++;
+          if (!picks[ourSide][i][champ]) picks[ourSide][i][champ] = { games: 0, wins: 0 };
+          picks[ourSide][i][champ].games++;
+          if (game.win) picks[ourSide][i][champ].wins++;
         }
       }
 
@@ -347,11 +348,12 @@ router.post('/draft-slot-stats', passport.authenticate(['admin', 'user'], { sess
       const theirPicks = theirSide === 'blue' ? game.bluePicks : game.redPicks;
       if (theirPicks) {
         for (let i = 0; i < theirPicks.length; i++) {
-          if (!theirPicks[i]) continue;
+          const champ = theirPicks[i]?.champ;
+          if (!champ) continue;
           if (!picks[theirSide][i]) picks[theirSide][i] = {};
-          if (!picks[theirSide][i][theirPicks[i]]) picks[theirSide][i][theirPicks[i]] = { games: 0, wins: 0 };
-          picks[theirSide][i][theirPicks[i]].games++;
-          if (!game.win) picks[theirSide][i][theirPicks[i]].wins++;
+          if (!picks[theirSide][i][champ]) picks[theirSide][i][champ] = { games: 0, wins: 0 };
+          picks[theirSide][i][champ].games++;
+          if (!game.win) picks[theirSide][i][champ].wins++;
         }
       }
 
@@ -465,7 +467,7 @@ router.post('/draft-averages', passport.authenticate(['admin', 'user'], { sessio
         gamesWithBluePicks++;
         for (let i = 0; i < game.bluePicks.length; i++) {
           if (!pickStats.blue[i]) pickStats.blue[i] = {};
-          const champ = game.bluePicks[i];
+          const champ = game.bluePicks[i]?.champ;
           if (!champ) continue;
           pickStats.blue[i][champ] = (pickStats.blue[i][champ] || 0) + 1;
         }
@@ -476,7 +478,7 @@ router.post('/draft-averages', passport.authenticate(['admin', 'user'], { sessio
         gamesWithRedPicks++;
         for (let i = 0; i < game.redPicks.length; i++) {
           if (!pickStats.red[i]) pickStats.red[i] = {};
-          const champ = game.redPicks[i];
+          const champ = game.redPicks[i]?.champ;
           if (!champ) continue;
           pickStats.red[i][champ] = (pickStats.red[i][champ] || 0) + 1;
         }

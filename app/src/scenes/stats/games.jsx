@@ -1224,7 +1224,7 @@ function DraftTab({ game, onDraftAdded }) {
       <div className="flex gap-2">
         <div className="flex-1">
           <div className="space-y-1">
-            {game.bluePicks.filter(Boolean).map((champ, i) => (
+            {game.bluePicks.filter(Boolean).map((pick, i) => (
               <div
                 key={i}
                 className="group relative flex items-center gap-2 py-1.5 px-2 rounded-lg overflow-hidden
@@ -1235,9 +1235,10 @@ function DraftTab({ game, onDraftAdded }) {
                 <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-blue-600 rounded-full" />
                 <span className="text-blue-500/30 text-[10px] font-bold w-4 text-center tabular-nums">{i + 1}</span>
                 <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 ring-1 ring-blue-500/20 group-hover:ring-blue-400/40 flex-shrink-0 transition-all">
-                  <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" />
+                  <img src={getChampionIcon(pick.champ)} alt={pick.champ} className="w-full h-full object-cover" />
                 </div>
-                <span className="text-white/90 text-sm font-medium">{champ}</span>
+                <span className="text-white/90 text-sm font-medium">{pick.champ}</span>
+                {pick.role && <img src={`/roles/${pick.role}.png`} alt={pick.role} className="w-3.5 h-3.5 opacity-60" />}
               </div>
             ))}
           </div>
@@ -1255,7 +1256,7 @@ function DraftTab({ game, onDraftAdded }) {
 
         <div className="flex-1">
           <div className="space-y-1">
-            {game.redPicks.filter(Boolean).map((champ, i) => (
+            {game.redPicks.filter(Boolean).map((pick, i) => (
               <div
                 key={i}
                 className="group relative flex items-center gap-2 py-1.5 px-2 rounded-lg overflow-hidden flex-row-reverse
@@ -1266,9 +1267,10 @@ function DraftTab({ game, onDraftAdded }) {
                 <div className="absolute right-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-red-400 to-red-600 rounded-full" />
                 <span className="text-red-500/30 text-[10px] font-bold w-4 text-center tabular-nums">{i + 1}</span>
                 <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 ring-1 ring-red-500/20 group-hover:ring-red-400/40 flex-shrink-0 transition-all">
-                  <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" />
+                  <img src={getChampionIcon(pick.champ)} alt={pick.champ} className="w-full h-full object-cover" />
                 </div>
-                <span className="text-white/90 text-sm font-medium">{champ}</span>
+                <span className="text-white/90 text-sm font-medium">{pick.champ}</span>
+                {pick.role && <img src={`/roles/${pick.role}.png`} alt={pick.role} className="w-3.5 h-3.5 opacity-60" />}
               </div>
             ))}
           </div>

@@ -103,8 +103,9 @@ const Schema = new mongoose.Schema(
     },
 
     // ==================== DRAFTER INFO ====================
-    bluePicks: [{ type: String }],
-    redPicks: [{ type: String }],
+    // { champ, role }
+    bluePicks: [{ type: mongoose.Schema.Types.Mixed }],
+    redPicks: [{ type: mongoose.Schema.Types.Mixed }],
     blueBans: [{ type: String }],
     redBans: [{ type: String }],
     fearless: { type: Boolean, default: false },
