@@ -11,6 +11,7 @@ const EnemyTeam = require('../models/enemy-team');
 
 const { buildGameFilters, extractFilters } = require('../utils/gameFilters');
 const { fetchAndSaveDraft } = require('../utils/parserDraft');
+const { getPatchPrefixes } = require('../utils/patch');
 
 const TIER_VALUE = { IRON: 0, BRONZE: 400, SILVER: 800, GOLD: 1200, PLATINUM: 1600, EMERALD: 2000, DIAMOND: 2400, MASTER: 2800, GRANDMASTER: 3300, CHALLENGER: 4000 };
 const RANK_VALUE = { IV: 0, III: 100, II: 200, I: 300 };
@@ -22,7 +23,7 @@ router.post('/filter-options', passport.authenticate(['admin', 'user'], { sessio
     const [patches, enemyTeams, folders] = await Promise.all([Game.distinct('patch', { team_id }), EnemyTeam.find({ team_id }, { name: 1 }).lean(), Folder.find({ team_id }, { name: 1 }).lean()]);
 
     // Group patches by major.minor (e.g. "25.S2.3" → "25.S2")
-    const majorMinor = [...new Set(patches.filter(Boolean).map((p) => p.split('.').slice(0, 2).join('.')))].sort().reverse();
+    const majorMinor = getPatchPrefixes(patches);
 
     return res.status(200).send({ ok: true, data: { patches: majorMinor, opponents: enemyTeams.map((t) => ({ _id: t._id, name: t.name })), folders: folders.map((f) => ({ _id: f._id, name: f.name })) } });
   } catch (error) {

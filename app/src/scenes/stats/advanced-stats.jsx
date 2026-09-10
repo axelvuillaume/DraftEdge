@@ -380,7 +380,7 @@ export default function StatsV2() {
                   isEnemyChampion={!!activeEnemyChampion}
                   compareMode={compareMode}
                   proLabel={compareMode === "soloq" ? "SoloQ" : compareMode === "offi" ? "Non-Offi" : proCompareLabel}
-                  teamLabel={compareMode === "offi" ? "Official" : undefined}
+                  teamLabel={compareMode === "offi" ? "Official" : activePlayer ? activePlayer.name : undefined}
                   teamGames={compareMode === "offi" ? officialSplitStats?.officialGames : currentData.games}
                   compareGames={compareMode === "pro" ? proGames : compareMode === "soloq" ? soloqGames : compareMode === "offi" ? officialSplitStats?.nonOfficialGames : null}
                 />
@@ -389,6 +389,7 @@ export default function StatsV2() {
               <MetricsTable
                 metrics={currentData.metrics?.[activeCategory] || []}
                 isEnemyChampion={!!activeEnemyChampion}
+                teamLabel={activePlayer ? activePlayer.name : undefined}
                 proStats={proStats?.[activeCategory]}
                 proLabel={proCompareLabel}
                 soloqStats={soloqStats?.[activeCategory]}
@@ -754,7 +755,7 @@ function Sparkline({ row, weeks, weekDates, compareLabel, dims }) {
   )
 }
 
-function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats, officialStats, nonOfficialStats }) {
+function MetricsTable({ metrics, isEnemyChampion, teamLabel, proStats, proLabel, soloqStats, officialStats, nonOfficialStats }) {
   if (!metrics || metrics.length === 0) {
     return <div className="text-slate-500 text-center py-8">No metrics available</div>
   }
@@ -773,7 +774,7 @@ function MetricsTable({ metrics, isEnemyChampion, proStats, proLabel, soloqStats
     <div className="w-full">
       <div className={`grid ${gridCols} gap-4 px-4 py-2 border-b border-slate-700/50 text-xs font-medium text-slate-400 uppercase tracking-wider`}>
         <div>Metric</div>
-        <div className="text-center">{isEnemyChampion ? "Us" : "Team"}</div>
+        <div className="text-center">{teamLabel || (isEnemyChampion ? "Us" : "Team")}</div>
         <div className="text-center">{isEnemyChampion ? "This champ" : "Enemies"}</div>
         {proStats && Object.keys(proStats).length > 0 && <div className="text-center">{proLabel || "Pro Avg"}</div>}
         {soloqStats && Object.keys(soloqStats).length > 0 && <div className="text-center">SoloQ</div>}

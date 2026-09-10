@@ -4,13 +4,14 @@ const passport = require('passport');
 const ScrimSession = require('../models/scrim-session');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
+const { getPatchPrefixes } = require('../utils/patch');
 
 router.post('/patches', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const query = {};
     if (req.body.team_id) query.team_id = req.body.team_id;
     const patches = await ScrimSession.distinct('patch', query);
-    const prefixes = [...new Set(patches.filter(Boolean).map((p) => p.split('.').slice(0, 2).join('.')))].sort().reverse();
+    const prefixes = getPatchPrefixes(patches);
     return res.status(200).send({ ok: true, data: prefixes });
   } catch (error) {
     capture(error);

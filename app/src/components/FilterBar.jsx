@@ -63,7 +63,7 @@ const FilterBar = () => {
           <ChevronDown className="w-3 h-3" />
         </button>
         {patchOpen && (
-          <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-700/50 rounded-lg shadow-xl z-50 min-w-[120px] max-h-48 overflow-y-auto">
+          <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700/50 rounded-lg shadow-xl z-50 min-w-[120px] max-h-48 overflow-y-auto">
             <button
               onClick={() => {
                 setGlobalFilters({ patch: null })
@@ -105,7 +105,7 @@ const FilterBar = () => {
           <ChevronDown className="w-3 h-3" />
         </button>
         {scopeOpen && (
-          <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-700/50 rounded-lg shadow-xl z-50 min-w-[200px] max-h-64 overflow-y-auto">
+          <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700/50 rounded-lg shadow-xl z-50 w-max min-w-[200px] max-w-[280px] max-h-64 overflow-y-auto">
             {/* All Games */}
             <button
               onClick={() => {
