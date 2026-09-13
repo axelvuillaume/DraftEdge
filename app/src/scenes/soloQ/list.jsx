@@ -315,7 +315,7 @@ export default function SoloQ() {
 
   const fetchMatches = async fromDate => {
     try {
-      const { ok, data, code } = await api.post("/soloq-match/search", { team_id: user?.team_id, limit: 0, from_date: fromDate, queueId: 420 })
+      const { ok, data, code } = await api.post("/soloq-match/search", { team_id: user?.team_id, limit: 0, from_date: fromDate, queueId: 420, fields: "player_id win" })
       if (!ok) return toast.error(code || "Failed to fetch matches")
       setMatches(data)
     } catch (error) {

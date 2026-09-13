@@ -42,10 +42,12 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     if (req.body.puuid) query.puuid = req.body.puuid;
     if (req.body.queueId != null) query.queueId = req.body.queueId;
     if (req.body.from_date) query.gameDate = { $gte: new Date(req.body.from_date) };
-    const limit = req.body.limit || 5000;
+    const limit = req.body.limit != null ? req.body.limit : 5000;
     const skip = req.body.offset || 0;
+    const fields = req.body.fields || null;
     const total = await SoloQMatch.countDocuments(query);
-    const data = await SoloQMatch.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+    // Sort on gameDate (indexed with team_id / player_id) to avoid an in-memory sort on large result sets
+    const data = await SoloQMatch.find(query, fields).sort({ gameDate: -1 }).skip(skip).limit(limit).allowDiskUse(true);
     return res.status(200).send({ ok: true, data, total });
   } catch (error) {
     capture(error);
