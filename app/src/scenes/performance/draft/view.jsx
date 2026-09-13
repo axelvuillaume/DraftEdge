@@ -86,7 +86,7 @@ export default function View() {
     }
   }
 
-  if (!draft) return <div className="min-h-[calc(100vh-65px)] bg-[hsl(228_25%_4%)]" />
+  if (!draft) return <div className="min-h-[calc(100vh-65px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
   return <Planner draft={draft} saveDraft={saveDraft} />
 }
 
@@ -189,7 +189,7 @@ function Planner({ draft, saveDraft }) {
   }
 
   return (
-    <div className="min-h-[calc(100vh-65px)] bg-[hsl(228_25%_4%)] text-[hsl(220_20%_92%)] font-inter px-6 pt-5 pb-12">
+    <div className="min-h-[calc(100vh-65px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-[hsl(220_20%_92%)] font-inter px-6 pt-5 pb-12">
       <div className="flex items-center gap-3.5 flex-wrap mb-5">
         <button onClick={() => navigate("/performance/draft")} className="text-[hsl(220_10%_54%)] hover:text-[hsl(220_20%_92%)] text-base px-1.5 py-1 rounded-md transition-colors">
           ←
