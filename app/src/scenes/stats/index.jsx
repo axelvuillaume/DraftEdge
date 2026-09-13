@@ -35,7 +35,7 @@ export default function Performance() {
             <h1 className="text-white text-lg font-bold">{active.title}</h1>
             <p className="text-slate-400 text-sm">{active.description}</p>
           </div>
-          <FilterBar />
+          {active.key !== "games" && <FilterBar />}
         </div>
         <div className="flex items-center gap-1">
           {TABS.map(tab => {

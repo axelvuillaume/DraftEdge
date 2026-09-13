@@ -7,6 +7,7 @@ import Modal from "@/components/modal"
 import OpponentDropdown from "@/components/OpponentDropdown"
 import UploadModal from "@/components/UploadModal"
 import useStore from "@/services/store"
+import SelectDropdown from "@/components/SelectDropdown"
 import { getChampionIcon, getItemIcon, getSummonerSpellIcon, getRuneIcon, ROLES, ROLE_LABELS, ROLE_ICON_COLORS, TIER_SHORT, TIER_COLOR } from "@/utils"
 
 const sortPlayersByRole = players =>
@@ -21,7 +22,7 @@ export default function Games() {
   const [games, setGames] = useState(null)
   const { user } = useStore()
   const [folders, setFolders] = useState([])
-  const [filters, setFilters] = useState({ folder_id: null, opponent_id: location.state?.opponent_id || null, official: null })
+  const [filters, setFilters] = useState({ folder_id: null, opponent_id: location.state?.opponent_id || null, official: null, patch: null })
   const [selectedGames, setSelectedGames] = useState([])
   const [selectionMode, setSelectionMode] = useState(false)
   const [showMoveDropdown, setShowMoveDropdown] = useState(false)
@@ -64,6 +65,7 @@ export default function Games() {
 
             <div className="flex items-center gap-3">
               <OpponentFilter filters={filters} onFilterChange={setFilters} />
+              <PatchFilter filters={filters} onFilterChange={setFilters} />
               <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
                 {[
                   { value: null, label: "All" },
@@ -376,6 +378,36 @@ function FolderBar({ filters, onFilterChange, onFoldersLoaded, onImport }) {
         </div>
       </Modal>
     </>
+  )
+}
+
+function PatchFilter({ filters, onFilterChange }) {
+  const [patches, setPatches] = useState([])
+
+  const fetchPatches = async () => {
+    try {
+      const { ok, data, code } = await api.post("/game/filter-options", {})
+      if (!ok) return toast.error(code || "Failed to fetch patches")
+      setPatches(data.patches || [])
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch patches")
+    }
+  }
+
+  useEffect(() => {
+    fetchPatches()
+  }, [])
+
+  if (patches.length === 0) return null
+
+  return (
+    <SelectDropdown
+      value={filters.patch || ""}
+      onChange={patch => onFilterChange({ ...filters, patch: patch || null })}
+      options={patches}
+      placeholder="All patches"
+      clearLabel="All patches"
+    />
   )
 }
 
