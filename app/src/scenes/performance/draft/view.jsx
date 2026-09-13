@@ -189,9 +189,9 @@ function Planner({ draft, saveDraft }) {
   }
 
   return (
-    <div className="min-h-[calc(100vh-65px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-[hsl(220_20%_92%)] font-inter px-6 pt-5 pb-12">
+    <div className="min-h-[calc(100vh-65px)] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 font-inter px-6 pt-5 pb-12">
       <div className="flex items-center gap-3.5 flex-wrap mb-5">
-        <button onClick={() => navigate("/performance/draft")} className="text-[hsl(220_10%_54%)] hover:text-[hsl(220_20%_92%)] text-base px-1.5 py-1 rounded-md transition-colors">
+        <button onClick={() => navigate("/performance/draft")} className="text-slate-400 hover:text-slate-100 text-base px-1.5 py-1 rounded-md transition-colors">
           ←
         </button>
         <DebounceInput
@@ -199,12 +199,12 @@ function Planner({ draft, saveDraft }) {
           placeholder="Draft name…"
           value={draft.name || ""}
           onChange={e => saveDraft({ ...draft, name: e.target.value })}
-          className="px-3.5 py-2 rounded-lg bg-[hsl(228_22%_7%)] border border-[hsl(225_15%_15%)] text-[15px] font-bold tracking-[-0.02em] min-w-[220px] focus:outline-none focus:border-[hsl(234_89%_64%/0.5)]"
+          className="px-3.5 py-2 rounded-lg bg-slate-800/50 border border-slate-700/50 text-[15px] font-bold tracking-[-0.02em] min-w-[220px] focus:outline-none focus:border-indigo-500/50"
         />
         <OpponentDropdown value={draft.opponent_name || ""} onChange={team => saveDraft({ ...draft, opponent_id: team._id, opponent_name: team.name })} allowClear />
         <button
           onClick={createScenario}
-          className="flex items-center gap-2 px-4 py-[9px] rounded-lg bg-[hsl(234_89%_64%)] text-white text-[13px] font-semibold transition-all duration-150 hover:shadow-[0_0_24px_hsl(234_89%_64%/0.35)]"
+          className="flex items-center gap-2 px-4 py-[9px] rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 text-[13px] font-semibold transition-colors"
         >
           ＋ New scenario
         </button>
@@ -213,7 +213,7 @@ function Planner({ draft, saveDraft }) {
       <div className="grid gap-5 items-start" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(540px, 1fr))" }}>
         <div className="flex flex-col gap-4 min-w-0">
           {scenarios.length === 0 && (
-            <div className="border border-[hsl(225_15%_15%)] rounded-[10px] bg-[hsl(228_22%_7%)] p-6 text-center text-[hsl(220_10%_54%)] text-sm">
+            <div className="border border-slate-700/50 rounded-xl bg-slate-800/50 p-6 text-center text-slate-400 text-sm">
               No scenarios yet — create your first draft plan
             </div>
           )}
@@ -237,7 +237,7 @@ function Planner({ draft, saveDraft }) {
 
         <div className="flex flex-col gap-4 min-w-0">
           <div>
-            <div className="font-jetbrains text-[10px] tracking-[0.14em] uppercase text-[hsl(220_10%_54%)] mb-2">Pools</div>
+            <div className="font-jetbrains text-[10px] tracking-[0.14em] uppercase text-slate-400 mb-2">Pools</div>
             <div className="grid gap-3 items-stretch" style={{ gridTemplateColumns: "1.4fr 1fr 1.4fr" }}>
               <OurPoolPanel activeScenario={scenarios.find(s => s._id === activeId)} />
               <CommonPoolPanel draft={draft} activeScenario={scenarios.find(s => s._id === activeId)} />
@@ -291,16 +291,16 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
             ${
               champion
                 ? modified
-                  ? "border-2 border-[hsl(38_92%_50%/0.7)]"
+                  ? "border-2 border-amber-500/70"
                   : slot.type === "pick" && team?.prio_pick?.includes(champion)
-                    ? "border-2 border-[hsl(234_89%_64%)] shadow-[0_0_20px_hsl(234_89%_64%/0.25)]"
-                    : `border ${slot.side === "blue" ? "border-[hsl(234_89%_64%/0.45)]" : "border-[hsl(0_62%_45%/0.5)]"}`
+                    ? "border-2 border-indigo-500 shadow-lg shadow-indigo-500/10"
+                    : `border ${slot.side === "blue" ? "border-indigo-500/50" : "border-red-500/50"}`
                 : `border border-dashed ${
                     modified
-                      ? "border-[hsl(38_92%_50%/0.7)] bg-[hsl(38_92%_50%/0.08)]"
+                      ? "border-amber-500/70 bg-amber-500/5"
                       : slot.side === "blue"
-                        ? "border-[hsl(234_89%_64%/0.45)] bg-[hsl(234_89%_64%/0.08)] hover:bg-[hsl(234_89%_64%/0.16)]"
-                        : "border-[hsl(0_62%_45%/0.5)] bg-[hsl(0_62%_45%/0.1)] hover:bg-[hsl(0_62%_45%/0.2)]"
+                        ? "border-indigo-500/50 bg-indigo-500/5 hover:bg-indigo-500/15"
+                        : "border-red-500/50 bg-red-500/10 hover:bg-red-500/20"
                   }`
             }
           `}
@@ -315,7 +315,7 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
               />
               {slot.type === "ban" && (
                 <div className="absolute inset-0 flex items-center">
-                  <div className={`w-full h-0.5 rotate-45 ${modified ? "bg-[hsl(38_92%_50%/0.9)]" : slot.side === "blue" ? "bg-[hsl(234_89%_64%/0.8)]" : "bg-[hsl(0_62%_55%/0.8)]"}`} />
+                  <div className={`w-full h-0.5 rotate-45 ${modified ? "bg-amber-500/90" : slot.side === "blue" ? "bg-indigo-500/80" : "bg-red-500/80"}`} />
                 </div>
               )}
               {slot.type === "pick" && (
@@ -323,7 +323,7 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
               )}
             </>
           ) : (
-            <span className={`absolute top-[3px] left-1 font-jetbrains text-[8px] ${slot.side === "blue" ? "text-[hsl(234_89%_74%)]" : "text-[hsl(0_62%_62%)]"}`}>{slot.tag}</span>
+            <span className={`absolute top-[3px] left-1 font-jetbrains text-[8px] ${slot.side === "blue" ? "text-indigo-300" : "text-red-400"}`}>{slot.tag}</span>
           )}
         </button>
         {champion && (
@@ -347,29 +347,29 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
       {scenario.collapsed ? (
         <div
           onClick={() => setActiveId(scenario._id)}
-          className={`relative border rounded-[10px] bg-[hsl(228_22%_7%)] px-3.5 py-[11px] flex items-center gap-2.5 flex-wrap cursor-pointer ${active ? "border-[hsl(234_89%_64%/0.55)] shadow-[0_0_20px_hsl(234_89%_64%/0.25)]" : "border-[hsl(225_15%_15%)]"}`}
+          className={`relative border rounded-xl bg-slate-800/50 px-3.5 py-[11px] flex items-center gap-2.5 flex-wrap cursor-pointer ${active ? "border-indigo-500/60 shadow-lg shadow-indigo-500/10" : "border-slate-700/50"}`}
         >
-          {parent && <div className="absolute -left-5 -top-4 bottom-1/2 w-3.5 border-l border-b border-[hsl(38_92%_50%/0.5)] rounded-bl-lg" />}
+          {parent && <div className="absolute -left-5 -top-4 bottom-1/2 w-3.5 border-l border-b border-amber-500/50 rounded-bl-lg" />}
           <button
             onClick={e => {
               e.stopPropagation()
               saveScenario({ ...scenario, collapsed: false })
             }}
-            className="text-[hsl(220_10%_54%)] text-[11px]"
+            className="text-slate-400 text-[11px]"
           >
             ▸
           </button>
-          <div className={`text-[13px] font-semibold ${parent ? "italic text-[hsl(38_92%_62%)]" : ""}`}>{parent ? scenario.condition || "if …" : scenario.name || "Untitled"}</div>
+          <div className={`text-[13px] font-semibold ${parent ? "italic text-amber-400" : ""}`}>{parent ? scenario.condition || "if …" : scenario.name || "Untitled"}</div>
           <button
             onClick={e => {
               e.stopPropagation()
               saveScenario({ ...scenario, side: scenario.side === "red" ? "blue" : "red" })
             }}
-            className={`font-jetbrains text-[9px] px-2 py-[3px] rounded-full border ${scenario.side === "red" ? "bg-[hsl(0_62%_45%/0.12)] border-[hsl(0_62%_45%/0.4)] text-[hsl(0_70%_70%)]" : "bg-[hsl(234_89%_64%/0.12)] border-[hsl(234_89%_64%/0.4)] text-[hsl(234_89%_74%)]"}`}
+            className={`font-jetbrains text-[9px] px-2 py-[3px] rounded-full border ${scenario.side === "red" ? "bg-red-500/10 border-red-500/40 text-red-300" : "bg-indigo-500/10 border-indigo-500/40 text-indigo-300"}`}
           >
             {scenario.side === "red" ? "RED SIDE" : "BLUE SIDE"}
           </button>
-          <span className="text-[11px] text-[hsl(220_10%_54%)]">
+          <span className="text-[11px] text-slate-400">
             {[...(scenario.bluePicks || []), ...(scenario.redPicks || [])].filter(Boolean).length} picks · {children.length} branch{children.length > 1 ? "es" : ""}
           </span>
           <button
@@ -377,7 +377,7 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
               e.stopPropagation()
               branchScenario(scenario)
             }}
-            className="ml-auto font-jetbrains text-[11px] text-[hsl(220_10%_54%)] px-2.5 py-1.5 rounded-md transition-all duration-150 hover:text-[hsl(234_89%_74%)] hover:bg-[hsl(225_18%_13%)]"
+            className="ml-auto font-jetbrains text-[11px] text-slate-400 px-2.5 py-1.5 rounded-md transition-all duration-150 hover:text-indigo-300 hover:bg-slate-700/50"
           >
             ⑂ Branch
           </button>
@@ -386,7 +386,7 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
               e.stopPropagation()
               deleteScenario(scenario._id)
             }}
-            className="text-xs text-[hsl(220_10%_54%)] px-2 py-1.5 rounded-md hover:text-[hsl(0_70%_70%)]"
+            className="text-xs text-slate-400 px-2 py-1.5 rounded-md hover:text-red-300"
           >
             ✕
           </button>
@@ -394,16 +394,16 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
       ) : (
         <div
           onClick={() => setActiveId(scenario._id)}
-          className={`relative border rounded-[10px] bg-[hsl(228_22%_7%)] px-3.5 pt-3 pb-3.5 cursor-pointer ${active ? "border-[hsl(234_89%_64%/0.55)] shadow-[0_0_20px_hsl(234_89%_64%/0.25),0_0_40px_hsl(234_89%_64%/0.1)]" : "border-[hsl(225_15%_15%)]"}`}
+          className={`relative border rounded-xl bg-slate-800/50 px-3.5 pt-3 pb-3.5 cursor-pointer ${active ? "border-indigo-500/60 shadow-lg shadow-indigo-500/10" : "border-slate-700/50"}`}
         >
-          {parent && <div className="absolute -left-5 -top-4 bottom-1/2 w-3.5 border-l border-b border-[hsl(38_92%_50%/0.5)] rounded-bl-lg" />}
+          {parent && <div className="absolute -left-5 -top-4 bottom-1/2 w-3.5 border-l border-b border-amber-500/50 rounded-bl-lg" />}
           <div className="flex items-center gap-2 mb-2.5 flex-wrap">
             <button
               onClick={e => {
                 e.stopPropagation()
                 saveScenario({ ...scenario, collapsed: true })
               }}
-              className="text-[hsl(220_10%_54%)] text-[11px]"
+              className="text-slate-400 text-[11px]"
             >
               ▾
             </button>
@@ -414,7 +414,7 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
                 value={scenario.condition || ""}
                 onChange={e => saveScenario({ ...scenario, condition: e.target.value })}
                 onClick={e => e.stopPropagation()}
-                className="px-3 py-1.5 rounded-md bg-[hsl(228_25%_4%)] border border-[hsl(38_92%_50%/0.4)] text-[13px] italic text-[hsl(38_92%_62%)] min-w-[200px] focus:outline-none focus:border-[hsl(38_92%_50%/0.7)]"
+                className="px-3 py-1.5 rounded-md bg-slate-900 border border-amber-500/40 text-[13px] italic text-amber-400 min-w-[200px] focus:outline-none focus:border-amber-500/70"
               />
             ) : (
               <DebounceInput
@@ -423,7 +423,7 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
                 value={scenario.name || ""}
                 onChange={e => saveScenario({ ...scenario, name: e.target.value })}
                 onClick={e => e.stopPropagation()}
-                className={`px-3 py-1.5 rounded-md bg-[hsl(228_25%_4%)] border text-[13px] font-semibold min-w-[200px] focus:outline-none ${active ? "border-[hsl(234_89%_64%/0.5)]" : "border-[hsl(225_15%_15%)] focus:border-[hsl(234_89%_64%/0.5)]"}`}
+                className={`px-3 py-1.5 rounded-md bg-slate-900 border text-[13px] font-semibold min-w-[200px] focus:outline-none ${active ? "border-indigo-500/50" : "border-slate-700/50 focus:border-indigo-500/50"}`}
               />
             )}
             <button
@@ -431,7 +431,7 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
                 e.stopPropagation()
                 saveScenario({ ...scenario, side: scenario.side === "red" ? "blue" : "red" })
               }}
-              className={`font-jetbrains text-[9px] px-2 py-[3px] rounded-full border ${scenario.side === "red" ? "bg-[hsl(0_62%_45%/0.12)] border-[hsl(0_62%_45%/0.4)] text-[hsl(0_70%_70%)]" : "bg-[hsl(234_89%_64%/0.12)] border-[hsl(234_89%_64%/0.4)] text-[hsl(234_89%_74%)]"}`}
+              className={`font-jetbrains text-[9px] px-2 py-[3px] rounded-full border ${scenario.side === "red" ? "bg-red-500/10 border-red-500/40 text-red-300" : "bg-indigo-500/10 border-indigo-500/40 text-indigo-300"}`}
             >
               {scenario.side === "red" ? "RED SIDE" : "BLUE SIDE"}
             </button>
@@ -440,7 +440,7 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
                 e.stopPropagation()
                 branchScenario(scenario)
               }}
-              className="font-jetbrains text-[11px] text-[hsl(220_10%_54%)] px-2.5 py-1.5 rounded-md transition-all duration-150 hover:text-[hsl(234_89%_74%)] hover:bg-[hsl(225_18%_13%)]"
+              className="font-jetbrains text-[11px] text-slate-400 px-2.5 py-1.5 rounded-md transition-all duration-150 hover:text-indigo-300 hover:bg-slate-700/50"
             >
               ⑂ Branch
             </button>
@@ -449,17 +449,17 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
                 e.stopPropagation()
                 deleteScenario(scenario._id)
               }}
-              className="text-xs text-[hsl(220_10%_54%)] px-2 py-1.5 rounded-md hover:text-[hsl(0_70%_70%)]"
+              className="text-xs text-slate-400 px-2 py-1.5 rounded-md hover:text-red-300"
             >
               ✕
             </button>
             <div className="ml-auto flex items-center gap-2">
               {parent && (
-                <span className="font-jetbrains text-[9px] px-2 py-[3px] rounded-full bg-[hsl(38_92%_50%/0.12)] border border-[hsl(38_92%_50%/0.35)] text-[hsl(38_92%_62%)] uppercase">
+                <span className="font-jetbrains text-[9px] px-2 py-[3px] rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 uppercase">
                   Branch of {parent.name || "?"}
                 </span>
               )}
-              {active && <span className="font-jetbrains text-[9px] px-2 py-[3px] rounded-full bg-[hsl(225_18%_13%)] text-[hsl(220_20%_92%)]">ACTIF</span>}
+              {active && <span className="font-jetbrains text-[9px] px-2 py-[3px] rounded-full bg-slate-700/50 text-slate-100">ACTIF</span>}
             </div>
           </div>
           <div className="overflow-x-auto pb-1">
@@ -467,10 +467,10 @@ function ScenarioCard({ scenario, scenarios, depth, activeId, setActiveId, saveS
               {DRAFT_GROUPS.map(group => (
                 <div key={group.label} className="flex flex-col gap-1">
                   <div className="flex gap-1">{group.slots.map(slot => renderSlot(slot))}</div>
-                  <div className="text-center font-jetbrains text-[8px] tracking-[0.14em] text-[hsl(220_10%_54%)]">
+                  <div className="text-center font-jetbrains text-[8px] tracking-[0.14em] text-slate-400">
                     {group.label}
                     {parent && group.slots.filter(slot => (parent[slot.key]?.[slot.index] || null) !== (scenario[slot.key]?.[slot.index] || null)).length > 0 && (
-                      <span className="text-[hsl(38_92%_62%)]">
+                      <span className="text-amber-400">
                         {" "}
                         · {group.slots.filter(slot => (parent[slot.key]?.[slot.index] || null) !== (scenario[slot.key]?.[slot.index] || null)).length} MODIFIED
                         {group.slots.filter(slot => (parent[slot.key]?.[slot.index] || null) !== (scenario[slot.key]?.[slot.index] || null)).length > 1 ? "S" : ""}
@@ -531,7 +531,7 @@ function OurPoolPanel({ activeScenario }) {
   ].filter(Boolean)
 
   return (
-    <div className="bg-[hsl(228_22%_7%)] border border-[hsl(225_15%_15%)] rounded-[10px] p-3">
+    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
       <div className="text-xs font-semibold mb-2">Our pool{user?.team_name ? ` — ${user.team_name}` : ""}</div>
       <div className="flex flex-col gap-1.5">
         {DRAFT_ROLES.map(role => {
@@ -545,12 +545,12 @@ function OurPoolPanel({ activeScenario }) {
                     <img
                       src={getChampionIcon(champ.name)}
                       alt={champ.name}
-                      className={`w-6 h-6 rounded object-cover ${usedChampions.includes(champ.name) ? "grayscale opacity-40" : ""} ${team?.prio_pick?.includes(champ.name) ? "outline outline-1 outline-[hsl(234_89%_64%)]" : ""}`}
+                      className={`w-6 h-6 rounded object-cover ${usedChampions.includes(champ.name) ? "grayscale opacity-40" : ""} ${team?.prio_pick?.includes(champ.name) ? "outline outline-1 outline-indigo-500" : ""}`}
                       onError={e => (e.target.style.display = "none")}
                     />
                     <div className="flex flex-col leading-[1.25]">
-                      <span className="font-jetbrains text-[8px] text-[hsl(220_10%_54%)]">PR {champ.pr}%</span>
-                      <span className={`font-jetbrains text-[8px] ${champ.wr >= 60 ? "text-[hsl(152_60%_44%)]" : champ.wr >= 50 ? "text-[hsl(38_92%_60%)]" : "text-[hsl(0_62%_62%)]"}`}>
+                      <span className="font-jetbrains text-[8px] text-slate-400">PR {champ.pr}%</span>
+                      <span className={`font-jetbrains text-[8px] ${champ.wr >= 60 ? "text-emerald-400" : champ.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
                         WR {champ.wr}%
                       </span>
                     </div>
@@ -560,7 +560,7 @@ function OurPoolPanel({ activeScenario }) {
             </div>
           )
         })}
-        {DRAFT_ROLES.every(role => !Array.isArray(data[role]) || data[role].length === 0) && <div className="text-xs text-[hsl(220_10%_54%)]">No scrim data</div>}
+        {DRAFT_ROLES.every(role => !Array.isArray(data[role]) || data[role].length === 0) && <div className="text-xs text-slate-400">No scrim data</div>}
       </div>
     </div>
   )
@@ -593,12 +593,12 @@ function CommonPoolPanel({ draft, activeScenario }) {
   ].filter(Boolean)
 
   return (
-    <div className="bg-[hsl(228_22%_7%)] border border-[hsl(225_15%_15%)] rounded-[10px] p-3">
+    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
       <div className="text-xs font-semibold mb-2">Common</div>
       {!draft.opponent_id ? (
-        <div className="text-xs text-[hsl(220_10%_54%)]">Select an opponent</div>
+        <div className="text-xs text-slate-400">Select an opponent</div>
       ) : data.length === 0 ? (
-        <div className="text-xs text-[hsl(220_10%_54%)]">No common champions</div>
+        <div className="text-xs text-slate-400">No common champions</div>
       ) : (
         <div className="flex flex-wrap gap-x-2 gap-y-1.5">
           {data.map(champ => (
@@ -610,10 +610,10 @@ function CommonPoolPanel({ draft, activeScenario }) {
                 onError={e => (e.target.style.display = "none")}
               />
               <div className="flex flex-col leading-[1.25]">
-                <span className={`font-jetbrains text-[8px] ${champ.ourWr >= 60 ? "text-[hsl(152_60%_44%)]" : champ.ourWr >= 50 ? "text-[hsl(38_92%_60%)]" : "text-[hsl(0_62%_62%)]"}`}>
+                <span className={`font-jetbrains text-[8px] ${champ.ourWr >= 60 ? "text-emerald-400" : champ.ourWr >= 50 ? "text-amber-400" : "text-red-400"}`}>
                   US {champ.ourWr}%
                 </span>
-                <span className={`font-jetbrains text-[8px] ${champ.oppWr >= 60 ? "text-[hsl(152_60%_44%)]" : champ.oppWr >= 50 ? "text-[hsl(38_92%_60%)]" : "text-[hsl(0_62%_62%)]"}`}>
+                <span className={`font-jetbrains text-[8px] ${champ.oppWr >= 60 ? "text-emerald-400" : champ.oppWr >= 50 ? "text-amber-400" : "text-red-400"}`}>
                   OP {champ.oppWr}%
                 </span>
               </div>
@@ -652,10 +652,10 @@ function OpponentPoolPanel({ draft, activeScenario }) {
   ].filter(Boolean)
 
   return (
-    <div className="bg-[hsl(228_22%_7%)] border border-[hsl(225_15%_15%)] rounded-[10px] p-3">
+    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
       <div className="text-xs font-semibold mb-2">Opponent{draft.opponent_name ? ` — ${draft.opponent_name}` : ""}</div>
       {!draft.opponent_id ? (
-        <div className="text-xs text-[hsl(220_10%_54%)]">Select an opponent</div>
+        <div className="text-xs text-slate-400">Select an opponent</div>
       ) : (
         <div className="flex flex-col gap-1.5">
           {DRAFT_ROLES.map(role => {
@@ -673,8 +673,8 @@ function OpponentPoolPanel({ draft, activeScenario }) {
                         onError={e => (e.target.style.display = "none")}
                       />
                       <div className="flex flex-col leading-[1.25]">
-                        <span className="font-jetbrains text-[8px] text-[hsl(220_10%_54%)]">PR {champ.pr}%</span>
-                        <span className={`font-jetbrains text-[8px] ${champ.wr >= 60 ? "text-[hsl(152_60%_44%)]" : champ.wr >= 50 ? "text-[hsl(38_92%_60%)]" : "text-[hsl(0_62%_62%)]"}`}>
+                        <span className="font-jetbrains text-[8px] text-slate-400">PR {champ.pr}%</span>
+                        <span className={`font-jetbrains text-[8px] ${champ.wr >= 60 ? "text-emerald-400" : champ.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
                           WR {champ.wr}%
                         </span>
                       </div>
@@ -685,7 +685,7 @@ function OpponentPoolPanel({ draft, activeScenario }) {
             )
           })}
           {DRAFT_ROLES.every(role => !Array.isArray(data[role]) || data[role].length === 0) && (
-            <div className="text-xs text-[hsl(220_10%_54%)]">No games vs this team</div>
+            <div className="text-xs text-slate-400">No games vs this team</div>
           )}
         </div>
       )}
@@ -699,13 +699,13 @@ function ModulesSection() {
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <span className="font-jetbrains text-[10px] tracking-[0.14em] uppercase text-[hsl(220_10%_54%)]">▾ Modules</span>
+        <span className="font-jetbrains text-[10px] tracking-[0.14em] uppercase text-slate-400">▾ Modules</span>
         <DebounceInput
           type="text"
           placeholder="Search a champion…"
           value={filters.search}
           onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-          className="ml-auto px-2.5 py-[5px] rounded-md bg-[hsl(225_18%_13%)] border border-[hsl(225_15%_15%)] text-[11px] text-[hsl(220_20%_92%)] placeholder-[hsl(220_10%_54%)] min-w-[140px] focus:outline-none focus:border-[hsl(234_89%_64%/0.5)]"
+          className="ml-auto px-2.5 py-[5px] rounded-md bg-slate-700/50 border border-slate-700/50 text-[11px] text-slate-100 placeholder-slate-500 min-w-[140px] focus:outline-none focus:border-indigo-500/50"
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -735,31 +735,31 @@ function ComboPanel({ title, roles, filters }) {
   }, [filters, globalFilters.patch, globalFilters.folder_id, globalFilters.opponent_id])
 
   return (
-    <div className="bg-[hsl(228_22%_7%)] border border-[hsl(225_15%_15%)] rounded-[10px] p-3">
+    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
       <div className="text-xs font-semibold mb-2">{title}</div>
       <div className="flex flex-col gap-1.5">
-        {(data || []).length === 0 && <div className="text-xs text-[hsl(220_10%_54%)]">No data</div>}
+        {(data || []).length === 0 && <div className="text-xs text-slate-400">No data</div>}
         {(data || []).map((combo, idx) => (
-          <div key={idx} className="flex items-center gap-2 bg-[hsl(225_18%_13%/0.6)] rounded-full py-1 pr-2 pl-1">
+          <div key={idx} className="flex items-center gap-2 bg-slate-700/40 rounded-full py-1 pr-2 pl-1">
             <div className="flex">
               <img
                 src={getChampionIcon(combo.champ1)}
                 alt={combo.champ1}
-                className="w-[22px] h-[22px] rounded-full object-cover border-2 border-[hsl(225_15%_15%)]"
+                className="w-[22px] h-[22px] rounded-full object-cover border-2 border-slate-700/50"
                 onError={e => (e.target.style.display = "none")}
               />
               <img
                 src={getChampionIcon(combo.champ2)}
                 alt={combo.champ2}
-                className="w-[22px] h-[22px] rounded-full object-cover border-2 border-[hsl(225_15%_15%)] -ml-2"
+                className="w-[22px] h-[22px] rounded-full object-cover border-2 border-slate-700/50 -ml-2"
                 onError={e => (e.target.style.display = "none")}
               />
             </div>
             <span className="text-[11px] flex-1 min-w-0 truncate">
               {combo.champ1} + {combo.champ2}
             </span>
-            <span className="font-jetbrains text-[9px] text-[hsl(220_10%_54%)]">{combo.games}g</span>
-            <span className={`font-jetbrains text-[10px] ${combo.wr >= 60 ? "text-[hsl(152_60%_44%)]" : combo.wr >= 50 ? "text-[hsl(38_92%_60%)]" : "text-[hsl(0_62%_62%)]"}`}>
+            <span className="font-jetbrains text-[9px] text-slate-400">{combo.games}g</span>
+            <span className={`font-jetbrains text-[10px] ${combo.wr >= 60 ? "text-emerald-400" : combo.wr >= 50 ? "text-amber-400" : "text-red-400"}`}>
               {combo.wr}%
             </span>
           </div>
