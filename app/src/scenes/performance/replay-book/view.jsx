@@ -65,19 +65,99 @@ export default function View() {
     }
   }
 
+  const formatTiming = seconds => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`
+
+  const getCurrentTiming = () => {
+    if (!playerRef.current?.getCurrentTime) return null
+    return formatTiming(playerRef.current.getCurrentTime())
+  }
+
+  const openNoteForm = () => {
+    const timing = getCurrentTiming()
+    if (timing !== null) setNewNote(prev => ({ ...prev, timing }))
+    setShowNoteForm(true)
+  }
+
   useEffect(() => {
     fetchReplay()
   }, [])
+
+  useEffect(() => {
+    const isTyping = () => {
+      const el = document.activeElement
+      if (!el) return false
+      if (el.isContentEditable) return true
+      return ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)
+    }
+
+    const onKeyDown = e => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (showNoteForm || editingName !== null) return
+      if (isTyping()) return
+      const focusedButton = ["BUTTON", "A"].includes(document.activeElement?.tagName)
+      if (focusedButton && (e.key === "Enter" || e.key === " ")) return
+
+      if (e.key === "Enter") {
+        e.preventDefault()
+        return openNoteForm()
+      }
+
+      const player = playerRef.current
+      if (!player?.getPlayerState || !player?.seekTo) return
+      const key = e.key.toLowerCase()
+      const seek = delta => player.seekTo(Math.max(0, player.getCurrentTime() + delta), true)
+
+      if (e.key === " " || key === "k") {
+        e.preventDefault()
+        if (player.getPlayerState() === 1) return player.pauseVideo()
+        return player.playVideo()
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault()
+        return seek(-5)
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault()
+        return seek(5)
+      }
+      if (key === "j") return seek(-10)
+      if (key === "l") return seek(10)
+      if (e.key === "ArrowUp") {
+        e.preventDefault()
+        return player.setVolume(Math.min(100, player.getVolume() + 5))
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault()
+        return player.setVolume(Math.max(0, player.getVolume() - 5))
+      }
+      if (key === "m") {
+        if (player.isMuted()) return player.unMute()
+        return player.mute()
+      }
+      if (key === "f") return player.getIframe()?.requestFullscreen?.()
+      if (e.key === "Home") return player.seekTo(0, true)
+      if (e.key === "End") return player.seekTo(player.getDuration(), true)
+      if (/^[0-9]$/.test(e.key)) return player.seekTo((player.getDuration() * Number(e.key)) / 10, true)
+      if (e.key === "," && player.getPlayerState() === 2) return seek(-1 / 30)
+      if (e.key === "." && player.getPlayerState() === 2) return seek(1 / 30)
+      if (e.key === "<" || e.key === ">") {
+        const rates = player.getAvailablePlaybackRates()
+        const idx = rates.indexOf(player.getPlaybackRate())
+        const next = rates[idx + (e.key === ">" ? 1 : -1)]
+        if (next !== undefined) player.setPlaybackRate(next)
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [showNoteForm, editingName])
 
   useEffect(() => {
     if (!showNoteForm) return
     const interval = setInterval(() => {
       if (!playerRef.current?.getPlayerState || playerRef.current.getPlayerState() !== 1) return
       if (!playerRef.current?.getCurrentTime) return
-      setNewNote(prev => ({
-        ...prev,
-        timing: `${String(Math.floor(playerRef.current.getCurrentTime() / 60)).padStart(2, "0")}:${String(Math.floor(playerRef.current.getCurrentTime() % 60)).padStart(2, "0")}`
-      }))
+      setNewNote(prev => ({ ...prev, timing: getCurrentTiming() }))
     }, 1000)
     return () => clearInterval(interval)
   }, [showNoteForm])
@@ -166,14 +246,7 @@ export default function View() {
           <div className="xl:col-span-1 space-y-4">
             {!showNoteForm && (
               <button
-                onClick={() => {
-                  if (playerRef.current?.getCurrentTime)
-                    setNewNote(prev => ({
-                      ...prev,
-                      timing: `${String(Math.floor(playerRef.current.getCurrentTime() / 60)).padStart(2, "0")}:${String(Math.floor(playerRef.current.getCurrentTime() % 60)).padStart(2, "0")}`
-                    }))
-                  setShowNoteForm(true)
-                }}
+                onClick={openNoteForm}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-xl text-sm transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -208,12 +281,10 @@ export default function View() {
                         className="flex-1 px-3 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none text-sm"
                       />
                       <button
+                        type="button"
                         onClick={() => {
-                          if (playerRef.current?.getCurrentTime)
-                            setNewNote(prev => ({
-                              ...prev,
-                              timing: `${String(Math.floor(playerRef.current.getCurrentTime() / 60)).padStart(2, "0")}:${String(Math.floor(playerRef.current.getCurrentTime() % 60)).padStart(2, "0")}`
-                            }))
+                          const timing = getCurrentTiming()
+                          if (timing !== null) setNewNote(prev => ({ ...prev, timing }))
                         }}
                         className="p-2 text-slate-400 hover:text-amber-500 transition-colors border border-slate-600 rounded-lg"
                         title="Get current time"
@@ -225,6 +296,7 @@ export default function View() {
                   <div>
                     <label className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1 block">Title</label>
                     <input
+                      autoFocus
                       type="text"
                       value={newNote.title}
                       onChange={e => setNewNote(prev => ({ ...prev, title: e.target.value }))}
@@ -270,7 +342,7 @@ export default function View() {
                               className="flex items-center gap-1 text-amber-500 hover:text-amber-400 transition-colors text-xs font-mono shrink-0"
                             >
                               <Play className="w-3 h-3" />
-                              {`${String(Math.floor(note.timing / 60)).padStart(2, "0")}:${String(Math.floor(note.timing % 60)).padStart(2, "0")}`}
+                              {formatTiming(note.timing)}
                             </button>
                             <span className="text-white text-sm font-medium truncate">{note.title}</span>
                           </div>
@@ -283,7 +355,7 @@ export default function View() {
                               setNewNote({
                                 title: replay.notes[idx].title,
                                 description: replay.notes[idx].description || "",
-                                timing: `${String(Math.floor(replay.notes[idx].timing / 60)).padStart(2, "0")}:${String(Math.floor(replay.notes[idx].timing % 60)).padStart(2, "0")}`
+                                timing: formatTiming(replay.notes[idx].timing)
                               })
                               setEditingIndex(idx)
                               setShowNoteForm(true)
