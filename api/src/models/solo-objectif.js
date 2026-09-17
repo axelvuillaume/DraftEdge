@@ -20,10 +20,10 @@ const Schema = new mongoose.Schema(
     },
     completed: { type: Boolean, default: false },
     completed_at: { type: Date, default: null },
+    // Un aggregate compte des games (rule.metric = games_played) ou des wins (rule.metric = win) sur une période
     aggregate: {
-      fn: { type: String, enum: ['count', 'sum', 'avg', null], default: null },
+      fn: { type: String, enum: ['count', null], default: null },
       period: { type: String, enum: ['daily', 'weekly', 'total', null], default: null },
-      minGames: { type: Number, default: null },
     },
     streak_count: { type: Number, default: null },
     champions: [{ type: String }],

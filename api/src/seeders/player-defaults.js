@@ -65,7 +65,7 @@ const buildObjective = (d, role, player) => ({
     target_division: d.rule?.target_division || null,
     target_lp: d.rule?.target_lp || 0,
   },
-  aggregate: d.aggregate || { fn: null, period: null, minGames: null },
+  aggregate: d.aggregate || { fn: null, period: null },
   streak_count: d.streak_count || null,
   role,
   team_id: player.team_id,

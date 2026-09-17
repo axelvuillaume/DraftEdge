@@ -581,7 +581,9 @@ function ObjectiveHeader({ objective }) {
           </span>
         )}
         {objective.side && (
-          <span className={`text-[10px] px-2 py-0.5 rounded font-medium shrink-0 uppercase tracking-wide ${objective.side === "blue" ? "text-blue-400/80 bg-blue-500/10" : "text-red-400/80 bg-red-500/10"}`}>
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded font-medium shrink-0 uppercase tracking-wide ${objective.side === "blue" ? "text-blue-400/80 bg-blue-500/10" : "text-red-400/80 bg-red-500/10"}`}
+          >
             {objective.side}
           </span>
         )}
@@ -660,9 +662,7 @@ function AggregateRow({ objective, onClick, onEdit, onDelete }) {
   }, [objective._id])
 
   const periodLabel = objective.aggregate?.period === "weekly" ? "Week" : objective.aggregate?.period === "total" ? "Total" : "Today"
-  const minGames = objective.aggregate?.minGames
-  const notEnoughGames = agg && agg.current == null && minGames > 0 && agg.total_games < minGames
-  const progress = agg && agg.current != null && agg.target > 0 ? Math.min(100, Math.round((agg.current / agg.target) * 100)) : 0
+  const progress = agg && agg.target > 0 ? Math.min(100, Math.round((agg.current / agg.target) * 100)) : 0
 
   return (
     <div className="px-5 py-3 hover:bg-slate-800/40 transition-colors cursor-pointer flex items-center gap-4" onClick={onClick}>
@@ -672,18 +672,12 @@ function AggregateRow({ objective, onClick, onEdit, onDelete }) {
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[10px]">
               <span className="text-slate-500 uppercase tracking-wide">{periodLabel}</span>
-              {notEnoughGames ? (
-                <span className="text-slate-500 tabular-nums">
-                  {agg.total_games}/{minGames} games
-                </span>
-              ) : (
-                <span className={`font-bold tabular-nums ${agg.success ? "text-emerald-400" : "text-amber-400"}`}>
-                  {agg.current ?? 0} / {agg.target}
-                </span>
-              )}
+              <span className={`font-bold tabular-nums ${agg.success ? "text-emerald-400" : "text-amber-400"}`}>
+                {agg.current} / {agg.target} <span className="text-slate-500 font-normal">{objective.rule?.metric === "win" ? "wins" : "games"}</span>
+              </span>
             </div>
             <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full ${notEnoughGames ? "bg-slate-600" : agg.success ? "bg-emerald-500" : "bg-amber-500"}`} style={{ width: `${notEnoughGames ? Math.round((agg.total_games / minGames) * 100) : progress}%` }} />
+              <div className={`h-full rounded-full ${agg.success ? "bg-emerald-500" : "bg-amber-500"}`} style={{ width: `${progress}%` }} />
             </div>
           </div>
         ) : (
@@ -691,17 +685,8 @@ function AggregateRow({ objective, onClick, onEdit, onDelete }) {
         )}
       </div>
       <div className="text-right shrink-0 w-16">
-        {notEnoughGames ? (
-          <>
-            <p className="text-slate-500 text-sm font-bold">N/A</p>
-            <p className="text-slate-600 text-[10px] uppercase tracking-wide">min games</p>
-          </>
-        ) : (
-          <>
-            <p className={`text-sm font-bold tabular-nums ${agg?.success ? "text-emerald-400" : "text-amber-300"}`}>{progress}%</p>
-            <p className="text-slate-600 text-[10px] uppercase tracking-wide">progress</p>
-          </>
-        )}
+        <p className={`text-sm font-bold tabular-nums ${agg?.success ? "text-emerald-400" : "text-amber-300"}`}>{progress}%</p>
+        <p className="text-slate-600 text-[10px] uppercase tracking-wide">progress</p>
       </div>
       <RowActions onEdit={onEdit} onDelete={onDelete} />
     </div>
@@ -743,7 +728,9 @@ function RankRow({ objective, player, onClick, onEdit, onDelete }) {
   const targetScore = targetTierIdx >= 0 ? targetTierIdx * 400 + (targetDivIdx >= 0 ? targetDivIdx * 100 : 0) + targetLp : 0
   const progress = targetScore > 0 ? Math.min(100, Math.round((currentScore / targetScore) * 100)) : 0
 
-  const targetLabel = targetTier ? `${targetTier.charAt(0) + targetTier.slice(1).toLowerCase()}${targetDivision ? ` ${targetDivision}` : ""}${targetLp ? ` ${targetLp}LP` : ""}` : "—"
+  const targetLabel = targetTier
+    ? `${targetTier.charAt(0) + targetTier.slice(1).toLowerCase()}${targetDivision ? ` ${targetDivision}` : ""}${targetLp ? ` ${targetLp}LP` : ""}`
+    : "—"
 
   return (
     <div className="px-5 py-3 hover:bg-slate-800/40 transition-colors cursor-pointer flex items-center gap-4" onClick={onClick}>
