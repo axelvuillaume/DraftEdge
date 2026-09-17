@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const passport = require('passport');
 const SoloObjectif = require('../models/solo-objectif');
+const SoloObjectifResult = require('../models/solo-objectif-result');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
 const { parseObjectiveRequest } = require('../services/solo-objectif-parser');
@@ -91,6 +92,7 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
   try {
     const soloObjectif = await SoloObjectif.findByIdAndDelete(req.params.id);
     if (!soloObjectif) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+    await SoloObjectifResult.deleteMany({ solo_objectif_id: req.params.id });
     return res.status(200).send({ ok: true, data: soloObjectif });
   } catch (error) {
     capture(error);

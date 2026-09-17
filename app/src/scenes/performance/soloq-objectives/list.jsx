@@ -75,11 +75,11 @@ export default function List() {
               </div>
 
               <div className="relative flex items-end justify-between gap-2">
-                <div>
+                <div className="min-w-0">
                   <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5">Rank</p>
                   {p.current_tier ? (
                     <div className="flex items-baseline gap-1">
-                      <span className="text-white text-sm font-bold">
+                      <span className="text-white text-sm font-bold truncate">
                         {p.current_tier.charAt(0) + p.current_tier.slice(1).toLowerCase()}
                         {!APEX_TIERS.has(p.current_tier) && p.current_rank ? ` ${p.current_rank}` : ""}
                       </span>
@@ -89,7 +89,7 @@ export default function List() {
                     <span className="text-slate-600 text-sm">Unranked</span>
                   )}
                 </div>
-                <div className="flex gap-3 text-right">
+                <div className="flex gap-3 text-right shrink-0">
                   <PlayerGoalsCount playerId={p._id} />
                   <PlayerWinrate playerId={p._id} />
                 </div>
@@ -150,7 +150,7 @@ function PlayerWinrate({ playerId }) {
 
   return (
     <div>
-      <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5">WR</p>
+      <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5">Success</p>
       <p className="text-white text-sm font-bold tabular-nums">{stats && stats.total > 0 ? `${Math.round((stats.success / stats.total) * 100)}%` : "-"}</p>
     </div>
   )
@@ -684,10 +684,7 @@ function AggregateRow({ objective, onClick, onEdit, onDelete }) {
           <span className="text-slate-600 text-xs">No data</span>
         )}
       </div>
-      <div className="text-right shrink-0 w-16">
-        <p className={`text-sm font-bold tabular-nums ${agg?.success ? "text-emerald-400" : "text-amber-300"}`}>{progress}%</p>
-        <p className="text-slate-600 text-[10px] uppercase tracking-wide">progress</p>
-      </div>
+      <div className="shrink-0 w-16" />
       <RowActions onEdit={onEdit} onDelete={onDelete} />
     </div>
   )
