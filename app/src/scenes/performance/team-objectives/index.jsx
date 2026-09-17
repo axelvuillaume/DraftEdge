@@ -19,8 +19,11 @@ import {
   Users,
   ToggleLeft,
   Pencil,
-  Check
+  Check,
+  LineChart as LineChartIcon,
+  List
 } from "lucide-react"
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts"
 import { ROLES, ROLE_LABELS } from "@/utils"
 import DraftScenarioSelect from "@/components/DraftScenarioSelect"
 import StratMapSelect from "@/components/StratMapSelect"
@@ -225,6 +228,7 @@ function ScrimStatsPanel({ objectifs }) {
 function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
   const [results, setResults] = useState([])
   const [expanded, setExpanded] = useState(false)
+  const [tab, setTab] = useState("graph")
   const navigate = useNavigate()
 
   const fetchResults = async () => {
@@ -358,50 +362,126 @@ function ScrimObjectiveRow({ objectif, onDelete, onEdit }) {
               <p className="text-slate-600 text-xs mt-0.5">Rate this objective during scrims to track progress</p>
             </div>
           ) : (
-            <div className="px-5 py-3 space-y-1">
-              {results.map(r => (
-                <div key={r._id} className="flex items-center gap-3 rounded-lg px-3 py-2 bg-slate-800/30 hover:bg-slate-800/50 transition-colors">
-                  <span className="text-[11px] text-slate-500 shrink-0 w-16 tabular-nums">
-                    {new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </span>
-                  <div className="flex-1 min-w-0 flex items-center gap-2">
-                    {r.session_name && (
-                      <span
-                        onClick={e => {
-                          e.stopPropagation()
-                          if (r.session_id) navigate(`/performance/scrims/${r.session_id}`)
-                        }}
-                        className={`text-xs bg-slate-700/40 px-1.5 py-0.5 rounded truncate ${r.session_id ? "text-amber-400/80 hover:text-amber-300 cursor-pointer" : "text-slate-300"}`}
-                      >
-                        {r.session_name}
+            <>
+              <div className="px-5 pt-3 flex items-center gap-1">
+                <button
+                  onClick={() => setTab("graph")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    tab === "graph" ? "bg-amber-500/15 text-amber-400" : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/60"
+                  }`}
+                >
+                  <LineChartIcon className="w-3.5 h-3.5" />
+                  Graph
+                </button>
+                <button
+                  onClick={() => setTab("notes")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    tab === "notes" ? "bg-amber-500/15 text-amber-400" : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/60"
+                  }`}
+                >
+                  <List className="w-3.5 h-3.5" />
+                  Notes
+                </button>
+              </div>
+              {tab === "graph" && <ResultsChart results={results} isToggle={objectif.rating_type === "toggle"} avg={avg} />}
+              {tab === "notes" && (
+                <div className="px-5 py-3 space-y-1">
+                  {results.map(r => (
+                    <div key={r._id} className="flex items-center gap-3 rounded-lg px-3 py-2 bg-slate-800/30 hover:bg-slate-800/50 transition-colors">
+                      <span className="text-[11px] text-slate-500 shrink-0 w-16 tabular-nums">
+                        {new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </span>
-                    )}
-                    {r.game_name && <span className="text-xs text-slate-500 truncate">{r.game_name}</span>}
-                  </div>
-                  {r.comment && <span className="text-xs text-slate-500 italic truncate max-w-[200px] hidden lg:block">{r.comment}</span>}
-                  {objectif.rating_type === "toggle" ? (
-                    r.result === 1 ? (
-                      <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium shrink-0">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Done
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-xs text-red-400 font-medium shrink-0">
-                        <XCircle className="w-3.5 h-3.5" />
-                        Not done
-                      </span>
-                    )
-                  ) : (
-                    <span className={`text-xs font-bold tabular-nums shrink-0 ${getRatingText(r.result)}`}>
-                      {r.result}/{RATING_MAX}
-                    </span>
-                  )}
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        {r.session_name && (
+                          <span
+                            onClick={e => {
+                              e.stopPropagation()
+                              if (r.session_id) navigate(`/performance/scrims/${r.session_id}`)
+                            }}
+                            className={`text-xs bg-slate-700/40 px-1.5 py-0.5 rounded truncate ${r.session_id ? "text-amber-400/80 hover:text-amber-300 cursor-pointer" : "text-slate-300"}`}
+                          >
+                            {r.session_name}
+                          </span>
+                        )}
+                        {r.game_name && <span className="text-xs text-slate-500 truncate">{r.game_name}</span>}
+                      </div>
+                      {r.comment && <span className="text-xs text-slate-500 italic truncate max-w-[200px] hidden lg:block">{r.comment}</span>}
+                      {objectif.rating_type === "toggle" ? (
+                        r.result === 1 ? (
+                          <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium shrink-0">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Done
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-xs text-red-400 font-medium shrink-0">
+                            <XCircle className="w-3.5 h-3.5" />
+                            Not done
+                          </span>
+                        )
+                      ) : (
+                        <span className={`text-xs font-bold tabular-nums shrink-0 ${getRatingText(r.result)}`}>
+                          {r.result}/{RATING_MAX}
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function ResultsChart({ results, isToggle, avg }) {
+  const data = results
+    .filter(r => r.result != null)
+    .map(r => ({ ...r, time: new Date(r.createdAt).getTime() }))
+    .sort((a, b) => a.time - b.time)
+    .map((r, i) => ({ ...r, index: i + 1 }))
+
+  if (data.length < 2) {
+    return <div className="px-5 py-8 text-center text-slate-500 text-sm">Need at least 2 evaluations to draw a graph</div>
+  }
+
+  const formatDate = v => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+
+  return (
+    <div className="px-5 py-4 [&_.recharts-wrapper]:!outline-none [&_.recharts-surface]:!outline-none">
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -16 }}>
+          <CartesianGrid stroke="#334155" strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey="index" tickFormatter={i => formatDate(data[i - 1]?.time)} stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
+          <YAxis
+            domain={isToggle ? [0, 1] : [0, RATING_MAX]}
+            ticks={isToggle ? [0, 1] : [0, 2, 4, 6, 8, 10]}
+            tickFormatter={v => (isToggle ? (v === 1 ? "Done" : "Not done") : v)}
+            stroke="#64748b"
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+            width={isToggle ? 80 : 40}
+          />
+          <Tooltip
+            contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px", fontSize: 12 }}
+            labelStyle={{ color: "#94a3b8" }}
+            labelFormatter={(_i, payload) => {
+              const r = payload?.[0]?.payload
+              if (!r) return ""
+              return `${formatDate(r.time)}${r.session_name ? ` · ${r.session_name}` : ""}${r.game_name ? ` · ${r.game_name}` : ""}`
+            }}
+            formatter={(value, _name, item) => {
+              const label = isToggle ? (value === 1 ? "Done" : "Not done") : `${value}/${RATING_MAX}`
+              const comment = item?.payload?.comment
+              return [comment ? `${label} — ${comment}` : label, "Result"]
+            }}
+          />
+          {!isToggle && avg != null && <ReferenceLine y={avg} stroke="#f59e0b" strokeDasharray="4 4" strokeOpacity={0.5} />}
+          <Line type="monotone" dataKey="result" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3, fill: "#f59e0b", strokeWidth: 0 }} activeDot={{ r: 5 }} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   )
 }
@@ -642,4 +722,3 @@ function ScrimObjectifModal({ isOpen, objective, onClose, onSuccess }) {
     </Modal>
   )
 }
-
