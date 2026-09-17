@@ -11,6 +11,8 @@ const Schema = new mongoose.Schema(
     success: { type: Boolean, default: false },
     game_date: { type: Date },
     champion: { type: String },
+    opponent_champion: { type: String, default: null },
+    win: { type: Boolean, default: null },
     team_id: { type: String },
     team_name: { type: String },
     player_id: { type: String },

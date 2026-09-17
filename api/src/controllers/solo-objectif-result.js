@@ -302,6 +302,197 @@ router.post('/aggregate-history', passport.authenticate(['admin', 'user'], { ses
   }
 });
 
+router.post('/per-game-stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    if (!req.body.solo_objectif_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
+
+    const obj = await SoloObjectif.findById(req.body.solo_objectif_id);
+    if (!obj) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+
+    const results = await SoloObjectifResult.find({ solo_objectif_id: obj._id.toString() }).sort({ game_date: 1, createdAt: 1 });
+
+    const round1 = (v) => (v != null ? Math.round(v * 10) / 10 : null);
+    const rate = (s, t) => (t > 0 ? Math.round((s / t) * 100) : null);
+    const avg = (arr) => {
+      const vals = arr.map((g) => g.value).filter((v) => v != null);
+      if (vals.length === 0) return null;
+      return round1(vals.reduce((a, v) => a + v, 0) / vals.length);
+    };
+
+    const games = results.map((r) => ({
+      matchId: r.matchId,
+      game_date: r.game_date || r.createdAt,
+      champion: r.champion || null,
+      opponent: r.opponent_champion || null,
+      win: r.win ?? null,
+      value: r.actual_value ?? null,
+      success: !!r.success,
+    }));
+
+    // ---- KPIs
+    const total = games.length;
+    const successCount = games.filter((g) => g.success).length;
+    const last10 = games.slice(-10);
+    const prev10 = games.slice(-20, -10);
+    const last10Rate = rate(last10.filter((g) => g.success).length, last10.length);
+    const prev10Rate = rate(prev10.filter((g) => g.success).length, prev10.length);
+
+    // ---- Win impact
+    const withWin = games.filter((g) => g.win != null);
+    const succ = withWin.filter((g) => g.success);
+    const fail = withWin.filter((g) => !g.success);
+    const succRate = rate(succ.filter((g) => g.win).length, succ.length);
+    const failRate = rate(fail.filter((g) => g.win).length, fail.length);
+    const impact = {
+      success_wins: succ.filter((g) => g.win).length,
+      success_total: succ.length,
+      success_rate: succRate,
+      fail_wins: fail.filter((g) => g.win).length,
+      fail_total: fail.length,
+      fail_rate: failRate,
+      lift: succRate != null && failRate != null ? succRate - failRate : null,
+    };
+
+    // ---- Series (chronologique) avec moyenne glissante
+    const WINDOW = games.length > 60 ? 10 : 5;
+    const series = games.map((g, i) => {
+      const win = games.slice(Math.max(0, i - WINDOW + 1), i + 1).map((x) => x.value).filter((v) => v != null);
+      return { ...g, rolling: win.length > 0 ? Math.round((win.reduce((a, v) => a + v, 0) / win.length) * 100) / 100 : null };
+    });
+
+    // ---- Par jour (pour lisser le graph quand il y a beaucoup de games)
+    const dayMap = {};
+    for (const g of games) {
+      if (g.value == null) continue;
+      const d = new Date(g.game_date);
+      const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+      if (!dayMap[key]) dayMap[key] = { date: key, games: [] };
+      dayMap[key].games.push(g);
+    }
+    const dailyRaw = Object.values(dayMap)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .map((d) => ({
+        date: d.date,
+        total: d.games.length,
+        success: d.games.filter((g) => g.success).length,
+        rate: rate(d.games.filter((g) => g.success).length, d.games.length),
+        sum: d.games.reduce((a, g) => a + g.value, 0),
+      }));
+    // Tendance : moyenne pondérée par le nombre de games sur les N derniers jours joués
+    const TREND_DAYS = dailyRaw.length > 30 ? 7 : 3;
+    const daily = dailyRaw.map((d, i) => {
+      const win = dailyRaw.slice(Math.max(0, i - TREND_DAYS + 1), i + 1);
+      const games = win.reduce((a, x) => a + x.total, 0);
+      return {
+        date: d.date,
+        total: d.total,
+        success: d.success,
+        rate: d.rate,
+        avg: Math.round((d.sum / d.total) * 100) / 100,
+        trend: Math.round((win.reduce((a, x) => a + x.sum, 0) / games) * 100) / 100,
+      };
+    });
+
+    // ---- Par semaine (lundi → dimanche)
+    const weekMap = {};
+    for (const g of games) {
+      const d = new Date(g.game_date);
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const day = start.getDay();
+      start.setDate(start.getDate() - (day === 0 ? 6 : day - 1));
+      const key = start.toISOString();
+      if (!weekMap[key]) weekMap[key] = { start, games: [] };
+      weekMap[key].games.push(g);
+    }
+    const weeksAsc = Object.values(weekMap).sort((a, b) => a.start - b.start);
+    const weeks = weeksAsc.map((w, i) => {
+      const end = new Date(w.start);
+      end.setDate(end.getDate() + 7);
+      const s = w.games.filter((g) => g.success).length;
+      const r = rate(s, w.games.length);
+      const prev = weeksAsc[i - 1];
+      const prevRate = prev ? rate(prev.games.filter((g) => g.success).length, prev.games.length) : null;
+      return {
+        start: w.start,
+        end,
+        total: w.games.length,
+        success: s,
+        rate: r,
+        avg: avg(w.games),
+        delta: prevRate != null && r != null ? r - prevRate : null,
+        games: [...w.games].sort((a, b) => new Date(b.game_date) - new Date(a.game_date)),
+      };
+    });
+    weeks.reverse();
+
+    // ---- Par champion + matchups
+    const champMap = {};
+    for (const g of games) {
+      if (!g.champion) continue;
+      if (!champMap[g.champion]) champMap[g.champion] = [];
+      champMap[g.champion].push(g);
+    }
+    const champions = Object.entries(champMap)
+      .map(([name, gs]) => {
+        const oppMap = {};
+        for (const g of gs) {
+          if (!g.opponent) continue;
+          if (!oppMap[g.opponent]) oppMap[g.opponent] = [];
+          oppMap[g.opponent].push(g);
+        }
+        const withWinGs = gs.filter((g) => g.win != null);
+        return {
+          name,
+          total: gs.length,
+          success: gs.filter((g) => g.success).length,
+          rate: rate(gs.filter((g) => g.success).length, gs.length),
+          avg: avg(gs),
+          winrate: rate(withWinGs.filter((g) => g.win).length, withWinGs.length),
+          matchups: Object.entries(oppMap)
+            .map(([opp, ogs]) => ({
+              opponent: opp,
+              total: ogs.length,
+              success: ogs.filter((g) => g.success).length,
+              rate: rate(ogs.filter((g) => g.success).length, ogs.length),
+              avg: avg(ogs),
+            }))
+            .sort((a, b) => b.total - a.total),
+        };
+      })
+      .sort((a, b) => b.total - a.total);
+
+    return res.status(200).send({
+      ok: true,
+      data: {
+        target: obj.rule?.value ?? null,
+        metric: (obj.rule?.metric || '').split('.').pop(),
+        operator: obj.rule?.operator || null,
+        first_game_date: games[0]?.game_date || null,
+        kpis: {
+          total,
+          success: successCount,
+          fail: total - successCount,
+          rate: rate(successCount, total),
+          avg: avg(games),
+          last10_rate: last10Rate,
+          last10_delta: last10Rate != null && prev10Rate != null ? last10Rate - prev10Rate : null,
+          impact_lift: impact.lift,
+        },
+        series,
+        rolling_window: WINDOW,
+        trend_days: TREND_DAYS,
+        daily,
+        weeks,
+        champions,
+        impact,
+      },
+    });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 router.post('/search', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     let query = {};

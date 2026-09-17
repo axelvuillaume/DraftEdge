@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 const ENVIRONMENT = process.env.ENVIRONMENT || 'development';
 const PORT = process.env.PORT || 8080;
-const MONGODB_ENDPOINT = process.env.MONGODB_ENDPOINT || 'mongodb://localhost:27017/draftedge';
+const MONGODB_ENDPOINT = process.env.MONGODB_ENDPOINT || '';
 const SECRET = process.env.SECRET || 'not-so-secret';
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || '';
