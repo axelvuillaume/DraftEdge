@@ -184,8 +184,17 @@ router.post('/aggregate-history', passport.authenticate(['admin', 'user'], { ses
     const baseMatchQuery = await buildMatchQuery(obj);
     const data = [];
     for (const b of buckets) {
-      const matches = await SoloqMatch.find({ ...baseMatchQuery, gameDate: { $gte: b.start, $lt: b.end } }, { win: 1 });
+      const matches = await SoloqMatch.find({ ...baseMatchQuery, gameDate: { $gte: b.start, $lt: b.end } }, { win: 1, championName: 1 });
       const current = countMatches(matches, metric);
+
+      const byChamp = {};
+      for (const m of matches) {
+        if (!m.championName) continue;
+        if (!byChamp[m.championName]) byChamp[m.championName] = { name: m.championName, games: 0, wins: 0 };
+        byChamp[m.championName].games++;
+        if (m.win) byChamp[m.championName].wins++;
+      }
+
       data.push({
         period_start: b.start,
         period_end: b.end,
@@ -194,6 +203,10 @@ router.post('/aggregate-history', passport.authenticate(['admin', 'user'], { ses
         success: isHit(current, operator, value),
         total_games: matches.length,
         wins: matches.filter((m) => m.win).length,
+        losses: matches.filter((m) => !m.win).length,
+        champions: Object.values(byChamp)
+          .map((c) => ({ ...c, losses: c.games - c.wins }))
+          .sort((a, b) => b.games - a.games),
       });
     }
 

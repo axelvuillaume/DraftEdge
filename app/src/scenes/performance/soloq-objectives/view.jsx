@@ -131,29 +131,31 @@ function AggregateDetails({ objective }) {
 
   if (history.length === 0) return <p className="text-slate-500 text-sm text-center py-8">No data yet</p>
 
-  const periodLabel = objective.aggregate?.period === "weekly" ? "Week" : objective.aggregate?.period === "total" ? "All time" : "Day"
+  const isTotal = objective.aggregate?.period === "total"
+  const periodLabel = objective.aggregate?.period === "weekly" ? "week" : isTotal ? "all time" : "day"
   const unit = objective.rule?.metric === "win" ? "wins" : "games"
   const reversed = [...history].reverse()
   const current = reversed[0]
+  const past = reversed.slice(1)
 
   return (
     <div className="space-y-4">
       <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-6">
         <div className="flex items-baseline justify-between mb-2">
-          <p className="text-slate-400 text-sm font-medium">{objective.aggregate?.period === "total" ? "Progress" : `Current ${periodLabel.toLowerCase()}`}</p>
+          <p className="text-slate-400 text-sm font-medium">{isTotal ? "Progress" : `Current ${periodLabel}`}</p>
           <p className={`text-sm font-bold tabular-nums ${current.success ? "text-emerald-400" : "text-amber-400"}`}>
             {current.success ? "Target hit" : `${Math.min(100, Math.round((current.current / current.target) * 100))}%`}
           </p>
         </div>
-        <div className="flex items-baseline gap-2 mb-3">
+        <div className="flex items-baseline gap-2 mb-3 flex-wrap">
           <span className={`text-4xl font-bold tabular-nums ${current.success ? "text-emerald-400" : "text-amber-400"}`}>{current.current}</span>
           <span className="text-slate-500 text-xl tabular-nums">/ {current.target}</span>
           <span className="text-slate-500 text-sm uppercase tracking-wide">{unit}</span>
-          {unit === "wins" && (
-            <span className="text-slate-600 text-xs ml-auto tabular-nums">
-              {current.total_games} games · {current.wins}W {current.total_games - current.wins}L
-            </span>
-          )}
+          <span className="text-slate-500 text-xs ml-auto tabular-nums">
+            {unit === "wins" && <span className="mr-2">{current.total_games} games</span>}
+            <span className="text-emerald-400">{current.wins}W</span> <span className="text-red-400">{current.losses}L</span>
+            {current.total_games > 0 && <span className="text-slate-600 ml-2">{Math.round((current.wins / current.total_games) * 100)}% WR</span>}
+          </span>
         </div>
         <div className="w-full h-2 bg-slate-700/50 rounded-full overflow-hidden">
           <div
@@ -161,40 +163,57 @@ function AggregateDetails({ objective }) {
             style={{ width: `${Math.min(100, Math.round((current.current / current.target) * 100))}%` }}
           />
         </div>
+        {current.champions?.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap mt-4">
+            {current.champions.map(c => (
+              <div key={c.name} className="flex items-center gap-2 bg-slate-700/40 rounded-md px-2 py-1" title={c.name}>
+                <img src={getChampionIcon(c.name)} alt={c.name} className="w-5 h-5 rounded" />
+                <span className="text-xs text-slate-300">{c.name}</span>
+                <span className="text-[11px] tabular-nums">
+                  <span className="text-slate-500">{c.games}g · </span>
+                  <span className="text-emerald-400/80">{c.wins}W</span> <span className="text-red-400/80">{c.losses}L</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {objective.aggregate?.period !== "total" && (
+      {!isTotal && past.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
-            <p className="text-slate-500 text-[10px] uppercase tracking-wide mb-1">{periodLabel}s tracked</p>
-            <p className="text-white text-2xl font-bold tabular-nums">{history.length}</p>
+            <p className="text-slate-500 text-[10px] uppercase tracking-wide mb-1">Past {periodLabel}s</p>
+            <p className="text-white text-2xl font-bold tabular-nums">{past.length}</p>
           </div>
           <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
             <p className="text-slate-500 text-[10px] uppercase tracking-wide mb-1">Hit target</p>
-            <p className="text-emerald-400 text-2xl font-bold tabular-nums">{history.filter(h => h.success).length}</p>
+            <p className="text-emerald-400 text-2xl font-bold tabular-nums">{past.filter(h => h.success).length}</p>
           </div>
           <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
             <p className="text-slate-500 text-[10px] uppercase tracking-wide mb-1">Missed</p>
-            <p className="text-red-400 text-2xl font-bold tabular-nums">{history.filter(h => !h.success).length}</p>
+            <p className="text-red-400 text-2xl font-bold tabular-nums">{past.filter(h => !h.success).length}</p>
           </div>
         </div>
       )}
 
-      {objective.aggregate?.period !== "total" && (
+      {!isTotal && past.length > 0 && (
         <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
-          <p className="text-slate-400 text-sm font-medium mb-3">History per {periodLabel.toLowerCase()}</p>
+          <p className="text-slate-400 text-sm font-medium mb-3">Past {periodLabel}s</p>
           <div className="space-y-1">
-            {reversed.map(h => (
-              <div key={h.period_start} className="px-3 py-2 rounded-lg hover:bg-slate-700/20 flex items-center gap-3">
+            {past.map(h => (
+              <div key={h.period_start} className="px-3 py-2 rounded-lg hover:bg-slate-700/20 flex items-center gap-3 flex-wrap">
                 <span className="text-slate-400 text-xs w-40 shrink-0">
                   {objective.aggregate?.period === "daily"
                     ? new Date(h.period_start).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
                     : `${new Date(h.period_start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} → ${new Date(new Date(h.period_end).getTime() - 86400000).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
                 </span>
-                <span className={`text-sm font-bold tabular-nums w-24 shrink-0 ${h.success ? "text-emerald-400" : "text-amber-400"}`}>
+                <span className={`text-sm font-bold tabular-nums w-20 shrink-0 ${h.success ? "text-emerald-400" : "text-amber-400"}`}>
                   {h.current} <span className="text-slate-500 font-normal">/ {h.target}</span>
                 </span>
-                {unit === "wins" && <span className="text-slate-600 text-xs w-20 shrink-0 tabular-nums">{h.total_games} games</span>}
+                <span className="text-slate-500 text-xs w-28 shrink-0 tabular-nums">
+                  {unit === "wins" && <span className="text-slate-600 mr-1.5">{h.total_games}g</span>}
+                  <span className="text-emerald-400/80">{h.wins}W</span> <span className="text-red-400/80">{h.losses}L</span>
+                </span>
                 <div className="flex-1 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full ${h.success ? "bg-emerald-500" : "bg-amber-500"}`}
@@ -204,6 +223,21 @@ function AggregateDetails({ objective }) {
                 <span className={`text-xs font-bold tabular-nums w-12 text-right shrink-0 ${h.success ? "text-emerald-400" : "text-amber-400"}`}>
                   {h.success ? "Hit" : `${Math.min(100, Math.round((h.current / h.target) * 100))}%`}
                 </span>
+                {h.champions?.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap w-full pl-40">
+                    {h.champions.map(c => (
+                      <div key={c.name} className="flex items-center gap-1.5 bg-slate-700/40 rounded px-1.5 py-0.5" title={c.name}>
+                        <img src={getChampionIcon(c.name)} alt={c.name} className="w-4 h-4 rounded" />
+                        <span className="text-[10px] text-slate-400 tabular-nums">{c.games}g</span>
+                        <span className="text-[10px] tabular-nums">
+                          <span className="text-emerald-400/80">{c.wins}W</span>
+                          <span className="text-slate-600">/</span>
+                          <span className="text-red-400/80">{c.losses}L</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
