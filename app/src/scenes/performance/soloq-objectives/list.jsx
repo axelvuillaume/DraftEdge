@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
-import { Plus, Pencil, Trash2, Search, X, CheckCircle2 } from "lucide-react"
+import { Plus, Trash2, Search, X, CheckCircle2 } from "lucide-react"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
@@ -98,7 +98,7 @@ export default function List() {
           ))}
         </div>
 
-        {selected && <PlayerObjectives key={refreshKey} player={selected} onEdit={obj => setEditing(obj)} />}
+        {selected && <PlayerObjectives key={refreshKey} player={selected} />}
       </div>
       <SoloObjectifModal isOpen={!!editing} objective={editing} onClose={() => setEditing(null)} onSuccess={() => setRefreshKey(k => k + 1)} />
     </div>
@@ -166,7 +166,7 @@ const TYPE_BADGES = {
   rank: { label: "Rank", className: "text-yellow-400/80 bg-yellow-500/10" }
 }
 
-function PlayerObjectives({ player, onEdit }) {
+function PlayerObjectives({ player }) {
   const [objectives, setObjectives] = useState([])
   const navigate = useNavigate()
 
@@ -208,7 +208,6 @@ function PlayerObjectives({ player, onEdit }) {
               objective={obj}
               player={player}
               onClick={() => navigate(`/performance/soloq-objectives/${obj._id}`)}
-              onEdit={() => onEdit(obj)}
               onDelete={() => handleDelete(obj._id)}
             />
           ))}
@@ -249,24 +248,14 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
 
   useEffect(() => {
     if (!isOpen || players.length === 0) return
-    if (objective?._id) {
-      setName(objective.name || "")
-      setRequest(objective.request || "")
-      setPlayerId(objective.player_id || "")
-      setRole(objective.role || "")
-      setSide(objective.side || "")
-      setChampions(objective.champions || [])
-      setSmurfAccount(objective.account?.puuid ? objective.account : null)
-    } else {
-      const initialId = objective?.player_id || players[0]._id
-      setName("")
-      setRequest("")
-      setPlayerId(initialId)
-      setRole(ROLE_TO_RIOT[players.find(p => p._id === initialId)?.role] || "")
-      setSide("")
-      setChampions([])
-      setSmurfAccount(null)
-    }
+    const initialId = objective?.player_id || players[0]._id
+    setName("")
+    setRequest("")
+    setPlayerId(initialId)
+    setRole(ROLE_TO_RIOT[players.find(p => p._id === initialId)?.role] || "")
+    setSide("")
+    setChampions([])
+    setSmurfAccount(null)
     setChampSearch("")
     setShowChampPicker(false)
   }, [isOpen, players, objective])
@@ -300,33 +289,18 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
     if (smurfAccount && !smurfAccount.puuid) return toast.error("Check the smurf account first")
     setLoading(true)
     try {
-      if (objective?._id) {
-        const { ok, code } = await api.put(`/solo-objectif/${objective._id}`, {
-          name: name.trim(),
-          request: request.trim(),
-          player_id: playerId,
-          player_name: players.find(p => p._id === playerId)?.player_name,
-          champions,
-          role: role || null,
-          side: side || null,
-          account: smurfAccount?.puuid ? smurfAccount : null
-        })
-        if (!ok) return toast.error(code || "Failed to update objective")
-        toast.success("Objective updated")
-      } else {
-        const { ok, code } = await api.post("/solo-objectif", {
-          name: name.trim(),
-          request: request.trim(),
-          player_id: playerId,
-          player_name: players.find(p => p._id === playerId)?.player_name,
-          champions,
-          role: role || null,
-          side: side || null,
-          ...(smurfAccount?.puuid && { account: smurfAccount })
-        })
-        if (!ok) return toast.error(code || "Failed to add objective")
-        toast.success("Objective added")
-      }
+      const { ok, code } = await api.post("/solo-objectif", {
+        name: name.trim(),
+        request: request.trim(),
+        player_id: playerId,
+        player_name: players.find(p => p._id === playerId)?.player_name,
+        champions,
+        role: role || null,
+        side: side || null,
+        ...(smurfAccount?.puuid && { account: smurfAccount })
+      })
+      if (!ok) return toast.error(code || "Failed to add objective")
+      toast.success("Objective added")
       onClose()
       onSuccess()
     } catch (error) {
@@ -339,7 +313,7 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-lg bg-slate-800 p-6">
       <div className="space-y-4">
-        <h2 className="text-white font-semibold text-lg">{objective?._id ? "Edit SoloQ Objective" : "New SoloQ Objective"}</h2>
+        <h2 className="text-white font-semibold text-lg">New SoloQ Objective</h2>
         <div className="space-y-3">
           <div>
             <label className="text-slate-400 text-xs font-medium mb-1.5 block">Player</label>
@@ -525,7 +499,7 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
             className="px-5 py-2 bg-violet-500 hover:bg-violet-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors text-sm flex items-center gap-2"
           >
             {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-            {loading ? "Saving..." : objective?._id ? "Save" : "Add"}
+            {loading ? "Saving..." : "Add"}
           </button>
         </div>
       </div>
@@ -533,35 +507,25 @@ function SoloObjectifModal({ isOpen, objective, onClose, onSuccess }) {
   )
 }
 
-function RowActions({ onEdit, onDelete }) {
+function RowActions({ onDelete }) {
   return (
-    <div className="flex items-center gap-1 shrink-0">
-      <button
-        onClick={e => {
-          e.stopPropagation()
-          onEdit()
-        }}
-        className="p-1.5 rounded-lg text-slate-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
-      >
-        <Pencil className="w-3.5 h-3.5" />
-      </button>
-      <button
-        onClick={e => {
-          e.stopPropagation()
-          onDelete()
-        }}
-        className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
-    </div>
+    <button
+      onClick={e => {
+        e.stopPropagation()
+        onDelete()
+      }}
+      className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+      title="Delete"
+    >
+      <Trash2 className="w-3.5 h-3.5" />
+    </button>
   )
 }
 
-function ObjectiveRow({ objective, player, onClick, onEdit, onDelete }) {
-  if (objective.type === "aggregate") return <AggregateRow objective={objective} onClick={onClick} onEdit={onEdit} onDelete={onDelete} />
-  if (objective.type === "rank") return <RankRow objective={objective} player={player} onClick={onClick} onEdit={onEdit} onDelete={onDelete} />
-  return <PerGameRow objective={objective} onClick={onClick} onEdit={onEdit} onDelete={onDelete} />
+function ObjectiveRow({ objective, player, onClick, onDelete }) {
+  if (objective.type === "aggregate") return <AggregateRow objective={objective} onClick={onClick} onDelete={onDelete} />
+  if (objective.type === "rank") return <RankRow objective={objective} player={player} onClick={onClick} onDelete={onDelete} />
+  return <PerGameRow objective={objective} onClick={onClick} onDelete={onDelete} />
 }
 
 function ObjectiveHeader({ objective }) {
@@ -600,7 +564,7 @@ function ObjectiveHeader({ objective }) {
   )
 }
 
-function PerGameRow({ objective, onClick, onEdit, onDelete }) {
+function PerGameRow({ objective, onClick, onDelete }) {
   const [results, setResults] = useState([])
 
   const fetchResults = async () => {
@@ -639,12 +603,12 @@ function PerGameRow({ objective, onClick, onEdit, onDelete }) {
           <p className="text-slate-600 text-xs">-</p>
         )}
       </div>
-      <RowActions onEdit={onEdit} onDelete={onDelete} />
+      <RowActions onDelete={onDelete} />
     </div>
   )
 }
 
-function AggregateRow({ objective, onClick, onEdit, onDelete }) {
+function AggregateRow({ objective, onClick, onDelete }) {
   const [agg, setAgg] = useState(null)
 
   const fetchAggregate = async () => {
@@ -685,12 +649,12 @@ function AggregateRow({ objective, onClick, onEdit, onDelete }) {
         )}
       </div>
       <div className="shrink-0 w-16" />
-      <RowActions onEdit={onEdit} onDelete={onDelete} />
+      <RowActions onDelete={onDelete} />
     </div>
   )
 }
 
-function RankRow({ objective, player, onClick, onEdit, onDelete }) {
+function RankRow({ objective, player, onClick, onDelete }) {
   const isSmurf = !!objective.account?.puuid
   const [snapshot, setSnapshot] = useState(null)
 
@@ -747,7 +711,7 @@ function RankRow({ objective, player, onClick, onEdit, onDelete }) {
         <p className={`text-sm font-bold tabular-nums ${objective.completed ? "text-emerald-400" : "text-yellow-400"}`}>{progress}%</p>
         <p className="text-slate-600 text-[10px] uppercase tracking-wide">progress</p>
       </div>
-      <RowActions onEdit={onEdit} onDelete={onDelete} />
+      <RowActions onDelete={onDelete} />
     </div>
   )
 }
