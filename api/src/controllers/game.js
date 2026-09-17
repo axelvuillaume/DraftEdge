@@ -10,7 +10,7 @@ const Folder = require('../models/folder');
 const EnemyTeam = require('../models/enemy-team');
 
 const { buildGameFilters, extractFilters } = require('../utils/gameFilters');
-const { fetchAndSaveDraft } = require('../utils/parserDraft');
+const { fetchAndSaveDraft, saveManualDraft } = require('../utils/parserDraft');
 const { getPatchPrefixes } = require('../utils/patch');
 
 const TIER_VALUE = { IRON: 0, BRONZE: 400, SILVER: 800, GOLD: 1200, PLATINUM: 1600, EMERALD: 2000, DIAMOND: 2400, MASTER: 2800, GRANDMASTER: 3300, CHALLENGER: 4000 };
@@ -159,10 +159,21 @@ router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, fa
   }
 });
 
+router.put('/:id/draft/manual', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const game = await saveManualDraft(req.params.id, req.body || {});
+    if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+    return res.status(200).send({ ok: true, data: game });
+  } catch (error) {
+    capture(error);
+    return res.status(400).json({ ok: false, error: typeof error === 'string' ? error : error.message });
+  }
+});
+
 router.put('/:id/draft', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const { url } = req.body;
-    if (!url) return res.status(400).json({ ok: false, code: 'URL requise' });
+    if (!url) return res.status(400).json({ ok: false, code: 'URL required' });
 
     const game = await fetchAndSaveDraft(req.params.id, url);
     if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });

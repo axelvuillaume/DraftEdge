@@ -127,12 +127,7 @@ function extractDraftId(url) {
   return parts[parts.length - 1].split('?')[0];
 }
 
-async function fetchAndSaveDraft(gameId, draftUrl) {
-  const source = detectDraftSource(draftUrl);
-  if (!source) throw new Error('URL not recognized. Use a drafter.lol or dawe.gg link');
-
-  const draft = source === 'drafter' ? await fetchFromDrafter(draftUrl) : await fetchFromDawe(extractDraftId(draftUrl));
-
+async function saveDraft(gameId, draft, source_url = null) {
   // The draft picks must match the champions actually played in the game
   const normalize = (name) => (name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const stats = await PlayerStats.find({ game_id: gameId.toString() });
@@ -153,9 +148,35 @@ async function fetchAndSaveDraft(gameId, draftUrl) {
 
   return Game.findByIdAndUpdate(
     gameId,
-    { ...draft, bluePicks: (draft.bluePicks || []).map(toPick), redPicks: (draft.redPicks || []).map(toPick), source_url: draftUrl },
+    { ...draft, bluePicks: (draft.bluePicks || []).map(toPick), redPicks: (draft.redPicks || []).map(toPick), source_url },
     { new: true },
   );
 }
 
-module.exports = { fetchFromDrafter, fetchFromDawe, detectDraftSource, extractDraftId, fetchAndSaveDraft };
+async function fetchAndSaveDraft(gameId, draftUrl) {
+  const source = detectDraftSource(draftUrl);
+  if (!source) throw new Error('URL not recognized. Use a drafter.lol or dawe.gg link');
+
+  const draft = source === 'drafter' ? await fetchFromDrafter(draftUrl) : await fetchFromDawe(extractDraftId(draftUrl));
+  return saveDraft(gameId, draft, draftUrl);
+}
+
+// Manual draft entered in the app: 5 picks per side required, bans optional
+async function saveManualDraft(gameId, body) {
+  const cleanList = (arr, size) => {
+    const list = Array.isArray(arr) ? arr.slice(0, size).map((c) => (typeof c === 'string' && c.trim() ? c.trim() : null)) : [];
+    while (list.length < size) list.push(null);
+    return list;
+  };
+  const bluePicks = cleanList(body.bluePicks, 5);
+  const redPicks = cleanList(body.redPicks, 5);
+  if (bluePicks.some((c) => !c) || redPicks.some((c) => !c)) throw new Error('Each side needs 5 picks');
+
+  const all = [...bluePicks, ...redPicks, ...cleanList(body.blueBans, 5), ...cleanList(body.redBans, 5)].filter(Boolean);
+  if (new Set(all.map((c) => c.toLowerCase())).size !== all.length) throw new Error('A champion cannot appear twice in the draft');
+
+  const draft = { source: 'manual', fearless: false, fearlessRestricted: {}, bluePicks, redPicks, blueBans: cleanList(body.blueBans, 5), redBans: cleanList(body.redBans, 5) };
+  return saveDraft(gameId, draft, null);
+}
+
+module.exports = { fetchFromDrafter, fetchFromDawe, detectDraftSource, extractDraftId, fetchAndSaveDraft, saveDraft, saveManualDraft };

@@ -142,6 +142,9 @@ function ProTeamRecord({ proFilters }) {
             {data.wins}W - {data.losses}L
           </span>
           <span className={`text-xs font-bold whitespace-nowrap ${data.wr >= 50 ? "text-emerald-400" : "text-red-400"}`}>{data.wr}% WR</span>
+          <span className="text-xs text-slate-500 whitespace-nowrap">
+            {data.games} draft{data.games > 1 ? "s" : ""}
+          </span>
         </>
       )}
     </div>
@@ -176,6 +179,9 @@ function MyTeamRecord() {
           </span>
           <span className={`text-xs font-bold whitespace-nowrap ${Math.round(data.win_rate * 100) >= 50 ? "text-emerald-400" : "text-red-400"}`}>
             {Math.round(data.win_rate * 100)}% WR
+          </span>
+          <span className="text-xs text-slate-500 whitespace-nowrap">
+            {data.total_games} draft{data.total_games > 1 ? "s" : ""}
           </span>
         </>
       )}

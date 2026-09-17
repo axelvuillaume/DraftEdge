@@ -2,13 +2,13 @@ import { useState, useEffect, Fragment } from "react"
 import { useNavigate, useLocation, Link } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import api from "@/services/api"
-import { Clock, Swords, Trash2, MoreVertical, Folder, Plus, Check, FolderInput, X, Pencil, ImagePlus, Gamepad2, FolderPlus, Upload, ArrowRight } from "lucide-react"
+import { Clock, Swords, Trash2, MoreVertical, Folder, Plus, Check, FolderInput, X, Pencil, ImagePlus, Gamepad2, FolderPlus, Upload, ArrowRight, Search } from "lucide-react"
 import Modal from "@/components/modal"
 import OpponentDropdown from "@/components/OpponentDropdown"
 import UploadModal from "@/components/UploadModal"
 import useStore from "@/services/store"
 import SelectDropdown from "@/components/SelectDropdown"
-import { getChampionIcon, getItemIcon, getSummonerSpellIcon, getRuneIcon, ROLES, ROLE_LABELS, ROLE_ICON_COLORS, TIER_SHORT, TIER_COLOR } from "@/utils"
+import { getChampionIcon, getItemIcon, getSummonerSpellIcon, getRuneIcon, ROLES, ROLE_LABELS, ROLE_ICON_COLORS, TIER_SHORT, TIER_COLOR, ALL_CHAMPIONS } from "@/utils"
 
 const sortPlayersByRole = players =>
   [...players].sort(
@@ -1208,15 +1208,230 @@ function AdvancedTab({ playerStats, game }) {
   )
 }
 
+// Standard tournament draft order: 3 bans each, 6 picks, 2 bans each, 4 picks
+const DRAFT_ORDER = [
+  { type: "ban", side: "blue", i: 0 },
+  { type: "ban", side: "red", i: 0 },
+  { type: "ban", side: "blue", i: 1 },
+  { type: "ban", side: "red", i: 1 },
+  { type: "ban", side: "blue", i: 2 },
+  { type: "ban", side: "red", i: 2 },
+  { type: "pick", side: "blue", i: 0 },
+  { type: "pick", side: "red", i: 0 },
+  { type: "pick", side: "red", i: 1 },
+  { type: "pick", side: "blue", i: 1 },
+  { type: "pick", side: "blue", i: 2 },
+  { type: "pick", side: "red", i: 2 },
+  { type: "ban", side: "red", i: 3 },
+  { type: "ban", side: "blue", i: 3 },
+  { type: "ban", side: "red", i: 4 },
+  { type: "ban", side: "blue", i: 4 },
+  { type: "pick", side: "red", i: 3 },
+  { type: "pick", side: "blue", i: 3 },
+  { type: "pick", side: "blue", i: 4 },
+  { type: "pick", side: "red", i: 4 }
+]
+
+const slotKey = slot => `${slot.type}-${slot.side}-${slot.i}`
+const emptyDraft = () => ({ bluePicks: Array(5).fill(null), redPicks: Array(5).fill(null), blueBans: Array(5).fill(null), redBans: Array(5).fill(null) })
+const draftField = slot => `${slot.side}${slot.type === "pick" ? "Picks" : "Bans"}`
+
+function ManualDraftEditor({ game, onSaved, onCancel }) {
+  const [draft, setDraft] = useState(emptyDraft)
+  const [selected, setSelected] = useState(DRAFT_ORDER[0])
+  const [search, setSearch] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  const gameChamps = Object.values(game.champions?.blue || {})
+    .concat(Object.values(game.champions?.red || {}))
+    .filter(Boolean)
+  const gameChampSet = new Set(gameChamps.map(c => c.toLowerCase().replace(/[^a-z0-9]/g, "")))
+  const used = new Set(Object.values(draft).flat().filter(Boolean))
+  const getValue = slot => draft[draftField(slot)][slot.i]
+
+  const setSlot = (slot, champ) => {
+    const next = { ...draft, [draftField(slot)]: [...draft[draftField(slot)]] }
+    next[draftField(slot)][slot.i] = champ
+    setDraft(next)
+    return next
+  }
+
+  const pickChampion = champ => {
+    if (!selected) return
+    if (used.has(champ)) return
+    const next = setSlot(selected, champ)
+    setSearch("")
+    const idx = DRAFT_ORDER.findIndex(s => slotKey(s) === slotKey(selected))
+    const following = DRAFT_ORDER.slice(idx + 1).find(s => !next[draftField(s)][s.i]) || DRAFT_ORDER.find(s => !next[draftField(s)][s.i]) || null
+    setSelected(following)
+  }
+
+  const clearSlot = slot => {
+    setSlot(slot, null)
+    setSelected(slot)
+  }
+
+  const picksComplete = draft.bluePicks.every(Boolean) && draft.redPicks.every(Boolean)
+
+  const handleSave = async () => {
+    if (!picksComplete) return
+    setSaving(true)
+    try {
+      const { ok, error } = await api.put(`/game/${game._id}/draft/manual`, draft)
+      if (!ok) return toast.error(error || "Failed to save draft")
+      toast.success("Draft saved")
+      onSaved?.()
+    } catch (e) {
+      toast.error(e.code || "Failed to save draft")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const normalized = search.toLowerCase().replace(/[^a-z0-9]/g, "")
+  const filtered = normalized ? ALL_CHAMPIONS.filter(c => c.toLowerCase().includes(normalized)) : ALL_CHAMPIONS
+  const sortedChamps = [...filtered].sort((a, b) => {
+    const aIn = gameChampSet.has(a.toLowerCase().replace(/[^a-z0-9]/g, "")) ? 0 : 1
+    const bIn = gameChampSet.has(b.toLowerCase().replace(/[^a-z0-9]/g, "")) ? 0 : 1
+    return aIn - bIn || a.localeCompare(b)
+  })
+
+  const Slot = ({ slot, size }) => {
+    const champ = getValue(slot)
+    const isSelected = selected && slotKey(selected) === slotKey(slot)
+    const sideRing = slot.side === "blue" ? "ring-blue-500/40" : "ring-red-500/40"
+    const shape = slot.type === "pick" ? "rounded-lg" : "rounded-full"
+    return (
+      <button
+        type="button"
+        onClick={() => (champ ? clearSlot(slot) : setSelected(slot))}
+        title={champ ? `${champ} (click to remove)` : `${slot.side} ${slot.type} ${slot.i + 1}`}
+        className={`relative ${size} ${shape} overflow-hidden bg-slate-800/80 ring-1 ${isSelected ? "ring-2 ring-amber-400" : sideRing} transition-all flex items-center justify-center group`}
+      >
+        {champ ? (
+          <>
+            <img src={getChampionIcon(champ)} alt={champ} className={`w-full h-full object-cover ${slot.type === "ban" ? "grayscale opacity-60" : ""}`} />
+            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+              <X className="w-4 h-4 text-red-400" />
+            </div>
+          </>
+        ) : (
+          <span className="text-[10px] text-slate-500 font-bold tabular-nums">{slot.i + 1}</span>
+        )}
+      </button>
+    )
+  }
+
+  const SideRow = ({ side }) => {
+    const label = side === "blue" ? "Blue" : "Red"
+    const color = side === "blue" ? "text-blue-400" : "text-red-400"
+    return (
+      <div className={`flex-1 flex flex-col gap-2 ${side === "red" ? "items-end" : "items-start"}`}>
+        <span className={`${color} text-[10px] font-bold uppercase tracking-wider`}>{label}</span>
+        <div className={`flex items-center gap-1.5 ${side === "red" ? "flex-row-reverse" : ""}`}>
+          {[0, 1, 2, 3, 4].map(i => (
+            <Fragment key={i}>
+              {i === 3 && <div className="w-px h-5 bg-slate-700/60 mx-0.5" />}
+              <Slot slot={{ type: "ban", side, i }} size="w-8 h-8" />
+            </Fragment>
+          ))}
+        </div>
+        <div className={`flex items-center gap-1.5 ${side === "red" ? "flex-row-reverse" : ""}`}>
+          {[0, 1, 2, 3, 4].map(i => (
+            <Slot key={i} slot={{ type: "pick", side, i }} size="w-12 h-12" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start gap-4">
+        <SideRow side="blue" />
+        <div className="flex flex-col items-center justify-center self-center gap-1 text-center">
+          <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-[0.2em]">bans</span>
+          <Swords className="w-4 h-4 text-slate-600" />
+          <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-[0.2em]">picks</span>
+        </div>
+        <SideRow side="red" />
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-slate-500">
+          {selected ? (
+            <>
+              Selecting <span className={selected.side === "blue" ? "text-blue-400" : "text-red-400"}>{selected.side}</span> {selected.type} {selected.i + 1}. Click a filled slot to clear it.
+            </>
+          ) : (
+            "Draft complete"
+          )}
+        </span>
+        <div className="relative w-56">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => {
+              if (e.key !== "Enter") return
+              if (sortedChamps.length === 0) return
+              pickChampion(sortedChamps.find(c => !used.has(c)))
+            }}
+            placeholder="Search champion..."
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-colors"
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 max-h-52 overflow-y-auto p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+        {sortedChamps.map(champ => {
+          const isUsed = used.has(champ)
+          const inGame = gameChampSet.has(champ.toLowerCase().replace(/[^a-z0-9]/g, ""))
+          return (
+            <button
+              key={champ}
+              type="button"
+              disabled={isUsed || !selected}
+              onClick={() => pickChampion(champ)}
+              title={champ}
+              className={`w-9 h-9 rounded-lg overflow-hidden ring-1 transition-all ${isUsed ? "opacity-20 cursor-not-allowed ring-slate-800" : "hover:ring-amber-400 hover:scale-105 " + (inGame ? "ring-amber-500/50" : "ring-slate-700/50")}`}
+            >
+              <img src={getChampionIcon(champ)} alt={champ} className="w-full h-full object-cover" />
+            </button>
+          )
+        })}
+        {sortedChamps.length === 0 && <span className="text-xs text-slate-500 px-1">No champion found</span>}
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
+        <button type="button" onClick={onCancel} className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!picksComplete || saving}
+          className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black text-xs font-medium transition-colors flex items-center gap-1.5"
+        >
+          <Check className="w-3.5 h-3.5" />
+          {saving ? "Saving..." : "Save draft"}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function DraftTab({ game, onDraftAdded }) {
   const [draftUrl, setDraftUrl] = useState("")
+  const [manual, setManual] = useState(false)
 
   const handleAddDraft = async () => {
     if (!draftUrl.trim()) return
     try {
       const { ok, error } = await api.put(`/game/${game._id}/draft`, { url: draftUrl.trim() })
-      if (!ok) return toast.error(error || "Erreur lors de l'ajout du draft")
-      toast.success("Draft ajouté")
+      if (!ok) return toast.error(error || "Failed to add draft")
+      toast.success("Draft added")
       setDraftUrl("")
       onDraftAdded?.()
     } catch (e) {
@@ -1225,16 +1440,18 @@ function DraftTab({ game, onDraftAdded }) {
   }
 
   if (!(game.bluePicks?.filter(Boolean).length > 0 || game.redPicks?.filter(Boolean).length > 0)) {
+    if (manual) return <ManualDraftEditor game={game} onSaved={onDraftAdded} onCancel={() => setManual(false)} />
+
     return (
       <div className="flex flex-col items-center justify-center py-8 space-y-4">
-        <div className="text-slate-500 text-sm">Aucun draft disponible pour cette game</div>
+        <div className="text-slate-500 text-sm">No draft available for this game</div>
         <div className="flex items-center gap-2 w-full max-w-md">
           <input
             type="text"
             value={draftUrl}
             onChange={e => setDraftUrl(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleAddDraft()}
-            placeholder="Coller un lien drafter.lol ou dawe.gg"
+            placeholder="Paste a drafter.lol or dawe.gg link"
             className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-colors"
           />
           <button
@@ -1243,9 +1460,12 @@ function DraftTab({ game, onDraftAdded }) {
             className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black text-sm font-medium transition-colors flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
-            Ajouter
+            Add
           </button>
         </div>
+        <button type="button" onClick={() => setManual(true)} className="text-xs text-slate-400 hover:text-amber-400 underline underline-offset-2 transition-colors">
+          Add it manually
+        </button>
       </div>
     )
   }

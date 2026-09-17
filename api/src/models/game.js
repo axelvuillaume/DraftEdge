@@ -110,7 +110,7 @@ const Schema = new mongoose.Schema(
     redBans: [{ type: String }],
     fearless: { type: Boolean, default: false },
     fearlessRestricted: { type: mongoose.Schema.Types.Mixed },
-    source: { type: String, enum: ['drafter', 'dawe'] },
+    source: { type: String, enum: ['drafter', 'dawe', 'manual'] },
     source_url: { type: String },
 
     // ==================== GAME STATS SUMMARY ====================
