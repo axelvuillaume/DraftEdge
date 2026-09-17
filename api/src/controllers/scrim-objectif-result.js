@@ -3,8 +3,16 @@ const router = express.Router();
 const passport = require('passport');
 const ScrimObjectifResult = require('../models/scrim-objectif-result');
 const ScrimObjectif = require('../models/scrim-objectif');
+const ScrimSession = require('../models/scrim-session');
 const ERROR_CODES = require('../utils/errorCodes');
 const { capture } = require('../services/sentry');
+
+async function updateSessionAvgRating(sessionId) {
+  if (!sessionId) return;
+  const results = await ScrimObjectifResult.find({ session_id: sessionId, result: { $ne: null } }, { result: 1 });
+  const avg = results.length > 0 ? results.reduce((sum, r) => sum + r.result, 0) / results.length : null;
+  await ScrimSession.findByIdAndUpdate(sessionId, { avg_rating: avg });
+}
 
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
@@ -22,6 +30,7 @@ router.put('/:id', passport.authenticate(['admin', 'user'], { session: false, fa
   try {
     const scrimObjectifResult = await ScrimObjectifResult.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!scrimObjectifResult) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+    await updateSessionAvgRating(scrimObjectifResult.session_id);
     return res.status(200).send({ ok: true, data: scrimObjectifResult });
   } catch (error) {
     capture(error);
@@ -129,6 +138,7 @@ router.post('/', passport.authenticate(['admin', 'user'], { session: false, fail
   try {
     if (!req.body.objectif_id) return res.status(400).send({ ok: false, code: ERROR_CODES.INVALID_BODY });
     const scrimObjectifResult = await ScrimObjectifResult.create({ ...req.body, team_id: req.user.team_id, team_name: req.user.team_name });
+    await updateSessionAvgRating(scrimObjectifResult.session_id);
 
     return res.status(200).send({ ok: true, data: scrimObjectifResult });
   } catch (error) {
@@ -141,6 +151,7 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
   try {
     const scrimObjectifResult = await ScrimObjectifResult.findByIdAndDelete(req.params.id);
     if (!scrimObjectifResult) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+    await updateSessionAvgRating(scrimObjectifResult.session_id);
 
     return res.status(200).send({ ok: true });
   } catch (error) {

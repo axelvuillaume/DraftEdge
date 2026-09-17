@@ -21,6 +21,7 @@ const Schema = new mongoose.Schema(
     loss: { type: Number },
     winrate: { type: Number },
     objectif_ids: { type: [String], default: [] },
+    avg_rating: { type: Number, default: null },
   },
   { timestamps: true },
 );

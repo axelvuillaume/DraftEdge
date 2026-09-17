@@ -7,6 +7,12 @@ import { useNavigate } from "react-router-dom"
 import OpponentDropdown from "@/components/OpponentDropdown"
 import { Plus, Target, Trash2, ChevronDown, Search, X, Calendar, Trophy } from "lucide-react"
 
+function getRatingTextColor(value) {
+  if (value <= 3) return "text-red-400"
+  if (value <= 7) return "text-amber-400"
+  return "text-emerald-400"
+}
+
 function formatDate(value) {
   if (!value) return "—"
   const d = new Date(value)
@@ -131,8 +137,7 @@ export default function List() {
                   <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Date</th>
                   <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Opponent</th>
                   <th className="text-center text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Record</th>
-                  <th className="text-center text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">WR</th>
-                  <th className="text-left text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Patch</th>
+                  <th className="text-center text-slate-500 text-[11px] font-medium uppercase tracking-wider px-4 py-3">Avg Note</th>
 
                   <th className="w-10" />
                 </tr>
@@ -169,15 +174,11 @@ export default function List() {
                       )}
                     </td>
                     <td className="px-4 py-3.5 text-center">
-                      {(session.win || 0) + (session.loss || 0) > 0 && session.winrate != null ? (
-                        <span className={`text-sm font-semibold tabular-nums ${session.winrate >= 50 ? "text-emerald-400" : "text-red-400"}`}>{session.winrate}%</span>
-                      ) : (
-                        <span className="text-slate-600 text-sm">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      {session.patch ? (
-                        <span className="font-mono text-xs text-slate-300 px-2 py-0.5 rounded">{session.patch?.split(".").slice(0, 2).join(".")}</span>
+                      {session.avg_rating != null ? (
+                        <span className="text-sm tabular-nums">
+                          <span className={`font-semibold ${getRatingTextColor(Math.round(session.avg_rating))}`}>{session.avg_rating.toFixed(1)}</span>
+                          <span className="text-slate-600 text-xs">/10</span>
+                        </span>
                       ) : (
                         <span className="text-slate-600 text-sm">—</span>
                       )}
