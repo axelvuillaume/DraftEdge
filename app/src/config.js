@@ -17,4 +17,14 @@ function getEnvironment() {
   return "production"
 }
 
-export { apiURL, SENTRY_URL, environment, POSTHOG_API_KEY, POSTHOG_HOST }
+// Liens permanents vers la dernière version de l'app desktop.
+// Le workflow .github/workflows/desktop-release.yml publie, à chaque release, des copies des installeurs
+// sous ces noms stables : le lien "releases/latest/download/<nom>" pointe donc toujours sur la dernière version.
+const DESKTOP_RELEASE_BASE = "https://github.com/axelvuillaume/DraftEdge/releases/latest/download"
+const desktopDownloadURLs = {
+  macArm64: `${DESKTOP_RELEASE_BASE}/DraftEdge-latest-mac-arm64.dmg`,
+  macIntel: `${DESKTOP_RELEASE_BASE}/DraftEdge-latest-mac-x64.dmg`,
+  windows: `${DESKTOP_RELEASE_BASE}/DraftEdge-latest-win-x64.exe`,
+}
+
+export { apiURL, SENTRY_URL, environment, POSTHOG_API_KEY, POSTHOG_HOST, desktopDownloadURLs }

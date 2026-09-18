@@ -6,6 +6,7 @@ import { LogOut, ChevronDown, User, Settings, Shield, Search, X } from "lucide-r
 import useStore from "@/services/store"
 import api from "@/services/api"
 import FilterBar from "@/components/FilterBar"
+import DesktopDownloadMenu from "@/components/DesktopDownloadMenu"
 import { getChampionIcon } from "@/utils"
 
 const FILTERED_ROUTES = ["/statsV2", "/draft"]
@@ -198,6 +199,9 @@ const TopBar = () => {
         {/* Global Filters */}
         {showFilters && <FilterBar />}
       </div>
+
+      {/* Desktop app download */}
+      <DesktopDownloadMenu />
 
       {/* Profile Menu */}
       <ProfileMenu />
