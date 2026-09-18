@@ -17,6 +17,7 @@ Node.js + Express + MongoDB
 /app/src/services/api.js ← client API (ne pas modifier)
 /api/src/controllers/ ← controllers
 /api/src/models/ ← models Mongoose
+/desktop/ ← app Electron (importer LCU), plan dans /docs/lcu-importer-plan.md
 
 ## Commandes
 
@@ -24,6 +25,8 @@ Node.js + Express + MongoDB
 - Api dev : `cd api && npm run dev`
 - Build : `cd app && npm run build`
 - Lint : `cd app && npm run lint`
+- Desktop dev : `cd desktop && npm run dev`
+- Desktop build : `cd desktop && npm run dist:mac` / `dist:win` — release : tag `desktop-vX.Y.Z` (workflow GitHub)
 
 ## Description
 

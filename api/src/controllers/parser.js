@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const passport = require('passport');
 const https = require('https');
 const Game = require('../models/game');
 const Team = require('../models/team');
@@ -16,6 +17,8 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100
 const RIOT_API_KEY = CONFIG.RIOT_API_KEY;
 const { getPuuidByRiotId, getRankByPuuid } = require('../services/riotgames');
 
+const AUTH = passport.authenticate(['admin', 'user'], { session: false, failWithError: true });
+
 async function enrichPlayersInBackground(savedPlayers, platform) {
   if (!RIOT_API_KEY) return;
   console.log('[import] Enriching', savedPlayers.length, 'players with Riot data on', platform, '...');
@@ -27,7 +30,8 @@ async function enrichPlayersInBackground(savedPlayers, platform) {
     try {
       await new Promise((resolve) => setTimeout(resolve, i * 100));
 
-      const puuid = await getPuuidByRiotId(player.summoner_name, player.riot_tag, platform);
+      let puuid = player.puuid;
+      if (!puuid) puuid = await getPuuidByRiotId(player.summoner_name, player.riot_tag, platform);
       if (!puuid) continue;
 
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -469,7 +473,7 @@ function extractChampionsByRole(teamId, statsJson) {
 /**
  * Traite le fichier ROFL
  */
-function processRoflData(metadata, filename, team_id) {
+function processRoflData(metadata, filename, team_id, options = {}) {
   let statsJson;
   try {
     statsJson = typeof metadata.statsJson === 'string' ? JSON.parse(metadata.statsJson) : metadata.statsJson;
@@ -485,7 +489,8 @@ function processRoflData(metadata, filename, team_id) {
 
   // Extraire le game ID du nom de fichier
   const gameIdMatch = filename?.match(/([A-Z]+\d*-\d+)/);
-  const riotGameId = gameIdMatch ? gameIdMatch[1] : null;
+  const riotGameId = options.game_id || (gameIdMatch ? gameIdMatch[1] : null);
+  const platformPrefix = (options.region || riotGameId?.split('-')[0] || 'euw1').toUpperCase();
 
   const gameData = {
     game_id: riotGameId,
@@ -524,7 +529,7 @@ function processRoflData(metadata, filename, team_id) {
   // Game document
   const game = {
     game_id: riotGameId,
-    match_id: riotGameId ? `EUW1_${riotGameId.split('-')[1]}` : null,
+    match_id: riotGameId ? `${platformPrefix}_${riotGameId.split('-')[1]}` : null,
     game_fingerprint,
     name: null,
     duration: durationSeconds,
@@ -586,7 +591,7 @@ function processRoflData(metadata, filename, team_id) {
 /**
  * POST /parse - Parse un ROFL sans sauvegarder (preview)
  */
-router.post('/parse', upload.single('replay'), async (req, res) => {
+router.post('/parse', AUTH, upload.single('replay'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ ok: false, code: 'No file provided' });
@@ -609,7 +614,7 @@ router.post('/parse', upload.single('replay'), async (req, res) => {
 /**
  * POST /import - Parse, enrichit avec API Riot, et sauvegarde en DB
  */
-router.post('/import', upload.single('replay'), async (req, res) => {
+router.post('/import', AUTH, upload.single('replay'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ ok: false, code: 'No file provided' });
@@ -619,14 +624,32 @@ router.post('/import', upload.single('replay'), async (req, res) => {
       return res.status(400).json({ ok: false, code: 'File must be a .rofl' });
     }
 
-    const { team_id, team_name, team_side, opponent_id, opponent_name, name, session_id, session_name, folder_id, folder_name, draft_url, date, official } = req.body;
+    const { team_side, opponent_id, opponent_name, name, session_id, session_name, folder_id, folder_name, draft_url, date, official, game_id, region, puuids, source_import } = req.body;
+
+    // La team vient de l'utilisateur connecté (le body reste accepté pour rétro-compat)
+    const team_id = req.user.team_id || req.body.team_id;
+    const team_name = req.user.team_name || req.body.team_name;
 
     if (!team_side || !['blue', 'red'].includes(team_side)) {
       return res.status(400).json({ ok: false, code: 'team_side required (blue or red)' });
     }
 
+    let puuidMap = {};
+    if (puuids) {
+      try {
+        puuidMap = typeof puuids === 'string' ? JSON.parse(puuids) : puuids;
+      } catch (e) {
+        return res.status(400).json({ ok: false, code: 'puuids must be a JSON object' });
+      }
+    }
+
     const metadata = parseRoflBuffer(req.file.buffer);
-    const data = processRoflData(metadata, req.file.originalname, team_id);
+    const data = processRoflData(metadata, req.file.originalname, team_id, { game_id, region });
+
+    if (data.game.game_id) {
+      const existingById = await Game.findOne({ game_id: data.game.game_id });
+      if (existingById) return res.status(409).json({ ok: false, code: 'This game already exists', existing_game_id: existingById._id });
+    }
 
     const existingGame = await Game.findOne({ game_fingerprint: data.game.game_fingerprint });
     if (existingGame) return res.status(409).json({ ok: false, code: 'This game already exists', existing_game_id: existingGame._id });
@@ -644,6 +667,7 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     data.game.folder_name = folder_name || null;
     data.game.win = team_side === 'blue' ? data.game.blue_team.win : data.game.red_team.win;
     data.game.official = official === 'true';
+    data.game.source_import = source_import === 'desktop' ? 'desktop' : 'web';
     if (date) data.game.date = new Date(date);
 
     // Sauvegarder la Game
@@ -660,8 +684,10 @@ router.post('/import', upload.single('replay'), async (req, res) => {
     const isOfficial = official === 'true';
     const playersToSave = data.players.map((p) => {
       const isAllyTeam = p.side === team_side;
+      const puuid = puuidMap[`${p.summoner_name}#${p.riot_tag}`] || null;
       return {
         ...p,
+        puuid,
         game_id: savedGame._id.toString(),
         game_name: name || null,
         game_official: isOfficial,
@@ -700,6 +726,25 @@ router.post('/import', upload.single('replay'), async (req, res) => {
 });
 
 /**
+ * POST /check - Dédup en masse : quels game_ids Riot existent déjà
+ */
+router.post('/check', AUTH, express.json(), async (req, res) => {
+  try {
+    const gameIds = Array.isArray(req.body.game_ids) ? req.body.game_ids.filter(Boolean) : [];
+    if (!gameIds.length) return res.json({ ok: true, data: { existing: {} } });
+
+    const games = await Game.find({ game_id: { $in: gameIds } }).select('game_id session_id session_name');
+    const existing = {};
+    for (const g of games) existing[g.game_id] = { _id: g._id, session_id: g.session_id, session_name: g.session_name };
+
+    res.json({ ok: true, data: { existing } });
+  } catch (error) {
+    console.error('Erreur check games:', error);
+    res.status(500).json({ ok: false, code: 'Check error', details: error.message });
+  }
+});
+
+/**
  * GET / - Info endpoint
  */
 router.get('/', (req, res) => {
@@ -709,6 +754,7 @@ router.get('/', (req, res) => {
     routes: {
       'POST /parse': 'Parse un ROFL et retourne les données (preview)',
       'POST /import': 'Parse, enrichit avec API Riot, et sauvegarde en DB',
+      'POST /check': 'Renvoie les game_ids Riot déjà importés',
     },
   });
 });

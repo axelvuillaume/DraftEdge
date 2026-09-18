@@ -4,6 +4,7 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
 import OpponentDropdown from "@/components/OpponentDropdown"
+import DesktopAppCallout from "@/components/DesktopAppCallout"
 import { getChampionIcon } from "@/utils"
 import { Upload, FileText, Loader2, Plus, Check, Gamepad2, Search, Clock, AlertTriangle, FolderOpen, ChevronDown } from "lucide-react"
 
@@ -216,9 +217,13 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
     <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl w-full max-h-[90vh] overflow-y-auto bg-slate-800 border border-slate-700">
       <div className="p-6">
         <h2 className="text-xl font-bold text-white mb-1">{session ? "Add a Game" : "Import a Game"}</h2>
-        <p className="text-slate-400 text-sm mb-5">
+        <p className="text-slate-400 text-sm mb-4">
           {session ? "Import a new replay or pick from your team's game history." : "Import a replay file (.rofl) to automatically extract all stats."}
         </p>
+
+        <div className="mb-5">
+          <DesktopAppCallout compact />
+        </div>
 
         {session && (
           <div className="flex gap-1 bg-slate-700/30 rounded-xl p-1 mb-5">

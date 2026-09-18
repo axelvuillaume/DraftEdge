@@ -112,6 +112,7 @@ const Schema = new mongoose.Schema(
     fearlessRestricted: { type: mongoose.Schema.Types.Mixed },
     source: { type: String, enum: ['drafter', 'dawe', 'manual'] },
     source_url: { type: String },
+    source_import: { type: String, enum: ['web', 'desktop'], default: 'web' }, // Origine de l'import (UploadModal web ou app desktop LCU)
 
     // ==================== GAME STATS SUMMARY ====================
     // Stats globales de la partie

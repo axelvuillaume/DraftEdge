@@ -1,0 +1,55 @@
+appId: lol.draftedge.desktop
+productName: DraftEdge
+copyright: DraftEdge
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**
+  - package.json
+asar: true
+artifactName: DraftEdge-${version}-${os}-${arch}.${ext}
+
+# Canal de distribution et d'auto-update : GitHub Releases du repo (public)
+publish:
+  provider: github
+  owner: axelvuillaume
+  repo: DraftEdge
+  releaseType: release
+
+mac:
+  category: public.app-category.utilities
+  icon: resources/icon.png
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  # Pas de compte développeur Apple pour l'instant : build non signé
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+win:
+  icon: resources/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+  # Pas de certificat de signature pour l'instant
+  signAndEditExecutable: false
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: DraftEdge
+  createDesktopShortcut: true
