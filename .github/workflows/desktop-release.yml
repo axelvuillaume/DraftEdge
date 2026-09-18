@@ -1,5 +1,6 @@
 # Build et publication de l'app desktop sur GitHub Releases.
 # Déclenchement : push d'un tag "desktop-vX.Y.Z" (la version doit correspondre à desktop/package.json).
+# electron-builder crée/complète la release GitHub "vX.Y.Z" ; les copies "latest" y sont ajoutées ensuite.
 name: Desktop release
 
 on:
@@ -66,7 +67,9 @@ jobs:
             cp "$f" "latest/$stable"
           done
           ls latest
-          gh release upload "$GITHUB_REF_NAME" latest/* --clobber --repo "$GITHUB_REPOSITORY"
+          # electron-builder publie sous le tag "v<version>" (pas "desktop-v<version>")
+          RELEASE_TAG="v$(node -p "require('./package.json').version")"
+          gh release upload "$RELEASE_TAG" latest/* --clobber --repo "$GITHUB_REPOSITORY"
 
       - uses: actions/upload-artifact@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
