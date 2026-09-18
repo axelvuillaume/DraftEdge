@@ -4,8 +4,12 @@ import { autoUpdater } from 'electron-updater'
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000
 
+const NOOP = { check: async () => ({ ok: false, code: 'disabled' }), install: () => {} }
+
 export function setupUpdater(send) {
-  if (!app.isPackaged) return { check: async () => ({ ok: false, code: 'dev' }), install: () => {} }
+  if (!app.isPackaged) return NOOP
+  // Version Microsoft Store (MSIX) : les mises à jour passent par le Store, pas par GitHub Releases.
+  if (process.windowsStore) return NOOP
 
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true

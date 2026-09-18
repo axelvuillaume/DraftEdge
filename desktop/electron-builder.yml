@@ -49,8 +49,23 @@ win:
   target:
     - target: nsis
       arch: [x64]
+    # Package MSIX pour le Microsoft Store : non signé ici, c'est le Store qui le signe après certification
+    # (aucun SmartScreen). À téléverser dans Partner Center (produit « DraftEdge », ID Store 9P062QMFFCQH).
+    - target: appx
+      arch: [x64]
   # Pas de certificat de signature pour l'instant
   signAndEditExecutable: false
+
+# Identité fournie par Partner Center (Gestion des produits > Identité du produit). Doit correspondre exactement.
+appx:
+  identityName: Blade40.DraftEdge
+  publisher: CN=3FD303F7-3C72-4793-A032-C39F2F9C7E1F
+  publisherDisplayName: Blade40
+  displayName: DraftEdge
+  applicationId: DraftEdge
+  backgroundColor: '#0f172a'
+  languages: [fr-FR, en-US]
+  showNameOnTiles: true
 
 nsis:
   oneClick: false

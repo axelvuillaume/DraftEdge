@@ -99,7 +99,6 @@ export default function Import({ user, lcu }) {
     }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [games])
 
   // "Voir plus" : on élargit la fenêtre de 7 jours et on charge la page suivante du client si besoin
