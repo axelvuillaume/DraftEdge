@@ -25,10 +25,15 @@ mac:
       arch: [arm64, x64]
     - target: zip
       arch: [arm64, x64]
-  # Pas de compte développeur Apple pour l'instant : build non signé
-  identity: null
-  hardenedRuntime: false
+  # Sans certificat Apple Developer, electron-builder applique une signature ad hoc (CSC_IDENTITY_AUTO_DISCOVERY=false).
+  # Évite le message « endommagé » de Gatekeeper : l'utilisateur peut ouvrir via clic droit → Ouvrir / Réglages > Confidentialité.
+  # Avec un compte Apple Developer : fournir CSC_LINK / CSC_KEY_PASSWORD + APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID
+  # dans les secrets GitHub, et passer notarize à true.
+  hardenedRuntime: true
   gatekeeperAssess: false
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
+  notarize: false
 
 dmg:
   contents:

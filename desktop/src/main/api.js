@@ -14,11 +14,19 @@ export class DraftEdgeApi {
   }
 
   async request(method, path, { json, formData } = {}) {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers: this.headers(json ? { 'Content-Type': 'application/json' } : {}),
-      body: json ? JSON.stringify(json) : formData || undefined
-    })
+    let res
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        method,
+        headers: this.headers(json ? { 'Content-Type': 'application/json' } : {}),
+        body: json ? JSON.stringify(json) : formData || undefined,
+        signal: AbortSignal.timeout(formData ? 120000 : 20000)
+      })
+    } catch (e) {
+      // Erreur réseau (DNS, timeout, hors ligne) : on renvoie une réponse exploitable au lieu de casser l'IPC
+      const reason = e?.cause?.code || e?.name || e?.message || 'NETWORK_ERROR'
+      return { ok: false, code: 'NETWORK_ERROR', details: `${reason} (${this.baseUrl})` }
+    }
     let data = null
     try {
       data = await res.json()

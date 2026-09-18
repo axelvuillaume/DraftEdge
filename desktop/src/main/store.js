@@ -2,9 +2,14 @@ import fs from 'fs'
 import path from 'path'
 import { app, safeStorage } from 'electron'
 
+// Même API de prod que app/src/config.js
+export const PROD_API_URL = 'https://api-draftedge-production.up.railway.app'
+// Anciennes valeurs par défaut à remplacer silencieusement au chargement
+const LEGACY_API_URLS = ['https://api.draftedge.lol']
+
 export const DEFAULTS = {
   // En dev (non packagé) on vise l'API locale, comme app/ avec API_URL
-  apiUrl: app.isPackaged ? 'https://api.draftedge.lol' : 'http://localhost:8080',
+  apiUrl: app.isPackaged ? PROD_API_URL : 'http://localhost:8080',
   lockfilePath: null
 }
 
@@ -19,6 +24,10 @@ export class Store {
     try {
       if (!fs.existsSync(this.file)) return
       this.data = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(this.file, 'utf8')) }
+      if (LEGACY_API_URLS.includes(this.data.apiUrl)) {
+        this.data.apiUrl = DEFAULTS.apiUrl
+        this.save()
+      }
     } catch (e) {
       console.error('[store] config illisible, valeurs par défaut', e.message)
     }

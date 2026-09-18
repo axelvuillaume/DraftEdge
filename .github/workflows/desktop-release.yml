@@ -50,6 +50,13 @@ jobs:
       - name: Build et publier
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signature Mac : sans certificat (secrets absents) → signature ad hoc. Avec certificat → Developer ID + notarisation.
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: npx electron-builder ${{ matrix.args }} --publish ${{ startsWith(github.ref, 'refs/tags/') && 'always' || 'never' }}
 
       # Copies au nom stable pour les liens permanents du site (releases/latest/download/DraftEdge-latest-*)
