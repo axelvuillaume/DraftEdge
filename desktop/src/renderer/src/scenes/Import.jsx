@@ -78,12 +78,29 @@ export default function Import({ user, lcu }) {
     await checkExisting(h.data.games)
   }, [lcu.connected])
 
+  // Met à jour l'état "déjà importée" des games passées : ajoute celles trouvées, retire celles qui n'existent plus
   async function checkExisting(list) {
     const ids = list.filter((g) => g.isCustom).map((g) => g.riotGameId)
     if (!ids.length) return
     const check = await window.draftedge.api.post('/parser/check', { game_ids: ids })
-    if (check.ok) setExisting((prev) => ({ ...prev, ...(check.data.existing || {}) }))
+    if (!check.ok) return
+    const found = check.data.existing || {}
+    setExisting((prev) => {
+      const next = { ...prev }
+      for (const id of ids) delete next[id]
+      return { ...next, ...found }
+    })
   }
+
+  // Une game supprimée sur le web redevient importable : on revérifie quand la fenêtre reprend le focus
+  useEffect(() => {
+    const onFocus = () => {
+      if (games.length) checkExisting(games)
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [games])
 
   // "Voir plus" : on élargit la fenêtre de 7 jours et on charge la page suivante du client si besoin
   async function loadMore() {
