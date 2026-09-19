@@ -96,11 +96,14 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
     if (!req.body.puuid && req.body.position) match.teamPosition = POSITION_MAP[req.body.position] || req.body.position;
     if (req.body.championName) match.championName = req.body.championName;
 
+    // Team scope (whole roster, no position/champion): the scrim side sums the 5 players of a game,
+    // so soloq is aggregated per position first, then summed across positions to keep the same unit.
+    const teamScope = !req.body.puuid && !req.body.position && !req.body.championName;
     const agg = await SoloQMatch.aggregate([
       { $match: match },
       {
         $group: {
-          _id: null,
+          _id: teamScope ? '$teamPosition' : null,
           n: { $sum: 1 },
           kills: { $sum: '$kills' },
           deaths: { $sum: '$deaths' },
@@ -129,47 +132,99 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
 
     if (!agg.length) return res.status(200).send({ ok: true, data: {} });
 
-    const s = agg[0];
-    const n = s.n;
-    const durationMin = s.duration / 60;
+    // Per-row averages: one row per position in team scope, a single row otherwise
+    const perRow = agg.map((s) => {
+      const n = s.n;
+      const durationMin = s.duration / 60;
+      return {
+        n,
+        dmgPerMin: durationMin > 0 ? s.damage / durationMin : 0,
+        kills: s.kills / n,
+        deaths: s.deaths / n,
+        kp: (s.killParticipation || 0) * 100,
+        damage: s.damage,
+        gold: s.gold,
+        dragons: s.dragons / n,
+        barons: s.barons / n,
+        turrets: s.turrets / n,
+        visionPerMin: durationMin > 0 ? s.visionScore / durationMin : 0,
+        wardsPlaced: s.wardsPlaced / n,
+        wardsKilled: s.wardsKilled / n,
+        controlWards: s.controlWards / n,
+        goldPerMin: durationMin > 0 ? s.gold / durationMin : 0,
+        csPerMin: durationMin > 0 ? s.cs / durationMin : 0,
+        enemyJungle: s.enemyJungle / n,
+        pingOnMyWay: s.pingOnMyWay / n,
+        pingRetreat: s.pingRetreat / n,
+        pingEnemyMissing: s.pingEnemyMissing / n,
+        pingAssistMe: s.pingAssistMe / n,
+        pingEnemyVision: s.pingEnemyVision / n,
+      };
+    });
+
+    // Team scope: sum the per-position averages (synthetic 5-man team), KP stays an average
+    const sumKey = (key) => perRow.reduce((acc, r) => acc + r[key], 0);
+    const t = {
+      total: sumKey('n'),
+      dmgPerMin: sumKey('dmgPerMin'),
+      kills: sumKey('kills'),
+      deaths: sumKey('deaths'),
+      kp: sumKey('kp') / perRow.length,
+      dmgPerGold: sumKey('gold') > 0 ? sumKey('damage') / sumKey('gold') : 0,
+      dragons: sumKey('dragons'),
+      barons: sumKey('barons'),
+      turrets: sumKey('turrets'),
+      visionPerMin: sumKey('visionPerMin'),
+      wardsPlaced: sumKey('wardsPlaced'),
+      wardsKilled: sumKey('wardsKilled'),
+      controlWards: sumKey('controlWards'),
+      goldPerMin: sumKey('goldPerMin'),
+      csPerMin: sumKey('csPerMin'),
+      enemyJungle: sumKey('enemyJungle'),
+      pingOnMyWay: sumKey('pingOnMyWay'),
+      pingRetreat: sumKey('pingRetreat'),
+      pingEnemyMissing: sumKey('pingEnemyMissing'),
+      pingAssistMe: sumKey('pingAssistMe'),
+      pingEnemyVision: sumKey('pingEnemyVision'),
+    };
 
     const result = {
       Combat: {
-        'DMG / min': round1(durationMin > 0 ? s.damage / durationMin : 0),
-        'Kills / game': round1(s.kills / n),
-        'Deaths / game': round1(s.deaths / n),
-        'Kill Participation %': round1((s.killParticipation || 0) * 100),
-        'DMG / Gold': round2(s.gold > 0 ? s.damage / s.gold : 0),
+        'DMG / min': round1(t.dmgPerMin),
+        'Kills / game': round1(t.kills),
+        'Deaths / game': round1(t.deaths),
+        'Kill Participation %': round1(t.kp),
+        'DMG / Gold': round2(t.dmgPerGold),
       },
       Objectives: {
-        'Dragons / game': round1(s.dragons / n),
+        'Dragons / game': round1(t.dragons),
         'Heralds / game': '-',
-        'Barons / game': round1(s.barons / n),
-        'Turrets / game': round1(s.turrets / n),
+        'Barons / game': round1(t.barons),
+        'Turrets / game': round1(t.turrets),
       },
       Vision: {
-        'Vision Score / min': round1(durationMin > 0 ? s.visionScore / durationMin : 0),
-        'Wards Placed / game': round1(s.wardsPlaced / n),
-        'Wards Killed / game': round1(s.wardsKilled / n),
-        'Control Wards / game': round1(s.controlWards / n),
+        'Vision Score / min': round1(t.visionPerMin),
+        'Wards Placed / game': round1(t.wardsPlaced),
+        'Wards Killed / game': round1(t.wardsKilled),
+        'Control Wards / game': round1(t.controlWards),
         'Ward Clear %': '-',
       },
       Income: {
-        'Gold / min': round1(durationMin > 0 ? s.gold / durationMin : 0),
-        'CS / min': round1(durationMin > 0 ? s.cs / durationMin : 0),
-        'Enemy Jungle / game': round1(s.enemyJungle / n),
+        'Gold / min': round1(t.goldPerMin),
+        'CS / min': round1(t.csPerMin),
+        'Enemy Jungle / game': round1(t.enemyJungle),
         'Plates Gold / game': '-',
       },
       Pings: {
-        'On My Way / game': round1(s.pingOnMyWay / n),
-        'Danger / game': round1(s.pingRetreat / n),
-        'Enemy Missing / game': round1(s.pingEnemyMissing / n),
-        'Assist Me / game': round1(s.pingAssistMe / n),
-        'Enemy Vision / game': round1(s.pingEnemyVision / n),
+        'On My Way / game': round1(t.pingOnMyWay),
+        'Danger / game': round1(t.pingRetreat),
+        'Enemy Missing / game': round1(t.pingEnemyMissing),
+        'Assist Me / game': round1(t.pingAssistMe),
+        'Enemy Vision / game': round1(t.pingEnemyVision),
       },
     };
 
-    return res.status(200).send({ ok: true, data: result, total: n });
+    return res.status(200).send({ ok: true, data: result, total: t.total });
   } catch (error) {
     capture(error);
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });

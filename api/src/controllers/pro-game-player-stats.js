@@ -119,40 +119,60 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
     if (req.body.playername) match.playername = req.body.playername;
     if (req.body.champion) {
       match.$expr = {
-        $eq: [
-          { $replaceAll: { input: { $replaceAll: { input: { $replaceAll: { input: { $toLower: '$champion' }, find: ' ', replacement: '' } }, find: '.', replacement: '' } }, find: "'", replacement: '' } },
-          req.body.champion.toLowerCase().replace(/[\s.']+/g, ''),
-        ],
+        $eq: [{ $replaceAll: { input: { $replaceAll: { input: { $replaceAll: { input: { $toLower: '$champion' }, find: ' ', replacement: '' } }, find: '.', replacement: '' } }, find: "'", replacement: '' } }, req.body.champion.toLowerCase().replace(/[\s.']+/g, '')],
       };
     }
 
-    const agg = await ProGamePlayerstats.aggregate([
-      { $match: match },
-      {
+    // Team scope (no position, no player): the scrim side sums the 5 players of a game,
+    // so pro stats must be summed per (game, team) before averaging to keep the same unit.
+    const teamScope = !req.body.position && !req.body.playername && !req.body.champion;
+    const pipeline = [{ $match: match }];
+    if (teamScope) {
+      pipeline.push({
         $group: {
-          _id: null,
-          n: { $sum: 1 },
-          kills: { $avg: '$kills' },
-          deaths: { $avg: '$deaths' },
-          assists: { $avg: '$assists' },
-          totalKills: { $sum: '$kills' },
-          totalDeaths: { $sum: '$deaths' },
-          totalAssists: { $sum: '$assists' },
-          totalTeamkills: { $sum: '$teamkills' },
+          _id: { gameid: '$gameid', side: '$side' },
+          gameid: { $first: '$gameid' },
+          kills: { $sum: '$kills' },
+          deaths: { $sum: '$deaths' },
+          assists: { $sum: '$assists' },
+          teamkills: { $max: '$teamkills' },
           damagetochampions: { $sum: '$damagetochampions' },
           totalgold: { $sum: '$totalgold' },
-          dpm: { $avg: '$dpm' },
-          vspm: { $avg: '$vspm' },
-          wardsplaced: { $avg: '$wardsplaced' },
-          wardskilled: { $avg: '$wardskilled' },
-          totalWardskilled: { $sum: '$wardskilled' },
-          controlwardsbought: { $avg: '$controlwardsbought' },
-          earned_gpm: { $avg: '$earned_gpm' },
-          cspm: { $avg: '$cspm' },
-          gameIds: { $addToSet: '$gameid' },
+          dpm: { $sum: '$dpm' },
+          vspm: { $sum: '$vspm' },
+          wardsplaced: { $sum: '$wardsplaced' },
+          wardskilled: { $sum: '$wardskilled' },
+          controlwardsbought: { $sum: '$controlwardsbought' },
+          earned_gpm: { $sum: '$earned_gpm' },
+          cspm: { $sum: '$cspm' },
         },
+      });
+    }
+    pipeline.push({
+      $group: {
+        _id: null,
+        n: { $sum: 1 },
+        kills: { $avg: '$kills' },
+        deaths: { $avg: '$deaths' },
+        assists: { $avg: '$assists' },
+        totalKills: { $sum: '$kills' },
+        totalDeaths: { $sum: '$deaths' },
+        totalAssists: { $sum: '$assists' },
+        totalTeamkills: { $sum: '$teamkills' },
+        damagetochampions: { $sum: '$damagetochampions' },
+        totalgold: { $sum: '$totalgold' },
+        dpm: { $avg: '$dpm' },
+        vspm: { $avg: '$vspm' },
+        wardsplaced: { $avg: '$wardsplaced' },
+        wardskilled: { $avg: '$wardskilled' },
+        totalWardskilled: { $sum: '$wardskilled' },
+        controlwardsbought: { $avg: '$controlwardsbought' },
+        earned_gpm: { $avg: '$earned_gpm' },
+        cspm: { $avg: '$cspm' },
+        gameIds: { $addToSet: '$gameid' },
       },
-    ]);
+    });
+    const agg = await ProGamePlayerstats.aggregate(pipeline);
 
     if (!agg.length) return res.status(200).send({ ok: true, data: {} });
 
@@ -162,10 +182,7 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
     // Objectives from ProGame collection — player stats don't have objective data
     const objMatch = { matchId: { $in: s.gameIds } };
     if (req.body.teamname) objMatch.team_name = req.body.teamname;
-    const objAgg = await ProGame.aggregate([
-      { $match: objMatch },
-      { $group: { _id: null, dragons: { $avg: '$dragons' }, barons: { $avg: '$barons' }, towers: { $avg: '$towers' } } },
-    ]);
+    const objAgg = await ProGame.aggregate([{ $match: objMatch }, { $group: { _id: null, dragons: { $avg: '$dragons' }, barons: { $avg: '$barons' }, towers: { $avg: '$towers' } } }]);
     const obj = objAgg[0] || {};
 
     // Ward Clear %: wardskilled / enemy wardsplaced
@@ -176,10 +193,11 @@ router.post('/aggregate', passport.authenticate(['admin', 'user'], { session: fa
         { $group: { _id: '$gameid', totalWardsplaced: { $sum: '$wardsplaced' } } },
         { $group: { _id: null, totalWardsplaced: { $sum: '$totalWardsplaced' } } },
       ]);
-      // Enemy wards ≈ half of total wards placed (both teams)
+      // With a single team selected, enemy wards ≈ half of total wards placed (both teams).
+      // Without one, wardskilled already covers both teams, so the denominator is all wards placed.
       const totalWardsplaced = wardAgg[0]?.totalWardsplaced || 0;
-      const enemyWardsPlaced = totalWardsplaced / 2;
-      wardClearPct = enemyWardsPlaced > 0 ? round1((s.totalWardskilled / enemyWardsPlaced) * 100) : 0;
+      const enemyWardsPlaced = req.body.teamname ? totalWardsplaced / 2 : totalWardsplaced;
+      wardClearPct = enemyWardsPlaced > 0 ? round1(Math.min(100, (s.totalWardskilled / enemyWardsPlaced) * 100)) : 0;
     }
 
     const result = {
