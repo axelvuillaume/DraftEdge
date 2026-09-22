@@ -75,5 +75,6 @@ nsis:
   createDesktopShortcut: true
 
 # Tuiles Store/Windows : resources/appx/*.png (StoreLogo, Square44x44Logo, Square150x150Logo, Wide310x150Logo,
-# SmallTile, LargeTile, SplashScreen). Sans ces fichiers electron-builder met ses images d'exemple, refusées
-# à la certification Store (règle 10.1.1.11).
+# SmallTile, LargeTile, SplashScreen + variantes .scale-N et .targetsize-N). Sans ces fichiers electron-builder met
+# ses images d'exemple, refusées à la certification Store (règle 10.1.1.11). Les variantes déclenchent makepri
+# (build Windows uniquement). Régénération : voir scripts/appx-assets.py.
