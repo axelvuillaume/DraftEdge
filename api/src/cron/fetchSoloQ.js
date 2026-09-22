@@ -131,9 +131,8 @@ async function evaluateStreaks(streakObjectives, player, matchId, smurfPuuid) {
     const count = obj.streak_count || 2;
 
     // Fetch the last N matches for this player, sorted by date desc
-    const query = { player_id: player._id.toString(), queueId: QUEUE_ID };
-    if (smurfPuuid) query.puuid = smurfPuuid;
-    else query.puuid = player.puuid;
+    // Un match appartient à un joueur (puuid), pas à une team : on filtre uniquement par puuid
+    const query = { puuid: smurfPuuid || player.puuid, queueId: QUEUE_ID };
     if (obj.champions?.length > 0) query.championName = { $in: obj.champions };
     if (obj.role) query.teamPosition = obj.role;
     if (obj.side) query.side = obj.side;

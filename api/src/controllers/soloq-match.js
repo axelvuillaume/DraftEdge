@@ -37,8 +37,18 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
   try {
     let query = {};
 
-    if (req.body.team_id) query.team_id = req.body.team_id;
-    if (req.body.player_id) query.player_id = req.body.player_id;
+    // Un match appartient à un joueur (puuid), pas à une team : on résout team_id / player_id en puuids
+    if (req.body.team_id) {
+      const players = await Player.find({ team_id: req.body.team_id });
+      const puuids = players.map((p) => p.puuid).filter(Boolean);
+      if (!puuids.length) return res.status(200).send({ ok: true, data: [], total: 0 });
+      query.puuid = { $in: puuids };
+    }
+    if (req.body.player_id) {
+      const player = await Player.findById(req.body.player_id);
+      if (!player?.puuid) return res.status(200).send({ ok: true, data: [], total: 0 });
+      query.puuid = player.puuid;
+    }
     if (req.body.puuid) query.puuid = req.body.puuid;
     if (req.body.queueId != null) query.queueId = req.body.queueId;
     if (req.body.from_date) query.gameDate = { $gte: new Date(req.body.from_date) };
@@ -46,7 +56,7 @@ router.post('/search', passport.authenticate(['admin', 'user'], { session: false
     const skip = req.body.offset || 0;
     const fields = req.body.fields || null;
     const total = await SoloQMatch.countDocuments(query);
-    // Sort on gameDate (indexed with team_id / player_id) to avoid an in-memory sort on large result sets
+    // Sort on gameDate (indexed with puuid) to avoid an in-memory sort on large result sets
     const data = await SoloQMatch.find(query, fields).sort({ gameDate: -1 }).skip(skip).limit(limit).allowDiskUse(true);
     return res.status(200).send({ ok: true, data, total });
   } catch (error) {

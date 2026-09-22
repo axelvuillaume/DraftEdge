@@ -315,7 +315,7 @@ export default function SoloQ() {
 
   const fetchMatches = async fromDate => {
     try {
-      const { ok, data, code } = await api.post("/soloq-match/search", { team_id: user?.team_id, limit: 0, from_date: fromDate, queueId: 420, fields: "player_id win" })
+      const { ok, data, code } = await api.post("/soloq-match/search", { team_id: user?.team_id, limit: 0, from_date: fromDate, queueId: 420, fields: "puuid win" })
       if (!ok) return toast.error(code || "Failed to fetch matches")
       setMatches(data)
     } catch (error) {
@@ -377,8 +377,8 @@ export default function SoloQ() {
 
   const periodLabel = { today: "today", week: "this week", month: "this month", all: "all time" }[period]
 
-  const getMatchStats = playerId => {
-    const filtered = matches.filter(m => m.player_id === playerId)
+  const getMatchStats = puuid => {
+    const filtered = matches.filter(m => m.puuid === puuid)
     const w = filtered.filter(m => m.win).length
     return { w, l: filtered.length - w, total: filtered.length }
   }
@@ -426,7 +426,7 @@ export default function SoloQ() {
       <div className="max-w-[1800px] mx-auto space-y-6">
         {connected.length > 0 &&
           (() => {
-            const teamStats = connected.reduce((acc, p) => ({ w: acc.w + getMatchStats(p._id).w, l: acc.l + getMatchStats(p._id).l }), { w: 0, l: 0 })
+            const teamStats = connected.reduce((acc, p) => ({ w: acc.w + getMatchStats(p.puuid).w, l: acc.l + getMatchStats(p.puuid).l }), { w: 0, l: 0 })
             return (
               <div className="flex items-center gap-3">
                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl px-6 py-3 flex items-center gap-10 flex-1">
@@ -515,7 +515,7 @@ export default function SoloQ() {
               )
             }
             const lp = getLPChange(p)
-            const ms = getMatchStats(p._id)
+            const ms = getMatchStats(p.puuid)
             const glow = TIER_COLORS[p.current_tier] || "#64748b"
             return (
               <div

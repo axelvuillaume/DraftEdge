@@ -90,12 +90,14 @@ function isHit(current, operator, value) {
 }
 
 async function buildMatchQuery(obj) {
-  const query = { player_id: obj.player_id, queueId: 420 };
+  // Un match appartient à un joueur (puuid), pas à une team : on filtre uniquement par puuid
+  const query = { queueId: 420 };
   if (obj.account?.puuid) query.puuid = obj.account.puuid;
   if (!obj.account?.puuid) {
     const player = await Player.findById(obj.player_id);
     if (player?.puuid) query.puuid = player.puuid;
   }
+  if (!query.puuid) query.player_id = obj.player_id;
   if (obj.champions?.length > 0) query.championName = { $in: obj.champions };
   if (obj.role) query.teamPosition = obj.role;
   if (obj.side) query.side = obj.side;
