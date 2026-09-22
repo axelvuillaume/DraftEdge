@@ -647,7 +647,7 @@ router.post('/import', AUTH, upload.single('replay'), async (req, res) => {
     const data = processRoflData(metadata, req.file.originalname, team_id, { game_id, region });
 
     if (data.game.game_id) {
-      const existingById = await Game.findOne({ game_id: data.game.game_id });
+      const existingById = await Game.findOne({ game_id: data.game.game_id, team_id: team_id || null });
       if (existingById) return res.status(409).json({ ok: false, code: 'This game already exists', existing_game_id: existingById._id });
     }
 
@@ -733,7 +733,7 @@ router.post('/check', AUTH, express.json(), async (req, res) => {
     const gameIds = Array.isArray(req.body.game_ids) ? req.body.game_ids.filter(Boolean) : [];
     if (!gameIds.length) return res.json({ ok: true, data: { existing: {} } });
 
-    const games = await Game.find({ game_id: { $in: gameIds } }).select('game_id session_id session_name');
+    const games = await Game.find({ game_id: { $in: gameIds }, team_id: req.user.team_id || null });
     const existing = {};
     for (const g of games) existing[g.game_id] = { _id: g._id, session_id: g.session_id, session_name: g.session_name };
 

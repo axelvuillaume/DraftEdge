@@ -42,7 +42,7 @@ const Schema = new mongoose.Schema(
   {
     // ==================== GAME IDENTIFICATION ====================
     name: { type: String }, // Nom personnalisé de la game
-    game_id: { type: String, unique: true, sparse: true },
+    game_id: { type: String }, // unique par team, voir index composé plus bas
     match_id: { type: String }, // Format Riot: EUW1_XXXXXXXXXX
     game_fingerprint: { type: String, unique: true }, // duration_blueK_blueD_blueA_redK_redD_redA
 
@@ -144,7 +144,8 @@ const Schema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Index unique pour éviter les doublons
+// Index uniques pour éviter les doublons, scopés par team : deux teams peuvent importer la même game Riot
+Schema.index({ game_id: 1, team_id: 1 }, { unique: true, partialFilterExpression: { game_id: { $type: 'string' } } });
 Schema.index({ date: 1, duration: 1, team_id: 1, win: 1 }, { unique: true, sparse: true });
 
 const OBJ = mongoose.model(MODELNAME, Schema);
