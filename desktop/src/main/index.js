@@ -88,7 +88,7 @@ function registerIpc() {
 
   // Import
   ipcMain.handle('import:run', async (_e, payload) => {
-    if (currentImport) return { ok: false, code: 'Un import est déjà en cours' }
+    if (currentImport) return { ok: false, code: 'An import is already running' }
     currentImport = new Importer({ lcu, api })
     try {
       return await currentImport.run(payload, (event) => {

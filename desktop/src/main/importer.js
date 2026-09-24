@@ -53,7 +53,7 @@ export class Importer {
     for (const game of ordered) {
       if (this.cancelled) {
         results.push({ gameId: game.gameId, status: 'cancelled' })
-        onProgress({ gameId: game.gameId, status: 'cancelled', message: 'Annulé' })
+        onProgress({ gameId: game.gameId, status: 'cancelled', message: 'Cancelled' })
         continue
       }
 
@@ -64,7 +64,7 @@ export class Importer {
           onProgress({ gameId: game.gameId, status: 'downloading', message: `Replay (${state})${pct}`, progress })
         })
 
-        onProgress({ gameId: game.gameId, status: 'uploading', message: 'Envoi vers DraftEdge…' })
+        onProgress({ gameId: game.gameId, status: 'uploading', message: 'Uploading to DraftEdge…' })
         const buffer = fs.readFileSync(filePath)
         const form = new FormData()
         form.append('replay', new Blob([buffer]), path.basename(filePath))
@@ -90,17 +90,17 @@ export class Importer {
           index += 1
           lastPatch = res.data?.game?.patch || lastPatch
           results.push({ gameId: game.gameId, status: 'done', game: res.data?.game })
-          onProgress({ gameId: game.gameId, status: 'done', message: `Importée · ${res.data?.game?.name || ''}`.trim() })
+          onProgress({ gameId: game.gameId, status: 'done', message: `Imported · ${res.data?.game?.name || ''}`.trim() })
           continue
         }
 
         if (res.code === 'This game already exists') {
           results.push({ gameId: game.gameId, status: 'duplicate', existing_game_id: res.existing_game_id })
-          onProgress({ gameId: game.gameId, status: 'duplicate', message: 'Déjà importée' })
+          onProgress({ gameId: game.gameId, status: 'duplicate', message: 'Already imported' })
           continue
         }
 
-        throw new Error(res.details || res.code || 'Import refusé')
+        throw new Error(res.details || res.code || 'Import rejected')
       } catch (e) {
         results.push({ gameId: game.gameId, status: 'error', message: e.message })
         onProgress({ gameId: game.gameId, status: 'error', message: e.message })

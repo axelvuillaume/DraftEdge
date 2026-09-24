@@ -5,7 +5,7 @@ function champIcon(id) {
 }
 
 function fmtTime(ms) {
-  return new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  return new Date(ms).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 function fmtDuration(s) {
@@ -39,13 +39,13 @@ export default function GameRow({ game, champions, checked, disabled, onToggle, 
 
       <div className="flex items-center gap-2 text-xs shrink-0">
         {warmup?.rosterCount !== null && warmup?.rosterCount !== undefined && (
-          <span className="flex items-center gap-1 text-slate-400" title="Joueurs du roster dans ton équipe">
+          <span className="flex items-center gap-1 text-slate-400" title="Roster players on your team">
             <Users className="w-3 h-3" /> {warmup.rosterCount}/5
           </span>
         )}
         {imported && (
-          <span className="flex items-center gap-1 text-emerald-400" title={imported.session_name ? `Déjà dans « ${imported.session_name} »` : 'Déjà importée'}>
-            <CheckCircle2 className="w-3.5 h-3.5" /> Importée{imported.session_name ? ` · ${imported.session_name}` : ''}
+          <span className="flex items-center gap-1 text-emerald-400" title={imported.session_name ? `Already in “${imported.session_name}”` : 'Already imported'}>
+            <CheckCircle2 className="w-3.5 h-3.5" /> Imported{imported.session_name ? ` · ${imported.session_name}` : ''}
           </span>
         )}
         {!imported && warmup?.isWarmup && (

@@ -20,7 +20,7 @@ export default function TitleBar({ user, onLogout }) {
         <div className="no-drag flex items-center gap-3 text-sm">
           <span className="text-slate-300">{user.name || user.email}</span>
           {user.team_name && <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">{user.team_name}</span>}
-          <button onClick={onLogout} className="text-slate-400 hover:text-white" title="Se déconnecter">
+          <button onClick={onLogout} className="text-slate-400 hover:text-white" title="Log out">
             <LogOut className="w-4 h-4" />
           </button>
         </div>

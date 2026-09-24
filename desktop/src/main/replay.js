@@ -11,19 +11,19 @@ const DOWNLOADABLE_STATES = new Set(['download', 'retryDownload'])
 const FAILED_STATES = new Set(['incompatible', 'lost', 'missing', 'missingOrExpired', 'unsupported', 'error'])
 
 const FAILED_MESSAGES = {
-  incompatible: 'Replay incompatible avec le patch courant du client',
-  lost: 'Replay expiré côté Riot',
-  missing: 'Replay introuvable côté Riot',
-  missingOrExpired: 'Replay introuvable ou expiré côté Riot',
-  unsupported: 'Replay non supporté par le client',
-  error: 'Erreur du client sur ce replay'
+  incompatible: 'Replay incompatible with the current client patch',
+  lost: 'Replay expired on Riot side',
+  missing: 'Replay not found on Riot side',
+  missingOrExpired: 'Replay not found or expired on Riot side',
+  unsupported: 'Replay not supported by the client',
+  error: 'Client error on this replay'
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 export async function getReplaysFolder(lcu) {
   const p = await lcu.get('/lol-replays/v1/rofls/path')
-  if (typeof p !== 'string' || !p) throw new Error('Dossier Replays introuvable')
+  if (typeof p !== 'string' || !p) throw new Error('Replays folder not found')
   return p
 }
 
@@ -81,7 +81,7 @@ export async function ensureReplay(lcu, game, onProgress = () => {}) {
     meta = await getMetadata(lcu, game.gameId)
   }
 
-  if (meta && FAILED_STATES.has(meta.state)) throw new Error(FAILED_MESSAGES[meta.state] || `Replay indisponible (${meta.state})`)
+  if (meta && FAILED_STATES.has(meta.state)) throw new Error(FAILED_MESSAGES[meta.state] || `Replay unavailable (${meta.state})`)
 
   if (meta && READY_STATES.has(meta.state)) {
     const file = findExistingFile(folder, game)
@@ -108,7 +108,7 @@ export async function ensureReplay(lcu, game, onProgress = () => {}) {
     const progress = state === 'downloading' && meta.downloadProgress >= 0 && meta.downloadProgress <= 100 ? meta.downloadProgress : null
     onProgress({ state, progress })
 
-    if (FAILED_STATES.has(state)) throw new Error(FAILED_MESSAGES[state] || `Replay indisponible (${state})`)
+    if (FAILED_STATES.has(state)) throw new Error(FAILED_MESSAGES[state] || `Replay unavailable (${state})`)
 
     if (READY_STATES.has(state)) {
       // Le client peut annoncer "watch" quelques instants avant la fin d'écriture du fichier
@@ -117,8 +117,8 @@ export async function ensureReplay(lcu, game, onProgress = () => {}) {
         if (file) return { filePath: file, downloaded: true }
         await sleep(500)
       }
-      throw new Error('Replay téléchargé mais fichier introuvable dans ' + folder)
+      throw new Error('Replay downloaded but file not found in ' + folder)
     }
   }
-  throw new Error('Téléchargement du replay trop long')
+  throw new Error('Replay download timed out')
 }

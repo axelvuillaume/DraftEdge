@@ -7,7 +7,7 @@ export default function Home({ user }) {
   if (!user.team_id) {
     return (
       <div className="flex-1 flex items-center justify-center p-8 text-center text-slate-400 text-sm">
-        Ton compte n&apos;est rattaché à aucune équipe. Rejoins une équipe sur DraftEdge avant d&apos;importer des games.
+        Your account is not linked to any team. Join a team on DraftEdge before importing games.
       </div>
     )
   }

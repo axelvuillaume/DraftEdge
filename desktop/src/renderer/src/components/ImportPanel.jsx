@@ -12,7 +12,7 @@ const ICONS = {
 }
 
 function fmtTime(ms) {
-  return new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  return new Date(ms).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 /**
@@ -20,7 +20,7 @@ function fmtTime(ms) {
  * onClose(summary) est appelé quand l'utilisateur ferme le panneau une fois terminé.
  */
 export default function ImportPanel({ games, session, user, onClose }) {
-  const [states, setStates] = useState(() => Object.fromEntries(games.map((g) => [g.gameId, { status: 'pending', message: 'En attente' }])))
+  const [states, setStates] = useState(() => Object.fromEntries(games.map((g) => [g.gameId, { status: 'pending', message: 'Pending' }])))
   const [summary, setSummary] = useState(null)
   const [cancelling, setCancelling] = useState(false)
 
@@ -52,9 +52,9 @@ export default function ImportPanel({ games, session, user, onClose }) {
     <div className="fixed inset-0 z-50 bg-slate-950/80 flex items-center justify-center p-6">
       <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
         <div className="px-5 py-4 border-b border-slate-800">
-          <h2 className="font-semibold">Import vers « {session.name || 'bloc'} »</h2>
+          <h2 className="font-semibold">Import to “{session.name || 'session'}”</h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            {games.length} game{games.length > 1 ? 's' : ''} · le client télécharge chaque replay puis DraftEdge l&apos;analyse
+            {games.length} game{games.length > 1 ? 's' : ''} · the client downloads each replay, then DraftEdge analyzes it
           </p>
         </div>
 
@@ -74,25 +74,25 @@ export default function ImportPanel({ games, session, user, onClose }) {
 
         <div className="px-5 py-4 border-t border-slate-800 flex items-center justify-between">
           <div className="text-xs text-slate-400">
-            {!finished && 'Import en cours… ne ferme pas le client League.'}
+            {!finished && 'Import in progress… do not close the League client.'}
             {finished && summary.error && <span className="text-red-400">{summary.error}</span>}
             {finished && !summary.error && (
               <span>
-                <span className="text-emerald-400">{summary.done} importée{summary.done > 1 ? 's' : ''}</span>
-                {summary.duplicate > 0 && <span> · {summary.duplicate} doublon{summary.duplicate > 1 ? 's' : ''}</span>}
-                {summary.failed > 0 && <span className="text-red-400"> · {summary.failed} échec{summary.failed > 1 ? 's' : ''}</span>}
-                {summary.cancelled > 0 && <span> · {summary.cancelled} annulée{summary.cancelled > 1 ? 's' : ''}</span>}
+                <span className="text-emerald-400">{summary.done} imported</span>
+                {summary.duplicate > 0 && <span> · {summary.duplicate} duplicate{summary.duplicate > 1 ? 's' : ''}</span>}
+                {summary.failed > 0 && <span className="text-red-400"> · {summary.failed} failed</span>}
+                {summary.cancelled > 0 && <span> · {summary.cancelled} cancelled</span>}
               </span>
             )}
           </div>
           {!finished && (
             <button onClick={cancel} disabled={cancelling} className="text-sm text-slate-400 hover:text-white disabled:opacity-50">
-              {cancelling ? 'Arrêt après la game en cours…' : 'Annuler'}
+              {cancelling ? 'Stopping after the current game…' : 'Cancel'}
             </button>
           )}
           {finished && (
             <button onClick={() => onClose(summary)} className="rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-4 py-2 text-sm">
-              Fermer
+              Close
             </button>
           )}
         </div>

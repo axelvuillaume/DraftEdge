@@ -10,7 +10,7 @@ export default function UpdateBanner() {
   if (update.status === 'downloading') {
     return (
       <div className="bg-slate-800 text-slate-300 text-xs px-4 py-1.5 flex items-center gap-2">
-        <Download className="w-3.5 h-3.5 text-amber-400" /> Téléchargement de la mise à jour… {update.percent}%
+        <Download className="w-3.5 h-3.5 text-amber-400" /> Downloading update… {update.percent}%
       </div>
     )
   }
@@ -18,10 +18,10 @@ export default function UpdateBanner() {
     return (
       <div className="bg-amber-500/10 border-b border-amber-500/30 text-amber-200 text-xs px-4 py-1.5 flex items-center gap-3">
         <span>
-          Version {update.version} prête. Elle s&apos;installera à la fermeture, ou maintenant :
+          Version {update.version} is ready. It will install on exit, or right now:
         </span>
         <button onClick={() => window.draftedge.update.install()} className="flex items-center gap-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-2 py-0.5">
-          <RefreshCw className="w-3 h-3" /> Redémarrer
+          <RefreshCw className="w-3 h-3" /> Restart
         </button>
       </div>
     )

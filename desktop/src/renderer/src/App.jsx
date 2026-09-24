@@ -24,7 +24,7 @@ export default function App() {
     return (
       <div className="h-full flex flex-col">
         <TitleBar />
-        <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">Chargement…</div>
+        <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">Loading…</div>
       </div>
     )
   }

@@ -28,7 +28,7 @@ export default function LcuStatus({ status }) {
         <div>
           <div className="flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full ${status.connected ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-            <span className="font-medium">{status.connected ? 'Client League connecté' : 'Client League introuvable'}</span>
+            <span className="font-medium">{status.connected ? 'League client connected' : 'League client not found'}</span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
             {status.connected && status.summoner && (
@@ -37,12 +37,12 @@ export default function LcuStatus({ status }) {
                 <span className="text-slate-500">#{status.summoner.tagLine}</span>
               </>
             )}
-            {status.connected && !status.summoner && 'Connecte-toi au client pour voir ton historique'}
-            {!status.connected && 'Lance le client League of Legends, la détection est automatique'}
+            {status.connected && !status.summoner && 'Log in to the client to see your match history'}
+            {!status.connected && 'Launch the League of Legends client, it will be detected automatically'}
           </p>
         </div>
       </div>
-      <button onClick={refresh} className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800" title="Rafraîchir">
+      <button onClick={refresh} className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800" title="Refresh">
         <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
       </button>
     </div>

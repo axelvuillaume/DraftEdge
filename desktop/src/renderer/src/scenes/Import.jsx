@@ -28,13 +28,13 @@ function dayKey(ms) {
 function fmtDayLong(ms) {
   const d = new Date(ms)
   const today = startOfDay(new Date()).getTime()
-  if (dayKey(ms) === today) return "Aujourd'hui"
-  if (dayKey(ms) === today - DAY_MS) return 'Hier'
-  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' })
+  if (dayKey(ms) === today) return 'Today'
+  if (dayKey(ms) === today - DAY_MS) return 'Yesterday'
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
 function fmtDay(ms) {
-  return new Date(ms).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+  return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function sameDay(a, b) {
@@ -67,7 +67,7 @@ export default function Import({ user, lcu }) {
     setError('')
     const [h, c] = await Promise.all([window.draftedge.lcu.history({ detailCustoms: true }), window.draftedge.lcu.champions()])
     setLoading(false)
-    if (!h.ok) return setError(h.code || 'Historique indisponible')
+    if (!h.ok) return setError(h.code || 'Match history unavailable')
     setGames(h.data.games)
     setHasMore(h.data.hasMore)
     setNextIndex(h.data.nextIndex)
@@ -111,7 +111,7 @@ export default function Import({ user, lcu }) {
     setLoadingMore(true)
     const h = await window.draftedge.lcu.history({ detailCustoms: true, begIndex: nextIndex })
     setLoadingMore(false)
-    if (!h.ok) return setError(h.code || 'Historique indisponible')
+    if (!h.ok) return setError(h.code || 'Match history unavailable')
     const known = new Set(games.map((g) => g.gameId))
     const fresh = h.data.games.filter((g) => !known.has(g.gameId))
     setGames((prev) => [...prev, ...fresh])
@@ -209,31 +209,31 @@ export default function Import({ user, lcu }) {
         <BlockPicker user={user} value={session} onChange={setSession} />
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-slate-500">Depuis le {fmtDay(start)}</span>
+          <span className="text-slate-500">Since {fmtDay(start)}</span>
           <label className="flex items-center gap-1.5 text-slate-400 cursor-pointer">
-            <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} className="accent-amber-500" /> Afficher aussi les non-customs
+            <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} className="accent-amber-500" /> Also show non-custom games
           </label>
           <button onClick={loadHistory} disabled={loading || !lcu.connected} className="ml-auto flex items-center gap-1 text-slate-400 hover:text-white disabled:opacity-50">
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Rafraîchir
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </button>
         </div>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
         {offDayCount > 0 && (
           <p className="text-xs text-amber-400">
-            {offDayCount} game{offDayCount > 1 ? 's' : ''} sélectionnée{offDayCount > 1 ? 's' : ''} ne {offDayCount > 1 ? 'sont' : 'est'} pas le jour du bloc ({fmtDay(blockDay(session).getTime())}). Elles seront quand même rattachées à ce bloc.
+            {offDayCount} selected game{offDayCount > 1 ? 's' : ''} {offDayCount > 1 ? 'were' : 'was'} not played on the session day ({fmtDay(blockDay(session).getTime())}). {offDayCount > 1 ? 'They' : 'It'} will still be attached to this session.
           </p>
         )}
 
-        {!lcu.connected && <div className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-slate-500 text-sm">En attente du client League…</div>}
+        {!lcu.connected && <div className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-slate-500 text-sm">Waiting for the League client…</div>}
 
         {lcu.connected && !loading && visible.length === 0 && (
           <div className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-slate-500 text-sm">
-            Aucune {showAll ? 'game' : 'custom'} depuis le {fmtDay(start)}.
+            No {showAll ? 'games' : 'custom games'} since {fmtDay(start)}.
           </div>
         )}
 
-        {loading && games.length === 0 && <div className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-slate-500 text-sm">Lecture de l&apos;historique du client…</div>}
+        {loading && games.length === 0 && <div className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-slate-500 text-sm">Reading the client match history…</div>}
 
         <div className="space-y-4">
           {days.map(([k, list]) => (
@@ -241,7 +241,7 @@ export default function Import({ user, lcu }) {
               <div className="flex items-center gap-2 text-xs text-slate-400 pt-1">
                 <span className="font-medium text-slate-200 capitalize">{fmtDayLong(k)}</span>
                 <span>· {list.length} game{list.length > 1 ? 's' : ''}</span>
-                {blockDayKey === k && <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-medium">Jour du bloc</span>}
+                {blockDayKey === k && <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-medium">Session day</span>}
                 <span className="flex-1 border-t border-slate-800" />
               </div>
               {list.map((g) => {
@@ -255,7 +255,7 @@ export default function Import({ user, lcu }) {
         {lcu.connected && games.length > 0 && canLoadMore && (
           <div className="flex justify-center pt-2">
             <button onClick={loadMore} disabled={loadingMore} className="text-sm text-slate-400 hover:text-white px-4 py-2 rounded-lg border border-slate-800 hover:bg-slate-800 disabled:opacity-50">
-              {loadingMore ? 'Chargement…' : `Voir plus (${MORE_DAYS} jours de plus)`}
+              {loadingMore ? 'Loading…' : `Show more (${MORE_DAYS} more days)`}
             </button>
           </div>
         )}
@@ -263,11 +263,11 @@ export default function Import({ user, lcu }) {
 
       <div className="border-t border-slate-800 bg-slate-900/80 px-6 py-3 flex items-center justify-between">
         <span className="text-sm text-slate-400">
-          {selectedGames.length} game{selectedGames.length > 1 ? 's' : ''} sélectionnée{selectedGames.length > 1 ? 's' : ''}
-          {session ? ` → ${session.name || 'bloc'}` : ' · choisis un bloc'}
+          {selectedGames.length} game{selectedGames.length > 1 ? 's' : ''} selected
+          {session ? ` → ${session.name || 'session'}` : ' · pick a session'}
         </span>
         <button onClick={startImport} disabled={!canImport} className="flex items-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-semibold px-4 py-2 text-sm">
-          <Download className="w-4 h-4" /> Importer
+          <Download className="w-4 h-4" /> Import
         </button>
       </div>
 

@@ -15,11 +15,11 @@ export function countRosterPlayers(game, roster) {
 
 export function detectWarmup(game, { roster = [] } = {}) {
   const reasons = []
-  if (!game.isCustom) reasons.push('Pas une custom')
-  if (game.duration < MIN_DURATION_SECONDS) reasons.push(`Moins de ${MIN_DURATION_SECONDS / 60} min`)
+  if (!game.isCustom) reasons.push('Not a custom game')
+  if (game.duration < MIN_DURATION_SECONDS) reasons.push(`Under ${MIN_DURATION_SECONDS / 60} min`)
 
   const rosterCount = countRosterPlayers(game, roster)
-  if (rosterCount !== null && roster.length >= MIN_ROSTER_PLAYERS && rosterCount < MIN_ROSTER_PLAYERS) reasons.push(`${rosterCount}/5 joueurs du roster`)
+  if (rosterCount !== null && roster.length >= MIN_ROSTER_PLAYERS && rosterCount < MIN_ROSTER_PLAYERS) reasons.push(`${rosterCount}/5 roster players`)
 
 
   return { isWarmup: reasons.length > 0, reasons, rosterCount }

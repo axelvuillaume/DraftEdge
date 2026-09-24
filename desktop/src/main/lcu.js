@@ -151,12 +151,12 @@ export class LcuClient {
   }
 
   get(path) {
-    if (!this.creds) throw new Error('Client League non connecté')
+    if (!this.creds) throw new Error('League client not connected')
     return request(this.creds, 'GET', path)
   }
 
   post(path, body) {
-    if (!this.creds) throw new Error('Client League non connecté')
+    if (!this.creds) throw new Error('League client not connected')
     return request(this.creds, 'POST', path, body)
   }
 }
