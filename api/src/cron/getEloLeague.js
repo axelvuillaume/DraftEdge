@@ -1,20 +1,8 @@
 const Player = require('../models/player');
-const TeamLeague = require('../models/team-league');
+const { updateTeamLeagueLp } = require('../services/team-league-lp');
 const { getRankByPuuid } = require('../services/riotgames');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const MASTER_TIERS = ['MASTER', 'GRANDMASTER', 'CHALLENGER'];
-
-async function updateTeamLeagueLp() {
-  const teams = await TeamLeague.find();
-  for (const team of teams) {
-    const players = await Player.find({ team_league_id: team._id.toString(), is_league: true, active: true, current_tier: { $in: MASTER_TIERS } });
-    const totalLp = players.sort((a, b) => (b.current_lp || 0) - (a.current_lp || 0)).slice(0, 5).reduce((sum, p) => sum + (p.current_lp || 0), 0);
-    await TeamLeague.findByIdAndUpdate(team._id, { total_lp: totalLp });
-    console.log(`[League] ${team.name}: ${totalLp} LP (${players.length} master+ players)`);
-  }
-}
 
 async function getEloLeague() {
   const players = await Player.find({ puuid: { $exists: true, $ne: null }, is_league: true, active: true });

@@ -2,9 +2,11 @@ const puppeteer = require('puppeteer');
 const League = require('../models/league');
 const TeamLeague = require('../models/team-league');
 
-const LEAGUES = [{ name: 'Prime League Division 3', url: 'https://www.primeleague.gg/en/coverages/33268-3-liga-spring-split-202526', groups: ['3.1', '3.2', '3.3', '3.4'] }];
+// La page liga3 affiche toujours le split en cours (4 blocs .coverage-groupstage-ranking = Group 1..4)
+const LEAGUES = [{ name: 'Prime League Division 3', url: 'https://www.primeleague.gg/en/liga3', groups: ['3.1', '3.2', '3.3', '3.4'] }];
 
-const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+// NB : le CDN Prime League (Blendbyte) renvoie 403 pour l'UA par défaut de puppeteer (Mac OS X 10_15_7 / Chrome 130) — garder un UA récent
+const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36';
 
 function normalize(str) {
   return (str || '')
@@ -51,6 +53,7 @@ async function scrapePrimeLeague() {
     console.log(`[PrimeLeague] Scraping ${config.url}`);
     const tables = await scrapeCoverage(config.url);
     console.log(`[PrimeLeague] Found ${tables.length} group tables`);
+    if (tables.length !== config.groups.length) console.warn(`[PrimeLeague] Expected ${config.groups.length} group tables, got ${tables.length} — markup or split changed?`);
 
     const teams = await TeamLeague.find({ league_id: league._id.toString() });
     const teamsByName = new Map();
@@ -67,6 +70,7 @@ async function scrapePrimeLeague() {
 
     let updated = 0;
     let unmatched = 0;
+    const matchedIds = new Set();
     for (let i = 0; i < tables.length; i++) {
       const groupLabel = config.groups[i] || `group-${i + 1}`;
       for (const row of tables[i]) {
@@ -84,10 +88,15 @@ async function scrapePrimeLeague() {
         const losses = recordMatch ? Number(recordMatch[2]) : 0;
         const points = Number(row.points) || 0;
 
-        await TeamLeague.findByIdAndUpdate(team._id, { wins, losses, points });
+        await TeamLeague.findByIdAndUpdate(team._id, { wins, losses, points, group: groupLabel });
         console.log(`  [${groupLabel}] ${team.name}: ${wins}-${losses}, ${points} pts`);
         updated++;
+        matchedIds.add(team._id.toString());
       }
+    }
+    for (const t of teams) {
+      if (matchedIds.has(t._id.toString())) continue;
+      console.warn(`  [PrimeLeague] Team in DB not found on page: "${t.name}"`);
     }
     console.log(`[PrimeLeague] ${config.name}: ${updated} updated, ${unmatched} unmatched`);
   }
