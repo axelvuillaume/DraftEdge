@@ -4,7 +4,7 @@ const { BREVO_KEY, ENVIRONMENT } = require('../config');
 
 const SENDER_NAME = 'DraftEdge';
 const SENDER_NAME_SMS = 'DraftEdge';
-const SENDER_EMAIL = 'axel@selego.co';
+const SENDER_EMAIL = 'axelvuillaume@outlook.fr';
 
 const regexp_exception_staging = /selego\.co/;
 
