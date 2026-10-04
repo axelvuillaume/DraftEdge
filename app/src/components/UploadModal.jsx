@@ -4,7 +4,7 @@ import api from "@/services/api"
 import useStore from "@/services/store"
 import Modal from "@/components/modal"
 import OpponentDropdown from "@/components/OpponentDropdown"
-import { getChampionIcon } from "@/utils"
+import { getChampionIcon, ROLES, ROLE_LABELS, ROLE_ICON_COLORS } from "@/utils"
 import { Upload, FileText, Loader2, Plus, Check, Gamepad2, Search, Clock, AlertTriangle, FolderOpen, ChevronDown } from "lucide-react"
 
 function getPatchPrefix(patch) {
@@ -15,6 +15,21 @@ function getPatchPrefix(patch) {
 function patchesMatch(patch1, patch2) {
   if (!patch1 || !patch2) return true
   return getPatchPrefix(patch1) === getPatchPrefix(patch2)
+}
+
+const playerKey = p => `${p.summoner_name}#${p.riot_tag || ""}`
+
+// Les positions du ROFL sont souvent fausses en custom : chaque équipe doit avoir exactement un joueur par rôle
+function getRolesError(players, playerRoles) {
+  if (!players) return null
+  for (const side of ["blue", "red"]) {
+    const sidePlayers = players.filter(p => p.side === side)
+    if (sidePlayers.length !== 5) continue
+    const roles = sidePlayers.map(p => playerRoles[playerKey(p)])
+    if (roles.some(r => !ROLES.includes(r))) return `Assign a role to every player (${side} side)`
+    if (new Set(roles).size !== 5) return `Each role must be unique (${side} side)`
+  }
+  return null
 }
 
 export default function UploadModal({ isOpen, onClose, onSuccess, session, selectedGames = [], official = false }) {
@@ -36,6 +51,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
     folder_name: ""
   })
   const [roflPreview, setRoflPreview] = useState(null)
+  const [playerRoles, setPlayerRoles] = useState({})
   const [parsing, setParsing] = useState(false)
 
   const [folders, setFolders] = useState([])
@@ -109,7 +125,11 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
       const { ok, data, code } = await api.postFormData("/parser/parse", formData)
       if (ok && data) {
         setRoflPreview(data)
-        toast.success("ROFL file parsed successfully")
+        const roles = {}
+        data.players?.forEach(p => (roles[playerKey(p)] = p.role || ""))
+        setPlayerRoles(roles)
+        if (getRolesError(data.players, roles)) toast("Some roles are missing or wrong, please fix them before importing", { icon: "⚠️" })
+        else toast.success("ROFL file parsed successfully")
       } else {
         toast.error(code || "Error during parsing")
         setFile(null)
@@ -140,6 +160,8 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
     if (!file) return
     if (!roflConfig.team_side) return toast.error("Select your side (Blue/Red)")
     if (!session && !roflConfig.opponent?.name) return toast.error("Select an opponent team")
+    const rolesError = getRolesError(roflPreview?.players, playerRoles)
+    if (rolesError) return toast.error(rolesError)
     setUploading(true)
     try {
       const formData = new FormData()
@@ -157,6 +179,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
       if (session?._id) formData.append("session_id", session._id)
       if (session?.name) formData.append("session_name", session.name)
       if (official) formData.append("official", "true")
+      formData.append("roles", JSON.stringify(playerRoles))
       const { ok, code } = await api.postFormData("/parser/import", formData)
       if (ok) {
         toast.success(roflConfig.draft_url ? "Game & draft imported!" : "Game imported successfully!")
@@ -203,6 +226,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
     if (uploading || parsing || addingGames) return
     setFile(null)
     setRoflPreview(null)
+    setPlayerRoles({})
     setRoflConfig({ team_side: "", opponent: null, name: "", draft_url: "", date: new Date().toISOString().slice(0, 10), folder_id: "", folder_name: "" })
     setActiveTab("import")
     setSelectedHistoryIds([])
@@ -264,7 +288,14 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
               </div>
             ) : (
               <div className="space-y-4">
-                {roflPreview && <RoflPreview roflPreview={roflPreview} />}
+                {roflPreview && <RoflPreview roflPreview={roflPreview} playerRoles={playerRoles} onRoleChange={(key, role) => setPlayerRoles(prev => ({ ...prev, [key]: role }))} />}
+
+                {roflPreview && getRolesError(roflPreview.players, playerRoles) && (
+                  <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-sm">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <p>{getRolesError(roflPreview.players, playerRoles)}. The replay did not record positions correctly, select the right role for each player.</p>
+                  </div>
+                )}
 
                 {session?.patch && roflPreview && !patchesMatch(session.patch, roflPreview.game?.patch) && (
                   <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
@@ -520,6 +551,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
                   parsing ||
                   !roflConfig.team_side ||
                   (!session && !roflConfig.opponent?.name) ||
+                  !!getRolesError(roflPreview?.players, playerRoles) ||
                   (session?.patch && roflPreview && !patchesMatch(session.patch, roflPreview.game?.patch))
                 }
                 className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
@@ -602,7 +634,26 @@ export default function UploadModal({ isOpen, onClose, onSuccess, session, selec
   )
 }
 
-function RoflPreview({ roflPreview }) {
+function RoleSelect({ value, onChange }) {
+  return (
+    <select
+      value={value || ""}
+      onChange={e => onChange(e.target.value)}
+      className={`bg-slate-700 border rounded px-1 py-0.5 text-xs flex-shrink-0 focus:outline-none ${value ? `border-slate-600 ${ROLE_ICON_COLORS[value]}` : "border-amber-500/60 text-amber-300"}`}
+    >
+      <option value="">Role ?</option>
+      {ROLES.map(role => (
+        <option key={role} value={role}>
+          {ROLE_LABELS[role]}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+function RoflPreview({ roflPreview, playerRoles, onRoleChange }) {
+  // Sélecteur de rôle uniquement si le ROFL a mal enregistré les positions
+  const needsRoleFix = !!getRolesError(roflPreview.players, playerRoles)
   return (
     <div className="p-4 bg-slate-900 rounded-xl text-white">
       <div className="flex items-center justify-between mb-4">
@@ -642,6 +693,7 @@ function RoflPreview({ roflPreview }) {
                   <span className="text-slate-500 flex-shrink-0">
                     {p.kills}/{p.deaths}/{p.assists}
                   </span>
+                  {needsRoleFix && <RoleSelect value={playerRoles[playerKey(p)]} onChange={role => onRoleChange(playerKey(p), role)} />}
                 </div>
               ))}
           </div>
@@ -669,6 +721,7 @@ function RoflPreview({ roflPreview }) {
                   <span className="text-slate-500 flex-shrink-0">
                     {p.kills}/{p.deaths}/{p.assists}
                   </span>
+                  {needsRoleFix && <RoleSelect value={playerRoles[playerKey(p)]} onChange={role => onRoleChange(playerKey(p), role)} />}
                 </div>
               ))}
           </div>

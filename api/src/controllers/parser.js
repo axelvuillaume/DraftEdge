@@ -118,6 +118,23 @@ function normalizeRole(role) {
   return roleMap[role.toUpperCase()] || null;
 }
 
+const VALID_ROLES = ['top', 'jungle', 'mid', 'bottom', 'support'];
+
+/**
+ * Vérifie que chaque équipe a exactement un joueur par rôle. Retourne un code d'erreur ou null.
+ */
+function validateRoles(players) {
+  for (const side of ['blue', 'red']) {
+    const sidePlayers = players.filter((p) => p.side === side);
+    if (sidePlayers.length !== 5) continue;
+    const missing = sidePlayers.filter((p) => !VALID_ROLES.includes(p.role));
+    if (missing.length) return `Missing role for ${missing.map((p) => p.summoner_name).join(', ')} (${side} side)`;
+    const seen = new Set(sidePlayers.map((p) => p.role));
+    if (seen.size !== 5) return `Duplicate roles on ${side} side`;
+  }
+  return null;
+}
+
 /**
  * Parse les stats d'un joueur depuis le ROFL
  */
@@ -573,6 +590,21 @@ function processRoflData(metadata, filename, team_id, options = {}) {
   // PlayerStats documents
   const players = statsJson.map((p) => parsePlayerStats(p, gameData));
 
+  // Correction manuelle des rôles (clé "summoner_name#riot_tag" → role), les positions du ROFL sont souvent fausses en custom
+  const roleOverrides = options.roles || {};
+  players.forEach((player) => {
+    const override = normalizeRole(roleOverrides[`${player.summoner_name}#${player.riot_tag}`]);
+    if (override) player.role = override;
+  });
+  for (const side of ['blue', 'red']) {
+    const sidePlayers = players.filter((p) => p.side === side);
+    if (!sidePlayers.length) continue;
+    game.champions[side] = {};
+    sidePlayers.forEach((p) => {
+      if (p.role) game.champions[side][p.role] = p.champion;
+    });
+  }
+
   // Calculer le damage_share pour chaque joueur
   players.forEach((player) => {
     const teamDamage = player.side === 'blue' ? blueTeamStats.total_damage_to_champions : redTeamStats.total_damage_to_champions;
@@ -624,7 +656,7 @@ router.post('/import', AUTH, upload.single('replay'), async (req, res) => {
       return res.status(400).json({ ok: false, code: 'File must be a .rofl' });
     }
 
-    const { team_side, opponent_id, opponent_name, name, session_id, session_name, folder_id, folder_name, draft_url, date, official, game_id, region, puuids, source_import } = req.body;
+    const { team_side, opponent_id, opponent_name, name, session_id, session_name, folder_id, folder_name, draft_url, date, official, game_id, region, puuids, roles, source_import } = req.body;
 
     // La team vient de l'utilisateur connecté (le body reste accepté pour rétro-compat)
     const team_id = req.user.team_id || req.body.team_id;
@@ -643,8 +675,20 @@ router.post('/import', AUTH, upload.single('replay'), async (req, res) => {
       }
     }
 
+    let roleOverrides = {};
+    if (roles) {
+      try {
+        roleOverrides = typeof roles === 'string' ? JSON.parse(roles) : roles;
+      } catch (e) {
+        return res.status(400).json({ ok: false, code: 'roles must be a JSON object' });
+      }
+    }
+
     const metadata = parseRoflBuffer(req.file.buffer);
-    const data = processRoflData(metadata, req.file.originalname, team_id, { game_id, region });
+    const data = processRoflData(metadata, req.file.originalname, team_id, { game_id, region, roles: roleOverrides });
+
+    const rolesError = validateRoles(data.players);
+    if (rolesError) return res.status(400).json({ ok: false, code: rolesError, players: data.players.map((p) => ({ summoner_name: p.summoner_name, riot_tag: p.riot_tag, side: p.side, champion: p.champion, role: p.role })) });
 
     if (data.game.game_id) {
       const existingById = await Game.findOne({ game_id: data.game.game_id, team_id: team_id || null });
@@ -697,7 +741,14 @@ router.post('/import', AUTH, upload.single('replay'), async (req, res) => {
       };
     });
 
-    const savedPlayers = await PlayerStats.insertMany(playersToSave);
+    let savedPlayers;
+    try {
+      savedPlayers = await PlayerStats.insertMany(playersToSave);
+    } catch (playersError) {
+      // Rollback : ne pas laisser une Game sans joueurs en base
+      await Game.deleteOne({ _id: savedGame._id }).catch((e) => console.error('[import] Rollback failed:', e));
+      throw playersError;
+    }
 
     let finalGame = savedGame;
     if (draft_url) {
