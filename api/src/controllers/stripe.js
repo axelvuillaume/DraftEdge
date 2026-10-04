@@ -33,7 +33,6 @@ router.post('/create-checkout-session', passport.authenticate('admin', { session
     const sessionParams = {
       customer: customerId,
       mode: 'subscription',
-      payment_method_types: ['card'],
       line_items: [{ price: config.STRIPE_PRICE_ID, quantity: 1 }],
       success_url: `${config.APP_URL}/team?subscription=success`,
       cancel_url: `${config.APP_URL}/team?subscription=canceled`,
@@ -84,7 +83,7 @@ router.get('/subscription', passport.authenticate('admin', { session: false, fai
 
     let has_payment_method = false;
     if (team.stripe_customer_id) {
-      const paymentMethods = await stripe.paymentMethods.list({ customer: team.stripe_customer_id, type: 'card', limit: 1 });
+      const paymentMethods = await stripe.paymentMethods.list({ customer: team.stripe_customer_id, limit: 1 });
       has_payment_method = paymentMethods.data.length > 0;
     }
 
