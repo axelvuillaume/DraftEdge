@@ -13,7 +13,28 @@ permissions:
   contents: write
 
 jobs:
+  # Crée la release "vX.Y.Z" avant les builds : les deux jobs de la matrice tournent en parallèle et electron-builder
+  # tentait chacun de la créer, le second recevait un 422 "already_exists" (course perdue par Windows sur la 0.1.5).
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Créer la release si elle n'existe pas
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${GITHUB_REF_NAME#desktop-v}
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$VERSION déjà présente"
+            exit 0
+          fi
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "DraftEdge Desktop v$VERSION" --notes "DraftEdge Desktop v$VERSION"
+
   build:
+    needs: release
+    # needs + workflow_dispatch : le job release est sauté hors tag, le build doit quand même tourner
+    if: always() && (needs.release.result == 'success' || needs.release.result == 'skipped')
     strategy:
       fail-fast: false
       matrix:
