@@ -4,7 +4,7 @@ import { toast } from "react-hot-toast"
 import api from "@/services/api"
 import useStore from "@/services/store"
 import { getChampionIcon } from "@/utils"
-import { ArrowLeft, Plus, X, Target, TrendingUp, ImagePlus, ChevronDown, Loader2, Check, ToggleLeft, Users, User, ExternalLink, Gamepad2, MessageSquare } from "lucide-react"
+import { ArrowLeft, Plus, X, Target, TrendingUp, ImagePlus, ChevronDown, Loader2, Check, ToggleLeft, Users, User, ExternalLink, Gamepad2, MessageSquare, Play } from "lucide-react"
 import Modal from "@/components/modal"
 import UploadModal from "@/components/UploadModal"
 import DebounceInput from "@/components/debounceInput"
@@ -47,6 +47,13 @@ function formatDateInput(value) {
 function getPatchPrefix(patch) {
   if (!patch) return null
   return patch.split(".").slice(0, 2).join(".")
+}
+
+// Ouvre l'app desktop DraftEdge (deep link) qui dépose le .rofl dans le client League et lance le replay
+function openReplayInDesktop(game) {
+  if (!game?.rofl?.key) return toast.error("Replay file not available for this game (imported before replay storage)")
+  window.location.href = `draftedge://watch/${game._id}`
+  toast("Opening DraftEdge desktop… the replay launches in your League client", { icon: "🎬", duration: 5000 })
 }
 
 export default function View() {
@@ -346,6 +353,19 @@ export default function View() {
                   {Math.floor(selectedGame.duration / 60)}:{String(selectedGame.duration % 60).padStart(2, "0")}
                 </span>
               )}
+              <button
+                onClick={() => openReplayInDesktop(selectedGame)}
+                disabled={!selectedGame.rofl?.key}
+                title={
+                  selectedGame.rofl?.key
+                    ? `Launch the replay in your League client via DraftEdge desktop (patch ${getPatchPrefix(selectedGame.patch) || "?"}, current patch only)`
+                    : "Replay file not available: this game was imported before replay storage"
+                }
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors text-xs font-medium border border-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-amber-500/10"
+              >
+                <Play className="w-3.5 h-3.5" />
+                Watch replay
+              </button>
             </div>
             <ExpandedContent game={selectedGame} onDelete={fetchGames} />
           </div>

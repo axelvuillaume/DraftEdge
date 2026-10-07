@@ -139,6 +139,8 @@ const Schema = new mongoose.Schema(
       filename: { type: String },
       imported_at: { type: Date },
       file_patch: { type: String }, // Version du client depuis le ROFL
+      key: { type: String }, // Clé du .rofl sur le stockage objet (absent si importé avant le stockage des replays)
+      size: { type: Number }, // Taille du fichier en octets
     },
   },
   { timestamps: true },

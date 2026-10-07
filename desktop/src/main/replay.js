@@ -1,6 +1,7 @@
 // Téléchargement des .rofl via le client League (plugin lol-replays)
 import fs from 'fs'
 import path from 'path'
+import { shell } from 'electron'
 
 const POLL_MS = 1500
 const DOWNLOAD_TIMEOUT_MS = 120000
@@ -121,4 +122,121 @@ export async function ensureReplay(lcu, game, onProgress = () => {}) {
     }
   }
   throw new Error('Replay download timed out')
+}
+
+// Côté API : codes renvoyés par GET /game/:id/replay
+const REPLAY_API_ERRORS = {
+  REPLAY_NOT_STORED: 'This game was imported before replay storage, its file is not available',
+  NOT_FOUND: 'Game not found',
+  FORBIDDEN: 'This replay belongs to another team',
+  UNAUTHORIZED: 'Sign in to DraftEdge desktop first'
+}
+
+function patchPrefix(version) {
+  if (typeof version !== 'string') return null
+  const m = version.match(/^(\d+)\.(\d+)/)
+  return m ? `${m[1]}.${m[2]}` : null
+}
+
+// Version du jeu installé (ex. "16.20.824.8524") : un replay ne se lit que sur le même patch majeur.mineur.
+// Vérifié en live : le client marque "incompatible" une game du patch précédent, mais laisse lancer un fichier déjà
+// présent dans le dossier, d'où ce contrôle avant téléchargement.
+async function getClientPatch(lcu) {
+  try {
+    const conf = await lcu.get('/lol-replays/v1/configuration')
+    const fromConf = patchPrefix(conf?.gameVersion)
+    if (fromConf) return fromConf
+  } catch (e) {
+    // plugin replays indisponible : on tente l'endpoint patch
+  }
+  try {
+    return patchPrefix(await lcu.get('/lol-patch/v1/game-version'))
+  } catch (e) {
+    return null
+  }
+}
+
+async function downloadToFile(url, dest, onProgress = () => {}) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })
+  if (!res.ok) throw new Error(`Replay download failed (HTTP ${res.status})`)
+  const total = Number(res.headers.get('content-length')) || 0
+  const tmp = `${dest}.part`
+  const out = fs.createWriteStream(tmp)
+  const reader = res.body.getReader()
+  let received = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      out.write(Buffer.from(value))
+      received += value.length
+      if (total) onProgress(Math.round((received / total) * 100))
+    }
+    await new Promise((resolve, reject) => out.end((err) => (err ? reject(err) : resolve())))
+    fs.renameSync(tmp, dest)
+  } catch (e) {
+    out.destroy()
+    fs.rmSync(tmp, { force: true })
+    throw e
+  }
+}
+
+// Demande au client de lire un .rofl déjà présent dans son dossier replays
+async function launchViaClient(lcu, numericGameId) {
+  // Le scan force le client à indexer les fichiers déposés à la main dans le dossier
+  await lcu.post('/lol-replays/v1/rofls/scan').catch(() => {})
+  let meta = await getMetadata(lcu, numericGameId)
+  for (let i = 0; i < 10 && meta && (meta.state === 'checking' || meta.state === 'found'); i++) {
+    await sleep(500)
+    meta = await getMetadata(lcu, numericGameId)
+  }
+  if (meta && FAILED_STATES.has(meta.state)) {
+    const err = new Error(FAILED_MESSAGES[meta.state] || `Replay unavailable (${meta.state})`)
+    err.fatal = true
+    throw err
+  }
+  await lcu.post(`/lol-replays/v1/rofls/${numericGameId}/watch`, { componentType: 'replay-button_match-history' })
+}
+
+/**
+ * Lance le replay d'une game DraftEdge dans le client League (bouton "Watch replay" du site, deep link draftedge://watch/<id>).
+ * Récupère le .rofl stocké par l'API, le dépose dans le dossier replays du client, puis demande au client de le lire.
+ * Repli : ouverture du fichier par l'OS (association .rofl), équivalent d'un double-clic.
+ */
+export async function watchReplay({ lcu, api, gameId, onProgress = () => {} }) {
+  if (!lcu.status.connected) throw new Error('Open the League client first, then try again')
+
+  onProgress({ state: 'fetching', message: 'Fetching replay…' })
+  const res = await api.get(`/game/${gameId}/replay`)
+  if (!res.ok) throw new Error(REPLAY_API_ERRORS[res.code] || res.code || 'Replay unavailable')
+  const { url, filename, game_id, patch } = res.data
+
+  const clientPatch = await getClientPatch(lcu)
+  const replayPatch = patchPrefix(patch)
+  if (clientPatch && replayPatch && clientPatch !== replayPatch) {
+    throw new Error(`This replay is from patch ${replayPatch}, your client is on patch ${clientPatch}. Riot only plays replays from the current patch.`)
+  }
+
+  const folder = await getReplaysFolder(lcu)
+  const dest = path.join(folder, filename)
+  if (!fs.existsSync(dest)) {
+    onProgress({ state: 'downloading', message: 'Downloading replay…', progress: 0 })
+    await downloadToFile(url, dest, (progress) => onProgress({ state: 'downloading', message: `Downloading replay… ${progress}%`, progress }))
+  }
+
+  onProgress({ state: 'launching', message: 'Launching replay in the League client…' })
+  const numericGameId = typeof game_id === 'string' ? game_id.split('-')[1] : null
+  if (numericGameId) {
+    try {
+      await launchViaClient(lcu, numericGameId)
+      return { filePath: dest, via: 'client' }
+    } catch (e) {
+      if (e.fatal) throw e
+      console.error('[replay] client launch failed, opening file with the OS instead:', e.message)
+    }
+  }
+
+  const openError = await shell.openPath(dest)
+  if (openError) throw new Error(openError)
+  return { filePath: dest, via: 'os' }
 }

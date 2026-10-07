@@ -1,29 +1,39 @@
-const { S3_ACCESSKEYID, S3_ENDPOINT, S3_SECRETACCESSKEY } = require('../config');
+const { S3_ACCESSKEYID, S3_ENDPOINT, S3_SECRETACCESSKEY, S3_BUCKET } = require('../config');
 
 const AWS = require('aws-sdk');
 
-function uploadToS3FromBuffer(path, buffer, ContentType) {
-  return new Promise((resolve, reject) => {
-    let s3bucket = new AWS.S3({
-      endpoint: S3_ENDPOINT,
-      accessKeyId: S3_ACCESSKEYID,
-      secretAccessKey: S3_SECRETACCESSKEY,
-    });
-
-    var params = {
-      ACL: 'public-read',
-      Bucket: 'bank',
-      Key: path,
-      Body: buffer,
-      ContentEncoding: 'base64',
-      ContentType,
-      Metadata: { 'Cache-Control': 'max-age=31536000' },
-    };
-    s3bucket.upload(params, function (err, data) {
-      if (err) return reject(`error in callback:${err}`);
-      resolve(data.Location);
-    });
+// Stockage objet compatible S3 (Cloudflare R2). Bucket privé : R2 ne supporte pas les ACL,
+// la lecture passe toujours par une URL présignée à durée courte (getSignedDownloadUrl).
+let s3Client = null;
+function s3() {
+  if (s3Client) return s3Client;
+  s3Client = new AWS.S3({
+    endpoint: S3_ENDPOINT,
+    accessKeyId: S3_ACCESSKEYID,
+    secretAccessKey: S3_SECRETACCESSKEY,
+    signatureVersion: 'v4',
+    region: 'auto',
   });
+  return s3Client;
+}
+
+function isS3Configured() {
+  return Boolean(S3_ENDPOINT && S3_ACCESSKEYID && S3_SECRETACCESSKEY && S3_BUCKET);
+}
+
+async function uploadToS3FromBuffer(key, buffer, contentType) {
+  const data = await s3().upload({ Bucket: S3_BUCKET, Key: key, Body: buffer, ContentType: contentType }).promise();
+  return data.Location;
+}
+
+function getSignedDownloadUrl(key, { expires = 600, filename } = {}) {
+  const params = { Bucket: S3_BUCKET, Key: key, Expires: expires };
+  if (filename) params.ResponseContentDisposition = `attachment; filename="${filename}"`;
+  return s3().getSignedUrl('getObject', params);
+}
+
+function deleteFromS3(key) {
+  return s3().deleteObject({ Bucket: S3_BUCKET, Key: key }).promise();
 }
 
 function validatePassword(password) {
@@ -57,7 +67,10 @@ function validatePassword(password) {
 const BREVO_TEMPLATES = {};
 
 module.exports = {
+  isS3Configured,
   uploadToS3FromBuffer,
+  getSignedDownloadUrl,
+  deleteFromS3,
   validatePassword,
   BREVO_TEMPLATES,
 };

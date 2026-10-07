@@ -30,6 +30,15 @@ contextBridge.exposeInMainWorld('draftedge', {
       return () => ipcRenderer.removeListener('import:progress', handler)
     }
   },
+  replay: {
+    watch: (gameId) => ipcRenderer.invoke('replay:watch', { gameId }),
+    last: () => ipcRenderer.invoke('replay:last'),
+    onStatus: (cb) => {
+      const handler = (_e, event) => cb(event)
+      ipcRenderer.on('replay:status', handler)
+      return () => ipcRenderer.removeListener('replay:status', handler)
+    }
+  },
   update: {
     check: () => ipcRenderer.invoke('update:check'),
     install: () => ipcRenderer.invoke('update:install'),

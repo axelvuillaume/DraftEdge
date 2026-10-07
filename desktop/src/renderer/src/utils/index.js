@@ -1,3 +1,10 @@
+export const ROLES = ['top', 'jungle', 'mid', 'bottom', 'support']
+
+export function getChampionIcon(idOrName) {
+  return `https://cdn.communitydragon.org/latest/champion/${encodeURIComponent(String(idOrName))}/square`
+}
+
+// ==================== WARMUP ====================
 // Règles de détection des warmups. Chaque règle renvoie une raison (string) ou null.
 export const MIN_DURATION_SECONDS = 12 * 60
 export const MIN_ROSTER_PLAYERS = 4
@@ -20,7 +27,6 @@ export function detectWarmup(game, { roster = [] } = {}) {
 
   const rosterCount = countRosterPlayers(game, roster)
   if (rosterCount !== null && roster.length >= MIN_ROSTER_PLAYERS && rosterCount < MIN_ROSTER_PLAYERS) reasons.push(`${rosterCount}/5 roster players`)
-
 
   return { isWarmup: reasons.length > 0, reasons, rosterCount }
 }

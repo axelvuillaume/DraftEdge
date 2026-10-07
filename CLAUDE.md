@@ -17,7 +17,10 @@ Node.js + Express + MongoDB
 /app/src/services/api.js ← client API (ne pas modifier)
 /api/src/controllers/ ← controllers
 /api/src/models/ ← models Mongoose
-/desktop/ ← app Electron (importer LCU), plan dans /docs/lcu-importer-plan.md
+/desktop/ ← app Electron (importer LCU + lancement des replays)
+/desktop/src/main/ ← process principal (LCU, API, import, replays, deep link)
+/desktop/src/renderer/src/scenes/ ← pages, même convention que /app : sous-composants et logique dans le fichier de la scène, pas de dossier components
+/desktop/src/renderer/src/utils/ ← helpers partagés du renderer
 
 ## Commandes
 

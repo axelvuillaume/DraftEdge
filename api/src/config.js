@@ -11,6 +11,7 @@ const SENTRY_DSN = process.env.SENTRY_DSN || '';
 const S3_ENDPOINT = process.env.S3_ENDPOINT || '';
 const S3_ACCESSKEYID = process.env.S3_ACCESSKEYID || '';
 const S3_SECRETACCESSKEY = process.env.S3_SECRETACCESSKEY || '';
+const S3_BUCKET = process.env.S3_BUCKET || '';
 
 const BREVO_KEY = process.env.BREVO_KEY || '';
 
@@ -33,6 +34,7 @@ const CONFIG = {
   S3_ENDPOINT,
   S3_ACCESSKEYID,
   S3_SECRETACCESSKEY,
+  S3_BUCKET,
   BREVO_KEY,
   CLAUDE_API_KEY,
   GEMINI_API_KEY,

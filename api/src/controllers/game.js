@@ -12,6 +12,9 @@ const EnemyTeam = require('../models/enemy-team');
 const { buildGameFilters, extractFilters } = require('../utils/gameFilters');
 const { fetchAndSaveDraft, saveManualDraft } = require('../utils/parserDraft');
 const { getPatchPrefixes } = require('../utils/patch');
+const { isS3Configured, getSignedDownloadUrl, deleteFromS3 } = require('../utils');
+
+const REPLAY_URL_TTL_SECONDS = 600;
 
 const TIER_VALUE = { IRON: 0, BRONZE: 400, SILVER: 800, GOLD: 1200, PLATINUM: 1600, EMERALD: 2000, DIAMOND: 2400, MASTER: 2800, GRANDMASTER: 3300, CHALLENGER: 4000 };
 const RANK_VALUE = { IV: 0, III: 100, II: 200, I: 300 };
@@ -147,6 +150,29 @@ router.get('/:id/avg-elo', passport.authenticate(['admin', 'user'], { session: f
   }
 });
 
+// URL de téléchargement temporaire du .rofl (bucket privé), réservée à l'équipe propriétaire de la game.
+// Consommée par l'app desktop (deep link draftedge://watch/<id>) pour lancer le replay dans le client.
+router.get('/:id/replay', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
+  try {
+    const game = await Game.findById(req.params.id);
+    if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
+
+    const isOwner = game.team_id && String(game.team_id) === String(req.user.team_id);
+    if (!isOwner && req.user.role !== 'admin') return res.status(403).send({ ok: false, code: 'FORBIDDEN' });
+
+    if (!game.rofl?.key || !isS3Configured()) return res.status(404).send({ ok: false, code: 'REPLAY_NOT_STORED' });
+
+    // Nom attendu par le client League dans son dossier replays : <PLATFORM>-<gameId>.rofl
+    const filename = `${game.game_id || game._id}.rofl`;
+    const url = getSignedDownloadUrl(game.rofl.key, { expires: REPLAY_URL_TTL_SECONDS, filename });
+    posthogCapture(req.user._id.toString(), 'replay_watched', { game_id: game._id.toString() });
+    return res.status(200).send({ ok: true, data: { url, filename, game_id: game.game_id, patch: game.patch, size: game.rofl.size, expires_in: REPLAY_URL_TTL_SECONDS } });
+  } catch (error) {
+    capture(error);
+    return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
+  }
+});
+
 router.get('/:id', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {
     const game = await Game.findById(req.params.id);
@@ -249,6 +275,7 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
     const game = await Game.findByIdAndDelete(req.params.id);
     if (!game) return res.status(404).send({ ok: false, code: ERROR_CODES.NOT_FOUND });
     await PlayerStats.deleteMany({ game_id: game._id });
+    await deleteReplayFileIfOrphan(game);
     posthogCapture(req.user._id.toString(), 'game_deleted', { game_id: game._id.toString() });
     return res.status(200).send({ ok: true });
   } catch (error) {
@@ -256,6 +283,19 @@ router.delete('/:id', passport.authenticate(['admin', 'user'], { session: false,
     return res.status(500).send({ ok: false, code: ERROR_CODES.SERVER_ERROR });
   }
 });
+
+// Le .rofl est partagé entre les teams qui ont importé la même game Riot : on ne le supprime que si plus personne ne le référence
+async function deleteReplayFileIfOrphan(game) {
+  const key = game.rofl?.key;
+  if (!key || !isS3Configured()) return;
+  try {
+    const stillUsed = await Game.exists({ 'rofl.key': key });
+    if (stillUsed) return;
+    await deleteFromS3(key);
+  } catch (e) {
+    console.error('[game] Replay file deletion failed:', e.message);
+  }
+}
 
 router.post('/header-stats', passport.authenticate(['admin', 'user'], { session: false, failWithError: true }), async (req, res) => {
   try {

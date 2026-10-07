@@ -11,6 +11,7 @@ const CONFIG = require('../config');
 const { client: geminiClient } = require('../services/gemini');
 
 const { fetchAndSaveDraft } = require('../utils/parserDraft');
+const { isS3Configured, uploadToS3FromBuffer } = require('../utils');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
@@ -18,6 +19,26 @@ const RIOT_API_KEY = CONFIG.RIOT_API_KEY;
 const { getPuuidByRiotId, getRankByPuuid } = require('../services/riotgames');
 
 const AUTH = passport.authenticate(['admin', 'user'], { session: false, failWithError: true });
+
+// Clé du .rofl sur le stockage objet : une seule copie par game Riot, même si plusieurs teams l'importent
+function replayStorageKey(game) {
+  return `replays/${game.game_id || game._id}.rofl`;
+}
+
+// Conserve le .rofl pour que l'équipe puisse relancer le replay depuis le client (bouton "Watch replay").
+// Non bloquant : si l'upload échoue, la game reste importée sans fichier.
+async function storeReplayFile(game, file) {
+  if (!isS3Configured()) return;
+  try {
+    const key = replayStorageKey(game);
+    await uploadToS3FromBuffer(key, file.buffer, 'application/octet-stream');
+    game.set('rofl.key', key);
+    game.set('rofl.size', file.size);
+    await game.save();
+  } catch (e) {
+    console.error('[import] Replay upload failed:', e.message);
+  }
+}
 
 async function enrichPlayersInBackground(savedPlayers, platform) {
   if (!RIOT_API_KEY) return;
@@ -716,6 +737,7 @@ router.post('/import', AUTH, upload.single('replay'), async (req, res) => {
 
     // Sauvegarder la Game
     const savedGame = await Game.create(data.game);
+    await storeReplayFile(savedGame, req.file);
 
     // Récupérer la région de la team pour les appels Riot API
     let platform = 'euw1';
