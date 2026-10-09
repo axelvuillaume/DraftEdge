@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { LayoutDashboard, Shield, BarChart3, Trophy, Target, Briefcase, Users, Settings, CreditCard } from "lucide-react"
+import { LayoutDashboard, Shield, BarChart3, Trophy, Target, Briefcase, Users, Settings, CreditCard, Monitor } from "lucide-react"
 import useStore from "@/services/store"
 
 const getMenu = user => [
@@ -70,6 +70,20 @@ const Navbar = () => {
       </nav>
 
       <div className="p-4 border-t border-slate-700/50 space-y-2">
+        <Link
+          to="/desktop-app"
+          className={`group relative w-full px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 overflow-hidden ${
+            location.pathname === "/desktop-app"
+              ? "bg-gradient-to-r from-amber-500/20 to-amber-600/10 text-amber-400 border border-amber-500/30"
+              : "bg-gradient-to-r from-amber-500/10 via-slate-800/40 to-blue-500/10 text-slate-200 border border-slate-700/60 hover:border-amber-500/40 hover:text-white"
+          }`}
+        >
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${location.pathname === "/desktop-app" ? "bg-amber-500/20" : "bg-amber-500/15 group-hover:bg-amber-500/25"} transition-colors`}>
+            <Monitor className="w-4 h-4 text-amber-400" />
+          </div>
+          <span className="text-sm font-medium">The new app</span>
+          <span className="ml-auto text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-slate-900 px-1.5 py-0.5 rounded-full">New</span>
+        </Link>
         <Link
           to="/team"
           className={`w-full px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 ${

@@ -23,6 +23,7 @@ import League from "@/scenes/league"
 import Website from "@/scenes/website"
 import StratMap from "@/scenes/performance/strat-map"
 import Billings from "@/scenes/billings"
+import DesktopApp from "@/scenes/desktop-app"
 
 if (environment === "production") {
   Sentry.init({ dsn: SENTRY_URL, environment: "app" })
@@ -71,6 +72,7 @@ export default function App() {
         <Route element={<UserLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/team" element={<Team />} />
+          <Route path="/desktop-app" element={<DesktopApp />} />
           <Route path="/performance/*" element={<PerformancePage />} />
           <Route path="/players/*" element={<SoloQ />} />
           <Route path="/manager-space/*" element={<Opponents />} />
