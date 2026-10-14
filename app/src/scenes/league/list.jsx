@@ -4,6 +4,9 @@ import { Search, Trophy, ChevronDown } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "@/services/api"
 import useStore from "@/services/store"
+
+const findCoach = (contacts) => contacts?.find((c) => c.role === "Head Coach") || contacts?.find((c) => /coach/i.test(c.role || ""))
+
 export default function List() {
   const navigate = useNavigate()
   const { team } = useStore()
@@ -145,7 +148,7 @@ export default function List() {
                         </td>
                       )}
                       <td className={`${league.has_points === false ? "w-[25%]" : "w-[18%]"} px-4 py-4 text-center`}>
-                        <span className="text-slate-400 text-sm truncate">{t.contacts?.find((c) => c.role === "Coach")?.name || t.contacts?.find((c) => c.role === "Coach")?.discord || "—"}</span>
+                        <span className="text-slate-400 text-sm truncate">{findCoach(t.contacts)?.name || findCoach(t.contacts)?.discord || "—"}</span>
                       </td>
                       <td className={`${league.has_points === false ? "w-[25%]" : "w-[20%]"} px-4 py-4 text-center`}>
                         <span className="text-slate-400 text-sm truncate">{t.contacts?.find((c) => c.role === "Manager")?.name || t.contacts?.find((c) => c.role === "Manager")?.discord || "—"}</span>

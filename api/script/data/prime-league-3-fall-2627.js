@@ -1,7 +1,7 @@
 // Généré depuis le sheet « Roster PRM 3 teams » + https://www.primeleague.gg/en/liga3 (01/10/2026)
 // Fall Split 2026/27 — titulaires uniquement
 
-const LEAGUE = { name: 'Prime League Division 3', region: 'EUW', tier: 'Division 3', description: 'Fall Split 2026/27', has_points: true };
+const LEAGUE = {"name":"Prime League Division 3","region":"EUW","tier":"Division 3","description":"Fall Split 2026/27","has_points":true};
 
 const TEAMS = [
   {
@@ -34,10 +34,9 @@ const TEAMS = [
         "role": "mid"
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "",
+        "name": "tripplej",
         "role": "Manager",
         "twitter": "",
         "discord": "tripplej"
@@ -69,26 +68,30 @@ const TEAMS = [
         "role": null
       }
     ],
-    "staff": [
-      {
-        "name": "HC: Paul \"Ipecacuhana\" Erik Höhn"
-      },
-      {
-        "name": "Manager: Max \"Maxcraft\""
-      },
-      {
-        "name": "Manager: Muriel \"Murmmelchen\""
-      },
-      {
-        "name": "Manager: Kai «Keawy» Kramme"
-      }
-    ],
     "contacts": [
       {
-        "name": "Max \"Maxcraft\"",
+        "name": "Maxcraft",
         "role": "Manager",
         "twitter": "",
         "discord": "maxcraft"
+      },
+      {
+        "name": "Ipecacuhana",
+        "role": "Head Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Murmmelchen",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "murmmelchen"
+      },
+      {
+        "name": "Keawy",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "keawy"
       }
     ]
   },
@@ -122,12 +125,14 @@ const TEAMS = [
         "role": null
       }
     ],
-    "staff": [
+    "contacts": [
       {
-        "name": "Ethyron"
+        "name": "Ethyron",
+        "role": "Staff",
+        "twitter": "",
+        "discord": "ethyron_h"
       }
-    ],
-    "contacts": []
+    ]
   },
   {
     "name": "BlackDivision",
@@ -159,17 +164,18 @@ const TEAMS = [
         "role": "support"
       }
     ],
-    "staff": [
-      {
-        "name": "Manager - Christian \"AsianPower666\" Ploß"
-      }
-    ],
     "contacts": [
       {
-        "name": "",
+        "name": "chrisdergott",
         "role": "Manager",
         "twitter": "",
         "discord": "chrisdergott"
+      },
+      {
+        "name": "AsianPower666",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -201,11 +207,6 @@ const TEAMS = [
         "name": "NitØryu",
         "riot_id": "NitØryu#EUW",
         "role": null
-      }
-    ],
-    "staff": [
-      {
-        "name": "Manager - Karlovric, Karlo Lovrić"
       }
     ],
     "contacts": [
@@ -247,23 +248,24 @@ const TEAMS = [
         "role": "jungle"
       }
     ],
-    "staff": [
-      {
-        "name": "Coach: George \"GAPT\" Taffurelli"
-      },
-      {
-        "name": "Assist. Coach: Peter \"RocketArts\" Lerman"
-      },
-      {
-        "name": "Manager: Jonas \"Greenwolf\" Held"
-      }
-    ],
     "contacts": [
       {
-        "name": "Jonas \"Greenwolf\" Held",
+        "name": "Greenwolf",
         "role": "Manager",
         "twitter": "",
         "discord": "greenwolfva"
+      },
+      {
+        "name": "GAPT",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "RocketArts",
+        "role": "Assistant Coach",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -297,10 +299,9 @@ const TEAMS = [
         "role": null
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "",
+        "name": "elirion71",
         "role": "Manager",
         "twitter": "",
         "discord": "elirion71"
@@ -337,17 +338,18 @@ const TEAMS = [
         "role": "support"
       }
     ],
-    "staff": [
-      {
-        "name": "Manager: Oliver \"FailFactory\" Dürr"
-      }
-    ],
     "contacts": [
       {
-        "name": "",
+        "name": "alex.7333",
         "role": "Manager",
         "twitter": "",
         "discord": "alex.7333"
+      },
+      {
+        "name": "FailFactory",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -381,26 +383,30 @@ const TEAMS = [
         "role": "bottom"
       }
     ],
-    "staff": [
-      {
-        "name": "Coach: Anna \"Believe\" Szymankiewicz"
-      },
-      {
-        "name": "Coach: Ayoub \"Yurei\" El Idrissi"
-      },
-      {
-        "name": "Manager: Emily \"ECF EmyLune\" Pertsch"
-      },
-      {
-        "name": "Manager: Melvin \"ECF Tee Tiger\" Kamann"
-      }
-    ],
     "contacts": [
       {
-        "name": "Emily \"ECF EmyLune\" Pertsch",
+        "name": "ECF EmyLune",
         "role": "Manager",
         "twitter": "",
         "discord": "emylune"
+      },
+      {
+        "name": "Believe",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Yurei",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "ECF Tee Tiger",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -434,23 +440,24 @@ const TEAMS = [
         "role": "support"
       }
     ],
-    "staff": [
-      {
-        "name": "Staff: Coach: \"Web\""
-      },
-      {
-        "name": "Manager: Lennard \"LeoG\" Glinka"
-      },
-      {
-        "name": "Manager: Nicolas \"NICKPLG\" Lohse"
-      }
-    ],
     "contacts": [
       {
-        "name": "Lennard \"LeoG\" Glinka",
+        "name": "LeoG",
         "role": "Manager",
         "twitter": "",
         "discord": "leog_lol"
+      },
+      {
+        "name": "Web",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "NICKPLG",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -484,10 +491,9 @@ const TEAMS = [
         "role": null
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "",
+        "name": "bladeshow",
         "role": "Manager",
         "twitter": "",
         "discord": "bladeshow"
@@ -524,14 +530,9 @@ const TEAMS = [
         "role": null
       }
     ],
-    "staff": [
-      {
-        "name": "Manager: Ennie \"Ennieways\""
-      }
-    ],
     "contacts": [
       {
-        "name": "Ennie \"Ennieways\"",
+        "name": "Ennieways",
         "role": "Manager",
         "twitter": "",
         "discord": "ennieways"
@@ -568,20 +569,18 @@ const TEAMS = [
         "role": "support"
       }
     ],
-    "staff": [
-      {
-        "name": "Manager: Timo \"DarkBeta3\" Buchner"
-      },
-      {
-        "name": "Manager: \"Choucha\""
-      }
-    ],
     "contacts": [
       {
-        "name": "Timo \"DarkBeta3\" Buchner",
+        "name": "DarkBeta3",
         "role": "Manager",
         "twitter": "",
         "discord": "darkbeta3_timo"
+      },
+      {
+        "name": "Choucha",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -615,10 +614,9 @@ const TEAMS = [
         "role": null
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "",
+        "name": "actitube",
         "role": "Manager",
         "twitter": "",
         "discord": "actitube"
@@ -655,29 +653,36 @@ const TEAMS = [
         "role": "support"
       }
     ],
-    "staff": [
-      {
-        "name": "Head Coach: Ioannis \"T1moo\" Timotheou"
-      },
-      {
-        "name": "Assistant Coach: Ali \"Zephyr\" Hanioui"
-      },
-      {
-        "name": "Positional Coach: Anna \"Believe\" Szymankiewicz"
-      },
-      {
-        "name": "Analyst: Santiago \"Thunder0us\" Guia Acuña"
-      },
-      {
-        "name": "Manager: Max \"Cogabrom\" Schönert"
-      }
-    ],
     "contacts": [
       {
-        "name": "Max \"Cogabrom\" Schönert",
+        "name": "Cogabrom",
         "role": "Manager",
         "twitter": "",
         "discord": "cogabrom"
+      },
+      {
+        "name": "T1moo",
+        "role": "Head Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Zephyr",
+        "role": "Assistant Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Believe",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Thunder0us",
+        "role": "Analyst",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -711,14 +716,9 @@ const TEAMS = [
         "role": "mid"
       }
     ],
-    "staff": [
-      {
-        "name": "Coach: Mark \"Faun\" Uhl"
-      }
-    ],
     "contacts": [
       {
-        "name": "Mark \"Faun\" Uhl",
+        "name": "Faun",
         "role": "Coach",
         "twitter": "",
         "discord": "faunn8"
@@ -755,20 +755,9 @@ const TEAMS = [
         "role": "mid"
       }
     ],
-    "staff": [
-      {
-        "name": "Manager -  Sina \"sinacso\" Schulte-Osthoff (Germany)"
-      },
-      {
-        "name": "Coach"
-      },
-      {
-        "name": "Assistant Coach"
-      }
-    ],
     "contacts": [
       {
-        "name": "Sina \"sinacso\" Schulte-Osthoff (Germany)",
+        "name": "sinacso",
         "role": "Manager",
         "twitter": "",
         "discord": "sinacso"
@@ -805,20 +794,18 @@ const TEAMS = [
         "role": "bottom"
       }
     ],
-    "staff": [
-      {
-        "name": "HC - Andy „Adny“"
-      },
-      {
-        "name": "Manager - Alina „Ayoji“"
-      }
-    ],
     "contacts": [
       {
-        "name": "Alina „Ayoji“",
+        "name": "Ayoji",
         "role": "Manager",
         "twitter": "",
         "discord": "ayoji"
+      },
+      {
+        "name": "Adny",
+        "role": "Head Coach",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -852,26 +839,15 @@ const TEAMS = [
         "role": "support"
       }
     ],
-    "staff": [
-      {
-        "name": "Coach"
-      },
-      {
-        "name": "Manager - Sebastian 'S3B'"
-      },
-      {
-        "name": "Assistant Manager - Kai 'Keawy' Kramme"
-      }
-    ],
     "contacts": [
       {
-        "name": "Kai 'Keawy' Kramme",
+        "name": "Keawy",
         "role": "Assistant Manager",
         "twitter": "",
         "discord": "keawy"
       },
       {
-        "name": "",
+        "name": "the_s3b",
         "role": "Manager",
         "twitter": "",
         "discord": "the_s3b"
@@ -908,14 +884,9 @@ const TEAMS = [
         "role": null
       }
     ],
-    "staff": [
-      {
-        "name": "Manager: Sinan \"synan\" Uslu"
-      }
-    ],
     "contacts": [
       {
-        "name": "Sinan \"synan\" Uslu",
+        "name": "synan",
         "role": "Manager",
         "twitter": "",
         "discord": "synan."
@@ -952,23 +923,24 @@ const TEAMS = [
         "role": "support"
       }
     ],
-    "staff": [
-      {
-        "name": "Coach: Eryk \"MKT\" Gargul"
-      },
-      {
-        "name": "Coach: Lóránt \"Pingu\" Horváth"
-      },
-      {
-        "name": "Manager: Patrick \"Packie\" Zagorski"
-      }
-    ],
     "contacts": [
       {
-        "name": "",
+        "name": "p4ckie",
         "role": "Manager",
         "twitter": "",
         "discord": "p4ckie"
+      },
+      {
+        "name": "MKT",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Pingu",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -997,10 +969,9 @@ const TEAMS = [
         "role": "support"
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "",
+        "name": "trihmaran",
         "role": "Manager",
         "twitter": "",
         "discord": "trihmaran"
@@ -1037,14 +1008,9 @@ const TEAMS = [
         "role": "mid"
       }
     ],
-    "staff": [
-      {
-        "name": "MANAGER: Nico \"Fäustchen\" Böhm"
-      }
-    ],
     "contacts": [
       {
-        "name": "Nico \"Fäustchen\" Böhm",
+        "name": "Fäustchen",
         "role": "Manager",
         "twitter": "",
         "discord": "faustchen_"
@@ -1079,17 +1045,6 @@ const TEAMS = [
         "name": "Absoluten",
         "riot_id": "absoluten#brick",
         "role": "support"
-      }
-    ],
-    "staff": [
-      {
-        "name": "Coach"
-      },
-      {
-        "name": "Assistant Coach"
-      },
-      {
-        "name": "Manager"
       }
     ],
     "contacts": [
@@ -1131,23 +1086,30 @@ const TEAMS = [
         "role": "support"
       }
     ],
-    "staff": [
-      {
-        "name": "Head Coach - Binfort#Löwe"
-      },
-      {
-        "name": "Manager - Gamingplayer"
-      },
-      {
-        "name": "GM - Aleksandr Vysotskii"
-      }
-    ],
     "contacts": [
       {
-        "name": "",
+        "name": "alexvys",
         "role": "Manager",
         "twitter": "",
         "discord": "alexvys"
+      },
+      {
+        "name": "Binfort#Löwe",
+        "role": "Head Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Gamingplayer",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "gamingplayer"
+      },
+      {
+        "name": "Aleksandr Vysotskii",
+        "role": "General Manager",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -1181,14 +1143,9 @@ const TEAMS = [
         "role": "support"
       }
     ],
-    "staff": [
-      {
-        "name": "Manager:"
-      }
-    ],
     "contacts": [
       {
-        "name": "",
+        "name": "zweiradkarberg",
         "role": "Manager",
         "twitter": "",
         "discord": "zweiradkarberg"
@@ -1225,20 +1182,24 @@ const TEAMS = [
         "role": "support"
       }
     ],
-    "staff": [
-      {
-        "name": "HC: Jari \"HUNT\""
-      },
-      {
-        "name": "Manager: Matthes \"ZhaiZhai\" Petrick"
-      }
-    ],
     "contacts": [
       {
-        "name": "",
+        "name": "mattitrixh",
         "role": "Manager",
         "twitter": "",
         "discord": "mattitrixh"
+      },
+      {
+        "name": "HUNT",
+        "role": "Head Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "ZhaiZhai",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -1272,14 +1233,9 @@ const TEAMS = [
         "role": "jungle"
       }
     ],
-    "staff": [
-      {
-        "name": "Manager - Matthias \"FreshThana\" Meier"
-      }
-    ],
     "contacts": [
       {
-        "name": "Matthias \"FreshThana\" Meier",
+        "name": "FreshThana",
         "role": "Manager",
         "twitter": "",
         "discord": "freshthana"
@@ -1316,14 +1272,9 @@ const TEAMS = [
         "role": "mid"
       }
     ],
-    "staff": [
-      {
-        "name": "Manager: Emma \"Aceure\""
-      }
-    ],
     "contacts": [
       {
-        "name": "Emma \"Aceure\"",
+        "name": "Aceure",
         "role": "Manager",
         "twitter": "",
         "discord": "aceure"
@@ -1360,23 +1311,24 @@ const TEAMS = [
         "role": null
       }
     ],
-    "staff": [
-      {
-        "name": "Manager: Marie \"never leaving\""
-      },
-      {
-        "name": "Manager: Matze \"iCamper\""
-      },
-      {
-        "name": "Headcoach: \"Toxic\""
-      }
-    ],
     "contacts": [
       {
-        "name": "Marie \"never leaving\"",
+        "name": "never leaving",
         "role": "Manager",
         "twitter": "",
         "discord": "never_leaving."
+      },
+      {
+        "name": "iCamper",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "icamper"
+      },
+      {
+        "name": "Toxic",
+        "role": "Head Coach",
+        "twitter": "",
+        "discord": ""
       }
     ]
   },
@@ -1410,10 +1362,9 @@ const TEAMS = [
         "role": null
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "",
+        "name": "prdgy1",
         "role": "Manager",
         "twitter": "",
         "discord": "prdgy1"

@@ -106,25 +106,8 @@ export default function View() {
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 space-y-4">
               <div className="flex items-center gap-2">
                 <UserCog className="w-4 h-4 text-blue-400" />
-                <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">Staff ({team.staff?.length || 0})</h2>
+                <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">Staff ({team.contacts?.length || 0})</h2>
               </div>
-              {team.staff?.length > 0 ? (
-                <div className="space-y-2">
-                  {team.staff.map((member, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 bg-slate-700/30 rounded-lg">
-                      <span className="text-white text-sm">{member.name}</span>
-                      {member.riot_id && <span className="text-slate-500 text-xs">{member.riot_id}</span>}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-slate-500 text-sm">No staff listed</p>
-              )}
-            </div>
-
-            {/* Contacts */}
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 space-y-4">
-              <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">Contacts</h2>
               {team.contacts?.length > 0 ? (
                 <div className="space-y-3">
                   {team.contacts.map((contact, i) => (
@@ -141,7 +124,7 @@ export default function View() {
                   ))}
                 </div>
               ) : (
-                <p className="text-slate-500 text-sm">No contacts listed</p>
+                <p className="text-slate-500 text-sm">No staff listed</p>
               )}
             </div>
 

@@ -62,7 +62,7 @@ async function main() {
   const unresolved = [];
 
   for (const t of TEAMS) {
-    console.log(`\n[${t.group}] ${t.name} — ${t.players.length} players, ${(t.replacements || []).length} replacements, ${t.staff.length} staff, ${t.contacts.length} contacts`);
+    console.log(`\n[${t.group}] ${t.name} — ${t.players.length} players, ${(t.replacements || []).length} replacements, ${t.contacts.length} contacts`);
     for (const c of t.contacts) console.log(`  contact: ${c.role} ${c.name ? `${c.name} ` : ''}(discord: ${c.discord})`);
 
     let teamLeague = null;
@@ -74,7 +74,6 @@ async function main() {
         league_name: league.name,
         players: t.players.map((p) => ({ name: p.name, riot_id: p.riot_id })),
         replacements: (t.replacements || []).map((p) => ({ name: p.name, riot_id: p.riot_id })),
-        staff: t.staff.map((s) => ({ name: s.name, riot_id: s.riot_id || '' })),
         contacts: t.contacts,
         points: 0,
         wins: 0,

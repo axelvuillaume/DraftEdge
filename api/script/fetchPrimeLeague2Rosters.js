@@ -13,9 +13,9 @@
 // Règles :
 //   - players      = joueurs apparus dans au moins une lineup annoncée (triés par nb d'apparitions)
 //                    → si aucune lineup annoncée : membres "Confirmed player" de la page équipe
-//   - replacements = autres membres "Confirmed player" de la page équipe (hors staff)
-//   - staff        = membres dont le pseudo / Riot ID contient "coach" et absents des lineups
-//   - contacts     = Leader de l'équipe (pseudo Prime League, discord à compléter à la main)
+//   - replacements = autres membres "Confirmed player" de la page équipe (hors coachs)
+//   - contacts     = Leader de l'équipe (role Leader) + membres dont le pseudo / Riot ID contient "coach" (role Coach),
+//                    discord à compléter à la main (voir script/importPrimeLeague2Staff.js pour les coachs/managers du sheet)
 //   - role         = déduit du tag Riot quand il est explicite (#TOP, #MID, #ADC, #SUPP…), sinon vide
 
 const fs = require('fs');
@@ -155,9 +155,9 @@ function buildTeam(team, matches, group) {
 
   const players = lineupPlayers.length ? lineupPlayers : confirmed.filter((m) => !isCoach(m));
   const playerIds = new Set(players.map((p) => p.riot_id));
-  const staff = team.roster.filter((m) => isCoach(m) && !inLineup.has(m.riot_id));
-  const staffIds = new Set(staff.map((m) => m.riot_id));
-  const replacements = confirmed.filter((m) => !playerIds.has(m.riot_id) && !staffIds.has(m.riot_id));
+  const coaches = team.roster.filter((m) => isCoach(m) && !inLineup.has(m.riot_id));
+  const coachIds = new Set(coaches.map((m) => m.riot_id));
+  const replacements = confirmed.filter((m) => !playerIds.has(m.riot_id) && !coachIds.has(m.riot_id));
   const leader = team.roster.find((m) => m.title === 'Leader');
 
   return {
@@ -167,8 +167,7 @@ function buildTeam(team, matches, group) {
     lineups_announced: matches.filter((mt) => (mt.team_1 === team.team_id && mt.lineup_1.length) || (mt.team_2 === team.team_id && mt.lineup_2.length)).length,
     players: players.map((p) => ({ name: p.nick, riot_id: p.riot_id, role: roleFromRiotId(p.riot_id) })),
     replacements: replacements.map((m) => ({ name: m.nick, riot_id: m.riot_id })),
-    staff: staff.map((m) => ({ name: m.nick, riot_id: m.riot_id })),
-    contacts: leader ? [{ name: leader.nick, role: 'Leader', twitter: '', discord: '' }] : [],
+    contacts: [...(leader ? [{ name: leader.nick, role: 'Leader', twitter: '', discord: '' }] : []), ...coaches.map((m) => ({ name: m.nick, role: 'Coach', twitter: '', discord: '' }))],
   };
 }
 
@@ -176,7 +175,7 @@ function buildGroup(TEAMS, group, { ranking, matches, teams }) {
   console.log(`  ${ranking.length} équipes, ${matches.length} matchs, ${matches.filter((m) => m.lineup_1.length || m.lineup_2.length).length} avec lineup annoncée`);
   for (const t of teams) {
     const built = buildTeam(t, matches, group);
-    console.log(`  - ${built.name}: ${built.players.length} players (${built.lineups_announced} lineups), ${built.replacements.length} replacements, ${built.staff.length} staff`);
+    console.log(`  - ${built.name}: ${built.players.length} players (${built.lineups_announced} lineups), ${built.replacements.length} replacements, ${built.contacts.length} contacts`);
     TEAMS.push(built);
   }
 }

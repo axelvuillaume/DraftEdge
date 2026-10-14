@@ -37,13 +37,24 @@ const TEAMS = [
       }
     ],
     "replacements": [],
-    "staff": [],
     "contacts": [
       {
-        "name": "Zentoris",
-        "role": "Leader",
+        "name": "Pride",
+        "role": "Manager",
         "twitter": "",
         "discord": ""
+      },
+      {
+        "name": "Bonnie",
+        "role": "Coach",
+        "twitter": "",
+        "discord": "bonniessr"
+      },
+      {
+        "name": "katztatz",
+        "role": "Coach",
+        "twitter": "",
+        "discord": "katztatz"
       }
     ]
   },
@@ -93,11 +104,22 @@ const TEAMS = [
         "riot_id": "Lalle#Lalle"
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "Takuuu",
-        "role": "Leader",
+        "name": "Skol",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "skol."
+      },
+      {
+        "name": "Taku",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Jeroen",
+        "role": "Coach",
         "twitter": "",
         "discord": ""
       }
@@ -145,13 +167,18 @@ const TEAMS = [
         "riot_id": "Techoteco#Teo"
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "Pater JuleZ",
-        "role": "Leader",
+        "name": "Pater Julez",
+        "role": "Manager",
         "twitter": "",
         "discord": ""
+      },
+      {
+        "name": "Ghoulomat",
+        "role": "Coach",
+        "twitter": "",
+        "discord": "ghoulomat"
       }
     ]
   },
@@ -197,13 +224,18 @@ const TEAMS = [
         "riot_id": "MaxSchaller#VfB"
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "laexR",
-        "role": "Leader",
+        "name": "Laexr",
+        "role": "Manager",
         "twitter": "",
-        "discord": ""
+        "discord": "laexr"
+      },
+      {
+        "name": "MaxSchallah",
+        "role": "Coach",
+        "twitter": "",
+        "discord": "stormfuryy"
       }
     ]
   },
@@ -245,16 +277,22 @@ const TEAMS = [
         "riot_id": "404 lojo#EUW"
       }
     ],
-    "staff": [
-      {
-        "name": "PhantomiasCR",
-        "riot_id": "404 Phanto#Coach"
-      }
-    ],
     "contacts": [
       {
-        "name": "LoJo",
-        "role": "Leader",
+        "name": "lojo",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Phantomias",
+        "role": "Coach",
+        "twitter": "",
+        "discord": "phantomiaslol"
+      },
+      {
+        "name": "All Odds",
+        "role": "Coach",
         "twitter": "",
         "discord": ""
       }
@@ -293,11 +331,22 @@ const TEAMS = [
       }
     ],
     "replacements": [],
-    "staff": [],
     "contacts": [
       {
-        "name": "NKXXIIPvB",
-        "role": "Leader",
+        "name": "Gamingplayer",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "gamingplayer"
+      },
+      {
+        "name": "NK",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Flarke",
+        "role": "Coach",
         "twitter": "",
         "discord": ""
       }
@@ -345,11 +394,28 @@ const TEAMS = [
         "riot_id": "Ihavealisp#Vin"
       }
     ],
-    "staff": [],
     "contacts": [
       {
         "name": "Krypex",
-        "role": "Leader",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ".krypex"
+      },
+      {
+        "name": "Paul227",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "FntasyStar",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Taxer",
+        "role": "Coach",
         "twitter": "",
         "discord": ""
       }
@@ -401,11 +467,22 @@ const TEAMS = [
         "riot_id": "Redstrike#EUW"
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "Vamirlol",
-        "role": "Leader",
+        "name": "Snacky",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "saltyegrill"
+      },
+      {
+        "name": "Vamir",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Bob",
+        "role": "Coach",
         "twitter": "",
         "discord": ""
       }
@@ -457,11 +534,10 @@ const TEAMS = [
         "riot_id": "SatØrius#EUW"
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "Karni",
-        "role": "Leader",
+        "name": "Thunny",
+        "role": "Manager",
         "twitter": "",
         "discord": ""
       }
@@ -505,11 +581,16 @@ const TEAMS = [
         "riot_id": "Tegdrath#EUW"
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "Irohadc",
-        "role": "Leader",
+        "name": "Ayoji",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "ayoji"
+      },
+      {
+        "name": "Ivikus",
+        "role": "Coach",
         "twitter": "",
         "discord": ""
       }
@@ -557,11 +638,22 @@ const TEAMS = [
         "riot_id": "against all odds#adc"
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "Davadda",
-        "role": "Leader",
+        "name": "Kali",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "sleepy_kali"
+      },
+      {
+        "name": "Dionrray",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Craith",
+        "role": "Coach",
         "twitter": "",
         "discord": ""
       }
@@ -614,18 +706,18 @@ const TEAMS = [
         "riot_id": "PeateeeSD#2808"
       }
     ],
-    "staff": [
-      {
-        "name": "300clownfiesta",
-        "riot_id": "300 CLOWNFIESTA#COACH"
-      }
-    ],
     "contacts": [
       {
-        "name": "300clownfiesta",
-        "role": "Leader",
+        "name": "skol",
+        "role": "Manager",
         "twitter": "",
-        "discord": ""
+        "discord": "skol."
+      },
+      {
+        "name": "clownfiesta",
+        "role": "Coach",
+        "twitter": "",
+        "discord": "300clownfiesta"
       }
     ]
   },
@@ -671,20 +763,28 @@ const TEAMS = [
         "riot_id": "LWolfyx#lul"
       }
     ],
-    "staff": [
-      {
-        "name": "Mystic28",
-        "riot_id": "Mystic#Coach"
-      },
-      {
-        "name": "Coach Yoru",
-        "riot_id": "I am Yoru#uwu"
-      }
-    ],
     "contacts": [
       {
-        "name": "Dome777",
-        "role": "Leader",
+        "name": "FreeAD",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Mystic",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Yoru",
+        "role": "Coach",
+        "twitter": "",
+        "discord": "iamyoru"
+      },
+      {
+        "name": "adgus",
+        "role": "Coach",
         "twitter": "",
         "discord": ""
       }
@@ -728,11 +828,34 @@ const TEAMS = [
         "riot_id": "Maxcraft#EUW"
       }
     ],
-    "staff": [],
     "contacts": [
       {
-        "name": "BG Maxcraft",
-        "role": "Leader",
+        "name": "Maxcraft",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "maxcraft"
+      },
+      {
+        "name": "Murmmelchen",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "murmmelchen"
+      },
+      {
+        "name": "Keawy",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "keawy"
+      },
+      {
+        "name": "Shox",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "Pa1nt",
+        "role": "Coach",
         "twitter": "",
         "discord": ""
       }
@@ -771,13 +894,30 @@ const TEAMS = [
       }
     ],
     "replacements": [],
-    "staff": [],
     "contacts": [
       {
-        "name": "NKXXIIPvB",
-        "role": "Leader",
+        "name": "Gamingplayer",
+        "role": "Manager",
+        "twitter": "",
+        "discord": "gamingplayer"
+      },
+      {
+        "name": "NK",
+        "role": "Manager",
         "twitter": "",
         "discord": ""
+      },
+      {
+        "name": "AmExx",
+        "role": "Coach",
+        "twitter": "",
+        "discord": "king_amex"
+      },
+      {
+        "name": "Rassiel",
+        "role": "Coach",
+        "twitter": "",
+        "discord": "__yokoso___"
       }
     ]
   },
@@ -827,11 +967,22 @@ const TEAMS = [
         "riot_id": "WCD#EUW"
       }
     ],
-    "staff": [],
     "contacts": [
       {
+        "name": "abuse",
+        "role": "Manager",
+        "twitter": "",
+        "discord": ""
+      },
+      {
         "name": "DeliveryPanda",
-        "role": "Leader",
+        "role": "Coach",
+        "twitter": "",
+        "discord": ""
+      },
+      {
+        "name": "ayo",
+        "role": "Coach",
         "twitter": "",
         "discord": ""
       }
