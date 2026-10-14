@@ -132,4 +132,17 @@ async function getPuuidByRiotId(gameName, tagLine, platform = 'euw1') {
   }
 }
 
-module.exports = { apiFetch, getMatchIdsByPuuid, getMatchById, getTimelineById, getGamesByPuuid, getRankByPuuid, getPuuidByRiotId, PLATFORM_TO_REGIONAL, SERVERS };
+async function getAccountByPuuid(puuid, platform = 'euw1') {
+  try {
+    const regional = PLATFORM_TO_REGIONAL[platform] || 'europe';
+    const url = `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`;
+    const data = await apiFetch(url);
+    if (!data.gameName || !data.tagLine) return null;
+    return { gameName: data.gameName, tagLine: data.tagLine };
+  } catch (error) {
+    console.error(`Error fetching account: ${puuid}:`, error.message);
+    return null;
+  }
+}
+
+module.exports = { apiFetch, getMatchIdsByPuuid, getMatchById, getTimelineById, getGamesByPuuid, getRankByPuuid, getPuuidByRiotId, getAccountByPuuid, PLATFORM_TO_REGIONAL, SERVERS };

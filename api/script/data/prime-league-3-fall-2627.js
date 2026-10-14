@@ -7,7 +7,6 @@ const TEAMS = [
   {
     "name": "AIX eSports",
     "group": "3.1",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=GentlemanHero%231337%2CY%C3%A4nkler%23XCOM%2Cstrikerthebest%23EUW%2CTrippleJ%23309%2C+pentago%231229%2C",
     "players": [
       {
         "name": "GentlemanHero",
@@ -48,7 +47,6 @@ const TEAMS = [
   {
     "name": "Babos Gaming Academy",
     "group": "3.1",
-    "multi_opgg": "https://op.gg/lol/multisearch/euw?summoners=Soren#RS457,%CE%A3%CE%A0%CE%A1%CE%99%CE%9D%CE%A4%CE%91#gyros,Man%CF%85el#EUW,I%20GO%20MUTE%20ALL#PEKO",
     "players": [
       {
         "name": "Soren",
@@ -97,7 +95,6 @@ const TEAMS = [
   {
     "name": "Black Lion",
     "group": "3.1",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=patience%23ego%2CWeakside+Wizard%23EUW%2CL1ttl3m4n%23EUW%2CAleem334%23787%2CAlbert+Wesker%23Top",
     "players": [
       {
         "name": "patience",
@@ -135,7 +132,6 @@ const TEAMS = [
   {
     "name": "BlackDivision",
     "group": "3.1",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Kritias%23Aries%2CTimon%23Muh%2CPisher%23EUW%2CNadra%23DBT%2CTeaZing%23Liebe%2CMentale+Festung%23Key%2CAsianPower666%23MVG5%2CNomecco%233112",
     "players": [
       {
         "name": "Kritias",
@@ -180,7 +176,6 @@ const TEAMS = [
   {
     "name": "Glacial Guardians",
     "group": "3.1",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Pl%CE%B1nk%23Plank%2CElement+Empress%23ADO%2COpossos%23%E4%BE%98+%E5%AF%82%2CLyrokun%23EUW%2CNit%C3%98ryu%23EUW",
     "players": [
       {
         "name": "Plank",
@@ -225,7 +220,6 @@ const TEAMS = [
   {
     "name": "Kanji KIN",
     "group": "3.1",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Vinine+Rem%23EUW%2CNeptuneX%23EUW%2CGo+Roam%23EUW%2CPooya%23010%2CWWG+Beluga%23DMG",
     "players": [
       {
         "name": "Rem",
@@ -276,7 +270,6 @@ const TEAMS = [
   {
     "name": "MT1 Vision",
     "group": "3.1",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=DoeS+Relentless%23Rele%2C+LM+Zeppelin%23EUW%2C+eto%237171%2C+Hii+Im+Oguz%23zhena%2C+Fields+of+Verdun%237734%2C%2C",
     "players": [
       {
         "name": "Relentless",
@@ -317,7 +310,6 @@ const TEAMS = [
   {
     "name": "VfB x Engines Stuttgart",
     "group": "3.1",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Robral%235531%2Cgankz%23lol%2Cstormblessed%234000%2Cgrail%23000%2Ch3ad%23euw%2C",
     "players": [
       {
         "name": "RobRal",
@@ -362,7 +354,6 @@ const TEAMS = [
   {
     "name": "1. ECF Main",
     "group": "3.2",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=ECF+SeiKeinGnar%23ECF%2CECF+Simi%23Ent%2CECF+Bubi%23ECF%2CECF+Hosoma%23ECF%2CECF+Lowfire125%23ECF",
     "players": [
       {
         "name": "ECF SeiKeinGnar",
@@ -416,7 +407,6 @@ const TEAMS = [
   {
     "name": "300 White",
     "group": "3.2",
-    "multi_opgg": "https://op.gg/lol/multisearch/euw?summoners=300+Kettama%23300%2C300+F10%23300%2CUIC+Symphonie%23ZywOo%2C300+Ketsuku%23777%2CUIC+Cyrox%23Stack",
     "players": [
       {
         "name": "KETTAMA",
@@ -467,7 +457,6 @@ const TEAMS = [
   {
     "name": "Eintracht Spandau II",
     "group": "3.2",
-    "multi_opgg": "https://op.gg/lol/multisearch/euw?summoners=ZWEI+Bladeshow%23POG%2CZWEI+Autophil%23SUPER%2CZWEI+Reval%23geil%2CZWEI+TAUSEND+DPS%23VNINE%2CZWEI+Philly%23MEGA",
     "players": [
       {
         "name": "Bladeshow",
@@ -508,7 +497,6 @@ const TEAMS = [
   {
     "name": "LOOKSMAXXER",
     "group": "3.2",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Real+Insanity%23BKJN%2CF%C3%BCsch%23Fich%2CRUSSISCHROULETTE%23SOULY%2CDenner%23ALIEN%2CDenner%23187",
     "players": [
       {
         "name": "Real Insanity",
@@ -553,7 +541,6 @@ const TEAMS = [
   {
     "name": "Rich Gang",
     "group": "3.2",
-    "multi_opgg": "https://op.gg/lol/multisearch/euw?summoners=Lineum%23HAHA%2CIWTGankYou%23999%2C%E6%AD%BB%E9%AC%BC%E8%94%A1%E5%BE%90%E5%9D%A4%23KUN%2CBaker+Behner%23EUW%2CTheboman%23uwu",
     "players": [
       {
         "name": "Lineum",
@@ -601,7 +588,6 @@ const TEAMS = [
   {
     "name": "Socken und Sandalen",
     "group": "3.2",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Acti%2342069%2CAcke%230001%2CNina+Chuba%23prime%2CBloodgreen%23EUW%2CFvck+Vodafone%230241",
     "players": [
       {
         "name": "Acti",
@@ -642,7 +628,6 @@ const TEAMS = [
   {
     "name": "TeamOrangeGaming Academy",
     "group": "3.2",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Im+Just+Duck%23Duck%2CBS+Undaq%23EUW%2CNEMESIS+JIHAN%23NOEXC%2CTOG+Levtan%23TOGA%2CTOG+Cyrcl%23LSR91",
     "players": [
       {
         "name": "Daeron",
@@ -699,7 +684,6 @@ const TEAMS = [
   {
     "name": "Whalepower Humpbacks",
     "group": "3.2",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Mac+Abert%23piano%2CTobbaTaco%23EUW%2CDr+Disho%23PSZ%2CPatrick+Jane%23Yunah%2CInspire%23EE1",
     "players": [
       {
         "name": "Mac Abert",
@@ -744,7 +728,6 @@ const TEAMS = [
   {
     "name": "ATRUVIA Münster Esports",
     "group": "3.3",
-    "multi_opgg": "https://op.gg/lol/multisearch/euw?summoners=Anto%23TTT%2CCertified+Random%23EUW%2C+oivallus%23owa%2Cchat+scale+0%230089%2CShui+Ta%23TOXY",
     "players": [
       {
         "name": "Anto",
@@ -795,7 +778,6 @@ const TEAMS = [
   {
     "name": "Cloud eSport",
     "group": "3.3",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=CLD+9thMay%23TOP%2CSigue%237305%2CLet+Down%232812%2CTweek%23opzz%2CHadonski%23Marin",
     "players": [
       {
         "name": "9thMay",
@@ -843,7 +825,6 @@ const TEAMS = [
   {
     "name": "Defiance eSports",
     "group": "3.3",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Aanng%23HSV%2C+ADC+IS+FRONTLINE%23SVW%2CMarcy%23FROG%2C+IvanDragovic%232002%2Cichdeutsch%23161%2C%2C",
     "players": [
       {
         "name": "Aanng",
@@ -900,7 +881,6 @@ const TEAMS = [
   {
     "name": "Kanji AKA",
     "group": "3.3",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Mea+Culpa%23Kind%2Cspy%23qesfg%2CPeaker%23Kind%2CEffortless%23Kind%2CWizard+Monkey%235+0+2",
     "players": [
       {
         "name": "Mea Culpa",
@@ -945,7 +925,6 @@ const TEAMS = [
   {
     "name": "Packmiko E-Sports",
     "group": "3.3",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=%E5%83%A7%E4%BE%B6%E3%81%AE%E3%82%88%E3%81%86%E3%81%AA%E7%B2%BE%E7%A5%9E%E7%8A%B6%E6%85%8B%23siup%2Cklik+klik+p%C4%85p%C4%85p%C4%85%23Sento%2C%EC%A1%B4%EC%9E%AC%ED%95%98%EC%A7%80+%EC%95%8A%EB%8A%94+%EA%BF%88%23end%2CWalkingGlock%23GUN%2Cpeanut%23LEC",
     "players": [
       {
         "name": "僧侶のような精神状態",
@@ -996,7 +975,6 @@ const TEAMS = [
   {
     "name": "Purple Emperor Lizards - Atomic",
     "group": "3.3",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=der+Pudding%2CSkelgon%23Drive%2CPEL+just+Oliver%23161%2CStepjacke%23Step%2CKipapo%23ZZTOP",
     "players": [
       {
         "name": "Skelgon",
@@ -1032,7 +1010,6 @@ const TEAMS = [
   {
     "name": "REH Gaming",
     "group": "3.3",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Chopcup%23BABO%2CMainzer+Magier%23Wiz%2CHenkindu%23four%2CSuken%23Motzi%2CKoni%23Liebe",
     "players": [
       {
         "name": "Chopcup",
@@ -1077,7 +1054,6 @@ const TEAMS = [
   {
     "name": "ACEGaming Hearts",
     "group": "3.4",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=Sunam%230000%2CTony+Soprano%23Gbgo0%2CCrystalDog%23EUW%2CLynxer%231337%2Cabsoluten%23brick",
     "players": [
       {
         "name": "Sunam",
@@ -1128,7 +1104,6 @@ const TEAMS = [
   {
     "name": "Berlin 5",
     "group": "3.4",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=B5+stgs%23WOW%2CJoshi%23sin%2CYami%23tinka%2CCherkess%23Alure%2Ckolopak%23322",
     "players": [
       {
         "name": "B5 stgs",
@@ -1179,7 +1154,6 @@ const TEAMS = [
   {
     "name": "Duplex Silva Pigeons Edition",
     "group": "3.4",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=geass%23pel%2Cds+sefa%236666%2CDS+Davitikus%23mark%2CDS+tyberzen%23baler%2CDS+Zweiradkaberg%232xjgl",
     "players": [
       {
         "name": "Geass",
@@ -1224,7 +1198,6 @@ const TEAMS = [
   {
     "name": "Emperors Bremen",
     "group": "3.4",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=AfaHero%23Cor%2Csanpone%23luigi%2CSvw%23euw%2Csnomboss%23crime%2CRanor%231111",
     "players": [
       {
         "name": "AFAHero",
@@ -1272,7 +1245,6 @@ const TEAMS = [
   {
     "name": "Neko Elite Kittens",
     "group": "3.4",
-    "multi_opgg": "https://op.gg/hu/lol/multisearch/euw?summoners=Nakayama+Festa%23Fessu%2CRaki%23JPG%2CZyon%23Rolli%2CAva+Max+Genie%C3%9Fer%23666%2Cernie1%23lee",
     "players": [
       {
         "name": "Nakayama Festa",
@@ -1317,7 +1289,6 @@ const TEAMS = [
   {
     "name": "Second Time Alive",
     "group": "3.4",
-    "multi_opgg": "https://op.gg/lol/multisearch/euw?summoners=k%C3%B6nig%23atk%2CBerryB%23BOSS%2C2TA+L%C3%ADm%C3%ADtTester%232TA%2CPluffuff%23EUW%2CNikolayy%230000",
     "players": [
       {
         "name": "König",
@@ -1362,7 +1333,6 @@ const TEAMS = [
   {
     "name": "Sissi State Punks",
     "group": "3.4",
-    "multi_opgg": "https://op.gg/de/lol/multisearch/euw?summoners=xiao+lang+bao%23euw%2C%C2%BA%C2%BA%C2%BA+Ranger+%C2%BA%C2%BA%C2%BA%23EUW%2Clove+race%23mgk%2Calu%2374747%2CKajmak%23289",
     "players": [
       {
         "name": "Xiao Lang Bao",
@@ -1413,7 +1383,6 @@ const TEAMS = [
   {
     "name": "spongecord prime",
     "group": "3.4",
-    "multi_opgg": "https://op.gg/lol/multisearch/euw?summoners=+Crossover%23EUW%2Cprdgy1%23EUW%2C+Ventair%23EUW%2Cwe+go+Loco%23EUW%2CK4154%23LXV",
     "players": [
       {
         "name": "Crossover",

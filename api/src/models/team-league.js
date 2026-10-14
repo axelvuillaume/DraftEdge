@@ -9,7 +9,6 @@ const Schema = new mongoose.Schema(
     league_id: { type: String },
     league_name: { type: String },
     group: { type: String },
-    multi_opgg: { type: String },
     players: [{ name: { type: String }, riot_id: { type: String } }],
     old_players: [{ name: { type: String }, riot_id: { type: String } }],
     staff: [{ name: { type: String }, riot_id: { type: String } }],

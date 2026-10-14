@@ -1,8 +1,8 @@
-// Reset complet de la Prime League Division 3 pour un nouveau split.
-// Supprime toutes les team-leagues + players de la ligue, puis recrée tout depuis ./data/prime-league-3-fall-2627.js
+// Reset complet d'une Prime League (Division 2 ou 3) pour un nouveau split.
+// Supprime toutes les team-leagues + players de la ligue, puis recrée tout depuis ./data/<fichier>.js
 //
-//   node script/resetPrimeLeague3.js            → dry-run (aucune écriture)
-//   node script/resetPrimeLeague3.js --apply    → exécution réelle
+//   node script/resetPrimeLeague.js --data=prime-league-3-fall-2627            → dry-run (aucune écriture)
+//   node script/resetPrimeLeague.js --data=prime-league-2-fall-2627 --apply    → exécution réelle
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const mongoose = require('mongoose');
@@ -12,7 +12,12 @@ const TeamLeague = require('../src/models/team-league.js');
 const Player = require('../src/models/player.js');
 const { getPuuidByRiotId, getRankByPuuid } = require('../src/services/riotgames.js');
 const { updateTeamLeagueLp } = require('../src/services/team-league-lp.js');
-const { LEAGUE, TEAMS } = require('./data/prime-league-3-fall-2627.js');
+const DATA = (process.argv.find((a) => a.startsWith('--data=')) || '').slice('--data='.length);
+if (!DATA) {
+  console.error('Usage: node script/resetPrimeLeague.js --data=<fichier dans script/data, sans .js> [--apply]');
+  process.exit(1);
+}
+const { LEAGUE, TEAMS } = require(`./data/${DATA}.js`);
 
 const APPLY = process.argv.includes('--apply');
 const REGION = 'euw1';
@@ -57,7 +62,7 @@ async function main() {
   const unresolved = [];
 
   for (const t of TEAMS) {
-    console.log(`\n[${t.group}] ${t.name} — ${t.players.length} players, ${t.staff.length} staff, ${t.contacts.length} contacts`);
+    console.log(`\n[${t.group}] ${t.name} — ${t.players.length} players, ${(t.replacements || []).length} replacements, ${t.staff.length} staff, ${t.contacts.length} contacts`);
     for (const c of t.contacts) console.log(`  contact: ${c.role} ${c.name ? `${c.name} ` : ''}(discord: ${c.discord})`);
 
     let teamLeague = null;
@@ -67,9 +72,9 @@ async function main() {
         group: t.group,
         league_id: leagueId,
         league_name: league.name,
-        multi_opgg: t.multi_opgg || '',
         players: t.players.map((p) => ({ name: p.name, riot_id: p.riot_id })),
-        staff: t.staff.map((s) => ({ name: s.name, riot_id: '' })),
+        replacements: (t.replacements || []).map((p) => ({ name: p.name, riot_id: p.riot_id })),
+        staff: t.staff.map((s) => ({ name: s.name, riot_id: s.riot_id || '' })),
         contacts: t.contacts,
         points: 0,
         wins: 0,

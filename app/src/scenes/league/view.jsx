@@ -8,6 +8,7 @@ export default function View() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [team, setTeam] = useState(null)
+  const [players, setPlayers] = useState([])
 
   const fetchTeam = async () => {
     try {
@@ -19,8 +20,19 @@ export default function View() {
     }
   }
 
+  const fetchPlayers = async () => {
+    try {
+      const { ok, data, code } = await api.post("/player/search", { team_league_id: id, active: true })
+      if (!ok) return toast.error(code || "Failed to fetch players")
+      setPlayers(data)
+    } catch (error) {
+      toast.error(error.code || "Failed to fetch players")
+    }
+  }
+
   useEffect(() => {
     fetchTeam()
+    fetchPlayers()
   }, [id])
 
   if (!team) {
@@ -65,14 +77,14 @@ export default function View() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column */}
           <div className="space-y-6">
-            <PlayersList team={team} />
+            <PlayersList players={players} />
 
             {/* Replacements */}
             {team.replacements?.length > 0 && (
               <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 space-y-4">
                 <div className="flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-teal-400" />
-                  <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">Replacements ({team.replacements.length})</h2>
+                  <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">Substitutes ({team.replacements.length})</h2>
                 </div>
                 <div className="space-y-2">
                   {team.replacements.map((player, i) => (
@@ -135,9 +147,7 @@ export default function View() {
 
             {/* Multi OP.GG */}
             {(() => {
-              const multiUrl =
-                team.multi_opgg ||
-                (team.players?.length > 0 ? `https://www.op.gg/multisearch/euw?summoners=${team.players.map(p => encodeURIComponent(p.riot_id)).join(",")}` : null)
+              const multiUrl = buildMultiOpggUrl(players)
               if (!multiUrl) return null
               return (
                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5">
@@ -156,6 +166,15 @@ export default function View() {
 }
 
 const ROLE_ORDER = { top: 0, jungle: 1, mid: 2, bottom: 3, support: 4 }
+
+const OPGG_REGION = { euw1: "euw", eun1: "eune", na1: "na", kr: "kr", br1: "br", jp1: "jp", la1: "lan", la2: "las", oc1: "oce", tr1: "tr", ru: "ru", me1: "me" }
+
+// https://op.gg/lol/multisearch/euw?summoners=Name%23TAG%2CName2%23TAG2
+function buildMultiOpggUrl(players) {
+  const withRiotId = [...players].filter(p => p.game_name && p.tag_line).sort((a, b) => (ROLE_ORDER[a.role] ?? 99) - (ROLE_ORDER[b.role] ?? 99))
+  if (withRiotId.length === 0) return null
+  return `https://op.gg/lol/multisearch/${OPGG_REGION[withRiotId[0].region] || "euw"}?summoners=${withRiotId.map(p => encodeURIComponent(`${p.game_name}#${p.tag_line}`)).join("%2C")}`
+}
 
 function OldPlayersList({ team }) {
   const [players, setPlayers] = useState([])
@@ -205,23 +224,7 @@ function OldPlayersList({ team }) {
   )
 }
 
-function PlayersList({ team }) {
-  const [players, setPlayers] = useState([])
-
-  const fetchPlayers = async () => {
-    try {
-      const { ok, data, code } = await api.post("/player/search", { team_league_id: team._id, active: true })
-      if (!ok) return toast.error(code || "Failed to fetch players")
-      setPlayers(data)
-    } catch (error) {
-      toast.error(error.code || "Failed to fetch players")
-    }
-  }
-
-  useEffect(() => {
-    fetchPlayers()
-  }, [team._id])
-
+function PlayersList({ players }) {
   return (
     <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 space-y-4">
       <div className="flex items-center justify-between">
