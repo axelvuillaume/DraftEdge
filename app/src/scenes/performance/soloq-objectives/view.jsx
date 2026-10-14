@@ -70,7 +70,7 @@ function ObjectiveHeader({ objective, children }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <button
-            onClick={() => navigate("/performance/soloq-objectives")}
+            onClick={() => navigate(`/performance/soloq-objectives?player=${objective.player_id}`)}
             className="p-1.5 -ml-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/40 transition-colors"
             title="Back"
           >

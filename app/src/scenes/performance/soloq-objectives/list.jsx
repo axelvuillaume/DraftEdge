@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import { Plus, Trash2, Search, X, CheckCircle2 } from "lucide-react"
 import api from "@/services/api"
@@ -13,7 +13,9 @@ const APEX_TIERS = new Set(["MASTER", "GRANDMASTER", "CHALLENGER"])
 
 export default function List() {
   const [players, setPlayers] = useState([])
-  const [selectedId, setSelectedId] = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selectedId = searchParams.get("player")
+  const setSelectedId = id => setSearchParams({ player: id }, { replace: true })
   const [editing, setEditing] = useState(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const { user } = useStore()
@@ -24,7 +26,7 @@ export default function List() {
       if (!ok) return toast.error(code || "Failed to fetch players")
       data.sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role))
       setPlayers(data)
-      if (data[0]) setSelectedId(prev => prev || data[0]._id)
+      if (data[0] && !data.some(p => p._id === selectedId)) setSelectedId(data[0]._id)
     } catch (error) {
       toast.error(error.code || "Failed to fetch players")
     }
