@@ -103,7 +103,7 @@ function MostPlayedPanel() {
 
   const fetchData = async () => {
     try {
-      const { ok, data, code } = await api.post("/playerstats/most-played", { ...globalFilters, limit: 5, side })
+      const { ok, data, code } = await api.post("/playerstats/most-played", { ...globalFilters, side })
       if (!ok) return toast.error(code || "Failed to fetch most played")
       setData(data)
     } catch (error) {

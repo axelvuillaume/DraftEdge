@@ -1267,22 +1267,20 @@ router.post('/most-played', passport.authenticate(['admin', 'user'], { session: 
           wins: { $sum: { $cond: ['$game_win', 1, 0] } },
         },
       },
-      { $sort: { games: -1 } },
+      { $sort: { games: -1, wins: -1, '_id.champion': 1 } },
     ]);
 
-    const topN = req.body.limit || 3;
+    const topN = req.body.limit || null; // null = tous les champions
     const result = {};
     const players = {};
     for (const [roleKey, displayName] of Object.entries(ROLE_DISPLAY)) {
-      result[displayName] = stats
-        .filter((s) => s._id.role === roleKey)
-        .slice(0, topN)
-        .map((s) => ({
-          name: s._id.champion,
-          games: s.games,
-          pr: Math.round((s.games / totalGames) * 100),
-          wr: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0,
-        }));
+      const roleStats = stats.filter((s) => s._id.role === roleKey);
+      result[displayName] = (topN ? roleStats.slice(0, topN) : roleStats).map((s) => ({
+        name: s._id.champion,
+        games: s.games,
+        pr: Math.round((s.games / totalGames) * 100),
+        wr: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0,
+      }));
       const player = activePlayers.find((p) => p.role === roleKey);
       if (player) players[displayName] = player.game_name ? `${player.game_name}#${player.tag_line || ''}` : player.player_name || '';
     }

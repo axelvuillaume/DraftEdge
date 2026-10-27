@@ -6,6 +6,7 @@ const https = require('https');
 const Game = require('../models/game');
 const Team = require('../models/team');
 const PlayerStats = require('../models/player-stats');
+const Player = require('../models/player');
 const AIFeedBack = require('../models/ai-feedback');
 const CONFIG = require('../config');
 const { client: geminiClient } = require('../services/gemini');
@@ -40,21 +41,41 @@ async function storeReplayFile(game, file) {
   }
 }
 
+// Fallback quand Riot ne résout pas le compte (ex. comptes tournoi "404 Ray#eProd") :
+// une ligne alliée sans puuid est rattachée au joueur actif de l'équipe qui a le même rôle.
+async function getActivePuuidByRole(savedPlayers) {
+  const teamId = savedPlayers.find((p) => p.team_id)?.team_id;
+  if (!teamId) return {};
+  const activePlayers = await Player.find({ team_id: teamId, active: true });
+  const byRole = {};
+  activePlayers.forEach((p) => {
+    if (p.role && p.puuid) byRole[p.role] = p.puuid;
+  });
+  return byRole;
+}
+
 async function enrichPlayersInBackground(savedPlayers, platform) {
-  if (!RIOT_API_KEY) return;
   console.log('[import] Enriching', savedPlayers.length, 'players with Riot data on', platform, '...');
+  const activePuuidByRole = await getActivePuuidByRole(savedPlayers);
 
   for (let i = 0; i < savedPlayers.length; i++) {
     const player = savedPlayers[i];
-    if (!player.summoner_name || !player.riot_tag) continue;
 
     try {
       await new Promise((resolve) => setTimeout(resolve, i * 100));
 
       let puuid = player.puuid;
-      if (!puuid) puuid = await getPuuidByRiotId(player.summoner_name, player.riot_tag, platform);
-      if (!puuid) continue;
+      if (!puuid && RIOT_API_KEY && player.summoner_name && player.riot_tag) puuid = await getPuuidByRiotId(player.summoner_name, player.riot_tag, platform);
+      if (!puuid) {
+        const fallback = !player.opponent && activePuuidByRole[player.role];
+        if (!fallback) continue;
+        // Pas de rang solo queue ici : ce serait celui du compte principal, pas du compte joué
+        await PlayerStats.updateOne({ _id: player._id }, { $set: { puuid: fallback } });
+        console.log(`[import] ${player.summoner_name}#${player.riot_tag} (${player.role}) rattaché au joueur actif du rôle`);
+        continue;
+      }
 
+      if (!RIOT_API_KEY) continue;
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       const soloQueue = await getRankByPuuid(puuid, platform);
