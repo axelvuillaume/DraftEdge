@@ -47,8 +47,10 @@ router.post('/signin', async (req, res) => {
     const match = config.ENVIRONMENT === 'development' || (await user.comparePassword(password));
     if (!match) return res.status(401).send({ ok: false, code: ERROR_CODES.EMAIL_OR_PASSWORD_INVALID });
 
-    user.set({ last_login_at: Date.now() });
-    await user.save();
+    if (config.ENVIRONMENT !== 'development') {
+      user.set({ last_login_at: Date.now() });
+      await user.save();
+    }
 
     const token = jwt.sign({ _id: user.id }, config.SECRET, { expiresIn: JWT_MAX_AGE });
     res.cookie('jwt', token, cookieOptions());
@@ -138,8 +140,10 @@ router.post('/logout', passport.authenticate(['user'], { session: false }), asyn
 router.get('/signin_token', passport.authenticate(['user', 'admin'], { session: false }), async (req, res) => {
   try {
     const { user } = req;
-    user.set({ last_login_at: Date.now() });
-    await user.save();
+    if (config.ENVIRONMENT !== 'development') {
+      user.set({ last_login_at: Date.now() });
+      await user.save();
+    }
 
     const token = jwt.sign({ _id: user._id }, config.SECRET, { expiresIn: JWT_MAX_AGE });
     res.cookie('jwt', token, cookieOptions());
